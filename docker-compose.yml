@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  telegram-bot-dream-stream:
+    image: telegram-bot-dream-stream:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    restart: always
+    environment:
+      - JAVA_OPTS=-Xms512m -Xmx1024m
+    env_file:
+      - .env.app
+  db:
+    image: postgres:15
+    container_name: local-postgres-mindbase
+    env_file:
+      - .env.app
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+volumes:
+  pgdata:

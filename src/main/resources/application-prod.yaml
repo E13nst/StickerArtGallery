@@ -1,0 +1,55 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: telegram-bot-dream-stream
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-4o
+          temperature: 0.7
+          max-tokens: 1000
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+  health:
+    defaults:
+      enabled: true
+
+telegram:
+  bot:
+    token: ${TELEGRAM_API_TOKEN}
+    name: ${TELEGRAM_BOT_NAME}
+    webhook:
+      url: ${BOT_WEBHOOK_URL}
+
+logging:
+  level:
+    com.example.dream_stream_bot: INFO
+    org.springframework.web: INFO
+    org.telegram: INFO
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %highlight(%-5level) %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: /data/app.log
+    max-size: 10MB
+    max-history: 7 
