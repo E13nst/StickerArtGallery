@@ -7,6 +7,7 @@ import com.example.dream_stream_bot.service.telegram.StickerService;
 import com.example.dream_stream_bot.service.telegram.UserStateService;
 import com.example.dream_stream_bot.service.telegram.StickerSetService;
 import com.example.dream_stream_bot.model.keyboard.InlineKeyboardMarkupBuilder;
+import com.example.dream_stream_bot.config.AppConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -14,11 +15,13 @@ import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.example.dream_stream_bot.model.telegram.StickerSet;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Collections;
 
 public class StickerBot extends AbstractTelegramBot {
     
@@ -27,14 +30,16 @@ public class StickerBot extends AbstractTelegramBot {
 
     private final UserStateService userStateService;
     private final StickerSetService stickerSetService;
+    private final AppConfig appConfig;
     
     public StickerBot(BotEntity botEntity, MessageHandlerService messageHandlerService, 
                      UserStateService userStateService, StickerSetService stickerSetService,
-                     StickerService stickerService) {
+                     StickerService stickerService, AppConfig appConfig) {
         super(botEntity, messageHandlerService);
         this.stickerService = stickerService;
         this.userStateService = userStateService;
         this.stickerSetService = stickerSetService;
+        this.appConfig = appConfig;
     }
     
     @Override
@@ -73,6 +78,10 @@ public class StickerBot extends AbstractTelegramBot {
             } else if ("редактировать_набор".equals(callbackData)) {
                 // Показываем список наборов пользователя
                 showUserStickerPacks(chatId, 0);
+                return;
+            } else if ("open_gallery".equals(callbackData)) {
+                // Открываем галерею стикеров
+                openGallery(chatId);
                 return;
             } else if (callbackData.startsWith("pack_")) {
                 // Обработка выбора конкретного набора
@@ -245,6 +254,7 @@ public class StickerBot extends AbstractTelegramBot {
                     InlineKeyboardMarkup keyboard = new InlineKeyboardMarkupBuilder()
                             .addRow("Создать новый набор", "создать_новый_набор")
                             .addRow("Редактировать набор", "редактировать_набор")
+                            .addRow("🎨 Галерея стикеров", "open_gallery")
                             .build();
                     
                     SendMessage welcomeMessage = SendMessage.builder()
@@ -256,11 +266,29 @@ public class StickerBot extends AbstractTelegramBot {
                                     "2. Введите название для набора\n" +
                                     "3. Введите короткую ссылку\n" +
                                     "4. Отправьте изображение\n\n" +
+                                    "🎨 **Галерея стикеров** - просмотр и управление вашими наборами\n\n" +
                                     "**Выберите действие:**")
                             .parseMode("Markdown")
                             .replyMarkup(keyboard)
                             .build();
                     sendWithLogging(welcomeMessage);
+                    return;
+                }
+                
+                // Обработка команды /gallery
+                if (text.equals("/gallery")) {
+                    InlineKeyboardMarkup keyboard = new InlineKeyboardMarkupBuilder()
+                            .addRow("🎨 Открыть галерею", "open_gallery")
+                            .build();
+                    
+                    SendMessage galleryMessage = SendMessage.builder()
+                            .chatId(msg.getChatId())
+                            .text("🎨 **Галерея стикеров**\n\n" +
+                                    "Откройте веб-приложение для просмотра и управления вашими наборами стикеров.")
+                            .parseMode("Markdown")
+                            .replyMarkup(keyboard)
+                            .build();
+                    sendWithLogging(galleryMessage);
                     return;
                 }
                 
@@ -480,6 +508,43 @@ public class StickerBot extends AbstractTelegramBot {
             SendMessage errorMessage = SendMessage.builder()
                     .chatId(chatId)
                     .text("❌ Произошла ошибка при выборе набора. Попробуйте еще раз.")
+                    .build();
+            sendWithLogging(errorMessage);
+        }
+    }
+    
+    /**
+     * Открывает галерею стикеров
+     */
+    private void openGallery(Long chatId) {
+        try {
+            // Создаем кнопку для открытия Web App
+            InlineKeyboardButton button = new InlineKeyboardButton();
+            button.setText("🎨 Открыть галерею");
+            // Используем URL из конфигурации
+            String miniAppUrl = appConfig.getMiniApp().getUrl();
+            LOGGER.info("🎨 Открываем галерею для пользователя {} с URL: {}", chatId, miniAppUrl);
+            button.setUrl(miniAppUrl);
+            
+            InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup();
+            List<InlineKeyboardButton> row = new ArrayList<>();
+            row.add(button);
+            keyboard.setKeyboard(Collections.singletonList(row));
+            
+            SendMessage webAppMessage = SendMessage.builder()
+                    .chatId(chatId)
+                    .text("🎨 **Галерея стикеров**\n\n" +
+                            "Нажмите кнопку ниже, чтобы открыть веб-приложение для просмотра и управления вашими наборами стикеров.")
+                    .parseMode("Markdown")
+                    .replyMarkup(keyboard)
+                    .build();
+            sendWithLogging(webAppMessage);
+            
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при открытии галереи для пользователя {}: {}", chatId, e.getMessage());
+            SendMessage errorMessage = SendMessage.builder()
+                    .chatId(chatId)
+                    .text("❌ Произошла ошибка при открытии галереи. Попробуйте еще раз.")
                     .build();
             sendWithLogging(errorMessage);
         }

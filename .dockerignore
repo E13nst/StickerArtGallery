@@ -1,0 +1,55 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.iml
+*.ipr
+*.iws
+
+# Build artifacts
+build/
+target/
+.gradle/
+gradle-app.setting
+
+# Logs
+logs/
+*.log
+app.log
+bot.log
+
+# Environment files
+.env*
+*.env
+
+# Documentation
+doc/
+*.md
+README.md
+HELP.md
+AMVERA_DEPLOY.md
+vpn.md
+
+# Scripts
+*.sh
+Makefile
+proxy.sh
+enable_webhook.sh
+set_webhook.sh
+check_webhook.sh
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp

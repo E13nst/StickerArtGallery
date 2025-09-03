@@ -10,7 +10,7 @@ plugins {
 
 group = 'com.example'
 version = '0.0.1-SNAPSHOT'
-description = 'telegram-bot-dream-stream'
+description = 'sticker-art-gallery'
 sourceCompatibility = '17'
 targetCompatibility = '17'
 
