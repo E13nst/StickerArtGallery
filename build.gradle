@@ -15,11 +15,12 @@ sourceCompatibility = '17'
 targetCompatibility = '17'
 
 repositories {
-    maven { url 'https://maven.yandex.ru/repository/maven-central/' }
+    mavenLocal()
     maven { url 'https://maven.aliyun.com/repository/public' }
+    maven { url 'https://repo.huaweicloud.com/repository/maven/' }
     maven { url 'https://jitpack.io' }
-    maven { url = uri('https://repo.spring.io/milestone') }
-//    mavenCentral()
+    maven { url 'https://repo.spring.io/milestone' }
+    mavenCentral() // Раскомментировал - это важно для fallback
 }
 
 dependencyManagement {
