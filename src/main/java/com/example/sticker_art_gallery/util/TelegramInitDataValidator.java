@@ -167,7 +167,7 @@ public class TelegramInitDataValidator {
      */
     private String buildDataCheckString(Map<String, String> params) {
         return params.entrySet().stream()
-                .filter(entry -> !"hash".equals(entry.getKey()))  // Исключаем только hash
+                .filter(entry -> !"hash".equals(entry.getKey()) && !"signature".equals(entry.getKey()))  // Исключаем hash и signature
                 .sorted(Map.Entry.comparingByKey())  // Лексикографическая сортировка
                 .map(entry -> entry.getKey() + "=" + entry.getValue())
                 .collect(Collectors.joining("\n"));

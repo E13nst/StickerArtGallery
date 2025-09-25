@@ -76,7 +76,7 @@ public class AuthController {
             response.put("role", authentication.getAuthorities().stream()
                 .findFirst()
                 .map(authority -> authority.getAuthority())
-                .orElse("USER"));
+                .orElse("ROLE_USER"));
             
             LOGGER.info("✅ Статус аутентификации: пользователь {} аутентифицирован", authentication.getName());
         } else {
