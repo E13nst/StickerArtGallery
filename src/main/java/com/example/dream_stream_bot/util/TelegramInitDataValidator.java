@@ -5,8 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.example.dream_stream_bot.model.telegram.BotEntity;
-import com.example.dream_stream_bot.service.telegram.BotService;
+import com.example.dream_stream_bot.config.AppConfig;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -26,11 +25,11 @@ public class TelegramInitDataValidator {
     private static final String HMAC_SHA256 = "HmacSHA256";
     private static final long MAX_AUTH_AGE_SECONDS = 86400; // 24 часа как в JavaScript коде
 
-    private final BotService botService;
+    private final AppConfig appConfig;
 
     @Autowired
-    public TelegramInitDataValidator(BotService botService) {
-        this.botService = botService;
+    public TelegramInitDataValidator(AppConfig appConfig) {
+        this.appConfig = appConfig;
     }
 
     public boolean validateInitData(String initData, String botName) {
@@ -110,14 +109,15 @@ public class TelegramInitDataValidator {
 
     private String getBotToken(String botName) {
         try {
-            var bots = botService.findAll();
-            return bots.stream()
-                    .filter(bot -> botName.equals(bot.getName()))
-                    .findFirst()
-                    .map(BotEntity::getToken)
-                    .orElse(null);
+            String botToken = appConfig.getTelegram().getBotToken();
+            if (botToken == null || botToken.trim().isEmpty()) {
+                LOGGER.error("❌ Токен бота не настроен в конфигурации");
+                return null;
+            }
+            LOGGER.debug("✅ Токен бота получен из конфигурации (длина: {})", botToken.length());
+            return botToken;
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка получения токена бота '{}': {}", botName, e.getMessage(), e);
+            LOGGER.error("❌ Ошибка получения токена бота: {}", e.getMessage(), e);
             return null;
         }
     }

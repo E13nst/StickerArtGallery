@@ -1,7 +1,6 @@
 package com.example.dream_stream_bot.service.file;
 
 import com.example.dream_stream_bot.dto.StickerCacheDto;
-import com.example.dream_stream_bot.service.telegram.BotService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -23,15 +22,12 @@ public class TelegramFileService {
     private static final long MAX_FILE_SIZE = 512 * 1024; // 512 KB
     
     private final RestTemplate restTemplate;
-    private final BotService botService;
     private final ObjectMapper objectMapper;
     private final MimeTypeDetectionService mimeTypeService;
     
     @Autowired
-    public TelegramFileService(BotService botService, ObjectMapper objectMapper, 
-                              MimeTypeDetectionService mimeTypeService) {
+    public TelegramFileService(ObjectMapper objectMapper, MimeTypeDetectionService mimeTypeService) {
         this.restTemplate = new RestTemplate();
-        this.botService = botService;
         this.objectMapper = objectMapper;
         this.mimeTypeService = mimeTypeService;
     }
@@ -40,47 +36,39 @@ public class TelegramFileService {
      * Скачивает файл из Telegram и создает StickerCacheDto
      * 
      * @param fileId идентификатор файла в Telegram
-     * @param botName имя бота для получения токена
+     * @param botToken токен бота для доступа к Telegram API
      * @return StickerCacheDto с данными файла
      * @throws RuntimeException если файл не удалось скачать
      */
-    public StickerCacheDto downloadFile(String fileId, String botName) {
+    public StickerCacheDto downloadFile(String fileId, String botToken) {
         try {
-            LOGGER.debug("📥 Начинаем скачивание файла '{}' для бота '{}'", fileId, botName);
+            LOGGER.debug("📥 Начинаем скачивание файла '{}'", fileId);
             
-            // 1. Получаем токен бота
-            var botOpt = botService.findByName(botName);
-            if (botOpt.isEmpty()) {
-                throw new IllegalArgumentException("Бот не найден: " + botName);
-            }
+            // 1. Получаем информацию о файле через getFile
+            TelegramFileInfo fileInfo = getFileInfo(fileId, botToken);
             
-            String token = botOpt.get().getToken();
-            
-            // 2. Получаем информацию о файле через getFile
-            TelegramFileInfo fileInfo = getFileInfo(fileId, token);
-            
-            // 3. Валидация размера файла
+            // 2. Валидация размера файла
             if (fileInfo.fileSize() > MAX_FILE_SIZE) {
                 throw new IllegalArgumentException(
                     String.format("Файл слишком большой: %d байт (максимум: %d)", 
                     fileInfo.fileSize(), MAX_FILE_SIZE));
             }
             
-            // 4. Скачиваем файл
-            byte[] fileData = downloadFileData(fileInfo.filePath(), token);
+            // 3. Скачиваем файл
+            byte[] fileData = downloadFileData(fileInfo.filePath(), botToken);
             
-            // 5. Определяем MIME тип
+            // 4. Определяем MIME тип
             String mimeType = determineMimeType(fileId, fileInfo.filePath());
             
-            // 6. Валидация MIME типа для стикеров
+            // 5. Валидация MIME типа для стикеров
             if (!mimeTypeService.isValidStickerMimeType(mimeType)) {
                 LOGGER.warn("⚠️ Неподдерживаемый MIME тип для стикера: {}", mimeType);
             }
             
-            // 7. Генерируем имя файла
+            // 6. Генерируем имя файла
             String fileName = mimeTypeService.generateFileName(fileId, mimeType);
             
-            // 8. Создаем результат
+            // 7. Создаем результат
             StickerCacheDto result = StickerCacheDto.create(
                 fileId, fileData, mimeType, fileName, fileInfo.filePath());
             
@@ -93,13 +81,6 @@ public class TelegramFileService {
             LOGGER.error("❌ Ошибка при скачивании файла '{}': {}", fileId, e.getMessage(), e);
             throw new RuntimeException("Не удалось скачать файл из Telegram: " + fileId, e);
         }
-    }
-    
-    /**
-     * Скачивает файл с использованием бота по умолчанию
-     */
-    public StickerCacheDto downloadFile(String fileId) {
-        return downloadFile(fileId, "StickerGallery");
     }
     
     /**
@@ -149,6 +130,9 @@ public class TelegramFileService {
         }
         
         byte[] fileData = response.getBody();
+        if (fileData == null) {
+            throw new RuntimeException("Получены пустые данные файла");
+        }
         LOGGER.debug("✅ Файл скачан: {} байт", fileData.length);
         
         return fileData;
