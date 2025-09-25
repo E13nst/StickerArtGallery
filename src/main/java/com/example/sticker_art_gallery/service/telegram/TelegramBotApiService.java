@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -34,7 +35,7 @@ public class TelegramBotApiService {
     
     /**
      * Получает информацию о стикерсете через Telegram Bot API
-     * Результат кэшируется на 15 минут
+     * Результат кэшируется в Redis на 15 минут
      * 
      * @param stickerSetName имя стикерсета
      * @return JSON строка с информацией о стикерсете или null если ошибка
@@ -42,7 +43,7 @@ public class TelegramBotApiService {
     @Cacheable(value = "stickerSetInfo", key = "#stickerSetName", unless = "#result == null")
     public String getStickerSetInfo(String stickerSetName) {
         try {
-            LOGGER.debug("🔍 Получение информации о стикерсете '{}'", stickerSetName);
+            LOGGER.debug("🔍 Получение информации о стикерсете '{}' (запрос к Telegram API)", stickerSetName);
             
             // Получаем токен бота из конфигурации
             String botToken = appConfig.getTelegram().getBotToken();
@@ -89,5 +90,23 @@ public class TelegramBotApiService {
             LOGGER.error("❌ Неожиданная ошибка при получении информации о стикерсете '{}': {}", stickerSetName, e.getMessage(), e);
             throw new RuntimeException("Unexpected error while fetching sticker set info", e);
         }
+    }
+    
+    /**
+     * Очищает кэш для конкретного стикерсета
+     * 
+     * @param stickerSetName имя стикерсета
+     */
+    @CacheEvict(value = "stickerSetInfo", key = "#stickerSetName")
+    public void evictStickerSetCache(String stickerSetName) {
+        LOGGER.info("🗑️ Очистка кэша для стикерсета '{}'", stickerSetName);
+    }
+    
+    /**
+     * Очищает весь кэш стикерсетов
+     */
+    @CacheEvict(value = "stickerSetInfo", allEntries = true)
+    public void evictAllStickerSetCache() {
+        LOGGER.info("🗑️ Очистка всего кэша стикерсетов");
     }
 }

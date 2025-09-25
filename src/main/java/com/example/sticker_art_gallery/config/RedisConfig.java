@@ -138,4 +138,5 @@ public class RedisConfig {
         LOGGER.info("✅ stickerRedisTemplate создан успешно");
         return template;
     }
+
 }
