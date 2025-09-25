@@ -1,34 +1,636 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Sticker Gallery</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🎨 Галерея стикеров</h1>
-            <p>Ваши созданные наборы стикеров</p>
-        </div>
+/* Telegram Web App стили */
+:root {
+    --tg-theme-bg-color: #ffffff;
+    --tg-theme-text-color: #000000;
+    --tg-theme-hint-color: #999999;
+    --tg-theme-button-color: #2481cc;
+    --tg-theme-button-text-color: #ffffff;
+    --tg-theme-secondary-bg-color: #f8f9fa;
+    --tg-theme-link-color: #2481cc;
+    --tg-theme-accent-text-color: #2481cc;
+}
 
-        <div class="user-info" id="userInfo">
-            <p>Загрузка информации о пользователе...</p>
-        </div>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-        <div class="search-container">
-            <input type="text" class="search-input" id="searchInput" placeholder="�� Поиск стикеров..." oninput="filterStickers()">
-        </div>
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--tg-theme-bg-color);
+    color: var(--tg-theme-text-color);
+    line-height: 1.6;
+    padding: 16px;
+}
 
-        <div id="content">
-            <div class="loading" id="loading">
-                <p>Загрузка стикеров...</p>
-            </div>
-        </div>
-    </div>
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+}
 
-    <script src="app.js"></script>
-</body>
-</html>
+.header {
+    text-align: center;
+    margin-bottom: 24px;
+    padding: 16px;
+    background-color: var(--tg-theme-secondary-bg-color);
+    border-radius: 12px;
+}
+
+.header h1 {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.header p {
+    color: var(--tg-theme-hint-color);
+    font-size: 14px;
+}
+
+.user-info {
+    background-color: var(--tg-theme-secondary-bg-color);
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.user-info p {
+    margin-bottom: 8px;
+}
+
+.user-info strong {
+    color: var(--tg-theme-accent-text-color);
+}
+
+.auth-status {
+    background-color: var(--tg-theme-secondary-bg-color);
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    text-align: center;
+    font-size: 14px;
+}
+
+.auth-status.authenticated {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.auth-status.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.search-container {
+    margin-bottom: 20px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--tg-theme-hint-color);
+    border-radius: 8px;
+    font-size: 16px;
+    background-color: var(--tg-theme-bg-color);
+    color: var(--tg-theme-text-color);
+}
+
+.search-input::placeholder {
+    color: var(--tg-theme-hint-color);
+}
+
+.loading {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--tg-theme-hint-color);
+}
+
+.error {
+    text-align: center;
+    padding: 20px;
+    background-color: #f8d7da;
+    color: #721c24;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--tg-theme-hint-color);
+}
+
+.empty-state h3 {
+    margin-bottom: 12px;
+    color: var(--tg-theme-text-color);
+}
+
+.sticker-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.sticker-card {
+    background-color: var(--tg-theme-secondary-bg-color);
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.sticker-card h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--tg-theme-text-color);
+}
+
+.sticker-card p {
+    font-size: 14px;
+    color: var(--tg-theme-hint-color);
+    margin-bottom: 4px;
+}
+
+.sticker-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    flex: 1;
+    min-width: 80px;
+}
+
+.btn:hover {
+    opacity: 0.8;
+}
+
+.btn:active {
+    opacity: 0.6;
+}
+
+.btn-primary {
+    background-color: var(--tg-theme-button-color);
+    color: var(--tg-theme-button-text-color);
+}
+
+.btn-secondary {
+    background-color: var(--tg-theme-secondary-bg-color);
+    color: var(--tg-theme-text-color);
+    border: 1px solid var(--tg-theme-hint-color);
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.debug-info {
+    background-color: var(--tg-theme-secondary-bg-color);
+    padding: 16px;
+    border-radius: 8px;
+    margin-top: 20px;
+    font-size: 12px;
+    font-family: monospace;
+}
+
+.debug-info h3 {
+    margin-bottom: 12px;
+    color: var(--tg-theme-text-color);
+}
+
+.debug-content {
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* Адаптивность */
+@media (max-width: 480px) {
+    body {
+        padding: 12px;
+    }
+    
+    .header h1 {
+        font-size: 20px;
+    }
+    
+    .sticker-actions {
+        flex-direction: column;
+    }
+    
+    .btn {
+        width: 100%;
+    }
+}
+
+/* Стили для кнопки повтора */
+.retry-btn {
+    background: var(--tg-theme-button-color);
+    color: var(--tg-theme-button-text-color);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 8px;
+    transition: opacity 0.2s;
+}
+
+.retry-btn:hover {
+    opacity: 0.8;
+}
+
+.retry-btn:active {
+    transform: scale(0.98);
+}
+
+/* Стили для статуса аутентификации */
+.auth-success {
+    background: rgba(76, 175, 80, 0.1);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    color: #4CAF50;
+    padding: 12px;
+    border-radius: 8px;
+    margin: 8px 0;
+}
+
+.auth-error {
+    background: rgba(244, 67, 54, 0.1);
+    border: 1px solid rgba(244, 67, 54, 0.3);
+    color: #F44336;
+    padding: 12px;
+    border-radius: 8px;
+    margin: 8px 0;
+}
+
+/* Стили для отладочной панели */
+.debug-panel {
+    background: rgba(33, 150, 243, 0.1);
+    border: 1px solid rgba(33, 150, 243, 0.3);
+    border-radius: 8px;
+    margin: 8px 0;
+    padding: 8px;
+}
+
+.debug-panel summary {
+    cursor: pointer;
+    font-weight: bold;
+    color: #2196F3;
+    padding: 4px;
+    list-style: none;
+}
+
+.debug-panel summary::-webkit-details-marker {
+    display: none;
+}
+
+.debug-panel summary::before {
+    content: "▶ ";
+    display: inline-block;
+    transition: transform 0.2s;
+}
+
+.debug-panel[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.debug-content {
+    margin-top: 8px;
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--tg-theme-text-color);
+    background: rgba(0, 0, 0, 0.1);
+    padding: 8px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.debug-content .debug-item {
+    margin: 4px 0;
+    padding: 4px;
+    border-left: 3px solid #2196F3;
+    background: rgba(33, 150, 243, 0.05);
+}
+
+.debug-content .debug-label {
+    font-weight: bold;
+    color: #2196F3;
+}
+
+.debug-content .debug-value {
+    color: var(--tg-theme-text-color);
+    margin-left: 8px;
+}
+
+/* Стили для превью стикеров */
+.sticker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.sticker-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.sticker-count {
+    font-size: 12px;
+    color: var(--tg-theme-hint-color);
+    background: var(--tg-theme-secondary-bg-color);
+    padding: 2px 8px;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.sticker-preview-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.preview-item {
+    position: relative;
+    aspect-ratio: 1;
+    background: var(--tg-theme-secondary-bg-color);
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.preview-item.empty {
+    background: rgba(var(--tg-theme-hint-color), 0.1);
+    border-style: dashed;
+}
+
+.preview-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: 24px;
+    color: var(--tg-theme-hint-color);
+    background: var(--tg-theme-secondary-bg-color);
+}
+
+.preview-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none; /* Скрываем до загрузки */
+    border-radius: 6px;
+}
+
+.preview-lottie {
+    width: 100%;
+    height: 100%;
+    display: none; /* Скрываем до загрузки */
+    border-radius: 6px;
+    background: transparent;
+}
+
+.preview-image.lazy {
+    opacity: 1; /* Убираем эффект fade-in */
+}
+
+.preview-lottie.lazy {
+    opacity: 1; /* Убираем эффект fade-in */
+}
+
+.preview-image:not(.lazy) {
+    opacity: 1;
+}
+
+.preview-lottie:not(.lazy) {
+    opacity: 1;
+}
+
+/* Стили для детального просмотра стикерсета */
+.sticker-set-detail {
+    padding: 20px;
+}
+
+.detail-header {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.detail-header h2 {
+    margin: 10px 0;
+    color: var(--tg-theme-text-color);
+}
+
+.detail-header .sticker-count {
+    color: var(--tg-theme-hint-color);
+    font-size: 14px;
+}
+
+.back-btn {
+    margin-bottom: 15px;
+}
+
+.sticker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.sticker-grid-item {
+    position: relative;
+    aspect-ratio: 1;
+    background: var(--tg-theme-secondary-bg-color);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sticker-grid-item:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.sticker-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: 32px;
+    color: var(--tg-theme-hint-color);
+    background: var(--tg-theme-secondary-bg-color);
+}
+
+.sticker-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: none;
+    border-radius: 10px;
+}
+
+.sticker-lottie {
+    width: 100%;
+    height: 100%;
+    display: none;
+    border-radius: 10px;
+    background: transparent;
+}
+
+.sticker-image.lazy {
+    opacity: 1; /* Убираем эффект fade-in */
+}
+
+.sticker-lottie.lazy {
+    opacity: 1; /* Убираем эффект fade-in */
+}
+
+.sticker-image:not(.lazy) {
+    opacity: 1;
+}
+
+.sticker-lottie:not(.lazy) {
+    opacity: 1;
+}
+
+.detail-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.detail-actions .btn {
+    min-width: 120px;
+}
+
+.animated-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(255, 165, 0, 0.9);
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 4px;
+    border-radius: 4px;
+    pointer-events: none;
+}
+
+.sticker-info {
+    margin-bottom: 12px;
+}
+
+.sticker-date {
+    font-size: 12px;
+    color: var(--tg-theme-hint-color);
+    margin: 0;
+}
+
+/* Обновленные стили для действий */
+.sticker-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.sticker-actions .btn {
+    flex: 1;
+    min-width: 80px;
+    font-size: 12px;
+    padding: 6px 8px;
+}
+
+/* Placeholder для пустых стикерсетов */
+.preview-placeholder {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+}
+
+.placeholder-item {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(var(--tg-theme-hint-color), 0.1);
+    border-radius: 6px;
+    font-size: 20px;
+    color: var(--tg-theme-hint-color);
+    border: 1px dashed rgba(var(--tg-theme-hint-color), 0.3);
+}
+
+/* Отладочная информация URL под превью */
+.debug-url {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    font-size: 8px;
+    font-family: monospace;
+    padding: 2px 4px;
+    word-break: break-all;
+    line-height: 1.2;
+    max-height: 30px;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    border-radius: 0 0 6px 6px;
+}
+
+.preview-item:hover .debug-url {
+    opacity: 1;
+}
+
+/* Адаптивность для маленьких экранов */
+@media (max-width: 400px) {
+    .sticker-actions {
+        flex-direction: column;
+    }
+    
+    .sticker-actions .btn {
+        flex: none;
+        width: 100%;
+    }
+    
+    .sticker-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    
+    .preview-placeholder,
+    .animated-badge {
+        font-size: 18px;
+    }
+}

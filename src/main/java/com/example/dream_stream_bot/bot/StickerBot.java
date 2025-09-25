@@ -7,7 +7,6 @@ import com.example.dream_stream_bot.service.telegram.StickerService;
 import com.example.dream_stream_bot.service.telegram.UserStateService;
 import com.example.dream_stream_bot.service.telegram.StickerSetService;
 import com.example.dream_stream_bot.model.keyboard.InlineKeyboardMarkupBuilder;
-import com.example.dream_stream_bot.config.AppConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -15,13 +14,17 @@ import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.example.dream_stream_bot.model.telegram.StickerSet;
 
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.time.Instant;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 
 public class StickerBot extends AbstractTelegramBot {
     
@@ -30,16 +33,14 @@ public class StickerBot extends AbstractTelegramBot {
 
     private final UserStateService userStateService;
     private final StickerSetService stickerSetService;
-    private final AppConfig appConfig;
     
     public StickerBot(BotEntity botEntity, MessageHandlerService messageHandlerService, 
                      UserStateService userStateService, StickerSetService stickerSetService,
-                     StickerService stickerService, AppConfig appConfig) {
+                     StickerService stickerService) {
         super(botEntity, messageHandlerService);
         this.stickerService = stickerService;
         this.userStateService = userStateService;
         this.stickerSetService = stickerSetService;
-        this.appConfig = appConfig;
     }
     
     @Override
@@ -78,10 +79,6 @@ public class StickerBot extends AbstractTelegramBot {
             } else if ("редактировать_набор".equals(callbackData)) {
                 // Показываем список наборов пользователя
                 showUserStickerPacks(chatId, 0);
-                return;
-            } else if ("open_gallery".equals(callbackData)) {
-                // Открываем галерею стикеров
-                openGallery(chatId);
                 return;
             } else if (callbackData.startsWith("pack_")) {
                 // Обработка выбора конкретного набора
@@ -254,7 +251,6 @@ public class StickerBot extends AbstractTelegramBot {
                     InlineKeyboardMarkup keyboard = new InlineKeyboardMarkupBuilder()
                             .addRow("Создать новый набор", "создать_новый_набор")
                             .addRow("Редактировать набор", "редактировать_набор")
-                            .addRow("🎨 Галерея стикеров", "open_gallery")
                             .build();
                     
                     SendMessage welcomeMessage = SendMessage.builder()
@@ -266,7 +262,6 @@ public class StickerBot extends AbstractTelegramBot {
                                     "2. Введите название для набора\n" +
                                     "3. Введите короткую ссылку\n" +
                                     "4. Отправьте изображение\n\n" +
-                                    "🎨 **Галерея стикеров** - просмотр и управление вашими наборами\n\n" +
                                     "**Выберите действие:**")
                             .parseMode("Markdown")
                             .replyMarkup(keyboard)
@@ -275,20 +270,23 @@ public class StickerBot extends AbstractTelegramBot {
                     return;
                 }
                 
-                // Обработка команды /gallery
-                if (text.equals("/gallery")) {
-                    InlineKeyboardMarkup keyboard = new InlineKeyboardMarkupBuilder()
-                            .addRow("🎨 Открыть галерею", "open_gallery")
-                            .build();
-                    
-                    SendMessage galleryMessage = SendMessage.builder()
+                // Обработка команды /initdata
+                if (text.equals("/initdata")) {
+                    String initData = generateInitData(msg.getChatId(), msg.getFrom());
+                    SendMessage initDataMessage = SendMessage.builder()
                             .chatId(msg.getChatId())
-                            .text("🎨 **Галерея стикеров**\n\n" +
-                                    "Откройте веб-приложение для просмотра и управления вашими наборами стикеров.")
+                            .text("🔐 **Ваш initData для Swagger UI:**\n\n" +
+                                    "```\n" + initData + "\n```\n\n" +
+                                    "📋 **Как использовать:**\n" +
+                                    "1. Скопируйте строку выше\n" +
+                                    "2. Откройте http://localhost:8080/swagger-ui.html\n" +
+                                    "3. Нажмите кнопку 'Authorize' (🔒)\n" +
+                                    "4. Вставьте строку в поле 'X-Telegram-Init-Data'\n" +
+                                    "5. Нажмите 'Authorize'\n\n" +
+                                    "✅ Теперь вы можете тестировать API!")
                             .parseMode("Markdown")
-                            .replyMarkup(keyboard)
                             .build();
-                    sendWithLogging(galleryMessage);
+                    sendWithLogging(initDataMessage);
                     return;
                 }
                 
@@ -498,7 +496,6 @@ public class StickerBot extends AbstractTelegramBot {
             SendMessage setSelectedMessage = SendMessage.builder()
                     .chatId(chatId)
                     .text(messageText)
-                    .parseMode("Markdown")
                     .build();
 
             sendWithLogging(setSelectedMessage);
@@ -514,39 +511,78 @@ public class StickerBot extends AbstractTelegramBot {
     }
     
     /**
-     * Открывает галерею стикеров
+     * Генерирует initData для Telegram Web App аутентификации
      */
-    private void openGallery(Long chatId) {
+    private String generateInitData(Long chatId, org.telegram.telegrambots.meta.api.objects.User user) {
         try {
-            // Создаем кнопку для открытия Web App
-            InlineKeyboardButton button = new InlineKeyboardButton();
-            button.setText("🎨 Открыть галерею");
-            // Используем URL из конфигурации
-            String miniAppUrl = appConfig.getMiniApp().getUrl();
-            LOGGER.info("🎨 Открываем галерею для пользователя {} с URL: {}", chatId, miniAppUrl);
-            button.setUrl(miniAppUrl);
+            // Создаем параметры initData
+            TreeMap<String, String> params = new TreeMap<>();
             
-            InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup();
-            List<InlineKeyboardButton> row = new ArrayList<>();
-            row.add(button);
-            keyboard.setKeyboard(Collections.singletonList(row));
+            // Добавляем обязательные параметры
+            params.put("query_id", "AAHdF6IQAAAAAN0XohDhrOrc");
+            params.put("auth_date", String.valueOf(Instant.now().getEpochSecond()));
             
-            SendMessage webAppMessage = SendMessage.builder()
-                    .chatId(chatId)
-                    .text("🎨 **Галерея стикеров**\n\n" +
-                            "Нажмите кнопку ниже, чтобы открыть веб-приложение для просмотра и управления вашими наборами стикеров.")
-                    .parseMode("Markdown")
-                    .replyMarkup(keyboard)
-                    .build();
-            sendWithLogging(webAppMessage);
+            // Добавляем информацию о пользователе
+            String userJson = String.format(
+                "{\"id\":%d,\"first_name\":\"%s\",\"last_name\":\"%s\",\"username\":\"%s\",\"language_code\":\"%s\"}",
+                user.getId(),
+                user.getFirstName() != null ? user.getFirstName() : "",
+                user.getLastName() != null ? user.getLastName() : "",
+                user.getUserName() != null ? user.getUserName() : "",
+                user.getLanguageCode() != null ? user.getLanguageCode() : "en"
+            );
+            params.put("user", userJson);
+            
+            // Создаем строку для подписи (все параметры кроме hash, отсортированные)
+            String dataCheckString = params.entrySet().stream()
+                    .map(entry -> entry.getKey() + "=" + entry.getValue())
+                    .collect(Collectors.joining("\n"));
+            
+            // Вычисляем HMAC-SHA256 подпись согласно документации Telegram
+            // Шаг 1: Создаем секретный ключ (secret_key = HMAC-SHA256(bot_token, "WebAppData"))
+            Mac mac = Mac.getInstance("HmacSHA256");
+            SecretKeySpec botTokenKeySpec = new SecretKeySpec(botEntity.getToken().getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+            mac.init(botTokenKeySpec);
+            byte[] secretKey = mac.doFinal("WebAppData".getBytes(StandardCharsets.UTF_8));
+            
+            // Шаг 2: Вычисляем hash (hash = HMAC-SHA256(data_check_string, secret_key))
+            mac = Mac.getInstance("HmacSHA256");
+            SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey, "HmacSHA256");
+            mac.init(secretKeySpec);
+            byte[] hashBytes = mac.doFinal(dataCheckString.getBytes(StandardCharsets.UTF_8));
+            String hash = bytesToHex(hashBytes);
+            
+            // Добавляем hash к параметрам
+            params.put("hash", hash);
+            
+            // Генерируем signature для совместимости с реальным форматом
+            // signature = Base64(HMAC-SHA256(data_check_string, secret_key))
+            byte[] signatureBytes = mac.doFinal(dataCheckString.getBytes(StandardCharsets.UTF_8));
+            String signature = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(signatureBytes);
+            params.put("signature", signature);
+            
+            // Формируем финальную строку initData
+            String initData = params.entrySet().stream()
+                    .map(entry -> entry.getKey() + "=" + entry.getValue())
+                    .collect(Collectors.joining("&"));
+            
+            LOGGER.info("🔐 Сгенерирован initData для пользователя {}: {}", chatId, initData);
+            return initData;
             
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при открытии галереи для пользователя {}: {}", chatId, e.getMessage());
-            SendMessage errorMessage = SendMessage.builder()
-                    .chatId(chatId)
-                    .text("❌ Произошла ошибка при открытии галереи. Попробуйте еще раз.")
-                    .build();
-            sendWithLogging(errorMessage);
+            LOGGER.error("❌ Ошибка генерации initData для пользователя {}: {}", chatId, e.getMessage());
+            return "error_generating_initdata";
         }
+    }
+    
+    /**
+     * Конвертирует байты в hex строку
+     */
+    private String bytesToHex(byte[] bytes) {
+        StringBuilder result = new StringBuilder();
+        for (byte b : bytes) {
+            result.append(String.format("%02x", b));
+        }
+        return result.toString();
     }
 } 

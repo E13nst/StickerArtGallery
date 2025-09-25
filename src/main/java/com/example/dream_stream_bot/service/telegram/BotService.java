@@ -20,30 +20,41 @@ public class BotService {
     public List<BotEntity> getAllBots() {
         return botRepository.findAll();
     }
-
-    public Optional<BotEntity> getBotById(Long id) {
-        return botRepository.findById(id);
+    
+    public List<BotEntity> findAll() {
+        return botRepository.findAll();
     }
-
-    // Пример: поиск по username
-    public Optional<BotEntity> getBotByUsername(String username) {
-        return botRepository.findAll().stream()
-                .filter(bot -> bot.getUsername().equalsIgnoreCase(username))
-                .findFirst();
+    
+    public BotEntity findById(Long id) {
+        return botRepository.findById(id).orElse(null);
     }
-
-    // Пример: поиск по типу
-    public List<BotEntity> getBotsByType(String type) {
+    
+    public List<BotEntity> findByType(String type) {
         return botRepository.findAll().stream()
                 .filter(bot -> bot.getType().equalsIgnoreCase(type))
                 .toList();
     }
-
-    public BotEntity saveBot(BotEntity bot) {
+    
+    public List<BotEntity> findActiveBots() {
+        return botRepository.findAll().stream()
+                .filter(bot -> Boolean.TRUE.equals(bot.getIsActive()))
+                .toList();
+    }
+    
+    public BotEntity save(BotEntity bot) {
         return botRepository.save(bot);
     }
-
-    public void deleteBot(Long id) {
+    
+    public void deleteById(Long id) {
         botRepository.deleteById(id);
+    }
+    
+    /**
+     * Поиск бота по имени
+     */
+    public Optional<BotEntity> findByName(String name) {
+        return botRepository.findAll().stream()
+                .filter(bot -> name.equals(bot.getName()))
+                .findFirst();
     }
 } 

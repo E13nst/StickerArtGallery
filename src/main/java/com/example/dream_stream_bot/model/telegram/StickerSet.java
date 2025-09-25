@@ -6,7 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 @Entity
-@Table(name = "stickserset")
+@Table(name = "stickersets")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

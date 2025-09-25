@@ -1,58 +1,31 @@
+version: '3.8'
+
 services:
-  sticker-art-gallery:
-    image: sticker-art-gallery:latest
+  telegram-bot-dream-stream:
+    image: telegram-bot-dream-stream:latest
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: sticker-art-gallery-bot
     ports:
       - "8080:8080"
-    restart: unless-stopped
+    restart: always
     environment:
-      - JAVA_OPTS=-Xms512m -Xmx1024m -XX:+UseG1GC -XX:+UseContainerSupport
-      - SPRING_PROFILES_ACTIVE=prod
+      - JAVA_OPTS=-Xms512m -Xmx1024m
     env_file:
       - .env.app
-    depends_on:
-      db:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    volumes:
-      - ./logs:/app/logs
-    networks:
-      - sticker-network
-
   db:
-    image: postgres:15-alpine
+    image: postgres:15
     container_name: local-postgres-mindbase
     env_file:
       - .env.app
     environment:
-      POSTGRES_DB: ${DB_NAME:-mindbase}
-      POSTGRES_USER: ${DB_USERNAME:-dalek}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-dalek} -d ${DB_NAME:-mindbase}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - sticker-network
-
 volumes:
   pgdata:
-    driver: local
-
-networks:
-  sticker-network:
-    driver: bridge

@@ -9,7 +9,7 @@ Telegram бот для анализа снов с использованием O
 1. **Клонируйте репозиторий:**
 ```bash
 git clone <repository-url>
-cd sticker-art-gallery
+cd telegram-bot-dream-stream
 ```
 
 2. **Создайте файл `.env.app` с вашими переменными:**

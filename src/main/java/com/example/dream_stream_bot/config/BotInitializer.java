@@ -9,11 +9,10 @@ import com.example.dream_stream_bot.service.telegram.MessageHandlerService;
 import com.example.dream_stream_bot.service.telegram.UserStateService;
 import com.example.dream_stream_bot.service.telegram.StickerSetService;
 import com.example.dream_stream_bot.service.telegram.StickerService;
-import com.example.dream_stream_bot.config.AppConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
@@ -33,19 +32,17 @@ public class BotInitializer {
     private final UserStateService userStateService;
     private final StickerSetService stickerSetService;
     private final StickerService stickerService;
-    private final AppConfig appConfig;
     private final Map<String, AbstractTelegramBot> botRegistry = new java.util.concurrent.ConcurrentHashMap<>();
 
     @Autowired
     public BotInitializer(BotService botService, MessageHandlerService messageHandlerService,
                          UserStateService userStateService, StickerSetService stickerSetService,
-                         StickerService stickerService, AppConfig appConfig) {
+                         StickerService stickerService) {
         this.botService = botService;
         this.messageHandlerService = messageHandlerService;
         this.userStateService = userStateService;
         this.stickerSetService = stickerSetService;
         this.stickerService = stickerService;
-        this.appConfig = appConfig;
     }
 
     @Bean
@@ -53,40 +50,63 @@ public class BotInitializer {
         return botRegistry;
     }
 
-    @EventListener({ContextRefreshedEvent.class})
-    public void init() throws TelegramApiException {
+    @EventListener({ApplicationReadyEvent.class})
+    public void init() {
+        log.info("🚀 Application is ready! Starting bot initialization...");
+        
+        try {
+            initializeBots();
+        } catch (Exception e) {
+            log.error("❌ Critical error during bot initialization", e);
+            // Не прерываем запуск приложения, только логируем ошибку
+        }
+    }
+    
+    private void initializeBots() throws TelegramApiException {
         log.info("🤖 Initializing all Telegram bots...");
         
         // Проверяем зависимости
-        log.info("🔍 Проверяем зависимости:");
+        log.info("🔍 Checking dependencies:");
         log.info("  - BotService: {}", botService != null ? "✅" : "❌");
         log.info("  - MessageHandlerService: {}", messageHandlerService != null ? "✅" : "❌");
         log.info("  - UserStateService: {}", userStateService != null ? "✅" : "❌");
         log.info("  - StickerSetService: {}", stickerSetService != null ? "✅" : "❌");
         log.info("  - StickerService: {}", stickerService != null ? "✅" : "❌");
         
-        List<BotEntity> bots = botService.getAllBots();
-        log.info("📋 Найдено ботов в базе: {}", bots.size());
+        try {
+            List<BotEntity> bots = botService.getAllBots();
+            log.info("📋 Found {} bots in database", bots.size());
 
-        TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
-        for (BotEntity bot : bots) {
-            log.info("🔍 Обрабатываем бота: username='{}', type='{}', active={}",
-                    bot.getUsername(), bot.getType(), bot.getIsActive());
+            TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
+            int successCount = 0;
+            int errorCount = 0;
+            
+            for (BotEntity bot : bots) {
+                log.info("🔍 Processing bot: username='{}', type='{}', active={}, miniapp={}",
+                        bot.getUsername(), bot.getType(), bot.getIsActive(), bot.getMiniapp());
 
-            if (Boolean.TRUE.equals(bot.getIsActive())) {
-                try {
-                    AbstractTelegramBot telegramBot = BotFactory.createBot(bot, messageHandlerService, userStateService, stickerSetService, stickerService, appConfig);
-                    telegramBotsApi.registerBot(telegramBot);
-                    botRegistry.put(bot.getUsername(), telegramBot);
-                    log.info("✅ Bot '{}' registered successfully (type: {})", bot.getUsername(), bot.getType());
-                } catch (Exception e) {
-                    log.error("❌ Ошибка при создании бота '{}' (type: {}): {}",
-                            bot.getUsername(), bot.getType(), e.getMessage(), e);
-                    throw e;
+                if (Boolean.TRUE.equals(bot.getIsActive())) {
+                    try {
+                        AbstractTelegramBot telegramBot = BotFactory.createBot(bot, messageHandlerService, userStateService, stickerSetService, stickerService);
+                        telegramBotsApi.registerBot(telegramBot);
+                        botRegistry.put(bot.getUsername(), telegramBot);
+                        log.info("✅ Bot '{}' registered successfully (type: {})", bot.getUsername(), bot.getType());
+                        successCount++;
+                    } catch (Exception e) {
+                        log.error("❌ Error creating bot '{}' (type: {}): {}",
+                                bot.getUsername(), bot.getType(), e.getMessage(), e);
+                        errorCount++;
+                    }
+                } else {
+                    log.info("⏸️ Bot '{}' skipped (inactive)", bot.getUsername());
                 }
-            } else {
-                log.info("⏸️ Bot '{}' пропущен (неактивен)", bot.getUsername());
             }
+            
+            log.info("🎉 Bot initialization completed: {} successful, {} errors", successCount, errorCount);
+            
+        } catch (Exception e) {
+            log.error("❌ Error loading bots from database: {}", e.getMessage(), e);
+            throw e;
         }
     }
 }

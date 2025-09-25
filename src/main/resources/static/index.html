@@ -98,14 +98,14 @@
 </head>
 <body>
     <h1>🎯 StickerSet REST API Test</h1>
-
+    
     <!-- Получить все стикерсеты -->
     <div class="container api-section">
         <h3>📋 Получить все стикерсеты</h3>
         <button onclick="getAllStickerSets()">Получить все</button>
         <div id="allStickerSets" class="result" style="display: none;"></div>
     </div>
-
+    
     <!-- Получить стикерсет по ID -->
     <div class="container api-section">
         <h3>🔍 Получить стикерсет по ID</h3>
@@ -116,7 +116,7 @@
         <button onclick="getStickerSetById()">Получить</button>
         <div id="stickerSetById" class="result" style="display: none;"></div>
     </div>
-
+    
     <!-- Получить стикерсеты по ID пользователя -->
     <div class="container api-section">
         <h3>👤 Получить стикерсеты пользователя</h3>
@@ -127,7 +127,7 @@
         <button onclick="getStickerSetsByUserId()">Получить</button>
         <div id="stickerSetsByUserId" class="result" style="display: none;"></div>
     </div>
-
+    
     <!-- Поиск по названию -->
     <div class="container api-section">
         <h3>🔎 Поиск стикерсета по названию</h3>
@@ -138,7 +138,7 @@
         <button onclick="searchStickerSet()">Поиск</button>
         <div id="searchResult" class="result" style="display: none;"></div>
     </div>
-
+    
     <!-- Создать новый стикерсет -->
     <div class="container api-section">
         <h3>➕ Создать новый стикерсет</h3>
@@ -157,7 +157,7 @@
         <button onclick="createStickerSet()">Создать</button>
         <div id="createResult" class="result" style="display: none;"></div>
     </div>
-
+    
     <!-- Обновить стикерсет -->
     <div class="container api-section">
         <h3>✏️ Обновить стикерсет</h3>
@@ -176,7 +176,7 @@
         <button onclick="updateStickerSet()">Обновить</button>
         <div id="updateResult" class="result" style="display: none;"></div>
     </div>
-
+    
     <!-- Удалить стикерсет -->
     <div class="container api-section">
         <h3>🗑️ Удалить стикерсет</h3>
@@ -190,7 +190,7 @@
 
     <script>
         const API_BASE = '/api/stickersets';
-
+        
         // Функция для отображения результата
         function showResult(elementId, data, isError = false) {
             const element = document.getElementById(elementId);
@@ -199,17 +199,17 @@
             element.style.borderColor = isError ? '#f5c6cb' : '#c3e6cb';
             element.textContent = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
         }
-
+        
         // Функция для отображения стикерсетов в виде карточек
         function displayStickerSets(elementId, stickerSets) {
             const element = document.getElementById(elementId);
             element.style.display = 'block';
-
+            
             if (!Array.isArray(stickerSets) || stickerSets.length === 0) {
                 element.innerHTML = '<p>Стикерсеты не найдены</p>';
                 return;
             }
-
+            
             const html = stickerSets.map(set => `
                 <div class="sticker-set-card">
                     <h4>${set.title}</h4>
@@ -225,10 +225,10 @@
                     </div>
                 </div>
             `).join('');
-
+            
             element.innerHTML = html;
         }
-
+        
         // Получить все стикерсеты
         async function getAllStickerSets() {
             try {
@@ -243,7 +243,7 @@
                 showResult('allStickerSets', `Ошибка: ${error.message}`, true);
             }
         }
-
+        
         // Получить стикерсет по ID
         async function getStickerSetById() {
             const id = document.getElementById('getId').value;
@@ -251,7 +251,7 @@
                 showResult('stickerSetById', 'Введите ID стикерсета', true);
                 return;
             }
-
+            
             try {
                 const response = await fetch(`${API_BASE}/${id}`);
                 if (response.ok) {
@@ -266,7 +266,7 @@
                 showResult('stickerSetById', `Ошибка: ${error.message}`, true);
             }
         }
-
+        
         // Получить стикерсеты по ID пользователя
         async function getStickerSetsByUserId() {
             const userId = document.getElementById('getUserId').value;
@@ -274,7 +274,7 @@
                 showResult('stickerSetsByUserId', 'Введите ID пользователя', true);
                 return;
             }
-
+            
             try {
                 const response = await fetch(`${API_BASE}/user/${userId}`);
                 if (response.ok) {
@@ -287,7 +287,7 @@
                 showResult('stickerSetsByUserId', `Ошибка: ${error.message}`, true);
             }
         }
-
+        
         // Поиск стикерсета по названию
         async function searchStickerSet() {
             const name = document.getElementById('searchName').value;
@@ -295,7 +295,7 @@
                 showResult('searchResult', 'Введите название для поиска', true);
                 return;
             }
-
+            
             try {
                 const response = await fetch(`${API_BASE}/search?name=${encodeURIComponent(name)}`);
                 if (response.ok) {
@@ -310,18 +310,18 @@
                 showResult('searchResult', `Ошибка: ${error.message}`, true);
             }
         }
-
+        
         // Создать новый стикерсет
         async function createStickerSet() {
             const userId = document.getElementById('createUserId').value;
             const title = document.getElementById('createTitle').value;
             const name = document.getElementById('createName').value;
-
+            
             if (!userId || !title || !name) {
                 showResult('createResult', 'Заполните все поля', true);
                 return;
             }
-
+            
             try {
                 const response = await fetch(API_BASE, {
                     method: 'POST',
@@ -334,7 +334,7 @@
                         name: name
                     })
                 });
-
+                
                 if (response.ok) {
                     const data = await response.json();
                     showResult('createResult', data);
@@ -350,27 +350,27 @@
                 showResult('createResult', `Ошибка: ${error.message}`, true);
             }
         }
-
+        
         // Обновить стикерсет
         async function updateStickerSet() {
             const id = document.getElementById('updateId').value;
             const title = document.getElementById('updateTitle').value;
             const name = document.getElementById('updateName').value;
-
+            
             if (!id) {
                 showResult('updateResult', 'Введите ID стикерсета', true);
                 return;
             }
-
+            
             if (!title && !name) {
                 showResult('updateResult', 'Введите хотя бы одно поле для обновления', true);
                 return;
             }
-
+            
             const updateData = {};
             if (title) updateData.title = title;
             if (name) updateData.name = name;
-
+            
             try {
                 const response = await fetch(`${API_BASE}/${id}`, {
                     method: 'PUT',
@@ -379,7 +379,7 @@
                     },
                     body: JSON.stringify(updateData)
                 });
-
+                
                 if (response.ok) {
                     const data = await response.json();
                     showResult('updateResult', data);
@@ -393,7 +393,7 @@
                 showResult('updateResult', `Ошибка: ${error.message}`, true);
             }
         }
-
+        
         // Удалить стикерсет
         async function deleteStickerSet() {
             const id = document.getElementById('deleteId').value;
@@ -401,16 +401,16 @@
                 showResult('deleteResult', 'Введите ID стикерсета', true);
                 return;
             }
-
+            
             if (!confirm(`Вы уверены, что хотите удалить стикерсет с ID ${id}?`)) {
                 return;
             }
-
+            
             try {
                 const response = await fetch(`${API_BASE}/${id}`, {
                     method: 'DELETE'
                 });
-
+                
                 if (response.ok) {
                     showResult('deleteResult', 'Стикерсет успешно удален');
                     document.getElementById('deleteId').value = '';
@@ -423,18 +423,18 @@
                 showResult('deleteResult', `Ошибка: ${error.message}`, true);
             }
         }
-
+        
         // Удалить стикерсет по ID (для кнопок в карточках)
         async function deleteStickerSetById(id) {
             if (!confirm(`Вы уверены, что хотите удалить стикерсет с ID ${id}?`)) {
                 return;
             }
-
+            
             try {
                 const response = await fetch(`${API_BASE}/${id}`, {
                     method: 'DELETE'
                 });
-
+                
                 if (response.ok) {
                     alert('Стикерсет успешно удален');
                     // Обновляем список всех стикерсетов
@@ -446,21 +446,21 @@
                 alert(`Ошибка: ${error.message}`);
             }
         }
-
+        
         // Редактировать стикерсет (заполняет поля формы)
         function editStickerSet(id, title, name) {
             document.getElementById('updateId').value = id;
             document.getElementById('updateTitle').value = title;
             document.getElementById('updateName').value = name;
-
+            
             // Прокручиваем к форме редактирования
             document.getElementById('updateId').scrollIntoView({ behavior: 'smooth' });
         }
-
+        
         // Автоматически загружаем все стикерсеты при загрузке страницы
         window.onload = function() {
             getAllStickerSets();
         };
     </script>
 </body>
-</html>
+</html> 

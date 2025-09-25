@@ -1,0 +1,18 @@
+# Конфигурация для dev профиля
+
+# Тестовый initData для разработки
+# Этот initData можно использовать в Swagger UI для тестирования API
+# ВНИМАНИЕ: Используйте только для разработки!
+telegram:
+  test:
+    init-data: "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A123456789%2C%22first_name%22%3A%22Test%22%2C%22last_name%22%3A%22User%22%2C%22username%22%3A%22testuser%22%2C%22language_code%22%3A%22en%22%7D&auth_date=1640995200&hash=test_hash_for_development_only"
+    bot-name: "StickerGallery"
+
+# Логирование для разработки
+logging:
+  level:
+    com.example.dream_stream_bot: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
