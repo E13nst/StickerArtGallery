@@ -11,6 +11,6 @@ build:
     build/libs/*.jar: /
 run:
   image: null
-  jarName: telegram-bot-dream-stream-0.0.1-SNAPSHOT.jar
+  jarName: sticker-art-gallery-0.0.1-SNAPSHOT.jar
   persistenceMount: /data
   containerPort: 8080

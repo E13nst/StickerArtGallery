@@ -1,8 +1,8 @@
 version: '3.8'
 
 services:
-  telegram-bot-dream-stream:
-    image: telegram-bot-dream-stream:latest
+  sticker-art-gallery:
+    image: sticker-art-gallery:latest
     build:
       context: .
       dockerfile: Dockerfile

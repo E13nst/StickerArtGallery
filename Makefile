@@ -10,7 +10,7 @@ RED=\033[0;31m
 NC=\033[0m # No Color
 
 # Переменные
-APP_NAME=telegram-bot-dream-stream
+APP_NAME=sticker-art-gallery
 PORT=8080
 LOG_FILE=app_debug.log
 GRADLE_CMD=./gradlew
@@ -39,7 +39,7 @@ start: ## Запустить приложение локально
 stop: ## Остановить приложение
 	@echo "$(RED)🛑 Останавливаем приложение...$(NC)"
 	@pkill -f "gradlew bootRun" 2>/dev/null || true
-	@pkill -f "java.*dream_stream_bot" 2>/dev/null || true
+	@pkill -f "java.*sticker_art_gallery" 2>/dev/null || true
 	@lsof -ti:$(PORT) | xargs kill -9 2>/dev/null || true
 	@echo "$(GREEN)✅ Приложение остановлено$(NC)"
 

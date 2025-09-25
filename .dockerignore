@@ -28,8 +28,6 @@ bot.log
 # Documentation
 doc/
 *.md
-README.md
-HELP.md
 AMVERA_DEPLOY.md
 vpn.md
 

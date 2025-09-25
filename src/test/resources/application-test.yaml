@@ -17,7 +17,7 @@ spring:
 # Логирование для тестов
 logging:
   level:
-    com.example.dream_stream_bot: DEBUG
+    com.example.sticker_art_gallery: DEBUG
     org.springframework.security: DEBUG
     org.springframework.web: DEBUG
     org.hibernate.SQL: DEBUG

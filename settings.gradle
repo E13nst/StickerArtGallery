@@ -11,5 +11,5 @@ pluginManagement {
     }
 }
 
-rootProject.name = 'telegram-bot-dream-stream'
+rootProject.name = 'sticker-art-gallery'
 

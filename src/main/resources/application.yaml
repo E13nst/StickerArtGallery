@@ -8,7 +8,7 @@ app:
 
 spring:
   application:
-    name: telegram-bot-dream-stream
+    name: sticker-art-gallery
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}
@@ -85,7 +85,7 @@ logging:
     org.hibernate.type.descriptor.sql.BasicBinder: INFO
     com.zaxxer.hikari: INFO
     org.springframework.orm.jpa: INFO
-    com.example.dream_stream_bot: DEBUG
+    com.example.sticker_art_gallery: DEBUG
     org.springframework.boot.autoconfigure: INFO
     org.springframework.security: DEBUG
   
