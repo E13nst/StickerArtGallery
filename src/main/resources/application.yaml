@@ -4,7 +4,7 @@ app:
   mini-app:
     url: ${MINI_APP_URL:${app.url}/mini-app/}
   telegram:
-    bot-token: ${TELEGRAM_API_TOKEN}
+    bot-token: ${TELEGRAM_BOT_TOKEN}
 
 spring:
   application:
