@@ -127,8 +127,7 @@ public class RedisConfig {
         
         // Простое решение - используем Jackson2JsonRedisSerializer для конкретного типа
         Jackson2JsonRedisSerializer<StickerCacheDto> serializer = 
-                new Jackson2JsonRedisSerializer<>(StickerCacheDto.class);
-        serializer.setObjectMapper(objectMapper);
+                new Jackson2JsonRedisSerializer<>(objectMapper, StickerCacheDto.class);
         
         // Сериализация значений как JSON для конкретного типа
         template.setValueSerializer(serializer);
