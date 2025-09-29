@@ -47,8 +47,14 @@ const App: React.FC = () => {
 
   // Проверка авторизации
   const checkAuth = async () => {
+    console.log('🔍 checkAuth вызван:');
+    console.log('  isInTelegramApp:', isInTelegramApp);
+    console.log('  initData:', initData ? `${initData.length} chars` : 'empty');
+    console.log('  user:', user);
+
     if (!isInTelegramApp) {
       // В обычном браузере - считаем авторизованным для публичного API
+      console.log('🌐 Браузерный режим - публичный доступ');
       setAuthStatus({
         authenticated: true,
         role: 'public'
@@ -62,6 +68,7 @@ const App: React.FC = () => {
     try {
       // Проверяем срок действия initData
       const initDataCheck = checkInitDataExpiry(initData);
+      console.log('🔍 Проверка initData:', initDataCheck);
       if (!initDataCheck.valid) {
         throw new Error(initDataCheck.reason);
       }
@@ -70,7 +77,9 @@ const App: React.FC = () => {
       apiClient.setAuthHeaders(initData);
 
       // Проверяем статус авторизации
+      console.log('🔍 Отправка запроса на проверку авторизации...');
       const authResponse = await apiClient.checkAuthStatus();
+      console.log('🔍 Ответ авторизации:', authResponse);
       setAuthStatus(authResponse);
 
       if (!authResponse.authenticated) {
