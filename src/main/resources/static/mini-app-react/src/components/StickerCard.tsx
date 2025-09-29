@@ -29,6 +29,9 @@ export const StickerCard: React.FC<StickerCardProps> = ({
 }) => {
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // 🚀 20/80 ОПТИМИЗАЦИЯ: детекция медленного интернета
+  const isSlowConnection = (navigator as any).connection?.effectiveType?.includes('2g') || false;
   
   const getStickerCount = () => {
     return stickerSet.telegramStickerSetInfo?.stickers?.length || 0;
@@ -36,7 +39,7 @@ export const StickerCard: React.FC<StickerCardProps> = ({
 
   const getPreviewStickers = () => {
     const stickers = stickerSet.telegramStickerSetInfo?.stickers || [];
-    return stickers.slice(0, 4);
+    return stickers.slice(0, isSlowConnection ? 2 : 4); // Меньше стикеров на медленном интернете
   };
 
   const handleView = () => {
@@ -125,7 +128,7 @@ export const StickerCard: React.FC<StickerCardProps> = ({
             aspectRatio: '1 / 1'
           }}
         >
-          {previewStickers.map((sticker) => {
+          {previewStickers.map((sticker, index) => {
             return (
               <Box
                 key={sticker.file_id}
@@ -138,7 +141,7 @@ export const StickerCard: React.FC<StickerCardProps> = ({
                 <StickerPreview 
                   sticker={sticker} 
                   size="responsive"
-                  showBadge={false}
+                  showBadge={index === 0} // Бейдж только на первом стикере
                   isInTelegramApp={isInTelegramApp}
                 />
               </Box>

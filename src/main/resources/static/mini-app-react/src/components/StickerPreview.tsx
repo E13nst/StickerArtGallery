@@ -150,6 +150,7 @@ export const StickerPreview: React.FC<StickerPreviewProps> = ({
         <img
           src={`/api/stickers/${sticker.file_id}`}
           alt={sticker.emoji || 'sticker'}
+          loading="lazy"
           style={{
             width: '100%',
             height: '100%',
