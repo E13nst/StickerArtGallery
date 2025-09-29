@@ -8,190 +8,147 @@ import {
   Box,
   Typography,
   Alert,
-  CircularProgress
+  TextField,
+  Divider
 } from '@mui/material';
 import TelegramIcon from '@mui/icons-material/Telegram';
-import { configService } from '@/api/config';
+import DeveloperModeIcon from '@mui/icons-material/DeveloperMode';
 
 interface TelegramAuthModalProps {
   open: boolean;
   onClose: () => void;
   onAuthSuccess: (initData: string) => void;
-  onAuthError: (error: string) => void;
   onSkipAuth: () => void;
+}
+
+// Глобальная функция для обработки авторизации от Telegram Login Widget
+declare global {
+  interface Window {
+    handleTelegramAuth: (user: any) => void;
+  }
 }
 
 export const TelegramAuthModal: React.FC<TelegramAuthModalProps> = ({
   open,
   onClose,
   onAuthSuccess,
-  onAuthError,
   onSkipAuth
 }) => {
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [step, setStep] = useState<'init' | 'waiting' | 'success' | 'error'>('init');
+  const [initData, setInitData] = useState<string>('');
 
   useEffect(() => {
     if (open) {
-      setStep('init');
       setError(null);
+      // Загружаем сохраненный initData из localStorage
+      const savedInitData = localStorage.getItem('telegram_init_data');
+      if (savedInitData) {
+        setInitData(savedInitData);
+      }
     }
   }, [open]);
 
-  const handleTelegramAuth = async () => {
-    setIsLoading(true);
-    setError(null);
-    setStep('waiting');
-
-    try {
-      // Получаем конфигурацию с именем бота
-      const config = await configService.getConfig();
-      const botUsername = config.botName;
-      
-      // Создаем URL для авторизации через Telegram
-      const redirectUrl = encodeURIComponent(window.location.origin + window.location.pathname);
-      const telegramAuthUrl = `https://t.me/${botUsername}?startapp=${btoa(redirectUrl)}`;
-
-      console.log('🔗 Telegram Auth URL:', telegramAuthUrl);
-
-      // Открываем Telegram для авторизации
-      window.open(telegramAuthUrl, '_blank', 'width=400,height=600');
-
-      // Слушаем сообщения от Telegram Web App
-      const handleMessage = (event: MessageEvent) => {
-        if (event.origin !== 'https://web.telegram.org') {
-          return;
-        }
-
-        if (event.data.type === 'telegram-auth') {
-          const { initData } = event.data;
-          if (initData) {
-            console.log('✅ Получен initData от Telegram:', initData);
-            setStep('success');
-            onAuthSuccess(initData);
-            window.removeEventListener('message', handleMessage);
-            setTimeout(() => {
-              onClose();
-            }, 1000);
-          } else {
-            console.error('❌ initData не получен от Telegram');
-            setStep('error');
-            setError('Не удалось получить данные авторизации от Telegram');
-            onAuthError('Не удалось получить данные авторизации от Telegram');
-            window.removeEventListener('message', handleMessage);
-          }
-          setIsLoading(false);
-        }
-      };
-
-      window.addEventListener('message', handleMessage);
-
-      // Таймаут для авторизации
-      setTimeout(() => {
-        window.removeEventListener('message', handleMessage);
-        setIsLoading(false);
-        if (step === 'waiting') {
-          setStep('error');
-          setError('Время ожидания авторизации истекло');
-          onAuthError('Время ожидания авторизации истекло');
-        }
-      }, 60000); // 60 секунд
-    } catch (error) {
-      console.error('❌ Ошибка при получении конфигурации:', error);
-      setStep('error');
-      setError('Ошибка при получении конфигурации бота');
-      setIsLoading(false);
+  const handleManualAuth = () => {
+    if (!initData.trim()) {
+      setError('Введите initData');
+      return;
     }
+
+    // Сохраняем initData в localStorage
+    localStorage.setItem('telegram_init_data', initData);
+    
+    onAuthSuccess(initData);
+    onClose();
+  };
+
+  const handleLoadTestData = () => {
+    // Тестовые данные для разработки
+    const testInitData = 'query_id=test&user=%7B%22id%22%3A123456789%2C%22first_name%22%3A%22Test%22%2C%22last_name%22%3A%22User%22%2C%22username%22%3A%22testuser%22%2C%22language_code%22%3A%22ru%22%7D&auth_date=' + Math.floor(Date.now() / 1000) + '&hash=test_hash';
+    setInitData(testInitData);
+  };
+
+  const handleClearData = () => {
+    setInitData('');
+    localStorage.removeItem('telegram_init_data');
   };
 
   const renderContent = () => {
-    switch (step) {
-      case 'init':
-        return (
-          <Box sx={{ textAlign: 'center', p: 2 }}>
-            <TelegramIcon sx={{ fontSize: 48, color: '#0088cc', mb: 2 }} />
-            <Typography variant="h6" gutterBottom>
-              Авторизация через Telegram
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Для доступа к полному функционалу приложения необходимо авторизоваться через Telegram
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={<TelegramIcon />}
-                onClick={handleTelegramAuth}
-                sx={{
-                  backgroundColor: '#0088cc',
-                  '&:hover': {
-                    backgroundColor: '#006699',
-                  },
-                }}
-              >
-                Войти через Telegram
-              </Button>
-              
-              <Button
-                variant="outlined"
-                size="medium"
-                onClick={onSkipAuth}
-                sx={{ minWidth: 200 }}
-              >
-                Продолжить без авторизации
-              </Button>
-            </Box>
-          </Box>
-        );
+    return (
+      <Box sx={{ p: 2 }}>
+        <Box sx={{ textAlign: 'center', mb: 3 }}>
+          <TelegramIcon sx={{ fontSize: 48, color: '#0088cc', mb: 2 }} />
+          <Typography variant="h6" gutterBottom>
+            Авторизация через Telegram
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Для доступа к полному функционалу откройте приложение через Telegram бота
+          </Typography>
+        </Box>
+        
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
 
-      case 'waiting':
-        return (
-          <Box sx={{ textAlign: 'center', p: 2 }}>
-            <CircularProgress sx={{ mb: 2 }} />
-            <Typography variant="h6" gutterBottom>
-              Ожидание авторизации
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Откройте Telegram и нажмите кнопку "Start" в боте
-            </Typography>
-          </Box>
-        );
+        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+          <Button
+            variant="outlined"
+            onClick={onSkipAuth}
+          >
+            Продолжить без авторизации
+          </Button>
+        </Box>
 
-      case 'success':
-        return (
-          <Box sx={{ textAlign: 'center', p: 2 }}>
-            <TelegramIcon sx={{ fontSize: 48, color: '#4caf50', mb: 2 }} />
-            <Typography variant="h6" gutterBottom>
-              Авторизация успешна!
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Вы успешно авторизованы через Telegram
-            </Typography>
-          </Box>
-        );
+        <Divider sx={{ my: 2 }}>
+          <Typography variant="caption" color="text.secondary">
+            Режим разработки
+          </Typography>
+        </Divider>
 
-      case 'error':
-        return (
-          <Box sx={{ textAlign: 'center', p: 2 }}>
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-            <Button
-              variant="outlined"
-              onClick={() => {
-                setStep('init');
-                setError(null);
-              }}
-            >
-              Попробовать снова
-            </Button>
-          </Box>
-        );
+        <Box sx={{ mb: 2 }}>
+          <TextField
+            fullWidth
+            multiline
+            rows={4}
+            label="initData для тестирования"
+            placeholder="Вставьте initData из Telegram Web App..."
+            value={initData}
+            onChange={(e) => setInitData(e.target.value)}
+            variant="outlined"
+            size="small"
+          />
+        </Box>
 
-      default:
-        return null;
-    }
+        <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<DeveloperModeIcon />}
+            onClick={handleLoadTestData}
+          >
+            Тестовые данные
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={handleClearData}
+          >
+            Очистить
+          </Button>
+        </Box>
+
+        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+          <Button
+            variant="contained"
+            onClick={handleManualAuth}
+            disabled={!initData.trim()}
+          >
+            Войти с initData
+          </Button>
+        </Box>
+      </Box>
+    );
   };
 
   return (
@@ -201,8 +158,8 @@ export const TelegramAuthModal: React.FC<TelegramAuthModalProps> = ({
         {renderContent()}
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={isLoading}>
-          {step === 'success' ? 'Закрыть' : 'Отмена'}
+        <Button onClick={onClose}>
+          Отмена
         </Button>
       </DialogActions>
     </Dialog>

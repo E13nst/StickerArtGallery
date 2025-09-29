@@ -114,11 +114,6 @@ const App: React.FC = () => {
     checkAuth();
   };
 
-  // Обработка ошибки авторизации
-  const handleAuthError = (error: string) => {
-    console.error('❌ Ошибка авторизации:', error);
-    setAuthError(error);
-  };
 
   // Обработка пропуска авторизации
   const handleSkipAuth = () => {
@@ -379,7 +374,6 @@ const App: React.FC = () => {
         open={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         onAuthSuccess={handleAuthSuccess}
-        onAuthError={handleAuthError}
         onSkipAuth={handleSkipAuth}
       />
     </Box>
