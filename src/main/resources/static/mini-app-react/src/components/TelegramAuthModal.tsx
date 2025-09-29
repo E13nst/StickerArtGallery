@@ -18,6 +18,7 @@ interface TelegramAuthModalProps {
   open: boolean;
   onClose: () => void;
   onAuthSuccess: (initData: string) => void;
+  onAuthError?: (error: string) => void;
   onSkipAuth: () => void;
 }
 
@@ -32,6 +33,7 @@ export const TelegramAuthModal: React.FC<TelegramAuthModalProps> = ({
   open,
   onClose,
   onAuthSuccess,
+  onAuthError: _onAuthError,
   onSkipAuth
 }) => {
   const [error, setError] = useState<string | null>(null);

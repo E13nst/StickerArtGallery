@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Container, 
   Box,
-  Typography,
   Alert
 } from '@mui/material';
 import { useTelegram } from '@/hooks/useTelegram';

@@ -198,7 +198,7 @@ class ApiClient {
     } catch (error) {
       console.warn('⚠️ API недоступен, используем мок данные для стикерсетов пользователя');
       // Фильтруем мок данные по userId (для демонстрации)
-      const userMockSets = mockStickerSets.filter(set => set.userId === userId || userId === 123456789);
+             const userMockSets = mockStickerSets.filter(set => (set as any).userId === userId || userId === 123456789);
       
       return {
         content: userMockSets,
@@ -223,8 +223,8 @@ class ApiClient {
     } catch (error) {
       console.warn('⚠️ API поиска недоступен, используем локальную фильтрацию');
       // Локальная фильтрация мок данных
-      const userMockSets = mockStickerSets.filter(set => 
-        (set.userId === userId || userId === 123456789) &&
+       const userMockSets = mockStickerSets.filter(set => 
+         ((set as any).userId === userId || userId === 123456789) &&
         (set.title.toLowerCase().includes(query.toLowerCase()) ||
          set.name.toLowerCase().includes(query.toLowerCase()))
       );

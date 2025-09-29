@@ -36,9 +36,9 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     return activeTab;
   };
 
-  const handleNavigation = (newValue: number) => {
+  const handleNavigation = (_event: any, newValue: number) => {
     onChange(newValue);
-    
+
     switch (newValue) {
       case 0:
         navigate('/');
@@ -71,7 +71,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     >
       <BottomNavigation
         value={getCurrentTab()}
-        onChange={(event, newValue) => handleNavigation(newValue)}
+        onChange={handleNavigation}
         sx={{
           height: 64,
           '& .MuiBottomNavigationAction-root': {
