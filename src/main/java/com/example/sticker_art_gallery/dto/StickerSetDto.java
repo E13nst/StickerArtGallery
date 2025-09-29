@@ -1,7 +1,6 @@
 package com.example.sticker_art_gallery.dto;
 
 import jakarta.validation.constraints.*;
-import com.fasterxml.jackson.annotation.JsonRawValue;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 
@@ -25,11 +24,10 @@ public class StickerSetDto {
     
     private LocalDateTime createdAt;
     
-    @JsonRawValue
-    @Schema(description = "Полная информация о стикерсете из Telegram Bot API (JSON). Может быть null, если данные недоступны.", 
+    @Schema(description = "Полная информация о стикерсете из Telegram Bot API (JSON объект). Может быть null, если данные недоступны.", 
             example = "{\"name\":\"my_stickers_by_StickerGalleryBot\",\"title\":\"Мои стикеры\",\"sticker_type\":\"regular\",\"is_animated\":false,\"is_video\":false,\"stickers\":[...]}", 
             nullable = true)
-    private String telegramStickerSetInfo;
+    private Object telegramStickerSetInfo;
     
     // Конструкторы
     public StickerSetDto() {}
@@ -83,11 +81,11 @@ public class StickerSetDto {
         this.createdAt = createdAt;
     }
     
-    public String getTelegramStickerSetInfo() {
+    public Object getTelegramStickerSetInfo() {
         return telegramStickerSetInfo;
     }
-    
-    public void setTelegramStickerSetInfo(String telegramStickerSetInfo) {
+
+    public void setTelegramStickerSetInfo(Object telegramStickerSetInfo) {
         this.telegramStickerSetInfo = telegramStickerSetInfo;
     }
     

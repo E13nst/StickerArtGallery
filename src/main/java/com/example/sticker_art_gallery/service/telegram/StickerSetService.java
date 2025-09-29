@@ -176,7 +176,7 @@ public class StickerSetService {
         StickerSetDto dto = StickerSetDto.fromEntity(stickerSet);
         
         try {
-            String botApiData = telegramBotApiService.getStickerSetInfo(stickerSet.getName());
+            Object botApiData = telegramBotApiService.getStickerSetInfo(stickerSet.getName());
             dto.setTelegramStickerSetInfo(botApiData);
             LOGGER.debug("✅ Стикерсет '{}' обогащен данными Bot API", stickerSet.getName());
         } catch (Exception e) {

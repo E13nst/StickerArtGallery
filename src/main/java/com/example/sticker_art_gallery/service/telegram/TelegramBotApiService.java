@@ -38,10 +38,10 @@ public class TelegramBotApiService {
      * Результат кэшируется в Caffeine на 15 минут
      * 
      * @param stickerSetName имя стикерсета
-     * @return JSON строка с информацией о стикерсете или null если ошибка
+     * @return JSON объект с информацией о стикерсете или null если ошибка
      */
     @Cacheable(value = "stickerSetInfo", key = "#stickerSetName", unless = "#result == null")
-    public String getStickerSetInfo(String stickerSetName) {
+    public Object getStickerSetInfo(String stickerSetName) {
         try {
             LOGGER.debug("🔍 Получение информации о стикерсете '{}' (запрос к Telegram API)", stickerSetName);
             
@@ -67,7 +67,7 @@ public class TelegramBotApiService {
                 if (responseJson.has("ok") && responseJson.get("ok").asBoolean()) {
                     // Возвращаем только данные result (без обертки ok, result)
                     JsonNode resultNode = responseJson.get("result");
-                    String result = objectMapper.writeValueAsString(resultNode);
+                    Object result = objectMapper.treeToValue(resultNode, Object.class);
                     
                     LOGGER.debug("✅ Информация о стикерсете '{}' успешно получена", stickerSetName);
                     return result;
@@ -115,10 +115,10 @@ public class TelegramBotApiService {
      * Результат кэшируется в Caffeine на 15 минут
      * 
      * @param userId ID пользователя в Telegram
-     * @return JSON строка с информацией о пользователе или null если ошибка
+     * @return JSON объект с информацией о пользователе или null если ошибка
      */
     @Cacheable(value = "userInfo", key = "#userId", unless = "#result == null")
-    public String getUserInfo(Long userId) {
+    public Object getUserInfo(Long userId) {
         try {
             LOGGER.debug("🔍 Получение информации о пользователе '{}' (запрос к Telegram API)", userId);
             
@@ -145,7 +145,7 @@ public class TelegramBotApiService {
                 if (responseJson.has("ok") && responseJson.get("ok").asBoolean()) {
                     // Возвращаем только данные result (без обертки ok, result)
                     JsonNode resultNode = responseJson.get("result");
-                    String result = objectMapper.writeValueAsString(resultNode);
+                    Object result = objectMapper.treeToValue(resultNode, Object.class);
                     
                     LOGGER.debug("✅ Информация о пользователе '{}' успешно получена", userId);
                     return result;

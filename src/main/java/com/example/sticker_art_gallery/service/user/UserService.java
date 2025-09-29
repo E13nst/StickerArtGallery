@@ -187,7 +187,7 @@ public class UserService {
         UserDto dto = UserDto.fromEntity(user);
         
         try {
-            String botApiData = telegramBotApiService.getUserInfo(user.getId());
+            Object botApiData = telegramBotApiService.getUserInfo(user.getId());
             dto.setTelegramUserInfo(botApiData);
             LOGGER.debug("✅ Пользователь '{}' обогащен данными Bot API", user.getId());
         } catch (Exception e) {
