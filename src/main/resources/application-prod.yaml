@@ -19,8 +19,14 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: validate  # Flyway управляет схемой в продакшне
+    show-sql: false  # Отключаем SQL логи в продакшне
+  
+  # Flyway для production
+  flyway:
+    enabled: true
+    validate-on-migrate: true
+    baseline-on-migrate: false  # В продакшне базовая миграция должна быть применена явно
 
 management:
   endpoints:

@@ -8,6 +8,17 @@ telegram:
     init-data: "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A123456789%2C%22first_name%22%3A%22Test%22%2C%22last_name%22%3A%22User%22%2C%22username%22%3A%22testuser%22%2C%22language_code%22%3A%22en%22%7D&auth_date=1640995200&hash=test_hash_for_development_only"
     bot-name: "StickerGallery"
 
+# JPA конфигурация для разработки
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate  # Flyway управляет схемой
+    show-sql: true  # Показываем SQL в dev режиме
+  
+  # Flyway для dev среды
+  flyway:
+    clean-on-validation-error: true  # Очищаем при ошибках валидации в dev
+
 # Логирование для разработки
 logging:
   level:
@@ -16,3 +27,4 @@ logging:
     org.springframework.web: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.flywaydb: DEBUG  # Отладка Flyway
