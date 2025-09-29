@@ -38,6 +38,15 @@ export const useTelegram = () => {
       console.log('user:', telegram.initDataUnsafe?.user);
       console.log('platform:', telegram.platform);
       console.log('version:', telegram.version);
+      
+      // Детальная отладка initData
+      if (telegram.initData) {
+        console.log('🔍 Детальный разбор initData:');
+        const params = new URLSearchParams(telegram.initData);
+        for (const [key, value] of params.entries()) {
+          console.log(`  ${key}:`, value);
+        }
+      }
     } else {
       console.warn('⚠️ Telegram Web App не доступен');
       setIsReady(true);

@@ -42,7 +42,9 @@ class ApiClient {
   setAuthHeaders(initData: string, botName: string = 'StickerGallery') {
     this.client.defaults.headers.common['X-Telegram-Init-Data'] = initData;
     this.client.defaults.headers.common['X-Telegram-Bot-Name'] = botName;
-    console.log('✅ Заголовки аутентификации установлены');
+    console.log('✅ Заголовки аутентификации установлены:');
+    console.log('  X-Telegram-Init-Data:', initData ? `${initData.length} chars` : 'empty');
+    console.log('  X-Telegram-Bot-Name:', botName);
   }
 
   // Удаляем заголовки аутентификации

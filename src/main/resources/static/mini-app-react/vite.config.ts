@@ -24,13 +24,27 @@ export default defineConfig(({ mode }) => ({
         target: 'https://stickerartgallery-e13nst.amvera.io',
         changeOrigin: true,
         secure: true,
-        rewrite: (path) => path
+        rewrite: (path) => path,
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            // Передаем все заголовки, включая кастомные
+            console.log('🔍 Проксируем запрос:', req.method, req.url);
+            console.log('🔍 Заголовки запроса:', req.headers);
+          });
+        }
       },
       '/auth': {
         target: 'https://stickerartgallery-e13nst.amvera.io',
         changeOrigin: true,
         secure: true,
-        rewrite: (path) => path
+        rewrite: (path) => path,
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            // Передаем все заголовки, включая кастомные
+            console.log('🔍 Проксируем запрос:', req.method, req.url);
+            console.log('🔍 Заголовки запроса:', req.headers);
+          });
+        }
       }
     }
   }
