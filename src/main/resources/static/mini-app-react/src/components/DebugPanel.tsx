@@ -15,6 +15,7 @@ import { TelegramUser } from '@/types/telegram';
 interface DebugPanelProps {
   user: TelegramUser | null;
   initData: string;
+  manualInitData?: string;
   platform?: string;
   version?: string;
   initDataValid: boolean;
@@ -24,6 +25,7 @@ interface DebugPanelProps {
 export const DebugPanel: React.FC<DebugPanelProps> = ({
   user,
   initData,
+  manualInitData,
   platform,
   version,
   initDataValid,
@@ -139,7 +141,7 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
             
             <Box sx={{ mt: 2 }}>
               <Typography variant="body2" fontWeight="bold" color="primary" gutterBottom>
-                🔤 InitData (полная строка):
+                🔤 InitData от Telegram Web App:
               </Typography>
               <Box
                 sx={{
@@ -155,6 +157,27 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
                 {initData || 'отсутствует'}
               </Box>
             </Box>
+            
+            {manualInitData && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body2" fontWeight="bold" color="primary" gutterBottom>
+                  🔤 InitData из URL параметров:
+                </Typography>
+                <Box
+                  sx={{
+                    p: 1,
+                    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                    borderRadius: 1,
+                    fontFamily: 'monospace',
+                    fontSize: '0.75rem',
+                    wordBreak: 'break-all',
+                    whiteSpace: 'pre-wrap'
+                  }}
+                >
+                  {manualInitData}
+                </Box>
+              </Box>
+            )}
           </Box>
         </AccordionDetails>
       </Accordion>

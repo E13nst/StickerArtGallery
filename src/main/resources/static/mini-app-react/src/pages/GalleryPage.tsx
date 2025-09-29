@@ -333,11 +333,12 @@ export const GalleryPage: React.FC = () => {
             {/* Отладочная панель */}
             <DebugPanel
               user={user}
-              initData={manualInitData || initData}
+              initData={initData}
+              manualInitData={manualInitData}
               platform={tg?.platform}
               version={tg?.version}
-              initDataValid={checkInitDataExpiry(manualInitData || initData).valid}
-              initDataError={checkInitDataExpiry(manualInitData || initData).reason}
+              initDataValid={checkInitDataExpiry(initData).valid}
+              initDataError={checkInitDataExpiry(initData).reason}
             />
 
             {/* Поиск */}
