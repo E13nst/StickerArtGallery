@@ -39,14 +39,36 @@ class ApiClient {
     );
   }
 
-  // Добавляем заголовки аутентификации
-  setAuthHeaders(initData: string, botName: string = 'StickerGallery') {
-    this.client.defaults.headers.common['X-Telegram-Init-Data'] = initData;
-    this.client.defaults.headers.common['X-Telegram-Bot-Name'] = botName;
-    console.log('✅ Заголовки аутентификации установлены:');
-    console.log('  X-Telegram-Init-Data:', initData ? `${initData.length} chars` : 'empty');
-    console.log('  X-Telegram-Bot-Name:', botName);
-  }
+      // Добавляем заголовки аутентификации
+      setAuthHeaders(initData: string, botName: string = 'StickerGallery') {
+        this.client.defaults.headers.common['X-Telegram-Init-Data'] = initData;
+        this.client.defaults.headers.common['X-Telegram-Bot-Name'] = botName;
+        console.log('✅ Заголовки аутентификации установлены:');
+        console.log('  X-Telegram-Init-Data:', initData ? `${initData.length} chars` : 'empty');
+        console.log('  X-Telegram-Bot-Name:', botName);
+      }
+
+      // Проверяем заголовки от Chrome расширений (ModHeader и т.п.)
+      checkExtensionHeaders() {
+        // ModHeader добавляет заголовки в fetch requests
+        // Проверяем, есть ли заголовки от расширений
+        const extensionInitData = this.client.defaults.headers.common['X-Telegram-Init-Data-Extension'];
+        const extensionBotName = this.client.defaults.headers.common['X-Telegram-Bot-Name-Extension'];
+        
+        if (extensionInitData) {
+          console.log('🔧 Обнаружены заголовки от Chrome расширения:');
+          console.log('  X-Telegram-Init-Data-Extension:', extensionInitData);
+          console.log('  X-Telegram-Bot-Name-Extension:', extensionBotName);
+          
+          // Используем заголовки от расширения
+          this.client.defaults.headers.common['X-Telegram-Init-Data'] = extensionInitData;
+          this.client.defaults.headers.common['X-Telegram-Bot-Name'] = extensionBotName || 'StickerGallery';
+          
+          return true;
+        }
+        
+        return false;
+      }
 
   // Удаляем заголовки аутентификации
   clearAuthHeaders() {

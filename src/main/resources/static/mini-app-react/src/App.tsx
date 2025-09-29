@@ -20,7 +20,6 @@ import { StickerGrid } from '@/components/StickerGrid';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { ErrorDisplay } from '@/components/ErrorDisplay';
 import { EmptyState } from '@/components/EmptyState';
-import { TelegramAuthModal } from '@/components/TelegramAuthModal';
 import { StickerSetResponse } from '@/types/sticker';
 
 const App: React.FC = () => {
@@ -45,7 +44,6 @@ const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
   const [selectedStickerSet, setSelectedStickerSet] = useState<StickerSetResponse | null>(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [manualInitData, setManualInitData] = useState<string>('');
 
   // Проверка авторизации
@@ -59,16 +57,20 @@ const App: React.FC = () => {
     // Используем manualInitData если есть, иначе initData от Telegram
     const currentInitData = manualInitData || initData;
 
-    if (!isInTelegramApp && !manualInitData) {
-      // В обычном браузере без авторизации - показываем модальное окно
-      console.log('🌐 Браузерный режим - требуется авторизация');
-      setShowAuthModal(true);
-      setAuthStatus({
-        authenticated: false,
-        role: 'anonymous'
-      });
-      return false;
-    }
+        if (!isInTelegramApp && !manualInitData) {
+          // Проверяем заголовки от Chrome расширений
+          const hasExtensionHeaders = apiClient.checkExtensionHeaders();
+          
+          if (!hasExtensionHeaders) {
+            // В обычном браузере без авторизации - работаем в публичном режиме
+            console.log('🌐 Браузерный режим - публичный доступ');
+            setAuthStatus({
+              authenticated: true,
+              role: 'public'
+            });
+            return true;
+          }
+        }
 
     setAuthLoading(true);
     setAuthError(null);
@@ -105,25 +107,13 @@ const App: React.FC = () => {
     }
   };
 
-  // Обработка успешной авторизации
-  const handleAuthSuccess = (newInitData: string) => {
-    console.log('✅ Авторизация успешна, сохраняем initData');
-    setManualInitData(newInitData);
-    setShowAuthModal(false);
-    // Перезапускаем проверку авторизации
-    checkAuth();
-  };
-
-
-  // Обработка пропуска авторизации
-  const handleSkipAuth = () => {
-    console.log('⏭️ Пользователь пропустил авторизацию');
-    setShowAuthModal(false);
-    setAuthStatus({
-      authenticated: true,
-      role: 'public'
-    });
-  };
+  // Загрузка initData из localStorage при инициализации
+  useEffect(() => {
+    const savedInitData = localStorage.getItem('telegram_init_data');
+    if (savedInitData) {
+      setManualInitData(savedInitData);
+    }
+  }, []);
 
   // Загрузка стикерсетов
   const loadStickers = async () => {
@@ -369,13 +359,6 @@ const App: React.FC = () => {
         )}
       </Container>
 
-      {/* Модальное окно авторизации */}
-      <TelegramAuthModal
-        open={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onAuthSuccess={handleAuthSuccess}
-        onSkipAuth={handleSkipAuth}
-      />
     </Box>
   );
 };
