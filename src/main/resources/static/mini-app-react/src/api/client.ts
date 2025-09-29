@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import { StickerSetListResponse, StickerSetResponse, AuthResponse } from '@/types/sticker';
-import { mockStickerSets, mockUserStickerSets, mockAuthResponse } from '@/data/mockData';
+import { mockStickerSets, mockAuthResponse } from '@/data/mockData';
 
 class ApiClient {
   private client: AxiosInstance;
