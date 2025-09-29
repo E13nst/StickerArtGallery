@@ -59,7 +59,7 @@ public class SecurityConfig {
             
             // Разрешаем iframe для Telegram Mini App
             .headers(headers -> headers
-                .frameOptions().disable() // Отключаем X-Frame-Options для Telegram
+                .frameOptions(frameOptions -> frameOptions.disable()) // Отключаем X-Frame-Options для Telegram
             )
             
             // Настройка авторизации
