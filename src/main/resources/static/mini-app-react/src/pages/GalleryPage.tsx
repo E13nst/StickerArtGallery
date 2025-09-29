@@ -20,7 +20,6 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { ErrorDisplay } from '@/components/ErrorDisplay';
 import { EmptyState } from '@/components/EmptyState';
 import { BottomNav } from '@/components/BottomNav';
-import { TelegramAuthModal } from '@/components/TelegramAuthModal';
 
 export const GalleryPage: React.FC = () => {
   const { tg, user, initData, isReady, isInTelegramApp, checkInitDataExpiry } = useTelegram();
@@ -44,9 +43,38 @@ export const GalleryPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
   const [selectedStickerSet, setSelectedStickerSet] = useState<StickerSetResponse | null>(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [manualInitData, setManualInitData] = useState<string>('');
   const [activeBottomTab, setActiveBottomTab] = useState(0);
+
+  // Загрузка initData из URL параметров при инициализации
+  useEffect(() => {
+    console.log('🔍 Проверяем URL параметры и localStorage...');
+    
+    // Проверяем URL параметры
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlInitData = urlParams.get('initData');
+    
+    // Проверяем localStorage
+    const storedInitData = localStorage.getItem('telegram_init_data');
+    
+    // Проверяем заголовки от Chrome расширений
+    const extensionInitData = apiClient.checkExtensionHeaders();
+    
+    if (urlInitData) {
+      console.log('✅ Найден initData в URL параметрах');
+      setManualInitData(decodeURIComponent(urlInitData));
+      // Сохраняем в localStorage для следующих визитов
+      localStorage.setItem('telegram_init_data', decodeURIComponent(urlInitData));
+    } else if (storedInitData) {
+      console.log('✅ Найден initData в localStorage');
+      setManualInitData(storedInitData);
+    } else if (extensionInitData) {
+      console.log('✅ Найден initData в заголовках Chrome расширения');
+      // initData уже установлен в apiClient.checkExtensionHeaders()
+    } else {
+      console.log('❌ initData не найден ни в URL, ни в localStorage, ни в расширениях');
+    }
+  }, []);
 
   // Проверка авторизации
   const checkAuth = async () => {
@@ -59,10 +87,18 @@ export const GalleryPage: React.FC = () => {
     // Используем manualInitData если есть, иначе initData от Telegram
     const currentInitData = manualInitData || initData;
 
-    if (!isInTelegramApp && !manualInitData) {
-      // В обычном браузере без авторизации - показываем модальное окно
-      console.log('🌐 Браузерный режим - требуется авторизация');
-      setShowAuthModal(true);
+    if (!isInTelegramApp && !manualInitData && !currentInitData) {
+      // В обычном браузере без авторизации - работаем без авторизации
+      console.log('🌐 Браузерный режим - работаем без авторизации');
+      setAuthStatus({
+        authenticated: true,
+        role: 'public'
+      });
+      return true;
+    }
+    
+    if (!currentInitData) {
+      console.log('⚠️ initData отсутствует');
       setAuthStatus({
         authenticated: false,
         role: 'anonymous'
@@ -74,11 +110,16 @@ export const GalleryPage: React.FC = () => {
     setAuthError(null);
 
     try {
-      // Проверяем срок действия initData
-      const initDataCheck = checkInitDataExpiry(currentInitData);
-      console.log('🔍 Проверка initData:', initDataCheck);
-      if (!initDataCheck.valid) {
-        throw new Error(initDataCheck.reason);
+      // Проверяем срок действия initData (пропускаем для тестовых данных)
+      const isTestData = currentInitData.includes('query_id=test');
+      if (!isTestData) {
+        const initDataCheck = checkInitDataExpiry(currentInitData);
+        console.log('🔍 Проверка initData:', initDataCheck);
+        if (!initDataCheck.valid) {
+          throw new Error(initDataCheck.reason);
+        }
+      } else {
+        console.log('🔍 Тестовые данные - пропускаем проверку срока действия');
       }
 
       // Устанавливаем заголовки аутентификации
@@ -105,30 +146,6 @@ export const GalleryPage: React.FC = () => {
     }
   };
 
-  // Обработка успешной авторизации
-  const handleAuthSuccess = (newInitData: string) => {
-    console.log('✅ Авторизация успешна, сохраняем initData');
-    setManualInitData(newInitData);
-    setShowAuthModal(false);
-    // Перезапускаем проверку авторизации
-    checkAuth();
-  };
-
-  // Обработка ошибки авторизации
-  const handleAuthError = (error: string) => {
-    console.error('❌ Ошибка авторизации:', error);
-    setAuthError(error);
-  };
-
-  // Обработка пропуска авторизации
-  const handleSkipAuth = () => {
-    console.log('⏭️ Пользователь пропустил авторизацию');
-    setShowAuthModal(false);
-    setAuthStatus({
-      authenticated: true,
-      role: 'public'
-    });
-  };
 
   // Загрузка стикерсетов
   const fetchStickerSets = async (page: number = 0) => {
@@ -373,14 +390,6 @@ export const GalleryPage: React.FC = () => {
         isInTelegramApp={isInTelegramApp}
       />
 
-      {/* Модальное окно авторизации */}
-      <TelegramAuthModal
-        open={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onAuthSuccess={handleAuthSuccess}
-        onAuthError={handleAuthError}
-        onSkipAuth={handleSkipAuth}
-      />
     </Box>
   );
 };
