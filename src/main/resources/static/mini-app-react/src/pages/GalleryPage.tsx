@@ -279,7 +279,7 @@ export const GalleryPage: React.FC = () => {
     if (isReady) {
       fetchStickerSets();
     }
-  }, [isReady]);
+  }, [isReady, manualInitData]); // Добавляем manualInitData в зависимости
 
   // Обработка кнопки "Назад" в Telegram
   useEffect(() => {
@@ -333,11 +333,11 @@ export const GalleryPage: React.FC = () => {
             {/* Отладочная панель */}
             <DebugPanel
               user={user}
-              initData={initData}
+              initData={manualInitData || initData}
               platform={tg?.platform}
               version={tg?.version}
-              initDataValid={checkInitDataExpiry(initData).valid}
-              initDataError={checkInitDataExpiry(initData).reason}
+              initDataValid={checkInitDataExpiry(manualInitData || initData).valid}
+              initDataError={checkInitDataExpiry(manualInitData || initData).reason}
             />
 
             {/* Поиск */}
