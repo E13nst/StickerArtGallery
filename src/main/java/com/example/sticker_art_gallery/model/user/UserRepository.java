@@ -14,9 +14,11 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
     
     /**
-     * Найти пользователя по telegram_id
+     * Найти пользователя по telegram_id (теперь это id)
      */
-    Optional<UserEntity> findByTelegramId(Long telegramId);
+    default Optional<UserEntity> findByTelegramId(Long telegramId) {
+        return findById(telegramId);
+    }
     
     /**
      * Найти пользователя по username
@@ -24,9 +26,11 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     Optional<UserEntity> findByUsername(String username);
     
     /**
-     * Проверить существование пользователя по telegram_id
+     * Проверить существование пользователя по telegram_id (теперь это id)
      */
-    boolean existsByTelegramId(Long telegramId);
+    default boolean existsByTelegramId(Long telegramId) {
+        return existsById(telegramId);
+    }
     
     /**
      * Проверить существование пользователя по username

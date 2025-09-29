@@ -11,11 +11,7 @@ import java.time.OffsetDateTime;
 public class UserEntity {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    
-    @Column(name = "telegram_id", unique = true, nullable = false)
-    private Long telegramId;
+    private Long id; // Теперь id = telegram_id
     
     @Column(name = "username", length = 255)
     private String username;
@@ -48,9 +44,9 @@ public class UserEntity {
         this.updatedAt = OffsetDateTime.now();
     }
     
-    public UserEntity(Long telegramId, String username, String firstName, String lastName, String avatarUrl) {
+    public UserEntity(Long id, String username, String firstName, String lastName, String avatarUrl) {
         this();
-        this.telegramId = telegramId;
+        this.id = id; // id теперь = telegram_id
         this.username = username;
         this.firstName = firstName;
         this.lastName = lastName;
@@ -61,8 +57,9 @@ public class UserEntity {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     
-    public Long getTelegramId() { return telegramId; }
-    public void setTelegramId(Long telegramId) { this.telegramId = telegramId; }
+    // telegramId теперь доступен через getId()
+    public Long getTelegramId() { return id; }
+    public void setTelegramId(Long telegramId) { this.id = telegramId; }
     
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
@@ -105,7 +102,6 @@ public class UserEntity {
     public String toString() {
         return "UserEntity{" +
                 "id=" + id +
-                ", telegramId=" + telegramId +
                 ", username='" + username + '\'' +
                 ", firstName='" + firstName + '\'' +
                 ", lastName='" + lastName + '\'' +

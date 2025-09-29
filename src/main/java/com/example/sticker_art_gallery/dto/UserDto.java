@@ -11,9 +11,7 @@ public class UserDto {
     
     private Long id;
     
-    @NotNull(message = "Telegram ID не может быть null")
-    @Positive(message = "Telegram ID должен быть положительным числом")
-    private Long telegramId;
+    // telegramId теперь совпадает с id
     
     @Size(max = 255, message = "Username не может быть длиннее 255 символов")
     @Pattern(regexp = "^[a-zA-Z0-9_]+$", message = "Username может содержать только буквы, цифры и подчеркивания")
@@ -42,10 +40,9 @@ public class UserDto {
     // Конструкторы
     public UserDto() {}
     
-    public UserDto(Long id, Long telegramId, String username, String firstName, String lastName, 
+    public UserDto(Long id, String username, String firstName, String lastName, 
                    String avatarUrl, Long artBalance, String role, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         this.id = id;
-        this.telegramId = telegramId;
         this.username = username;
         this.firstName = firstName;
         this.lastName = lastName;
@@ -66,7 +63,6 @@ public class UserDto {
         
         return new UserDto(
                 entity.getId(),
-                entity.getTelegramId(),
                 entity.getUsername(),
                 entity.getFirstName(),
                 entity.getLastName(),
@@ -83,8 +79,7 @@ public class UserDto {
      */
     public UserEntity toEntity() {
         UserEntity entity = new UserEntity();
-        entity.setId(this.id);
-        entity.setTelegramId(this.telegramId);
+        entity.setId(this.id); // id теперь = telegram_id
         entity.setUsername(this.username);
         entity.setFirstName(this.firstName);
         entity.setLastName(this.lastName);
@@ -102,8 +97,9 @@ public class UserDto {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     
-    public Long getTelegramId() { return telegramId; }
-    public void setTelegramId(Long telegramId) { this.telegramId = telegramId; }
+    // telegramId теперь совпадает с id
+    public Long getTelegramId() { return id; }
+    public void setTelegramId(Long telegramId) { this.id = telegramId; }
     
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
@@ -133,7 +129,6 @@ public class UserDto {
     public String toString() {
         return "UserDto{" +
                 "id=" + id +
-                ", telegramId=" + telegramId +
                 ", username='" + username + '\'' +
                 ", firstName='" + firstName + '\'' +
                 ", lastName='" + lastName + '\'' +

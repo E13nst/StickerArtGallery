@@ -2,8 +2,8 @@
 -- Версия: 1.0.2
 -- Описание: Создание таблицы users для хранения информации о пользователях Telegram
 
--- Создание таблицы пользователей
-CREATE TABLE users (
+-- Создание таблицы пользователей (если не существует)
+CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
     telegram_id BIGINT UNIQUE NOT NULL,
     username VARCHAR(255),
@@ -16,15 +16,23 @@ CREATE TABLE users (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Создание индексов
-CREATE UNIQUE INDEX idx_users_telegram_id ON users(telegram_id);
-CREATE INDEX idx_users_username ON users(username);
-CREATE INDEX idx_users_role ON users(role);
-CREATE INDEX idx_users_created_at ON users(created_at);
+-- Создание индексов (если не существуют)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
 
--- Добавление ограничений
-ALTER TABLE users ADD CONSTRAINT chk_users_role CHECK (role IN ('USER', 'ADMIN'));
-ALTER TABLE users ADD CONSTRAINT chk_users_art_balance CHECK (art_balance >= 0);
+-- Добавление ограничений (если не существуют)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_users_role') THEN
+        ALTER TABLE users ADD CONSTRAINT chk_users_role CHECK (role IN ('USER', 'ADMIN'));
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_users_art_balance') THEN
+        ALTER TABLE users ADD CONSTRAINT chk_users_art_balance CHECK (art_balance >= 0);
+    END IF;
+END $$;
 
 -- Комментарии к таблице и полям
 COMMENT ON TABLE users IS 'Таблица пользователей системы';

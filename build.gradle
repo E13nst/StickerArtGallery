@@ -6,6 +6,7 @@ plugins {
     id 'org.springframework.boot' version '3.3.3'
     id 'io.spring.dependency-management' version '1.1.4'
     id 'java'
+    id 'org.flywaydb.flyway' version '10.8.1'
 }
 
 group = 'com.example'
@@ -71,6 +72,7 @@ dependencies {
     testImplementation 'io.rest-assured:rest-assured:5.4.0'
     testImplementation 'io.rest-assured:json-schema-validator:5.4.0'
     testRuntimeOnly 'com.h2database:h2'
+    developmentOnly 'com.h2database:h2'  // H2 для dev профиля
 }
 
 tasks.withType(JavaCompile) {
@@ -79,4 +81,16 @@ tasks.withType(JavaCompile) {
 
 tasks.withType(Javadoc) {
     options.encoding = 'UTF-8'
+}
+
+// Flyway configuration
+flyway {
+    url = "jdbc:postgresql://${System.getenv('DB_HOST') ?: 'amvera-e13nst-run-postgres'}:${System.getenv('DB_PORT') ?: '5432'}/${System.getenv('DB_NAME') ?: 'mindbase'}"
+    user = System.getenv('DB_USERNAME') ?: 'dalek'
+    password = System.getenv('DB_PASSWORD') ?: 'postgres'
+    locations = ['classpath:db/migration']
+    baselineOnMigrate = true
+    validateOnMigrate = true
+    baselineVersion = '1.0.0'
+    baselineDescription = 'Initial baseline'
 }
