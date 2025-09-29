@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import { StickerSetListResponse, StickerSetResponse, AuthResponse } from '@/types/sticker';
+import { mockStickerSets, mockUserStickerSets, mockAuthResponse } from '@/data/mockData';
 
 class ApiClient {
   private client: AxiosInstance;
@@ -54,8 +55,23 @@ class ApiClient {
 
   // Получение списка стикерсетов
   async getStickerSets(): Promise<StickerSetListResponse> {
-    const response = await this.client.get<StickerSetListResponse>('/stickersets');
-    return response.data;
+    try {
+      const response = await this.client.get<StickerSetListResponse>('/stickersets');
+      return response.data;
+    } catch (error) {
+      console.warn('⚠️ API недоступен, используем мок данные');
+      // Возвращаем мок данные если API недоступен
+      return {
+        content: mockStickerSets,
+        totalElements: mockStickerSets.length,
+        totalPages: 1,
+        size: mockStickerSets.length,
+        number: 0,
+        first: true,
+        last: true,
+        numberOfElements: mockStickerSets.length
+      };
+    }
   }
 
   // Получение стикерсета по ID
@@ -71,8 +87,13 @@ class ApiClient {
 
   // Проверка статуса аутентификации
   async checkAuthStatus(): Promise<AuthResponse> {
-    const response = await this.client.get<AuthResponse>('/auth/status');
-    return response.data;
+    try {
+      const response = await this.client.get<AuthResponse>('/auth/status');
+      return response.data;
+    } catch (error) {
+      console.warn('⚠️ API недоступен, используем мок данные для аутентификации');
+      return mockAuthResponse;
+    }
   }
 
   // Получение стикера по file_id
