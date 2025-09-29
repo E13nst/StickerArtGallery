@@ -1,9 +1,9 @@
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   BottomNavigation, 
   BottomNavigationAction, 
-  Paper,
-  Box
+  Paper
 } from '@mui/material';
 import HomeIcon from '@mui/icons-material/Home';
 import CollectionsIcon from '@mui/icons-material/Collections';
@@ -21,10 +21,42 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   onChange,
   isInTelegramApp = false
 }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   // В Telegram не показываем нижнюю навигацию - используем встроенную
   if (isInTelegramApp) {
     return null;
   }
+
+  // Определяем активную вкладку по маршруту
+  const getCurrentTab = () => {
+    if (location.pathname === '/') return 0;
+    if (location.pathname.startsWith('/profile/')) return 3;
+    return activeTab;
+  };
+
+  const handleNavigation = (newValue: number) => {
+    onChange(newValue);
+    
+    switch (newValue) {
+      case 0:
+        navigate('/');
+        break;
+      case 1:
+        // TODO: Навигация к странице стикеров
+        console.log('Навигация к стикерам (не реализовано)');
+        break;
+      case 2:
+        // TODO: Навигация к маркету
+        console.log('Навигация к маркету (не реализовано)');
+        break;
+      case 3:
+        // Навигация к профилю (используем demo userId)
+        navigate('/profile/123456789');
+        break;
+    }
+  };
 
   return (
     <Paper 
@@ -38,8 +70,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       elevation={8}
     >
       <BottomNavigation
-        value={activeTab}
-        onChange={(event, newValue) => onChange(newValue)}
+        value={getCurrentTab()}
+        onChange={(event, newValue) => handleNavigation(newValue)}
         sx={{
           height: 64,
           '& .MuiBottomNavigationAction-root': {

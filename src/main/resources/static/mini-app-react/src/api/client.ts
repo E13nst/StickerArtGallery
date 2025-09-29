@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import { StickerSetListResponse, StickerSetResponse, AuthResponse } from '@/types/sticker';
+import { UserInfo } from '@/store/useProfileStore';
 import { mockStickerSets, mockAuthResponse } from '@/data/mockData';
 
 class ApiClient {
@@ -161,6 +162,84 @@ class ApiClient {
   // Создание URL для стикера
   getStickerUrl(fileId: string): string {
     return `/api/stickers/${fileId}`;
+  }
+
+  // ============ МЕТОДЫ ДЛЯ ПРОФИЛЯ ПОЛЬЗОВАТЕЛЯ ============
+
+  // Получение информации о пользователе по ID
+  async getUserInfo(userId: number): Promise<UserInfo> {
+    try {
+      const response = await this.client.get<UserInfo>(`/users/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.warn('⚠️ API недоступен, используем мок данные для пользователя');
+      // Мок данные для пользователя
+      return {
+        id: 1,
+        telegramId: userId,
+        username: 'mockuser',
+        firstName: 'Mock',
+        lastName: 'User',
+        avatarUrl: 'https://via.placeholder.com/64x64/2481cc/ffffff?text=MU',
+        role: 'USER',
+        artBalance: 150,
+        createdAt: '2025-09-15T10:30:00Z'
+      };
+    }
+  }
+
+  // Получение стикерсетов пользователя по userId
+  async getUserStickerSets(userId: number, page: number = 0, size: number = 20): Promise<StickerSetListResponse> {
+    try {
+      const response = await this.client.get<StickerSetListResponse>(`/stickersets/user/${userId}`, {
+        params: { page, size }
+      });
+      return response.data;
+    } catch (error) {
+      console.warn('⚠️ API недоступен, используем мок данные для стикерсетов пользователя');
+      // Фильтруем мок данные по userId (для демонстрации)
+      const userMockSets = mockStickerSets.filter(set => set.userId === userId || userId === 123456789);
+      
+      return {
+        content: userMockSets,
+        totalElements: userMockSets.length,
+        totalPages: Math.ceil(userMockSets.length / size),
+        size: size,
+        number: page,
+        first: page === 0,
+        last: page >= Math.ceil(userMockSets.length / size) - 1,
+        numberOfElements: userMockSets.length
+      };
+    }
+  }
+
+  // Поиск стикерсетов пользователя по названию
+  async searchUserStickerSets(userId: number, query: string, page: number = 0, size: number = 20): Promise<StickerSetListResponse> {
+    try {
+      const response = await this.client.get<StickerSetListResponse>(`/stickersets/user/${userId}/search`, {
+        params: { name: query, page, size }
+      });
+      return response.data;
+    } catch (error) {
+      console.warn('⚠️ API поиска недоступен, используем локальную фильтрацию');
+      // Локальная фильтрация мок данных
+      const userMockSets = mockStickerSets.filter(set => 
+        (set.userId === userId || userId === 123456789) &&
+        (set.title.toLowerCase().includes(query.toLowerCase()) ||
+         set.name.toLowerCase().includes(query.toLowerCase()))
+      );
+      
+      return {
+        content: userMockSets,
+        totalElements: userMockSets.length,
+        totalPages: Math.ceil(userMockSets.length / size),
+        size: size,
+        number: page,
+        first: page === 0,
+        last: page >= Math.ceil(userMockSets.length / size) - 1,
+        numberOfElements: userMockSets.length
+      };
+    }
   }
 }
 
