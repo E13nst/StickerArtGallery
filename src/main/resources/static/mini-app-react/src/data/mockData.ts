@@ -28,7 +28,7 @@ export const mockStickerSets: StickerSetResponse[] = [
         },
         {
           file_id: "CAACAgIAAxkBAAIBZGVjZWVjZWVjZWVjZWVjZWVjZWVj",
-          file_unique_id: "AgADZWVjZWVjZWVjZWVjZWVjZWVjZWVj",
+          file_unique_id: "AgADZ WVjZWVjZWVjZWVjZWVjZWVjZWVj",
           type: "regular",
           width: 512,
           height: 512,
