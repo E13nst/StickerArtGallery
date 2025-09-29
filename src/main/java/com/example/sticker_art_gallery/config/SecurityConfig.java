@@ -57,6 +57,11 @@ public class SecurityConfig {
             // Настройка провайдера аутентификации
             .authenticationProvider(telegramAuthenticationProvider)
             
+            // Разрешаем iframe для Telegram Mini App
+            .headers(headers -> headers
+                .frameOptions().disable() // Отключаем X-Frame-Options для Telegram
+            )
+            
             // Настройка авторизации
             .authorizeHttpRequests(authz -> authz
                 // Публичные эндпоинты (но фильтр все равно применяется)
@@ -72,6 +77,9 @@ public class SecurityConfig {
                 .requestMatchers("/mini-app/app.js").permitAll()
                 .requestMatchers("/mini-app/style.css").permitAll()
                 .requestMatchers("/mini-app/test.html").permitAll()
+                .requestMatchers("/mini-app-react/**").permitAll()
+                .requestMatchers("/mini-app-react/index.html").permitAll()
+                .requestMatchers("/mini-app-react/assets/**").permitAll()
                 
                 // Swagger UI и OpenAPI
                 .requestMatchers("/swagger-ui/**").permitAll()
