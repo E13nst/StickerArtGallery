@@ -5,7 +5,7 @@ import { Sticker } from '@/types/sticker';
 
 interface StickerPreviewProps {
   sticker: Sticker;
-  size?: 'small' | 'medium' | 'large' | 'auto';
+  size?: 'small' | 'medium' | 'large' | 'auto' | 'responsive';
   showBadge?: boolean;
   isInTelegramApp?: boolean;
 }
@@ -29,6 +29,11 @@ export const StickerPreview: React.FC<StickerPreviewProps> = ({
 
   // Адаптивные размеры в зависимости от платформы
   const getAdaptiveSize = () => {
+    if (size === 'responsive') {
+      // Responsive - заполняет весь контейнер
+      return { width: '100%', height: '100%', fontSize: 16 };
+    }
+    
     if (size === 'auto') {
       // В Telegram - компактнее, в браузере - крупнее
       if (isInTelegramApp) {

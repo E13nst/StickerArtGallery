@@ -55,10 +55,12 @@ class ApiClient {
     console.log('🧹 Заголовки аутентификации удалены');
   }
 
-  // Получение списка стикерсетов
-  async getStickerSets(): Promise<StickerSetListResponse> {
+  // Получение списка стикерсетов с пагинацией
+  async getStickerSets(page: number = 0, size: number = 20): Promise<StickerSetListResponse> {
     try {
-      const response = await this.client.get<StickerSetListResponse>('/stickersets');
+      const response = await this.client.get<StickerSetListResponse>('/stickersets', {
+        params: { page, size }
+      });
       return response.data;
     } catch (error) {
       console.warn('⚠️ API недоступен, используем мок данные');
@@ -72,6 +74,34 @@ class ApiClient {
         first: true,
         last: true,
         numberOfElements: mockStickerSets.length
+      };
+    }
+  }
+
+  // Поиск стикерсетов по названию
+  async searchStickerSets(query: string, page: number = 0, size: number = 20): Promise<StickerSetListResponse> {
+    try {
+      const response = await this.client.get<StickerSetListResponse>('/stickersets/search', {
+        params: { name: query, page, size }
+      });
+      return response.data;
+    } catch (error) {
+      console.warn('⚠️ API поиска недоступен, используем локальную фильтрацию мок данных');
+      // Фильтруем мок данные локально
+      const filteredMockData = mockStickerSets.filter(stickerSet =>
+        stickerSet.title.toLowerCase().includes(query.toLowerCase()) ||
+        stickerSet.name.toLowerCase().includes(query.toLowerCase())
+      );
+      
+      return {
+        content: filteredMockData,
+        totalElements: filteredMockData.length,
+        totalPages: 1,
+        size: filteredMockData.length,
+        number: 0,
+        first: true,
+        last: true,
+        numberOfElements: filteredMockData.length
       };
     }
   }

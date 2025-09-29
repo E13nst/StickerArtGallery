@@ -5,7 +5,9 @@ import {
   Box, 
   Accordion, 
   AccordionSummary, 
-  AccordionDetails
+  AccordionDetails,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { TelegramUser } from '@/types/telegram';
@@ -27,7 +29,10 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
   initDataValid,
   initDataError
 }) => {
-  const [expanded, setExpanded] = useState(false);
+  const theme = useTheme();
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down('md')); // < 700px свернута
+  
+  const [expanded, setExpanded] = useState(!isSmallScreen); // Развернута по умолчанию на больших экранах
 
   const now = new Date();
   const authDate = initData ? new URLSearchParams(initData).get('auth_date') : null;

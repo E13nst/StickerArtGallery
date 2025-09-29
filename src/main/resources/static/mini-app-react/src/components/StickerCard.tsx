@@ -6,7 +6,8 @@ import {
   Box, 
   Button, 
   Chip,
-  Grid 
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import { StickerSetResponse } from '@/types/sticker';
 import { StickerPreview } from './StickerPreview';
@@ -26,6 +27,9 @@ export const StickerCard: React.FC<StickerCardProps> = ({
   onDelete,
   isInTelegramApp = false
 }) => {
+  const theme = useTheme();
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
+  
   const getStickerCount = () => {
     return stickerSet.telegramStickerSetInfo?.stickers?.length || 0;
   };
@@ -50,111 +54,188 @@ export const StickerCard: React.FC<StickerCardProps> = ({
   const previewStickers = getPreviewStickers();
   const stickerCount = getStickerCount();
 
+  // Адаптивные настройки
+  const cardPadding = isSmallScreen ? 1 : 1.5; // 8px на маленьких, 12px на больших
+  const buttonHeight = isSmallScreen ? 32 : 36;
+  const titleVariant = isSmallScreen ? 'subtitle1' : 'h6';
+
   return (
-    <Card sx={{ mb: 2 }}>
-      <CardContent>
+    <Card 
+      sx={{ 
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        borderRadius: 3, // 12px скругление
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        transition: 'box-shadow 0.2s ease',
+        '&:hover': {
+          boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+        }
+      }}
+    >
+      <CardContent 
+        sx={{ 
+          p: cardPadding,
+          '&:last-child': { pb: cardPadding },
+          display: 'flex',
+          flexDirection: 'column',
+          flexGrow: 1
+        }}
+      >
         {/* Заголовок */}
         <Box 
           sx={{ 
             display: 'flex', 
             justifyContent: 'space-between', 
-            alignItems: 'center',
-            mb: 2 
+            alignItems: 'flex-start',
+            mb: isSmallScreen ? 1 : 1.5,
+            minHeight: isSmallScreen ? 40 : 48
           }}
         >
-          <Typography variant="h6" component="h3">
+          <Typography 
+            variant={titleVariant} 
+            component="h3"
+            sx={{ 
+              fontSize: isSmallScreen ? '0.9rem' : '1.25rem',
+              lineHeight: 1.2,
+              flexGrow: 1,
+              mr: 1
+            }}
+          >
             {stickerSet.title}
           </Typography>
           <Chip 
-            label={`${stickerCount} стикеров`}
+            label={`${stickerCount}`}
             size="small"
             variant="outlined"
+            sx={{ 
+              fontSize: isSmallScreen ? '0.7rem' : '0.75rem',
+              height: isSmallScreen ? 20 : 24
+            }}
           />
         </Box>
 
-        {/* Превью стикеров */}
-        <Grid container spacing={1} sx={{ mb: 2 }}>
+        {/* Превью стикеров - CSS Grid 2x2 */}
+        <Box 
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: 0.5, // 4px gap
+            mb: isSmallScreen ? 1 : 1.5,
+            aspectRatio: '1 / 1'
+          }}
+        >
           {previewStickers.map((sticker) => {
-            console.log('🔍 StickerCard рендер превью:', {
-              stickerId: sticker.file_id,
-              isInTelegramApp,
-              size: 'auto'
-            });
             return (
-              <Grid item xs={6} key={sticker.file_id}>
+              <Box
+                key={sticker.file_id}
+                sx={{
+                  aspectRatio: '1 / 1',
+                  overflow: 'hidden',
+                  borderRadius: 1
+                }}
+              >
                 <StickerPreview 
                   sticker={sticker} 
-                  size="auto"
+                  size="responsive"
                   showBadge={false}
                   isInTelegramApp={isInTelegramApp}
                 />
-              </Grid>
+              </Box>
             );
           })}
           {/* Заполняем пустые ячейки если стикеров меньше 4 */}
           {Array.from({ length: Math.max(0, 4 - previewStickers.length) }).map((_, index) => (
-            <Grid item xs={6} key={`empty-${index}`}>
-              <Box
-                sx={{
-                  width: 60,
-                  height: 60,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: 'background.paper',
-                  borderRadius: 2,
-                  border: '1px dashed',
-                  borderColor: 'divider'
-                }}
+            <Box
+              key={`empty-${index}`}
+              sx={{
+                aspectRatio: '1 / 1',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'background.paper',
+                borderRadius: 1,
+                border: '1px dashed',
+                borderColor: 'divider'
+              }}
+            >
+              <Typography 
+                color="text.secondary"
+                sx={{ fontSize: isSmallScreen ? '1rem' : '1.2rem' }}
               >
-                <Typography color="text.secondary">➕</Typography>
-              </Box>
-            </Grid>
+                ➕
+              </Typography>
+            </Box>
           ))}
-        </Grid>
+        </Box>
 
         {/* Информация о дате создания */}
         <Typography 
-          variant="body2" 
+          variant="caption" 
           color="text.secondary" 
-          sx={{ mb: 2 }}
-        >
-          Создан: {new Date(stickerSet.createdAt).toLocaleDateString()}
-        </Typography>
-
-        {/* Действия */}
-        <Box 
           sx={{ 
-            display: 'flex', 
-            gap: 1, 
-            flexWrap: 'wrap' 
+            mb: isSmallScreen ? 1 : 1.5,
+            fontSize: isSmallScreen ? '0.7rem' : '0.75rem'
           }}
         >
-          <Button
-            variant="contained"
-            size="small"
-            onClick={handleView}
-            sx={{ flex: 1, minWidth: 80 }}
+          {new Date(stickerSet.createdAt).toLocaleDateString()}
+        </Typography>
+
+        {/* Действия - растягиваем до конца карточки */}
+        <Box sx={{ mt: 'auto' }}>
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              gap: 0.5,
+              justifyContent: 'center',
+              width: '90%',
+              mx: 'auto'
+            }}
           >
-            📱 Просмотр
-          </Button>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={handleShare}
-            sx={{ flex: 1, minWidth: 80 }}
-          >
-            📤 Поделиться
-          </Button>
-          <Button
-            variant="outlined"
-            color="error"
-            size="small"
-            onClick={handleDelete}
-            sx={{ flex: 1, minWidth: 80 }}
-          >
-            🗑️ Удалить
-          </Button>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={handleView}
+              sx={{ 
+                flex: 1,
+                height: buttonHeight,
+                fontSize: isSmallScreen ? '0.7rem' : '0.75rem',
+                minWidth: 0,
+                px: 0.5
+              }}
+            >
+              {isSmallScreen ? '👁️' : '📱 Просмотр'}
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleShare}
+              sx={{ 
+                flex: 1,
+                height: buttonHeight,
+                fontSize: isSmallScreen ? '0.7rem' : '0.75rem',
+                minWidth: 0,
+                px: 0.5
+              }}
+            >
+              {isSmallScreen ? '📤' : '📤 Поделиться'}
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              onClick={handleDelete}
+              sx={{ 
+                flex: 1,
+                height: buttonHeight,
+                fontSize: isSmallScreen ? '0.7rem' : '0.75rem',
+                minWidth: 0,
+                px: 0.5
+              }}
+            >
+              {isSmallScreen ? '🗑️' : '🗑️ Удалить'}
+            </Button>
+          </Box>
         </Box>
       </CardContent>
     </Card>
