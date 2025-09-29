@@ -5,7 +5,7 @@ import path from 'path'
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
-  base: '/mini-app-react/',
+  base: mode === 'development' ? '/' : '/mini-app-react/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
