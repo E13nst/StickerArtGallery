@@ -20,15 +20,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
 import java.util.Optional;
@@ -83,7 +74,8 @@ public class UserController {
     public ResponseEntity<List<UserDto>> getAllUsers() {
         try {
             LOGGER.info("📋 Получение всех пользователей");
-            List<UserDto> users = userService.findAllAsDto();
+            List<UserEntity> userEntities = userService.findAll();
+            List<UserDto> users = userService.enrichUsersSafely(userEntities);
             LOGGER.info("✅ Найдено {} пользователей", users.size());
             return ResponseEntity.ok(users);
         } catch (Exception e) {
@@ -125,7 +117,7 @@ public class UserController {
             Optional<UserEntity> userOpt = userService.findById(id);
             
             if (userOpt.isPresent()) {
-                UserDto userDto = UserDto.fromEntity(userOpt.get());
+                UserDto userDto = userService.enrichSingleUserSafely(userOpt.get());
                 LOGGER.info("✅ Пользователь найден: {}", userDto.getUsername());
                 return ResponseEntity.ok(userDto);
             } else {
@@ -159,7 +151,7 @@ public class UserController {
             Optional<UserEntity> userOpt = userService.findByTelegramId(telegramId);
             
             if (userOpt.isPresent()) {
-                UserDto userDto = UserDto.fromEntity(userOpt.get());
+                UserDto userDto = userService.enrichSingleUserSafely(userOpt.get());
                 LOGGER.info("✅ Пользователь найден: {}", userDto.getUsername());
                 return ResponseEntity.ok(userDto);
             } else {
@@ -193,7 +185,7 @@ public class UserController {
             Optional<UserEntity> userOpt = userService.findByUsername(username);
             
             if (userOpt.isPresent()) {
-                UserDto userDto = UserDto.fromEntity(userOpt.get());
+                UserDto userDto = userService.enrichSingleUserSafely(userOpt.get());
                 LOGGER.info("✅ Пользователь найден: {}", userDto.getUsername());
                 return ResponseEntity.ok(userDto);
             } else {
@@ -264,7 +256,7 @@ public class UserController {
             
             UserEntity userEntity = userDto.toEntity();
             UserEntity savedUser = userService.save(userEntity);
-            UserDto savedUserDto = UserDto.fromEntity(savedUser);
+            UserDto savedUserDto = userService.enrichSingleUserSafely(savedUser);
             
             LOGGER.info("✅ Пользователь создан: {} (ID: {})", savedUserDto.getUsername(), savedUserDto.getId());
             return ResponseEntity.status(201).body(savedUserDto);
@@ -297,7 +289,7 @@ public class UserController {
         try {
             LOGGER.info("💰 Обновление баланса пользователя {}: {}", id, newBalance);
             UserEntity updatedUser = userService.updateArtBalance(id, newBalance);
-            UserDto userDto = UserDto.fromEntity(updatedUser);
+            UserDto userDto = userService.enrichSingleUserSafely(updatedUser);
             LOGGER.info("✅ Баланс обновлен для пользователя: {}", userDto.getUsername());
             return ResponseEntity.ok(userDto);
         } catch (IllegalArgumentException e) {
@@ -332,7 +324,7 @@ public class UserController {
         try {
             LOGGER.info("💰 Добавление к балансу пользователя {}: {}", id, amount);
             UserEntity updatedUser = userService.addToArtBalance(id, amount);
-            UserDto userDto = UserDto.fromEntity(updatedUser);
+            UserDto userDto = userService.enrichSingleUserSafely(updatedUser);
             LOGGER.info("✅ Баланс обновлен для пользователя: {}", userDto.getUsername());
             return ResponseEntity.ok(userDto);
         } catch (IllegalArgumentException e) {

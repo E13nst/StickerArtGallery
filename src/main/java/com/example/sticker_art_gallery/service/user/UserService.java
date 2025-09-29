@@ -3,6 +3,7 @@ package com.example.sticker_art_gallery.service.user;
 import com.example.sticker_art_gallery.dto.UserDto;
 import com.example.sticker_art_gallery.model.user.UserEntity;
 import com.example.sticker_art_gallery.model.user.UserRepository;
+import com.example.sticker_art_gallery.service.telegram.TelegramBotApiService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,10 +24,12 @@ public class UserService {
     private static final Logger LOGGER = LoggerFactory.getLogger(UserService.class);
     
     private final UserRepository userRepository;
+    private final TelegramBotApiService telegramBotApiService;
     
     @Autowired
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, TelegramBotApiService telegramBotApiService) {
         this.userRepository = userRepository;
+        this.telegramBotApiService = telegramBotApiService;
     }
     
     /**
@@ -174,5 +177,35 @@ public class UserService {
             return userRepository.save(user);
         }
         throw new IllegalArgumentException("Пользователь с ID " + userId + " не найден");
+    }
+    
+    /**
+     * Обогащает одного пользователя данными из Bot API (безопасно)
+     * Если данные Bot API недоступны, возвращает DTO без обогащения, но не выбрасывает исключение
+     */
+    public UserDto enrichSingleUserSafely(UserEntity user) {
+        UserDto dto = UserDto.fromEntity(user);
+        
+        try {
+            String botApiData = telegramBotApiService.getUserInfo(user.getId());
+            dto.setTelegramUserInfo(botApiData);
+            LOGGER.debug("✅ Пользователь '{}' обогащен данными Bot API", user.getId());
+        } catch (Exception e) {
+            LOGGER.warn("⚠️ Не удалось получить данные Bot API для пользователя '{}': {} - пропускаем обогащение", 
+                    user.getId(), e.getMessage());
+            // Оставляем telegramUserInfo = null, продолжаем обработку
+            dto.setTelegramUserInfo(null);
+        }
+        
+        return dto;
+    }
+    
+    /**
+     * Обогащает список пользователей данными из Bot API (безопасно)
+     */
+    public List<UserDto> enrichUsersSafely(List<UserEntity> users) {
+        return users.stream()
+                .map(this::enrichSingleUserSafely)
+                .collect(Collectors.toList());
     }
 }

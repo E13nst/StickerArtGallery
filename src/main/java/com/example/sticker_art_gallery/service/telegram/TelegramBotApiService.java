@@ -35,7 +35,7 @@ public class TelegramBotApiService {
     
     /**
      * Получает информацию о стикерсете через Telegram Bot API
-     * Результат кэшируется в Redis на 15 минут
+     * Результат кэшируется в Caffeine на 15 минут
      * 
      * @param stickerSetName имя стикерсета
      * @return JSON строка с информацией о стикерсете или null если ошибка
@@ -108,5 +108,83 @@ public class TelegramBotApiService {
     @CacheEvict(value = "stickerSetInfo", allEntries = true)
     public void evictAllStickerSetCache() {
         LOGGER.info("🗑️ Очистка всего кэша стикерсетов");
+    }
+    
+    /**
+     * Получает информацию о пользователе через Telegram Bot API
+     * Результат кэшируется в Caffeine на 15 минут
+     * 
+     * @param userId ID пользователя в Telegram
+     * @return JSON строка с информацией о пользователе или null если ошибка
+     */
+    @Cacheable(value = "userInfo", key = "#userId", unless = "#result == null")
+    public String getUserInfo(Long userId) {
+        try {
+            LOGGER.debug("🔍 Получение информации о пользователе '{}' (запрос к Telegram API)", userId);
+            
+            // Получаем токен бота из конфигурации
+            String botToken = appConfig.getTelegram().getBotToken();
+            if (botToken == null || botToken.trim().isEmpty()) {
+                LOGGER.warn("⚠️ Токен бота не настроен в конфигурации");
+                throw new IllegalArgumentException("Токен бота не настроен");
+            }
+            
+            // Формируем URL для запроса getChatMember
+            // Используем getChatMember с chat_id = user_id для получения информации о пользователе
+            String url = TELEGRAM_API_URL + botToken + "/getChatMember?chat_id=" + userId + "&user_id=" + userId;
+            
+            LOGGER.debug("🌐 Отправляем запрос к Telegram Bot API: {}", url.replace(botToken, "***"));
+            
+            // Выполняем запрос
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                // Парсим ответ и проверяем успешность
+                JsonNode responseJson = objectMapper.readTree(response.getBody());
+                
+                if (responseJson.has("ok") && responseJson.get("ok").asBoolean()) {
+                    // Возвращаем только данные result (без обертки ok, result)
+                    JsonNode resultNode = responseJson.get("result");
+                    String result = objectMapper.writeValueAsString(resultNode);
+                    
+                    LOGGER.debug("✅ Информация о пользователе '{}' успешно получена", userId);
+                    return result;
+                } else {
+                    String errorDescription = responseJson.has("description") 
+                        ? responseJson.get("description").asText() 
+                        : "Unknown error";
+                    LOGGER.warn("❌ Ошибка от Telegram Bot API для пользователя '{}': {}", userId, errorDescription);
+                    throw new RuntimeException("Telegram API error: " + errorDescription);
+                }
+            } else {
+                LOGGER.warn("❌ Неуспешный HTTP ответ: {}", response.getStatusCode());
+                throw new RuntimeException("HTTP error: " + response.getStatusCode());
+            }
+            
+        } catch (RestClientException e) {
+            LOGGER.error("❌ Ошибка сетевого запроса к Telegram Bot API для пользователя '{}': {}", userId, e.getMessage());
+            throw new RuntimeException("Network error while fetching user info", e);
+        } catch (Exception e) {
+            LOGGER.error("❌ Неожиданная ошибка при получении информации о пользователе '{}': {}", userId, e.getMessage(), e);
+            throw new RuntimeException("Unexpected error while fetching user info", e);
+        }
+    }
+    
+    /**
+     * Очищает кэш для конкретного пользователя
+     * 
+     * @param userId ID пользователя в Telegram
+     */
+    @CacheEvict(value = "userInfo", key = "#userId")
+    public void evictUserCache(Long userId) {
+        LOGGER.info("🗑️ Очистка кэша для пользователя '{}'", userId);
+    }
+    
+    /**
+     * Очищает весь кэш пользователей
+     */
+    @CacheEvict(value = "userInfo", allEntries = true)
+    public void evictAllUserCache() {
+        LOGGER.info("🗑️ Очистка всего кэша пользователей");
     }
 }

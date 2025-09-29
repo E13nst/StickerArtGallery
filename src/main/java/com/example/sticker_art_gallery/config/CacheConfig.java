@@ -31,7 +31,7 @@ public class CacheConfig {
         );
         
         // Регистрируем кэши
-        cacheManager.setCacheNames(java.util.List.of("stickerSetInfo"));
+        cacheManager.setCacheNames(java.util.List.of("stickerSetInfo", "userInfo"));
         
         return cacheManager;
     }

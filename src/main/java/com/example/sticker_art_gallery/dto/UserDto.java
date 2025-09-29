@@ -34,6 +34,9 @@ public class UserDto {
     @Pattern(regexp = "^(USER|ADMIN)$", message = "Роль должна быть USER или ADMIN")
     private String role;
     
+    // Полная информация о пользователе из Telegram Bot API (JSON). Может быть null, если данные недоступны.
+    private String telegramUserInfo;
+    
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
     
@@ -41,7 +44,7 @@ public class UserDto {
     public UserDto() {}
     
     public UserDto(Long id, String username, String firstName, String lastName, 
-                   String avatarUrl, Long artBalance, String role, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+                   String avatarUrl, Long artBalance, String role, String telegramUserInfo, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         this.id = id;
         this.username = username;
         this.firstName = firstName;
@@ -49,6 +52,7 @@ public class UserDto {
         this.avatarUrl = avatarUrl;
         this.artBalance = artBalance;
         this.role = role;
+        this.telegramUserInfo = telegramUserInfo;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -69,6 +73,7 @@ public class UserDto {
                 entity.getAvatarUrl(),
                 entity.getArtBalance(),
                 entity.getRole().name(),
+                null, // telegramUserInfo будет установлен отдельно
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
         );
@@ -124,6 +129,9 @@ public class UserDto {
     
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
+    
+    public String getTelegramUserInfo() { return telegramUserInfo; }
+    public void setTelegramUserInfo(String telegramUserInfo) { this.telegramUserInfo = telegramUserInfo; }
     
     @Override
     public String toString() {
