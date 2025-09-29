@@ -91,14 +91,6 @@ export const TelegramAuthModal: React.FC<TelegramAuthModalProps> = ({
           </Alert>
         )}
 
-        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
-          <Button
-            variant="outlined"
-            onClick={onSkipAuth}
-          >
-            Продолжить без авторизации
-          </Button>
-        </Box>
 
         <Divider sx={{ my: 2 }}>
           <Typography variant="caption" color="text.secondary">
@@ -145,6 +137,12 @@ export const TelegramAuthModal: React.FC<TelegramAuthModalProps> = ({
             disabled={!initData.trim()}
           >
             Войти с initData
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={onSkipAuth}
+          >
+            Продолжить без авторизации
           </Button>
         </Box>
       </Box>
