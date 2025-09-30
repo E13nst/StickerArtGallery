@@ -44,9 +44,18 @@ export const StickerSetList: React.FC<StickerSetListProps> = ({
   return (
     <Box sx={{ 
       pb: isInTelegramApp ? 2 : 10, // Добавляем отступ для Bottom Navigation
-      px: isInTelegramApp ? 0 : 2    // Боковые отступы на desktop
+      px: { xs: 0, md: 2 }, // Убираем горизонтальные отступы на мобильных, добавляем на desktop
+      py: { xs: 2, md: 3 }, // Адаптивные вертикальные отступы
+      // Desktop стили для полноценного web-интерфейса
+      ...(isSmallScreen ? {} : {
+        backgroundColor: 'background.default',
+        borderRadius: 2,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+        border: '1px solid',
+        borderColor: 'divider'
+      })
     }}>
-      <Grid container spacing={spacing}>
+      <Grid container spacing={{ xs: 2, md: 3 }}> {/* Адаптивные отступы между карточками */}
         {visibleStickerSets.map((stickerSet) => {
           console.log('🔍 StickerSetList рендер карточки:', {
             stickerSetId: stickerSet.id,
@@ -57,17 +66,16 @@ export const StickerSetList: React.FC<StickerSetListProps> = ({
           return (
             <Grid 
               item 
-              xs={6}     // <600px: 2 карточки (50% каждая)
-              sm={4}     // 600px+: 3 карточки (33% каждая)
-              md={3}     // 900px+: 4 карточки (25% каждая)
-              lg={2.4}   // 1200px+: 5 карточек (20% каждая)
-              xl={2.4}   // 1536px+: 5 карточек (20% каждая)
+              xs={6}     // xs: 2 карточки (50% каждая) - минимум 2 в ряд
+              sm={4}     // sm: 3 карточки (33% каждая)
+              md={3}     // md: 4 карточки (25% каждая)
+              lg={2.4}   // lg: 5 карточек (20% каждая)
+              xl={2.4}   // xl: 5 карточек (20% каждая)
               key={stickerSet.id}
               sx={{
-                minWidth: 240,  // Минимальная ширина карточки для desktop
-                maxWidth: 280,  // Максимальная ширина карточки
                 display: 'flex',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                minHeight: 280 // Минимальная высота для консистентности
               }}
             >
               <StickerCard

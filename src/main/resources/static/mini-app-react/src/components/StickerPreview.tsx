@@ -14,7 +14,6 @@ interface StickerPreviewProps {
 const StickerPreviewComponent: React.FC<StickerPreviewProps> = ({ 
   sticker, 
   size = 'medium',
-  showBadge = true,
   isInTelegramApp = false
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -23,9 +22,9 @@ const StickerPreviewComponent: React.FC<StickerPreviewProps> = ({
   const lottieRef = useRef<any>(null);
 
   const sizeMap = {
-    small: { width: 100, height: 100, fontSize: 20 },   // Галерея карточек: 100x100px
+    small: { width: 90, height: 90, fontSize: 20 },     // Галерея карточек: 90x90px (увеличено)
     medium: { width: 120, height: 120, fontSize: 24 },   // Планшеты: 120x120px
-    large: { width: 160, height: 160, fontSize: 28 }       // Desktop: 160x160px
+    large: { width: 160, height: 160, fontSize: 28 }      // Desktop: 160x160px
   };
 
   // Адаптивные размеры в зависимости от платформы

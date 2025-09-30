@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { GalleryPage } from '@/pages/GalleryPage';
 import { ProfilePage } from '@/pages/ProfilePage';
+import { UserProfilePage } from '@/pages/UserProfilePage';
 
 const App: React.FC = () => {
   return (
@@ -9,6 +10,7 @@ const App: React.FC = () => {
       <Routes>
         <Route path="/" element={<GalleryPage />} />
         <Route path="/profile/:userId" element={<ProfilePage />} />
+        <Route path="/user/:id" element={<UserProfilePage />} />
         {/* Fallback route */}
         <Route path="*" element={<GalleryPage />} />
       </Routes>

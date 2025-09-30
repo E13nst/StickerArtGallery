@@ -25,9 +25,7 @@ export const GalleryPage: React.FC = () => {
     isLoading,
     isAuthLoading,
     stickerSets,
-    authStatus,
     error,
-    authError,
     setLoading,
     setAuthLoading,
     setStickerSets,
@@ -309,10 +307,11 @@ export const GalleryPage: React.FC = () => {
       />
 
       <Container 
-        maxWidth={isInTelegramApp ? "sm" : "xl"} 
+        maxWidth="xl" 
         sx={{ 
-          py: isInTelegramApp ? 2 : 4, // Больше отступов на desktop
-          px: isInTelegramApp ? 2 : 4  // Боковые отступы на desktop
+          py: { xs: 2, md: 4 }, // Увеличиваем вертикальные отступы на desktop
+          px: { xs: 2, md: 4 }, // Увеличиваем горизонтальные отступы на desktop
+          pb: { xs: 8, md: 10 } // Минимальный padding снизу для навигации
         }}
       >
         {viewMode === 'list' ? (

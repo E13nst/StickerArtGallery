@@ -31,7 +31,6 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   title = "🎨 Галерея стикеров",
   onMenuClick,
-  onOptionsClick,
   showMenu = true,
   showOptions = true,
   initData,
@@ -40,7 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [debugDialogOpen, setDebugDialogOpen] = useState(false);
 
-  const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
+  const handleOptionsClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
 
@@ -105,7 +104,7 @@ export const Header: React.FC<HeaderProps> = ({
             edge="end"
             color="inherit"
             aria-label="options"
-            onClick={handleMenuClick}
+            onClick={handleOptionsClick}
           >
             <MoreVertIcon />
           </IconButton>

@@ -28,13 +28,13 @@ export const StickerGrid: React.FC<StickerGridProps> = ({
     );
   }
 
-  // Адаптивная сетка стикеров
+  // Адаптивная сетка стикеров для детальной страницы
   const getGridColumns = () => {
     return { 
-      xs: 6,   // <600px: 2 в ряд
-      sm: 4,   // 600px+: 3 в ряд  
-      md: 3,   // 900px+: 4 в ряд
-      lg: 2    // 1200px+: 6 в ряд
+      xs: 6,   // xs: 2 в ряд
+      sm: 4,   // sm: 3 в ряд  
+      md: 3,   // md: 4 в ряд
+      lg: 2    // lg+: 6 в ряд
     };
   };
 

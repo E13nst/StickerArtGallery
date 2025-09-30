@@ -45,42 +45,40 @@ const StickerCardComponent: React.FC<StickerCardProps> = ({
   const stickerCount = getStickerCount();
 
   // Фиксированные настройки для одинакового отображения на всех экранах
-  const cardPadding = 1.5; // Фиксированные 12px отступы
   const titleVariant = 'h6'; // Фиксированный размер заголовка
   
-  // Размеры стикеров для галереи карточек
-  const previewSize = 'small'; // Всегда 100x100px в галерее карточек
+  // Размеры стикеров для галереи карточек - адаптивные
+  const previewSize = isSmallScreen ? 'small' : 'medium'; // Адаптивные размеры
 
   return (
     <Card 
       onClick={handleCardClick}
       sx={{ 
         height: '100%',
-        minHeight: 220,
+        minHeight: 280, // Увеличиваем минимальную высоту
         width: '100%',
-        maxWidth: 280,
-        minWidth: 180,
+        maxWidth: { xs: 280, md: 320 }, // Больше на desktop
+        minWidth: 200, // Увеличиваем минимальную ширину
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'space-between', // Равномерное распределение контента
         borderRadius: 3,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        transition: 'all 0.2s ease',
+        boxShadow: { xs: 1, md: 2 }, // Адаптивные тени
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         cursor: 'pointer',
         '&:hover': {
-          boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-          transform: 'translateY(-2px)'
+          boxShadow: { xs: 2, md: 4 },
+          transform: { xs: 'translateY(-1px)', md: 'scale(1.02)' }, // Разные hover эффекты
+          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
         }
       }}
     >
       <CardContent 
         sx={{ 
-          p: cardPadding,
-          '&:last-child': { pb: cardPadding },
+          p: { xs: 1.5, md: 2 }, // Адаптивные отступы
+          '&:last-child': { pb: { xs: 1.5, md: 2 } },
           display: 'flex',
           flexDirection: 'column',
           flexGrow: 1,
-          justifyContent: 'space-between', // Равномерное распределение
           height: '100%'
         }}
       >
@@ -103,7 +101,7 @@ const StickerCardComponent: React.FC<StickerCardProps> = ({
                 lineHeight: 1.2,
                 flexGrow: 1,
                 mr: 1,
-                fontWeight: 600 // font-weight: 600
+                fontWeight: 700 // Жирное название
               }}
             >
               {stickerSet.title}
@@ -115,22 +113,25 @@ const StickerCardComponent: React.FC<StickerCardProps> = ({
               sx={{ 
                 fontSize: '0.8rem',
                 height: 24,
-                fontWeight: 'bold'
+                fontWeight: 600, // Четкий счетчик
+                color: 'primary.main',
+                borderColor: 'primary.main'
               }}
             />
           </Box>
         </Box>
 
-        {/* Средняя секция: Превью стикеров */}
+        {/* Средняя секция: Превью стикеров 2x2 */}
         <Box 
           sx={{
             display: 'grid',
             gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: 1, // 8px между стикерами
-            aspectRatio: '1 / 1',
-            minHeight: 180,
-            flexGrow: 1, // Занимает доступное пространство
-            alignSelf: 'center' // Центрирование
+            gap: { xs: 1, md: 1.5 }, // Адаптивные отступы между стикерами
+            aspectRatio: '1 / 1', // Квадратная сетка
+            minHeight: { xs: 180, md: 200 }, // Больше на desktop
+            flexGrow: 1,
+            alignSelf: 'center',
+            p: { xs: 0.5, md: 1 } // Внутренние отступы
           }}
         >
           {previewStickers.map((sticker, index) => {
@@ -138,9 +139,17 @@ const StickerCardComponent: React.FC<StickerCardProps> = ({
               <Box
                 key={sticker.file_id}
                 sx={{
-                  aspectRatio: '1 / 1',
+                  aspectRatio: '1 / 1', // Квадратные ячейки
                   overflow: 'hidden',
-                  borderRadius: 1
+                  borderRadius: 1.5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: 'background.paper',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  minHeight: { xs: 80, md: 100 }, // Адаптивные размеры ячеек
+                  minWidth: { xs: 80, md: 100 }
                 }}
               >
                 <StickerPreview 
@@ -178,16 +187,21 @@ const StickerCardComponent: React.FC<StickerCardProps> = ({
         </Box>
 
         {/* Нижняя секция: Дата создания (прижата к низу) */}
-        <Box sx={{ mt: 'auto', pt: 1 }}>
+        <Box sx={{ 
+          mt: 'auto', 
+          pt: { xs: 1, md: 1.5 },
+          alignSelf: 'flex-end',
+          width: '100%'
+        }}>
           <Typography 
             variant="caption" 
             color="text.secondary" 
             sx={{ 
-              fontSize: '0.8rem',
-              color: 'gray',
-              fontWeight: 'medium',
+              fontSize: { xs: '0.7rem', md: '0.75rem' },
+              fontWeight: 400,
               display: 'block',
-              textAlign: 'center'
+              textAlign: 'center',
+              opacity: 0.8
             }}
           >
             {new Date(stickerSet.createdAt).toLocaleDateString()}

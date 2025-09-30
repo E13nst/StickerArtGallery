@@ -188,6 +188,7 @@ class ApiClient {
     }
   }
 
+
   // Получение стикерсетов пользователя по userId
   async getUserStickerSets(userId: number, page: number = 0, size: number = 20): Promise<StickerSetListResponse> {
     try {

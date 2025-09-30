@@ -2,8 +2,7 @@ import React from 'react';
 import { 
   Box, 
   Tabs, 
-  Tab, 
-  Typography,
+  Tab,
   useTheme,
   useMediaQuery
 } from '@mui/material';
