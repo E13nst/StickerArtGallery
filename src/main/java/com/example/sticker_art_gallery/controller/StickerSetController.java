@@ -27,9 +27,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
 @RestController
 @RequestMapping("/api/stickersets")
 @CrossOrigin(origins = "*") // Разрешаем CORS для фронтенда
@@ -333,7 +330,7 @@ public class StickerSetController {
     @PutMapping("/{id}")
     @Operation(
         summary = "Обновить стикерсет",
-        description = "Обновляет существующий стикерсет. Можно изменить title и name. ID и userId не изменяются."
+        description = "Обновляет существующий стикерсет. Администратор может обновлять любые стикерсеты, обычный пользователь - только свои. Можно изменить title и name. ID и userId не изменяются."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Стикерсет успешно обновлен",
@@ -349,6 +346,7 @@ public class StickerSetController {
                     """))),
         @ApiResponse(responseCode = "400", description = "Некорректные данные - ошибки валидации"),
         @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен - можно обновлять только свои стикерсеты"),
         @ApiResponse(responseCode = "404", description = "Стикерсет с указанным ID не найден"),
         @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
     })
@@ -364,6 +362,26 @@ public class StickerSetController {
             if (existingStickerSet == null) {
                 LOGGER.warn("⚠️ Стикерсет с ID {} не найден для обновления", id);
                 return ResponseEntity.notFound().build();
+            }
+            
+            // Проверяем права доступа
+            org.springframework.security.core.Authentication authentication = 
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            
+            if (authentication != null && authentication.getPrincipal() instanceof com.example.sticker_art_gallery.model.user.UserEntity) {
+                com.example.sticker_art_gallery.model.user.UserEntity currentUser = 
+                    (com.example.sticker_art_gallery.model.user.UserEntity) authentication.getPrincipal();
+                
+                // Проверяем: админ или владелец стикерсета
+                boolean isAdmin = currentUser.getRole() == com.example.sticker_art_gallery.model.user.UserEntity.UserRole.ADMIN;
+                boolean isOwner = existingStickerSet.getUserId().equals(currentUser.getId());
+                
+                if (!isAdmin && !isOwner) {
+                    LOGGER.warn("⚠️ Пользователь {} попытался обновить чужой стикерсет {}", currentUser.getId(), id);
+                    return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
+                }
+                
+                LOGGER.debug("✅ Проверка прав на обновление пройдена: isAdmin={}, isOwner={}", isAdmin, isOwner);
             }
             
             // Обновляем поля
@@ -391,12 +409,13 @@ public class StickerSetController {
     @DeleteMapping("/{id}")
     @Operation(
         summary = "Удалить стикерсет",
-        description = "Удаляет стикерсет по его ID. Операция необратима."
+        description = "Удаляет стикерсет по его ID. Администратор может удалять любые стикерсеты, обычный пользователь - только свои."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "204", description = "Стикерсет успешно удален"),
         @ApiResponse(responseCode = "400", description = "Некорректный ID (должен быть положительным числом)"),
         @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен - можно удалять только свои стикерсеты"),
         @ApiResponse(responseCode = "404", description = "Стикерсет с указанным ID не найден"),
         @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
     })
@@ -410,6 +429,26 @@ public class StickerSetController {
             if (existingStickerSet == null) {
                 LOGGER.warn("⚠️ Стикерсет с ID {} не найден для удаления", id);
                 return ResponseEntity.notFound().build();
+            }
+            
+            // Проверяем права доступа
+            org.springframework.security.core.Authentication authentication = 
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            
+            if (authentication != null && authentication.getPrincipal() instanceof com.example.sticker_art_gallery.model.user.UserEntity) {
+                com.example.sticker_art_gallery.model.user.UserEntity currentUser = 
+                    (com.example.sticker_art_gallery.model.user.UserEntity) authentication.getPrincipal();
+                
+                // Проверяем: админ или владелец стикерсета
+                boolean isAdmin = currentUser.getRole() == com.example.sticker_art_gallery.model.user.UserEntity.UserRole.ADMIN;
+                boolean isOwner = existingStickerSet.getUserId().equals(currentUser.getId());
+                
+                if (!isAdmin && !isOwner) {
+                    LOGGER.warn("⚠️ Пользователь {} попытался удалить чужой стикерсет {}", currentUser.getId(), id);
+                    return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
+                }
+                
+                LOGGER.debug("✅ Проверка прав пройдена: isAdmin={}, isOwner={}", isAdmin, isOwner);
             }
             
             stickerSetService.deleteById(id);
