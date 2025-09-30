@@ -3,19 +3,34 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
-  plugins: [react()],
-  base: mode === 'development' ? '/' : '/mini-app-react/',
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
+export default defineConfig(({ mode }) => {
+  const isDev = mode === 'development';
+  
+  return {
+    plugins: [react()],
+    base: isDev ? '/' : '/mini-app-react/',
+    
+    // Use index.dev.html for development, index.html for production
+    ...(isDev && {
+      root: '.',
+      publicDir: 'public',
+    }),
+    
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
     },
-  },
-  build: {
-    outDir: 'dist',
-    assetsDir: 'assets',
-    sourcemap: true
-  },
+    
+    build: {
+      outDir: 'dist',
+      assetsDir: 'assets',
+      sourcemap: true,
+      rollupOptions: {
+        input: isDev ? 'index.dev.html' : 'index.html'
+      }
+    },
+    
   server: {
     port: 3000,
     host: true,
@@ -58,5 +73,5 @@ export default defineConfig(({ mode }) => ({
         },
       }
     }
-  }
-}))
+  };
+});

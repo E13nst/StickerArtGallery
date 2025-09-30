@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Development HTML file (use index.html for production)
+# Uncomment if you want to track index.dev.html in git
+# index.dev.html
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
