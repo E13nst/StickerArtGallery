@@ -6,22 +6,27 @@ import {
   Box, 
   Avatar,
   Chip,
+  Button,
   useTheme,
   useMediaQuery
 } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
-import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import ShareIcon from '@mui/icons-material/Share';
+import MessageIcon from '@mui/icons-material/Message';
 import { UserInfo } from '@/store/useProfileStore';
 
 interface UserInfoCardProps {
   userInfo: UserInfo;
   isLoading?: boolean;
+  onShareProfile?: () => void;
+  onMessageUser?: () => void;
 }
 
 export const UserInfoCard: React.FC<UserInfoCardProps> = ({
   userInfo,
-  isLoading = false
+  isLoading = false,
+  onShareProfile,
+  onMessageUser
 }) => {
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
@@ -46,11 +51,6 @@ export const UserInfoCard: React.FC<UserInfoCardProps> = ({
   }
 
   const displayName = `${userInfo.firstName}${userInfo.lastName ? ` ${userInfo.lastName}` : ''}`;
-  const registrationDate = new Date(userInfo.createdAt).toLocaleDateString('ru-RU', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
 
   return (
     <Card 
@@ -134,79 +134,49 @@ export const UserInfoCard: React.FC<UserInfoCardProps> = ({
           </Box>
         </Box>
 
-        {/* Дополнительная информация */}
-        <Box sx={{ 
-          display: 'grid',
-          gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(2, 1fr)',
-          gap: 2
-        }}>
-          {/* Баланс */}
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 1,
-            p: isSmallScreen ? 1.5 : 2,
-            backgroundColor: 'rgba(36, 129, 204, 0.1)',
-            borderRadius: 2,
-            border: '1px solid rgba(36, 129, 204, 0.2)'
-          }}>
-            <AccountBalanceWalletIcon 
-              color="primary" 
-              sx={{ fontSize: isSmallScreen ? 20 : 24 }}
-            />
-            <Box>
-              <Typography 
-                variant="caption" 
-                color="text.secondary"
-                sx={{ fontSize: isSmallScreen ? '0.7rem' : '0.75rem' }}
-              >
-                Баланс
-              </Typography>
-              <Typography 
-                variant={isSmallScreen ? 'subtitle2' : 'subtitle1'} 
-                sx={{ 
-                  fontWeight: 'bold',
-                  color: 'primary.main',
-                  fontSize: isSmallScreen ? '0.9rem' : '1rem'
-                }}
-              >
-                {userInfo.artBalance} ART
-              </Typography>
-            </Box>
-          </Box>
 
-          {/* Дата регистрации */}
+
+        {/* Действия */}
+        <Box sx={{ 
+          mt: 2, 
+          pt: 2, 
+          borderTop: '1px solid',
+          borderColor: 'divider'
+        }}>
           <Box sx={{ 
             display: 'flex', 
-            alignItems: 'center', 
             gap: 1,
-            p: isSmallScreen ? 1.5 : 2,
-            backgroundColor: 'rgba(158, 158, 158, 0.1)',
-            borderRadius: 2,
-            border: '1px solid rgba(158, 158, 158, 0.2)'
+            justifyContent: 'center'
           }}>
-            <CalendarTodayIcon 
-              color="action" 
-              sx={{ fontSize: isSmallScreen ? 20 : 24 }}
-            />
-            <Box>
-              <Typography 
-                variant="caption" 
-                color="text.secondary"
-                sx={{ fontSize: isSmallScreen ? '0.7rem' : '0.75rem' }}
-              >
-                Регистрация
-              </Typography>
-              <Typography 
-                variant={isSmallScreen ? 'subtitle2' : 'subtitle1'} 
+            {onShareProfile && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<ShareIcon />}
+                onClick={onShareProfile}
                 sx={{ 
-                  fontWeight: 'bold',
-                  fontSize: isSmallScreen ? '0.8rem' : '0.9rem'
+                  flex: 1,
+                  fontSize: isSmallScreen ? '0.7rem' : '0.8rem'
                 }}
               >
-                {registrationDate}
-              </Typography>
-            </Box>
+                Поделиться
+              </Button>
+            )}
+            
+            {onMessageUser && (
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<MessageIcon />}
+                onClick={onMessageUser}
+                sx={{ 
+                  flex: 1,
+                  fontSize: isSmallScreen ? '0.7rem' : '0.8rem'
+                }}
+              >
+                Написать
+              </Button>
+            )}
           </Box>
         </Box>
 

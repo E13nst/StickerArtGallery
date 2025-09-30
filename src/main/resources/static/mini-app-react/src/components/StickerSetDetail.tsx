@@ -9,7 +9,6 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ShareIcon from '@mui/icons-material/Share';
-import DeleteIcon from '@mui/icons-material/Delete';
 import { StickerSetResponse } from '@/types/sticker';
 import { StickerGrid } from './StickerGrid';
 
@@ -17,7 +16,7 @@ interface StickerSetDetailProps {
   stickerSet: StickerSetResponse;
   onBack: () => void;
   onShare: (name: string, title: string) => void;
-  onDelete: (id: number, title: string) => void;
+  onLike?: (id: number, title: string) => void;
   isInTelegramApp?: boolean;
 }
 
@@ -25,7 +24,7 @@ export const StickerSetDetail: React.FC<StickerSetDetailProps> = ({
   stickerSet,
   onBack,
   onShare,
-  onDelete,
+  onLike,
   isInTelegramApp = false
 }) => {
   const stickerCount = stickerSet.telegramStickerSetInfo?.stickers?.length || 0;
@@ -35,8 +34,10 @@ export const StickerSetDetail: React.FC<StickerSetDetailProps> = ({
     onShare(stickerSet.name, stickerSet.title);
   };
 
-  const handleDelete = () => {
-    onDelete(stickerSet.id, stickerSet.title);
+  const handleLike = () => {
+    if (onLike) {
+      onLike(stickerSet.id, stickerSet.title);
+    }
   };
 
   return (
@@ -113,7 +114,6 @@ export const StickerSetDetail: React.FC<StickerSetDetailProps> = ({
           }}>
             <Button
               variant="contained"
-              startIcon={<ShareIcon />}
               onClick={handleShare}
               sx={{ 
                 flex: 1, 
@@ -124,26 +124,25 @@ export const StickerSetDetail: React.FC<StickerSetDetailProps> = ({
                 }
               }}
             >
-              Поделиться
+              <ShareIcon />
             </Button>
             <Button
               variant="outlined"
-              color="error"
-              startIcon={<DeleteIcon />}
-              onClick={handleDelete}
+              color="secondary"
+              onClick={handleLike}
               sx={{ 
                 flex: 1, 
                 minWidth: 140,
-                borderColor: 'error.main',
-                color: 'error.main',
+                borderColor: 'secondary.main',
+                color: 'secondary.main',
                 '&:hover': {
-                  backgroundColor: 'error.light',
-                  borderColor: 'error.dark',
-                  color: 'error.dark',
+                  backgroundColor: 'secondary.light',
+                  borderColor: 'secondary.dark',
+                  color: 'secondary.dark',
                 }
               }}
             >
-              Удалить
+              ❤️
             </Button>
           </Box>
         </CardContent>

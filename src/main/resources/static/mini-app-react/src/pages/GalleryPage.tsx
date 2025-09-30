@@ -11,8 +11,6 @@ import { StickerSetResponse } from '@/types/sticker';
 // Компоненты
 import { Header } from '@/components/Header';
 import { UserInfo } from '@/components/UserInfo';
-import { AuthStatus } from '@/components/AuthStatus';
-import { DebugPanel } from '@/components/DebugPanel';
 import { SearchBar } from '@/components/SearchBar';
 import { StickerSetList } from '@/components/StickerSetList';
 import { StickerSetDetail } from '@/components/StickerSetDetail';
@@ -36,7 +34,6 @@ export const GalleryPage: React.FC = () => {
     setAuthStatus,
     setError,
     setAuthError,
-    removeStickerSet,
   } = useStickerStore();
 
   // Локальное состояние
@@ -211,18 +208,10 @@ export const GalleryPage: React.FC = () => {
     }
   };
 
-  const handleDeleteStickerSet = async (id: number, title: string) => {
-    if (!confirm(`Вы уверены, что хотите удалить набор стикеров "${title}"?`)) {
-      return;
-    }
-
-    try {
-      await apiClient.deleteStickerSet(id);
-      removeStickerSet(id);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Ошибка удаления стикера';
-      alert(`Ошибка удаления стикера: ${errorMessage}`);
-    }
+  const handleLikeStickerSet = (id: number, title: string) => {
+    // TODO: Реализовать API для лайков
+    console.log(`Лайк стикерсета: ${title} (ID: ${id})`);
+    alert(`Лайк для "${title}" будет реализован в будущем!`);
   };
 
   const handleBackToList = () => {
@@ -315,31 +304,23 @@ export const GalleryPage: React.FC = () => {
         title="🎨 Галерея стикеров"
         onMenuClick={handleMenuClick}
         onOptionsClick={handleOptionsClick}
+        initData={initData}
+        user={user}
       />
 
-      <Container maxWidth={isInTelegramApp ? "sm" : "lg"} sx={{ py: 2 }}>
+      <Container 
+        maxWidth={isInTelegramApp ? "sm" : "xl"} 
+        sx={{ 
+          py: isInTelegramApp ? 2 : 4, // Больше отступов на desktop
+          px: isInTelegramApp ? 2 : 4  // Боковые отступы на desktop
+        }}
+      >
         {viewMode === 'list' ? (
           <>
             {/* Информация о пользователе */}
             <UserInfo user={user} isLoading={isAuthLoading} />
 
-            {/* Статус авторизации */}
-            <AuthStatus 
-              authStatus={authStatus} 
-              isLoading={isAuthLoading} 
-              error={authError} 
-            />
 
-            {/* Отладочная панель */}
-            <DebugPanel
-              user={user}
-              initData={initData}
-              manualInitData={manualInitData}
-              platform={tg?.platform}
-              version={tg?.version}
-              initDataValid={checkInitDataExpiry(initData).valid}
-              initDataError={checkInitDataExpiry(initData).reason}
-            />
 
             {/* Поиск */}
             <SearchBar
@@ -364,8 +345,6 @@ export const GalleryPage: React.FC = () => {
               <StickerSetList
                 stickerSets={filteredStickerSets}
                 onView={handleViewStickerSet}
-                onShare={handleShareStickerSet}
-                onDelete={handleDeleteStickerSet}
                 isInTelegramApp={isInTelegramApp}
               />
             )}
@@ -377,7 +356,7 @@ export const GalleryPage: React.FC = () => {
               stickerSet={selectedStickerSet}
               onBack={handleBackToList}
               onShare={handleShareStickerSet}
-              onDelete={handleDeleteStickerSet}
+              onLike={handleLikeStickerSet}
               isInTelegramApp={isInTelegramApp}
             />
           )

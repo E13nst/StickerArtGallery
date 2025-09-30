@@ -3,8 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Container, 
   Box,
-  Alert
+  Alert,
+  Button,
+  Typography
 } from '@mui/material';
+import ShareIcon from '@mui/icons-material/Share';
+import MessageIcon from '@mui/icons-material/Message';
 import { useTelegram } from '@/hooks/useTelegram';
 import { useProfileStore } from '@/store/useProfileStore';
 import { apiClient } from '@/api/client';
@@ -19,6 +23,7 @@ import { ErrorDisplay } from '@/components/ErrorDisplay';
 import { EmptyState } from '@/components/EmptyState';
 import { BottomNav } from '@/components/BottomNav';
 import { StickerSetDetail } from '@/components/StickerSetDetail';
+import { ProfileTabs, TabPanel } from '@/components/ProfileTabs';
 
 export const ProfilePage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
@@ -42,7 +47,6 @@ export const ProfilePage: React.FC = () => {
     setError,
     setUserError,
     setStickerSetsError,
-    removeUserStickerSet,
     reset
   } = useProfileStore();
 
@@ -51,6 +55,7 @@ export const ProfilePage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
   const [selectedStickerSet, setSelectedStickerSet] = useState<any>(null);
   const [activeBottomTab, setActiveBottomTab] = useState(3); // Профиль = индекс 3
+  const [activeProfileTab, setActiveProfileTab] = useState(0); // 0: стикерсеты, 1: стикеры, 2: поделиться
 
   // Валидация userId
   const userIdNumber = userId ? parseInt(userId, 10) : null;
@@ -158,18 +163,10 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
-  const handleDeleteStickerSet = async (id: number, title: string) => {
-    if (!confirm(`Вы уверены, что хотите удалить набор стикеров "${title}"?`)) {
-      return;
-    }
-
-    try {
-      await apiClient.deleteStickerSet(id);
-      removeUserStickerSet(id);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Ошибка удаления стикера';
-      alert(`Ошибка удаления стикера: ${errorMessage}`);
-    }
+  const handleLikeStickerSet = (id: number, title: string) => {
+    // TODO: Реализовать API для лайков
+    console.log(`Лайк стикерсета: ${title} (ID: ${id})`);
+    alert(`Лайк для "${title}" будет реализован в будущем!`);
   };
 
   const handleCreateSticker = () => {
@@ -177,6 +174,29 @@ export const ProfilePage: React.FC = () => {
       tg.openTelegramLink('https://t.me/StickerGalleryBot');
     } else {
       window.open('https://t.me/StickerGalleryBot', '_blank');
+    }
+  };
+
+  const handleShareProfile = () => {
+    if (tg) {
+      tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(`Профиль пользователя ${userInfo?.firstName || 'Unknown'}`)}`);
+    } else {
+      navigator.share?.({
+        title: `Профиль пользователя ${userInfo?.firstName || 'Unknown'}`,
+        url: window.location.href
+      }).catch(() => {
+        // Fallback для браузеров без поддержки Web Share API
+        navigator.clipboard.writeText(window.location.href);
+        alert('Ссылка на профиль скопирована в буфер обмена');
+      });
+    }
+  };
+
+  const handleMessageUser = () => {
+    if (tg) {
+      tg.openTelegramLink(`https://t.me/${userInfo?.username || userInfo?.telegramId}`);
+    } else {
+      window.open(`https://t.me/${userInfo?.username || userInfo?.telegramId}`, '_blank');
     }
   };
 
@@ -198,6 +218,7 @@ export const ProfilePage: React.FC = () => {
   const filteredStickerSets = userStickerSets.filter(stickerSet =>
     stickerSet.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
 
   // Обработка кнопки "Назад" в Telegram
   useEffect(() => {
@@ -266,7 +287,9 @@ export const ProfilePage: React.FC = () => {
             {userInfo && (
               <UserInfoCard 
                 userInfo={userInfo} 
-                isLoading={isUserLoading} 
+                isLoading={isUserLoading}
+                onShareProfile={handleShareProfile}
+                onMessageUser={handleMessageUser}
               />
             )}
 
@@ -277,44 +300,99 @@ export const ProfilePage: React.FC = () => {
               </Alert>
             )}
 
-            {/* Поиск */}
-            <SearchBar
-              value={searchTerm}
-              onChange={handleSearchChange}
-              placeholder="🔍 Поиск стикерсетов пользователя..."
-              disabled={isStickerSetsLoading}
+            {/* Вкладки профиля */}
+            <ProfileTabs
+              activeTab={activeProfileTab}
+              onChange={setActiveProfileTab}
+              isInTelegramApp={isInTelegramApp}
             />
 
-            {/* Контент стикерсетов */}
-            {isStickerSetsLoading ? (
-              <LoadingSpinner message="Загрузка стикерсетов..." />
-            ) : stickerSetsError ? (
-              <ErrorDisplay 
-                error={stickerSetsError} 
-                onRetry={() => userIdNumber && loadUserStickerSets(userIdNumber)} 
+            {/* Контент вкладок */}
+            <TabPanel value={activeProfileTab} index={0}>
+              {/* Поиск */}
+              <SearchBar
+                value={searchTerm}
+                onChange={handleSearchChange}
+                placeholder="🔍 Поиск стикерсетов пользователя..."
+                disabled={isStickerSetsLoading}
               />
-            ) : filteredStickerSets.length === 0 ? (
+
+              {/* Контент стикерсетов */}
+              {isStickerSetsLoading ? (
+                <LoadingSpinner message="Загрузка стикерсетов..." />
+              ) : stickerSetsError ? (
+                <ErrorDisplay 
+                  error={stickerSetsError} 
+                  onRetry={() => userIdNumber && loadUserStickerSets(userIdNumber)} 
+                />
+              ) : filteredStickerSets.length === 0 ? (
+                <EmptyState
+                  title="📁 Стикерсетов пока нет"
+                  message={
+                    searchTerm 
+                      ? 'По вашему запросу ничего не найдено' 
+                      : userInfo 
+                        ? `У пользователя ${userInfo.firstName} пока нет созданных стикерсетов`
+                        : 'У этого пользователя пока нет стикерсетов'
+                  }
+                  actionLabel="Создать стикер"
+                  onAction={handleCreateSticker}
+                />
+              ) : (
+                <StickerSetList
+                  stickerSets={filteredStickerSets}
+                  onView={handleViewStickerSet}
+                  isInTelegramApp={isInTelegramApp}
+                />
+              )}
+            </TabPanel>
+
+            <TabPanel value={activeProfileTab} index={1}>
+              {/* Список всех стикеров пользователя */}
               <EmptyState
-                title="📁 Стикерсетов пока нет"
-                message={
-                  searchTerm 
-                    ? 'По вашему запросу ничего не найдено' 
-                    : userInfo 
-                      ? `У пользователя ${userInfo.firstName} пока нет созданных стикерсетов`
-                      : 'У этого пользователя пока нет стикерсетов'
-                }
+                title="🎨 Все стикеры"
+                message="Здесь будут отображаться все стикеры пользователя"
                 actionLabel="Создать стикер"
                 onAction={handleCreateSticker}
               />
-            ) : (
-              <StickerSetList
-                stickerSets={filteredStickerSets}
-                onView={handleViewStickerSet}
-                onShare={handleShareStickerSet}
-                onDelete={handleDeleteStickerSet}
-                isInTelegramApp={isInTelegramApp}
-              />
-            )}
+            </TabPanel>
+
+            <TabPanel value={activeProfileTab} index={2}>
+              {/* Действия с профилем */}
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: 2,
+                alignItems: 'center',
+                py: 4
+              }}>
+                <Typography variant="h6" color="text.secondary" textAlign="center">
+                  Поделиться профилем
+                </Typography>
+                
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <Button
+                    variant="contained"
+                    startIcon={<ShareIcon />}
+                    onClick={handleShareProfile}
+                    size="large"
+                    sx={{ minWidth: 200 }}
+                  >
+                    Поделиться профилем
+                  </Button>
+                  
+                  <Button
+                    variant="outlined"
+                    startIcon={<MessageIcon />}
+                    onClick={handleMessageUser}
+                    size="large"
+                    sx={{ minWidth: 200 }}
+                  >
+                    Написать пользователю
+                  </Button>
+                </Box>
+              </Box>
+            </TabPanel>
           </>
         ) : (
           // Детальный просмотр стикерсета
@@ -323,7 +401,7 @@ export const ProfilePage: React.FC = () => {
               stickerSet={selectedStickerSet}
               onBack={() => setViewMode('list')}
               onShare={handleShareStickerSet}
-              onDelete={handleDeleteStickerSet}
+              onLike={handleLikeStickerSet}
               isInTelegramApp={isInTelegramApp}
             />
           )

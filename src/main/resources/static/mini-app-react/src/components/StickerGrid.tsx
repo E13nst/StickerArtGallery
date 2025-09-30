@@ -28,24 +28,42 @@ export const StickerGrid: React.FC<StickerGridProps> = ({
     );
   }
 
-  // Адаптивная сетка в зависимости от платформы
+  // Адаптивная сетка стикеров
   const getGridColumns = () => {
-    if (isInTelegramApp) {
-      return { xs: 6, sm: 4, md: 3 }; // Компактнее в Telegram
-    } else {
-      return { xs: 4, sm: 3, md: 2 }; // Крупнее в браузере
-    }
+    return { 
+      xs: 6,   // <600px: 2 в ряд
+      sm: 4,   // 600px+: 3 в ряд  
+      md: 3,   // 900px+: 4 в ряд
+      lg: 2    // 1200px+: 6 в ряд
+    };
   };
 
   return (
-    <Grid container spacing={2}>
+    <Grid container spacing={3} sx={{ justifyContent: 'center' }}>
       {stickers.map((sticker) => (
-        <Grid item {...getGridColumns()} key={sticker.file_id}>
+        <Grid 
+          item 
+          {...getGridColumns()} 
+          key={sticker.file_id}
+          sx={{
+            minWidth: 100,  // Минимальный размер стикера
+            maxWidth: 200,  // Максимальный размер стикера
+            display: 'flex',
+            justifyContent: 'center'
+          }}
+        >
           <Box
             onClick={() => onStickerClick?.(sticker)}
             sx={{
               cursor: onStickerClick ? 'pointer' : 'default',
               transition: 'transform 0.2s ease',
+              width: '100%',
+              height: '100%',
+              minHeight: 100,
+              maxHeight: 200,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               '&:hover': onStickerClick ? {
                 transform: 'scale(1.05)'
               } : {}
@@ -53,7 +71,7 @@ export const StickerGrid: React.FC<StickerGridProps> = ({
           >
             <StickerPreview 
               sticker={sticker} 
-              size="auto"
+              size="large" // Desktop: 160x160px, планшеты: 120x120px, телефоны: 100x100px
               showBadge={true}
               isInTelegramApp={isInTelegramApp}
             />

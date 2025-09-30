@@ -18,16 +18,12 @@ interface BottomNavProps {
 
 export const BottomNav: React.FC<BottomNavProps> = ({
   activeTab,
-  onChange,
-  isInTelegramApp = false
+  onChange
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // В Telegram не показываем нижнюю навигацию - используем встроенную
-  if (isInTelegramApp) {
-    return null;
-  }
+  // Показываем нижнюю навигацию везде для лучшего UX
 
   // Определяем активную вкладку по маршруту
   const getCurrentTab = () => {
@@ -83,7 +79,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         }}
       >
         <BottomNavigationAction 
-          label="Главная" 
           icon={<HomeIcon />}
           sx={{
             '&.Mui-selected': {
@@ -94,7 +89,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           }}
         />
         <BottomNavigationAction 
-          label="Стикеры" 
           icon={<CollectionsIcon />}
           sx={{
             '&.Mui-selected': {
@@ -105,7 +99,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           }}
         />
         <BottomNavigationAction 
-          label="Маркет" 
           icon={<ShoppingCartIcon />}
           sx={{
             '&.Mui-selected': {
@@ -116,7 +109,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           }}
         />
         <BottomNavigationAction 
-          label="Профиль" 
           icon={<AccountCircleIcon />}
           sx={{
             '&.Mui-selected': {
