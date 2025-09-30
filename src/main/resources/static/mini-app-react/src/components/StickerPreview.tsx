@@ -14,7 +14,7 @@ interface StickerPreviewProps {
 const StickerPreviewComponent: React.FC<StickerPreviewProps> = ({ 
   sticker, 
   size = 'medium',
-  showBadge = true,
+  showBadge: _showBadge = true,
   isInTelegramApp = false
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
