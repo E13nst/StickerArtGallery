@@ -306,21 +306,49 @@ public class UserController {
      * Удалить пользователя
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
     @Operation(
         summary = "Удалить пользователя",
-        description = "Удаляет пользователя из системы (только для ADMIN)"
+        description = "Удаляет пользователя из системы. Администратор может удалять любых пользователей, обычный пользователь - только свой аккаунт."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "204", description = "Пользователь удален"),
-        @ApiResponse(responseCode = "403", description = "Доступ запрещен"),
+        @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен - можно удалять только свой аккаунт"),
+        @ApiResponse(responseCode = "404", description = "Пользователь не найден"),
         @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
     })
     public ResponseEntity<Void> deleteUser(
-            @Parameter(description = "ID пользователя", required = true, example = "1")
+            @Parameter(description = "ID пользователя", required = true, example = "123456789")
             @PathVariable Long id) {
         try {
             LOGGER.info("🗑️ Удаление пользователя с ID: {}", id);
+            
+            // Проверяем, существует ли пользователь
+            if (!userService.findById(id).isPresent()) {
+                LOGGER.warn("⚠️ Пользователь с ID {} не найден", id);
+                return ResponseEntity.notFound().build();
+            }
+            
+            // Проверяем права доступа
+            org.springframework.security.core.Authentication authentication = 
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            
+            if (authentication != null && authentication.getPrincipal() instanceof com.example.sticker_art_gallery.model.user.UserEntity) {
+                com.example.sticker_art_gallery.model.user.UserEntity currentUser = 
+                    (com.example.sticker_art_gallery.model.user.UserEntity) authentication.getPrincipal();
+                
+                // Проверяем: админ или удаляет свой аккаунт
+                boolean isAdmin = currentUser.getRole() == com.example.sticker_art_gallery.model.user.UserEntity.UserRole.ADMIN;
+                boolean isSelf = id.equals(currentUser.getId());
+                
+                if (!isAdmin && !isSelf) {
+                    LOGGER.warn("⚠️ Пользователь {} попытался удалить чужой аккаунт {}", currentUser.getId(), id);
+                    return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
+                }
+                
+                LOGGER.debug("✅ Проверка прав пройдена: isAdmin={}, isSelf={}", isAdmin, isSelf);
+            }
+            
             userService.deleteById(id);
             LOGGER.info("✅ Пользователь с ID {} удален", id);
             return ResponseEntity.noContent().build();
