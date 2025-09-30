@@ -58,8 +58,7 @@ public class UserController {
                 examples = @ExampleObject(value = """
                     [
                         {
-                            "id": 1,
-                            "telegramId": 123456789,
+                            "id": 123456789,
                             "username": "testuser",
                             "firstName": "Test",
                             "lastName": "User",
@@ -97,20 +96,22 @@ public class UserController {
             content = @Content(schema = @Schema(implementation = UserDto.class),
                 examples = @ExampleObject(value = """
                     {
-                        "id": 1,
-                        "telegramId": 123456789,
+                        "id": 123456789,
                         "username": "testuser",
                         "firstName": "Test",
                         "lastName": "User",
                         "role": "USER",
-                        "artBalance": 0
+                        "artBalance": 0,
+                        "telegramUserInfo": {...},
+                        "profilePhotos": {...},
+                        "profilePhotoFileId": "AgACAgIAAxkBAAIBY2..."
                     }
                     """))),
         @ApiResponse(responseCode = "404", description = "Пользователь не найден"),
         @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
     })
     public ResponseEntity<UserDto> getUserById(
-            @Parameter(description = "ID пользователя", required = true, example = "1")
+            @Parameter(description = "ID пользователя (Telegram ID)", required = true, example = "123456789")
             @PathVariable Long id) {
         try {
             LOGGER.info("🔍 Поиск пользователя по ID: {}", id);
@@ -126,40 +127,6 @@ public class UserController {
             }
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при поиске пользователя с ID {}: {}", id, e.getMessage(), e);
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-    
-    /**
-     * Получить пользователя по telegram_id
-     */
-    @GetMapping("/telegram/{telegramId}")
-    @Operation(
-        summary = "Получить пользователя по Telegram ID",
-        description = "Возвращает информацию о пользователе по его Telegram ID"
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Пользователь найден"),
-        @ApiResponse(responseCode = "404", description = "Пользователь не найден"),
-        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
-    })
-    public ResponseEntity<UserDto> getUserByTelegramId(
-            @Parameter(description = "Telegram ID пользователя", required = true, example = "123456789")
-            @PathVariable Long telegramId) {
-        try {
-            LOGGER.info("🔍 Поиск пользователя по telegram_id: {}", telegramId);
-            Optional<UserEntity> userOpt = userService.findByTelegramId(telegramId);
-            
-            if (userOpt.isPresent()) {
-                UserDto userDto = userService.enrichSingleUserSafely(userOpt.get());
-                LOGGER.info("✅ Пользователь найден: {}", userDto.getUsername());
-                return ResponseEntity.ok(userDto);
-            } else {
-                LOGGER.warn("⚠️ Пользователь с telegram_id {} не найден", telegramId);
-                return ResponseEntity.notFound().build();
-            }
-        } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при поиске пользователя с telegram_id {}: {}", telegramId, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -205,15 +172,14 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
         summary = "Создать нового пользователя",
-        description = "Создает нового пользователя в системе. Доступно только администраторам. Все поля обязательны для заполнения."
+        description = "Создает нового пользователя в системе. ID пользователя должен быть Telegram ID. Доступно только администраторам."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Пользователь успешно создан",
             content = @Content(schema = @Schema(implementation = UserDto.class),
                 examples = @ExampleObject(value = """
                     {
-                        "id": 5,
-                        "telegramId": 999999999,
+                        "id": 999999999,
                         "username": "newuser123",
                         "firstName": "New",
                         "lastName": "User",
@@ -228,7 +194,7 @@ public class UserController {
             content = @Content(examples = @ExampleObject(value = """
                 {
                     "validationErrors": {
-                        "telegramId": "Telegram ID должен быть положительным числом",
+                        "id": "ID (Telegram ID) должен быть положительным числом",
                         "username": "Username может содержать только буквы, цифры и подчеркивания",
                         "avatarUrl": "URL аватара должен начинаться с http:// или https://",
                         "artBalance": "Баланс арт-кредитов не может быть отрицательным",
@@ -246,11 +212,11 @@ public class UserController {
             @Parameter(description = "Данные для создания пользователя", required = true)
             @Valid @RequestBody UserDto userDto) {
         try {
-            LOGGER.info("🆕 Создание нового пользователя: {}", userDto.getUsername());
+            LOGGER.info("🆕 Создание нового пользователя: {} (ID: {})", userDto.getUsername(), userDto.getId());
             
-            // Проверяем, что пользователь с таким telegramId не существует
-            if (userService.existsByTelegramId(userDto.getTelegramId())) {
-                LOGGER.warn("⚠️ Пользователь с telegram_id {} уже существует", userDto.getTelegramId());
+            // Проверяем, что пользователь с таким ID не существует
+            if (userService.existsByTelegramId(userDto.getId())) {
+                LOGGER.warn("⚠️ Пользователь с ID {} уже существует", userDto.getId());
                 return ResponseEntity.badRequest().build();
             }
             
