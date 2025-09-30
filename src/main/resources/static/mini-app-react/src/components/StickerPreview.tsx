@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, memo, useCallback } from 'react';
 import { Box, Typography } from '@mui/material';
 import Lottie from 'lottie-react';
 import { Sticker } from '@/types/sticker';
+import { LazyImage } from './LazyImage';
 
 interface StickerPreviewProps {
   sticker: Sticker;
@@ -10,7 +11,7 @@ interface StickerPreviewProps {
   isInTelegramApp?: boolean;
 }
 
-export const StickerPreview: React.FC<StickerPreviewProps> = ({ 
+const StickerPreviewComponent: React.FC<StickerPreviewProps> = ({ 
   sticker, 
   size = 'medium',
   showBadge = true,
@@ -22,9 +23,9 @@ export const StickerPreview: React.FC<StickerPreviewProps> = ({
   const lottieRef = useRef<any>(null);
 
   const sizeMap = {
-    small: { width: 60, height: 60, fontSize: 16 },
-    medium: { width: 120, height: 120, fontSize: 24 },
-    large: { width: 200, height: 200, fontSize: 32 }
+    small: { width: 100, height: 100, fontSize: 20 },   // Галерея карточек: 100x100px
+    medium: { width: 120, height: 120, fontSize: 24 },   // Планшеты: 120x120px
+    large: { width: 160, height: 160, fontSize: 28 }       // Desktop: 160x160px
   };
 
   // Адаптивные размеры в зависимости от платформы
@@ -81,14 +82,14 @@ export const StickerPreview: React.FC<StickerPreviewProps> = ({
     }
   };
 
-  const handleImageError = () => {
+  const handleImageError = useCallback(() => {
     console.error('❌ Ошибка загрузки изображения:', `/api/stickers/${sticker.file_id}`);
     setError(true);
-  };
+  }, [sticker.file_id]);
 
-  const handleImageLoad = () => {
+  const handleImageLoad = useCallback(() => {
     setIsLoaded(true);
-  };
+  }, []);
 
   if (error) {
     return (
@@ -145,20 +146,33 @@ export const StickerPreview: React.FC<StickerPreviewProps> = ({
         </Typography>
       )}
 
-      {/* Обычный стикер */}
-      {!sticker.is_animated && isLoaded && (
-        <img
+      {/* Обычный стикер с ленивой загрузкой */}
+      {!sticker.is_animated && (
+        <LazyImage
           src={`/api/stickers/${sticker.file_id}`}
           alt={sticker.emoji || 'sticker'}
-          loading="lazy"
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'contain',
-            display: isLoaded ? 'block' : 'none'
-          }}
-          onError={handleImageError}
           onLoad={handleImageLoad}
+          onError={handleImageError}
+          placeholder={
+            <Typography
+              sx={{
+                fontSize: currentSize.fontSize,
+                color: 'text.secondary'
+              }}
+            >
+              {sticker.emoji || '🎨'}
+            </Typography>
+          }
+          fallback={
+            <Typography
+              sx={{
+                fontSize: currentSize.fontSize,
+                color: 'text.secondary'
+              }}
+            >
+              {sticker.emoji || '🎨'}
+            </Typography>
+          }
         />
       )}
 
@@ -176,25 +190,9 @@ export const StickerPreview: React.FC<StickerPreviewProps> = ({
         />
       )}
 
-      {/* Бейдж для анимированных стикеров */}
-      {sticker.is_animated && showBadge && (
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 4,
-            right: 4,
-            backgroundColor: 'rgba(255, 165, 0, 0.9)',
-            color: 'white',
-            fontSize: 10,
-            fontWeight: 'bold',
-            padding: '2px 4px',
-            borderRadius: 1,
-            pointerEvents: 'none'
-          }}
-        >
-          LOTTIE
-        </Box>
-      )}
     </Box>
   );
 };
+
+// Мемоизируем компонент для предотвращения лишних ре-рендеров
+export const StickerPreview = memo(StickerPreviewComponent);

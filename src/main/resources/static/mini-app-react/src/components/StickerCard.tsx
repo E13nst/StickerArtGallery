@@ -1,10 +1,9 @@
-import React from 'react';
+import React, { memo, useCallback } from 'react';
 import { 
   Card, 
   CardContent, 
   Typography, 
   Box, 
-  Button, 
   Chip,
   useTheme,
   useMediaQuery
@@ -15,16 +14,12 @@ import { StickerPreview } from './StickerPreview';
 interface StickerCardProps {
   stickerSet: StickerSetResponse;
   onView: (id: number, name: string) => void;
-  onShare: (name: string, title: string) => void;
-  onDelete: (id: number, title: string) => void;
   isInTelegramApp?: boolean;
 }
 
-export const StickerCard: React.FC<StickerCardProps> = ({
+const StickerCardComponent: React.FC<StickerCardProps> = ({
   stickerSet,
   onView,
-  onShare,
-  onDelete,
   isInTelegramApp = false
 }) => {
   const theme = useTheme();
@@ -33,46 +28,48 @@ export const StickerCard: React.FC<StickerCardProps> = ({
   // 🚀 20/80 ОПТИМИЗАЦИЯ: детекция медленного интернета
   const isSlowConnection = (navigator as any).connection?.effectiveType?.includes('2g') || false;
   
-  const getStickerCount = () => {
+  const getStickerCount = useCallback(() => {
     return stickerSet.telegramStickerSetInfo?.stickers?.length || 0;
-  };
+  }, [stickerSet.telegramStickerSetInfo?.stickers?.length]);
 
-  const getPreviewStickers = () => {
+  const getPreviewStickers = useCallback(() => {
     const stickers = stickerSet.telegramStickerSetInfo?.stickers || [];
     return stickers.slice(0, isSlowConnection ? 2 : 4); // Меньше стикеров на медленном интернете
-  };
+  }, [stickerSet.telegramStickerSetInfo?.stickers, isSlowConnection]);
 
-  const handleView = () => {
+  const handleCardClick = useCallback(() => {
     onView(stickerSet.id, stickerSet.name);
-  };
-
-  const handleShare = () => {
-    onShare(stickerSet.name, stickerSet.title);
-  };
-
-  const handleDelete = () => {
-    onDelete(stickerSet.id, stickerSet.title);
-  };
+  }, [onView, stickerSet.id, stickerSet.name]);
 
   const previewStickers = getPreviewStickers();
   const stickerCount = getStickerCount();
 
-  // Адаптивные настройки
-  const cardPadding = isSmallScreen ? 1 : 1.5; // 8px на маленьких, 12px на больших
-  const buttonHeight = isSmallScreen ? 32 : 36;
-  const titleVariant = isSmallScreen ? 'subtitle1' : 'h6';
+  // Фиксированные настройки для одинакового отображения на всех экранах
+  const cardPadding = 1.5; // Фиксированные 12px отступы
+  const titleVariant = 'h6'; // Фиксированный размер заголовка
+  
+  // Размеры стикеров для галереи карточек
+  const previewSize = 'small'; // Всегда 100x100px в галерее карточек
 
   return (
     <Card 
+      onClick={handleCardClick}
       sx={{ 
         height: '100%',
+        minHeight: 220,
+        width: '100%',
+        maxWidth: 280,
+        minWidth: 180,
         display: 'flex',
         flexDirection: 'column',
-        borderRadius: 3, // 12px скругление
+        justifyContent: 'space-between', // Равномерное распределение контента
+        borderRadius: 3,
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        transition: 'box-shadow 0.2s ease',
+        transition: 'all 0.2s ease',
+        cursor: 'pointer',
         '&:hover': {
           boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+          transform: 'translateY(-2px)'
         }
       }}
     >
@@ -82,50 +79,58 @@ export const StickerCard: React.FC<StickerCardProps> = ({
           '&:last-child': { pb: cardPadding },
           display: 'flex',
           flexDirection: 'column',
-          flexGrow: 1
+          flexGrow: 1,
+          justifyContent: 'space-between', // Равномерное распределение
+          height: '100%'
         }}
       >
-        {/* Заголовок */}
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'flex-start',
-            mb: isSmallScreen ? 1 : 1.5,
-            minHeight: isSmallScreen ? 40 : 48
-          }}
-        >
-          <Typography 
-            variant={titleVariant} 
-            component="h3"
+        {/* Верхняя секция: Заголовок */}
+        <Box>
+          <Box 
             sx={{ 
-              fontSize: isSmallScreen ? '0.9rem' : '1.25rem',
-              lineHeight: 1.2,
-              flexGrow: 1,
-              mr: 1
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'flex-start',
+              mb: 1.5,
+              minHeight: 40
             }}
           >
-            {stickerSet.title}
-          </Typography>
-          <Chip 
-            label={`${stickerCount}`}
-            size="small"
-            variant="outlined"
-            sx={{ 
-              fontSize: isSmallScreen ? '0.7rem' : '0.75rem',
-              height: isSmallScreen ? 20 : 24
-            }}
-          />
+            <Typography 
+              variant={titleVariant} 
+              component="h3"
+              sx={{ 
+                fontSize: '1.1rem',
+                lineHeight: 1.2,
+                flexGrow: 1,
+                mr: 1,
+                fontWeight: 600 // font-weight: 600
+              }}
+            >
+              {stickerSet.title}
+            </Typography>
+            <Chip 
+              label={`${stickerCount}`}
+              size="small"
+              variant="outlined"
+              sx={{ 
+                fontSize: '0.8rem',
+                height: 24,
+                fontWeight: 'bold'
+              }}
+            />
+          </Box>
         </Box>
 
-        {/* Превью стикеров - CSS Grid 2x2 */}
+        {/* Средняя секция: Превью стикеров */}
         <Box 
           sx={{
             display: 'grid',
             gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: 0.5, // 4px gap
-            mb: isSmallScreen ? 1 : 1.5,
-            aspectRatio: '1 / 1'
+            gap: 1, // 8px между стикерами
+            aspectRatio: '1 / 1',
+            minHeight: 180,
+            flexGrow: 1, // Занимает доступное пространство
+            alignSelf: 'center' // Центрирование
           }}
         >
           {previewStickers.map((sticker, index) => {
@@ -140,7 +145,7 @@ export const StickerCard: React.FC<StickerCardProps> = ({
               >
                 <StickerPreview 
                   sticker={sticker} 
-                  size="responsive"
+                  size={previewSize}
                   showBadge={index === 0} // Бейдж только на первом стикере
                   isInTelegramApp={isInTelegramApp}
                 />
@@ -172,75 +177,27 @@ export const StickerCard: React.FC<StickerCardProps> = ({
           ))}
         </Box>
 
-        {/* Информация о дате создания */}
-        <Typography 
-          variant="caption" 
-          color="text.secondary" 
-          sx={{ 
-            mb: isSmallScreen ? 1 : 1.5,
-            fontSize: isSmallScreen ? '0.7rem' : '0.75rem'
-          }}
-        >
-          {new Date(stickerSet.createdAt).toLocaleDateString()}
-        </Typography>
-
-        {/* Действия - растягиваем до конца карточки */}
-        <Box sx={{ mt: 'auto' }}>
-          <Box 
+        {/* Нижняя секция: Дата создания (прижата к низу) */}
+        <Box sx={{ mt: 'auto', pt: 1 }}>
+          <Typography 
+            variant="caption" 
+            color="text.secondary" 
             sx={{ 
-              display: 'flex', 
-              gap: 0.5,
-              justifyContent: 'center',
-              width: '90%',
-              mx: 'auto'
+              fontSize: '0.8rem',
+              color: 'gray',
+              fontWeight: 'medium',
+              display: 'block',
+              textAlign: 'center'
             }}
           >
-            <Button
-              variant="contained"
-              size="small"
-              onClick={handleView}
-              sx={{ 
-                flex: 1,
-                height: buttonHeight,
-                fontSize: isSmallScreen ? '0.7rem' : '0.75rem',
-                minWidth: 0,
-                px: 0.5
-              }}
-            >
-              {isSmallScreen ? '👁️' : '📱 Просмотр'}
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={handleShare}
-              sx={{ 
-                flex: 1,
-                height: buttonHeight,
-                fontSize: isSmallScreen ? '0.7rem' : '0.75rem',
-                minWidth: 0,
-                px: 0.5
-              }}
-            >
-              {isSmallScreen ? '📤' : '📤 Поделиться'}
-            </Button>
-            <Button
-              variant="outlined"
-              color="error"
-              size="small"
-              onClick={handleDelete}
-              sx={{ 
-                flex: 1,
-                height: buttonHeight,
-                fontSize: isSmallScreen ? '0.7rem' : '0.75rem',
-                minWidth: 0,
-                px: 0.5
-              }}
-            >
-              {isSmallScreen ? '🗑️' : '🗑️ Удалить'}
-            </Button>
-          </Box>
+            {new Date(stickerSet.createdAt).toLocaleDateString()}
+          </Typography>
         </Box>
+
       </CardContent>
     </Card>
   );
 };
+
+// Мемоизируем компонент для предотвращения лишних ре-рендеров
+export const StickerCard = memo(StickerCardComponent);
