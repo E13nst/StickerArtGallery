@@ -187,4 +187,80 @@ public class TelegramBotApiService {
     public void evictAllUserCache() {
         LOGGER.info("🗑️ Очистка всего кэша пользователей");
     }
+    
+    /**
+     * Получает фото профиля пользователя через Telegram Bot API
+     * Результат кэшируется в Caffeine на 15 минут
+     * 
+     * @param userId ID пользователя в Telegram
+     * @return JSON объект с информацией о фото профиля или null если ошибка
+     */
+    @Cacheable(value = "userProfilePhotos", key = "#userId", unless = "#result == null")
+    public Object getUserProfilePhotos(Long userId) {
+        try {
+            LOGGER.debug("🔍 Получение фото профиля пользователя '{}' (запрос к Telegram API)", userId);
+            
+            // Получаем токен бота из конфигурации
+            String botToken = appConfig.getTelegram().getBotToken();
+            if (botToken == null || botToken.trim().isEmpty()) {
+                LOGGER.warn("⚠️ Токен бота не настроен в конфигурации");
+                throw new IllegalArgumentException("Токен бота не настроен");
+            }
+            
+            // Формируем URL для запроса getUserProfilePhotos
+            String url = TELEGRAM_API_URL + botToken + "/getUserProfilePhotos?user_id=" + userId + "&limit=1";
+            
+            LOGGER.debug("🌐 Отправляем запрос к Telegram Bot API: {}", url.replace(botToken, "***"));
+            
+            // Выполняем запрос
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                // Парсим ответ и проверяем успешность
+                JsonNode responseJson = objectMapper.readTree(response.getBody());
+                
+                if (responseJson.has("ok") && responseJson.get("ok").asBoolean()) {
+                    // Возвращаем только данные result (без обертки ok, result)
+                    JsonNode resultNode = responseJson.get("result");
+                    Object result = objectMapper.treeToValue(resultNode, Object.class);
+                    
+                    LOGGER.debug("✅ Фото профиля пользователя '{}' успешно получены", userId);
+                    return result;
+                } else {
+                    String errorDescription = responseJson.has("description") 
+                        ? responseJson.get("description").asText() 
+                        : "Unknown error";
+                    LOGGER.warn("❌ Ошибка от Telegram Bot API для фото пользователя '{}': {}", userId, errorDescription);
+                    // Не выбрасываем исключение - просто возвращаем null
+                    return null;
+                }
+            } else {
+                LOGGER.warn("❌ Неуспешный HTTP ответ: {}", response.getStatusCode());
+                return null;
+            }
+            
+        } catch (Exception e) {
+            LOGGER.warn("⚠️ Не удалось получить фото профиля для пользователя '{}': {} - возвращаем null", 
+                    userId, e.getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * Очищает кэш фото профиля для конкретного пользователя
+     * 
+     * @param userId ID пользователя в Telegram
+     */
+    @CacheEvict(value = "userProfilePhotos", key = "#userId")
+    public void evictUserProfilePhotosCache(Long userId) {
+        LOGGER.info("🗑️ Очистка кэша фото профиля для пользователя '{}'", userId);
+    }
+    
+    /**
+     * Очищает весь кэш фото профилей
+     */
+    @CacheEvict(value = "userProfilePhotos", allEntries = true)
+    public void evictAllUserProfilePhotosCache() {
+        LOGGER.info("🗑️ Очистка всего кэша фото профилей");
+    }
 }

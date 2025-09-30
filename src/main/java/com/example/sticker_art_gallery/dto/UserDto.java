@@ -37,6 +37,12 @@ public class UserDto {
     // Полная информация о пользователе из Telegram Bot API (JSON объект). Может быть null, если данные недоступны.
     private Object telegramUserInfo;
     
+    // Фото профиля пользователя из Telegram Bot API (результат getUserProfilePhotos). Может быть null, если фото нет.
+    private Object profilePhotos;
+    
+    // File ID самого большого фото профиля для удобной загрузки через STICKER_PROCESSOR. Может быть null.
+    private String profilePhotoFileId;
+    
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
     
@@ -44,7 +50,9 @@ public class UserDto {
     public UserDto() {}
     
     public UserDto(Long id, String username, String firstName, String lastName, 
-                   String avatarUrl, Long artBalance, String role, Object telegramUserInfo, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+                   String avatarUrl, Long artBalance, String role, Object telegramUserInfo, 
+                   Object profilePhotos, String profilePhotoFileId,
+                   OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         this.id = id;
         this.username = username;
         this.firstName = firstName;
@@ -53,6 +61,8 @@ public class UserDto {
         this.artBalance = artBalance;
         this.role = role;
         this.telegramUserInfo = telegramUserInfo;
+        this.profilePhotos = profilePhotos;
+        this.profilePhotoFileId = profilePhotoFileId;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -74,6 +84,8 @@ public class UserDto {
                 entity.getArtBalance(),
                 entity.getRole().name(),
                 null, // telegramUserInfo будет установлен отдельно
+                null, // profilePhotos будет установлен отдельно
+                null, // profilePhotoFileId будет установлен отдельно
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
         );
@@ -132,6 +144,12 @@ public class UserDto {
     
     public Object getTelegramUserInfo() { return telegramUserInfo; }
     public void setTelegramUserInfo(Object telegramUserInfo) { this.telegramUserInfo = telegramUserInfo; }
+    
+    public Object getProfilePhotos() { return profilePhotos; }
+    public void setProfilePhotos(Object profilePhotos) { this.profilePhotos = profilePhotos; }
+    
+    public String getProfilePhotoFileId() { return profilePhotoFileId; }
+    public void setProfilePhotoFileId(String profilePhotoFileId) { this.profilePhotoFileId = profilePhotoFileId; }
     
     @Override
     public String toString() {
