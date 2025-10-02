@@ -15,8 +15,10 @@ public class StickerSetNameValidator implements ConstraintValidator<ValidSticker
     
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {
+        // null и пустые значения обрабатываются @NotBlank, но для кастомного валидатора возвращаем true,
+        // чтобы не дублировать валидацию
         if (value == null || value.trim().isEmpty()) {
-            return true; // Пустые значения обрабатываются @NotBlank
+            return true; 
         }
         
         String trimmed = value.trim();

@@ -103,15 +103,37 @@ public class CreateStickerSetDto {
     /**
      * Проверяет, является ли строка URL стикерсета Telegram
      */
-    private boolean isStickerSetUrl(String input) {
+    public boolean isStickerSetUrl(String input) {
         if (input == null || input.trim().isEmpty()) {
             return false;
         }
         
         String trimmed = input.trim().toLowerCase();
-        return trimmed.startsWith("https://t.me/addstickers/") || 
-               trimmed.startsWith("http://t.me/addstickers/") ||
-               trimmed.startsWith("t.me/addstickers/");
+        
+        // Проверяем базовый формат URL
+        if (!trimmed.startsWith("https://t.me/addstickers/") && 
+            !trimmed.startsWith("http://t.me/addstickers/") &&
+            !trimmed.startsWith("t.me/addstickers/")) {
+            return false;
+        }
+        
+        // Проверяем, что после префикса есть имя стикерсета
+        String afterPrefix;
+        if (trimmed.startsWith("https://t.me/addstickers/")) {
+            afterPrefix = trimmed.substring("https://t.me/addstickers/".length());
+        } else if (trimmed.startsWith("http://t.me/addstickers/")) {
+            afterPrefix = trimmed.substring("http://t.me/addstickers/".length());
+        } else {
+            afterPrefix = trimmed.substring("t.me/addstickers/".length());
+        }
+        
+        // Убираем параметры URL если есть
+        if (afterPrefix.contains("?")) {
+            afterPrefix = afterPrefix.substring(0, afterPrefix.indexOf("?"));
+        }
+        
+        // Проверяем, что имя не пустое и содержит только допустимые символы (буквы, цифры, подчеркивания)
+        return !afterPrefix.isEmpty() && afterPrefix.matches("^[a-z0-9_]+$");
     }
     
     /**
@@ -120,9 +142,9 @@ public class CreateStickerSetDto {
      * - https://t.me/addstickers/ShaitanChick -> ShaitanChick
      * - t.me/addstickers/my_stickers_by_StickerGalleryBot -> my_stickers_by_StickerGalleryBot
      */
-    private String extractStickerSetNameFromUrl(String url) {
+    public String extractStickerSetNameFromUrl(String url) {
         if (url == null || url.trim().isEmpty()) {
-            return null;
+            throw new IllegalArgumentException("URL стикерсета не может быть пустым");
         }
         
         try {

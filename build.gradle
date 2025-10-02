@@ -83,6 +83,16 @@ tasks.withType(Javadoc) {
     options.encoding = 'UTF-8'
 }
 
+// JUnit 5 configuration
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+        showStandardStreams = false
+    }
+}
+
 // Flyway configuration
 flyway {
     url = "jdbc:postgresql://${System.getenv('DB_HOST') ?: 'amvera-e13nst-run-postgres'}:${System.getenv('DB_PORT') ?: '5432'}/${System.getenv('DB_NAME') ?: 'mindbase'}"
