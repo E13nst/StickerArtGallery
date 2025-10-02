@@ -41,7 +41,7 @@ public class StickerSet {
     @ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinTable(
         name = "stickerset_categories",
-        joinColumns = @JoinColumn(name = "sticker_set_id"),
+        joinColumns = @JoinColumn(name = "stickerset_id"),
         inverseJoinColumns = @JoinColumn(name = "category_id")
     )
     @ToString.Exclude

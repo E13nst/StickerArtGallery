@@ -4,8 +4,10 @@ import com.example.sticker_art_gallery.dto.StickerSetDto;
 import com.example.sticker_art_gallery.dto.CreateStickerSetDto;
 import com.example.sticker_art_gallery.dto.PageRequest;
 import com.example.sticker_art_gallery.dto.PageResponse;
+import com.example.sticker_art_gallery.dto.StickerSetWithLikesDto;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.service.telegram.StickerSetService;
+import com.example.sticker_art_gallery.service.LikeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +32,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+
 @RestController
 @RequestMapping("/api/stickersets")
 @CrossOrigin(origins = "*") // Разрешаем CORS для фронтенда
@@ -39,10 +45,12 @@ public class StickerSetController {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(StickerSetController.class);
     private final StickerSetService stickerSetService;
+    private final LikeService likeService;
     
     @Autowired
-    public StickerSetController(StickerSetService stickerSetService) {
+    public StickerSetController(StickerSetService stickerSetService, LikeService likeService) {
         this.stickerSetService = stickerSetService;
+        this.likeService = likeService;
     }
     
     /**
@@ -728,11 +736,26 @@ public class StickerSetController {
             pageRequest.setDirection("DESC");
             
             Long currentUserId = getCurrentUserIdOrNull();
-            PageResponse<StickerSetDto> result = stickerSetService.findAllWithPagination(pageRequest, language, currentUserId);
+            PageResponse<StickerSetWithLikesDto> result = likeService.getTopStickerSetsByLikes(pageRequest, language, currentUserId);
+            
+            // Конвертируем StickerSetWithLikesDto в StickerSetDto для совместимости
+            // Создаем временную Page для использования с PageResponse.of
+            Page<StickerSetWithLikesDto> tempPage = new PageImpl<>(
+                result.getContent(),
+                org.springframework.data.domain.PageRequest.of(result.getPage(), result.getSize()),
+                result.getTotalElements()
+            );
+            
+            PageResponse<StickerSetDto> convertedResult = PageResponse.of(
+                tempPage,
+                result.getContent().stream()
+                    .map(StickerSetWithLikesDto::getStickerSet)
+                    .collect(Collectors.toList())
+            );
             
             LOGGER.debug("✅ Найдено {} топ стикерсетов на странице {} из {}", 
-                    result.getContent().size(), result.getPage() + 1, result.getTotalPages());
-            return ResponseEntity.ok(result);
+                    convertedResult.getContent().size(), convertedResult.getPage() + 1, convertedResult.getTotalPages());
+            return ResponseEntity.ok(convertedResult);
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при получении топа стикерсетов по лайкам: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

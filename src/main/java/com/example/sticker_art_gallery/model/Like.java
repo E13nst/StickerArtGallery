@@ -14,7 +14,7 @@ import java.util.Objects;
 @Table(name = "likes", 
        uniqueConstraints = @UniqueConstraint(
            name = "unique_user_sticker_like",
-           columnNames = {"user_id", "sticker_set_id"}
+           columnNames = {"user_id", "stickerset_id"}
        ))
 public class Like {
     
@@ -26,7 +26,7 @@ public class Like {
     private Long userId;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sticker_set_id", nullable = false)
+    @JoinColumn(name = "stickerset_id", nullable = false)
     private StickerSet stickerSet;
     
     @CreationTimestamp
