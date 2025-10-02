@@ -77,9 +77,6 @@ public class SecurityConfig {
                 .requestMatchers("/mini-app/app.js").permitAll()
                 .requestMatchers("/mini-app/style.css").permitAll()
                 .requestMatchers("/mini-app/test.html").permitAll()
-                .requestMatchers("/mini-app-react/**").permitAll()
-                .requestMatchers("/mini-app-react/index.html").permitAll()
-                .requestMatchers("/mini-app-react/assets/**").permitAll()
                 
                 // Swagger UI и OpenAPI
                 .requestMatchers("/swagger-ui/**").permitAll()
