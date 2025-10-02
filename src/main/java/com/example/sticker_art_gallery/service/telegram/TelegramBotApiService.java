@@ -263,4 +263,63 @@ public class TelegramBotApiService {
     public void evictAllUserProfilePhotosCache() {
         LOGGER.info("🗑️ Очистка всего кэша фото профилей");
     }
+    
+    /**
+     * Проверяет существование стикерсета в Telegram и возвращает его информацию
+     * Используется для валидации перед добавлением в базу данных
+     * 
+     * @param stickerSetName имя стикерсета
+     * @return объект с информацией о стикерсете или null если стикерсет не существует
+     * @throws RuntimeException если произошла ошибка при обращении к API
+     */
+    public Object validateStickerSetExists(String stickerSetName) {
+        try {
+            LOGGER.debug("🔍 Валидация существования стикерсета '{}' в Telegram", stickerSetName);
+            
+            // Используем существующий метод getStickerSetInfo, который уже кэшируется
+            Object stickerSetInfo = getStickerSetInfo(stickerSetName);
+            
+            if (stickerSetInfo != null) {
+                LOGGER.debug("✅ Стикерсет '{}' существует в Telegram", stickerSetName);
+                return stickerSetInfo;
+            } else {
+                LOGGER.warn("❌ Стикерсет '{}' не найден в Telegram", stickerSetName);
+                return null;
+            }
+            
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при валидации стикерсета '{}': {}", stickerSetName, e.getMessage());
+            throw new RuntimeException("Ошибка при проверке существования стикерсета: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Извлекает title из информации о стикерсете, полученной от Telegram API
+     * 
+     * @param stickerSetInfo информация о стикерсете от Telegram API
+     * @return title стикерсета или null если не найден
+     */
+    public String extractTitleFromStickerSetInfo(Object stickerSetInfo) {
+        if (stickerSetInfo == null) {
+            return null;
+        }
+        
+        try {
+            // Преобразуем в JsonNode для удобного доступа к полям
+            JsonNode jsonNode = objectMapper.valueToTree(stickerSetInfo);
+            
+            if (jsonNode.has("title")) {
+                String title = jsonNode.get("title").asText();
+                LOGGER.debug("📝 Извлечен title из Telegram API: '{}'", title);
+                return title;
+            } else {
+                LOGGER.warn("⚠️ Поле 'title' не найдено в информации о стикерсете");
+                return null;
+            }
+            
+        } catch (Exception e) {
+            LOGGER.warn("⚠️ Ошибка при извлечении title из информации о стикерсете: {}", e.getMessage());
+            return null;
+        }
+    }
 }

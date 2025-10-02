@@ -1,6 +1,7 @@
 package com.example.sticker_art_gallery.controller;
 
 import com.example.sticker_art_gallery.dto.StickerSetDto;
+import com.example.sticker_art_gallery.dto.CreateStickerSetDto;
 import com.example.sticker_art_gallery.dto.PageRequest;
 import com.example.sticker_art_gallery.dto.PageResponse;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
@@ -274,7 +275,27 @@ public class StickerSetController {
     @PostMapping
     @Operation(
         summary = "Создать новый стикерсет",
-        description = "Создает новый стикерсет для пользователя. Все поля обязательны для заполнения."
+        description = """
+            Создает новый стикерсет для пользователя с расширенной валидацией и автоматическим заполнением данных.
+            
+            **Обязательные поля:**
+            - `name` - уникальное имя стикерсета для Telegram API или URL стикерсета
+            
+            **Опциональные поля:**
+            - `userId` - ID пользователя (если не указан, извлекается из initData)
+            - `title` - название стикерсета (если не указано, получается из Telegram API)
+            
+            **Процесс валидации:**
+            1. Проверка уникальности имени в базе данных
+            2. Валидация существования стикерсета в Telegram API
+            3. Автоматическое заполнение недостающих данных
+            4. Создание записи в базе данных
+            
+            **Требования:**
+            - Авторизация через Telegram Web App (initData)
+            - Стикерсет должен существовать в Telegram
+            - Имя стикерсета должно быть уникальным в галерее
+            """
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Стикерсет успешно создан",
@@ -283,44 +304,100 @@ public class StickerSetController {
                     {
                         "id": 5,
                         "userId": 123456789,
-                        "title": "Новые стикеры",
-                        "name": "new_stickers_by_StickerGalleryBot",
-                        "createdAt": "2025-09-15T14:30:00"
+                        "title": "Мои стикеры",
+                        "name": "my_stickers_by_StickerGalleryBot",
+                        "createdAt": "2025-01-15T14:30:00"
                     }
                     """))),
-        @ApiResponse(responseCode = "400", description = "Некорректные данные - ошибки валидации",
+        @ApiResponse(responseCode = "400", description = "Ошибка валидации данных",
+            content = @Content(examples = {
+                @ExampleObject(name = "Дубликат имени", value = """
+                    {
+                        "error": "Ошибка валидации",
+                        "message": "Стикерсет с именем 'existing_sticker_set' уже существует в галерее"
+                    }
+                    """),
+                @ExampleObject(name = "Некорректное имя", value = """
+                    {
+                        "error": "Ошибка валидации",
+                        "message": "Некорректное имя стикерсета или URL. Ожидается имя стикерсета или URL вида https://t.me/addstickers/имя_стикерсета"
+                    }
+                    """),
+                @ExampleObject(name = "Отсутствует userId", value = """
+                    {
+                        "error": "Ошибка валидации",
+                        "message": "Не удалось определить ID пользователя. Укажите userId или убедитесь, что вы авторизованы через Telegram Web App"
+                    }
+                    """)
+            })),
+        @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация",
             content = @Content(examples = @ExampleObject(value = """
                 {
-                    "validationErrors": {
-                        "userId": "ID пользователя должен быть положительным числом",
-                        "title": "Название стикерсета не может быть пустым",
-                        "name": "Имя стикерсета может содержать только латинские буквы, цифры и подчеркивания"
-                    },
-                    "error": "Ошибка валидации",
-                    "message": "Некорректные данные в запросе"
+                    "error": "Unauthorized",
+                    "message": "Требуется авторизация через Telegram Web App"
                 }
                 """))),
-        @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
-        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+        @ApiResponse(responseCode = "404", description = "Стикерсет не найден в Telegram",
+            content = @Content(examples = @ExampleObject(value = """
+                {
+                    "error": "Ошибка валидации",
+                    "message": "Стикерсет 'nonexistent_sticker_set' не найден в Telegram"
+                }
+                """))),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера",
+            content = @Content(examples = @ExampleObject(value = """
+                {
+                    "error": "Внутренняя ошибка сервера",
+                    "message": "Произошла непредвиденная ошибка при создании стикерсета"
+                }
+                """)))
     })
-    public ResponseEntity<StickerSetDto> createStickerSet(
-            @Parameter(description = "Данные для создания стикерсета", required = true)
-            @Valid @RequestBody StickerSetDto stickerSetDto) {
+    public ResponseEntity<?> createStickerSet(
+            @Parameter(description = """
+                Данные для создания стикерсета.
+                
+                **Обязательные поля:**
+                - `name` - имя стикерсета или URL стикерсета (строка, 1-200 символов)
+                
+                **Опциональные поля:**
+                - `userId` - ID пользователя (положительное число, если не указан - извлекается из initData)
+                - `title` - название стикерсета (строка до 64 символов, если не указано - получается из Telegram API)
+                
+                **Поддерживаемые форматы для поля name:**
+                - Имя стикерсета: `my_stickers_by_StickerGalleryBot`
+                - URL стикерсета: `https://t.me/addstickers/ShaitanChick`
+                
+                **Примеры запросов:**
+                - Минимальный (имя): `{"name": "my_stickers_by_StickerGalleryBot"}`
+                - Минимальный (URL): `{"name": "https://t.me/addstickers/ShaitanChick"}`
+                - С title: `{"name": "my_stickers", "title": "Мои стикеры"}`
+                - Полный: `{"name": "my_stickers", "title": "Мои стикеры", "userId": 123456789}`
+                """, required = true)
+            @Valid @RequestBody CreateStickerSetDto createDto) {
         try {
-            LOGGER.info("➕ Создание нового стикерсета: {}", stickerSetDto.getTitle());
+            LOGGER.info("➕ Создание нового стикерсета: {}", createDto.getName());
             
-            StickerSet newStickerSet = stickerSetService.createStickerSet(
-                stickerSetDto.getUserId(),
-                stickerSetDto.getTitle(),
-                stickerSetDto.getName()
-            );
-            
+            StickerSet newStickerSet = stickerSetService.createStickerSet(createDto);
             StickerSetDto createdDto = StickerSetDto.fromEntity(newStickerSet);
-            LOGGER.info("✅ Стикерсет создан с ID: {}", createdDto.getId());
+            
+            LOGGER.info("✅ Стикерсет создан с ID: {} (title: '{}', userId: {})", 
+                       createdDto.getId(), createdDto.getTitle(), createdDto.getUserId());
             return ResponseEntity.status(HttpStatus.CREATED).body(createdDto);
+            
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("⚠️ Ошибка валидации при создании стикерсета: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(java.util.Map.of(
+                    "error", "Ошибка валидации",
+                    "message", e.getMessage()
+                ));
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при создании стикерсета", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(java.util.Map.of(
+                    "error", "Внутренняя ошибка сервера",
+                    "message", "Произошла непредвиденная ошибка при создании стикерсета"
+                ));
         }
     }
     

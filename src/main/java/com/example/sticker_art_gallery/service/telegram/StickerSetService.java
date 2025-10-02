@@ -3,9 +3,12 @@ package com.example.sticker_art_gallery.service.telegram;
 import com.example.sticker_art_gallery.dto.PageRequest;
 import com.example.sticker_art_gallery.dto.PageResponse;
 import com.example.sticker_art_gallery.dto.StickerSetDto;
+import com.example.sticker_art_gallery.dto.CreateStickerSetDto;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
 import com.example.sticker_art_gallery.service.user.UserService;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,13 +28,73 @@ public class StickerSetService {
     private final TelegramBotApiService telegramBotApiService;
     
     @Autowired
-    public StickerSetService(StickerSetRepository stickerSetRepository, UserService userService, TelegramBotApiService telegramBotApiService) {
+    public StickerSetService(StickerSetRepository stickerSetRepository, UserService userService, 
+                           TelegramBotApiService telegramBotApiService) {
         this.stickerSetRepository = stickerSetRepository;
         this.userService = userService;
         this.telegramBotApiService = telegramBotApiService;
     }
     
-    public StickerSet createStickerSet(Long userId, String title, String name) {
+    /**
+     * Создает новый стикерсет с расширенной валидацией
+     * - Проверяет уникальность имени в базе данных
+     * - Валидирует существование стикерсета в Telegram API
+     * - Автоматически заполняет title из Telegram API если не указан
+     * - Извлекает userId из initData если не указан
+     */
+    public StickerSet createStickerSet(CreateStickerSetDto createDto) {
+        LOGGER.info("➕ Создание стикерсета с валидацией: {}", createDto.getName());
+        
+        // Нормализуем имя стикерсета
+        createDto.normalizeName();
+        String stickerSetName = createDto.getName();
+        
+        // 1. Проверяем, что стикерсет с таким именем еще не существует в базе
+        StickerSet existingStickerSet = findByName(stickerSetName);
+        if (existingStickerSet != null) {
+            throw new IllegalArgumentException("Стикерсет с именем '" + stickerSetName + "' уже существует в галерее");
+        }
+        
+        // 2. Валидируем существование стикерсета в Telegram API
+        Object telegramStickerSetInfo;
+        try {
+            telegramStickerSetInfo = telegramBotApiService.validateStickerSetExists(stickerSetName);
+            if (telegramStickerSetInfo == null) {
+                throw new IllegalArgumentException("Стикерсет '" + stickerSetName + "' не найден в Telegram");
+            }
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при валидации стикерсета в Telegram API: {}", e.getMessage());
+            throw new IllegalArgumentException("Не удалось проверить существование стикерсета в Telegram: " + e.getMessage());
+        }
+        
+        // 3. Определяем userId
+        Long userId = createDto.getUserId();
+        if (userId == null) {
+            userId = extractUserIdFromAuthentication();
+            if (userId == null) {
+                throw new IllegalArgumentException("Не удалось определить ID пользователя. Укажите userId или убедитесь, что вы авторизованы через Telegram Web App");
+            }
+            LOGGER.debug("📱 Извлечен userId из аутентификации: {}", userId);
+        }
+        
+        // 4. Определяем title
+        String title = createDto.getTitle();
+        if (title == null || title.trim().isEmpty()) {
+            title = telegramBotApiService.extractTitleFromStickerSetInfo(telegramStickerSetInfo);
+            if (title == null || title.trim().isEmpty()) {
+                throw new IllegalArgumentException("Не удалось получить название стикерсета из Telegram API");
+            }
+            LOGGER.debug("📝 Получен title из Telegram API: '{}'", title);
+        }
+        
+        // 5. Создаем стикерсет
+        return createStickerSetInternal(userId, title, stickerSetName);
+    }
+    
+    /**
+     * Внутренний метод для создания стикерсета без валидации
+     */
+    private StickerSet createStickerSetInternal(Long userId, String title, String name) {
         // Автоматически создаем пользователя, если его нет
         try {
             userService.findOrCreateByTelegramId(userId, null, null, null, null);
@@ -50,6 +113,24 @@ public class StickerSetService {
                 savedSet.getId(), title, name, userId);
 
         return savedSet;
+    }
+    
+    /**
+     * Извлекает userId из текущей аутентификации
+     */
+    private Long extractUserIdFromAuthentication() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.getPrincipal() instanceof com.example.sticker_art_gallery.model.user.UserEntity) {
+                com.example.sticker_art_gallery.model.user.UserEntity user = 
+                    (com.example.sticker_art_gallery.model.user.UserEntity) authentication.getPrincipal();
+                return user.getId();
+            }
+            return null;
+        } catch (Exception e) {
+            LOGGER.warn("⚠️ Ошибка при извлечении userId из аутентификации: {}", e.getMessage());
+            return null;
+        }
     }
 
     public StickerSet findByName(String name) {
