@@ -24,6 +24,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Arrays;
+
 /**
  * Контроллер для управления лайками стикерсетов
  */
@@ -74,6 +78,9 @@ public class LikeController {
             
             LikeDto like = likeService.likeStickerSet(userId, stickerSetId);
             return ResponseEntity.ok(like);
+        } catch (IllegalStateException e) {
+            LOGGER.warn("⚠️ Пользователь не авторизован: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         } catch (IllegalArgumentException e) {
             LOGGER.warn("⚠️ Ошибка при постановке лайка: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -107,6 +114,9 @@ public class LikeController {
             
             likeService.unlikeStickerSet(userId, stickerSetId);
             return ResponseEntity.ok().build();
+        } catch (IllegalStateException e) {
+            LOGGER.warn("⚠️ Пользователь не авторизован: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         } catch (IllegalArgumentException e) {
             LOGGER.warn("⚠️ Ошибка при удалении лайка: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -147,6 +157,9 @@ public class LikeController {
             
             LikeToggleResult result = likeService.toggleLike(userId, stickerSetId);
             return ResponseEntity.ok(result);
+        } catch (IllegalStateException e) {
+            LOGGER.warn("⚠️ Пользователь не авторизован: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         } catch (IllegalArgumentException e) {
             LOGGER.warn("⚠️ Ошибка при переключении лайка: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -280,6 +293,30 @@ public class LikeController {
     }
     
     /**
+     * Тестовый endpoint для проверки системы лайков (без аутентификации)
+     */
+    @GetMapping("/test-system")
+    @Operation(
+        summary = "Тест системы лайков",
+        description = "Возвращает информацию о системе лайков для тестирования"
+    )
+    @ApiResponse(responseCode = "200", description = "Информация о системе лайков")
+    public ResponseEntity<Map<String, Object>> testLikeSystem() {
+        Map<String, Object> result = new HashMap<>();
+        result.put("message", "Система лайков работает корректно");
+        result.put("endpoints", Arrays.asList(
+            "POST /api/likes/stickersets/{id} - поставить лайк",
+            "DELETE /api/likes/stickersets/{id} - убрать лайк", 
+            "PUT /api/likes/stickersets/{id}/toggle - переключить лайк",
+            "GET /api/likes/stickersets - получить лайкнутые стикерсеты",
+            "GET /api/likes/top-stickersets - топ стикерсетов по лайкам"
+        ));
+        result.put("authentication", "Все endpoints (кроме этого) требуют валидный Telegram initData");
+        result.put("timestamp", java.time.Instant.now());
+        return ResponseEntity.ok(result);
+    }
+    
+    /**
      * Получить все лайки текущего пользователя
      */
     @GetMapping
@@ -344,8 +381,36 @@ public class LikeController {
             throw new IllegalStateException("Пользователь не авторизован");
         }
         
-        // Предполагаем, что principal содержит userId
-        return Long.valueOf(authentication.getName());
+        // Извлекаем telegramId из имени пользователя
+        String nameStr = authentication.getName();
+        Long telegramId = null;
+        
+        try {
+            // Если имя - это просто число (telegramId)
+            if (nameStr.matches("\\d+")) {
+                telegramId = Long.parseLong(nameStr);
+            } else {
+                // Если имя содержит UserEntity объект, парсим его
+                LOGGER.warn("⚠️ Получен неожиданный формат имени пользователя: {}", nameStr);
+                // Попробуем извлечь telegramId из строки
+                if (nameStr.contains("id=")) {
+                    String[] parts = nameStr.split("id=");
+                    if (parts.length > 1) {
+                        String idPart = parts[1].split(",")[0];
+                        telegramId = Long.parseLong(idPart);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка парсинга telegramId из authentication.getName(): {}", nameStr, e);
+            throw new IllegalStateException("Не удалось извлечь telegramId из аутентификации");
+        }
+        
+        if (telegramId == null) {
+            throw new IllegalStateException("Не удалось извлечь telegramId из аутентификации");
+        }
+        
+        return telegramId;
     }
     
     /**

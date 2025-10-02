@@ -70,15 +70,49 @@ public class AuthController {
         if (authentication != null && authentication.isAuthenticated() && 
             !"anonymousUser".equals(authentication.getName())) {
             
+            // Извлекаем telegramId из имени пользователя (которое содержит telegramId)
+            String nameStr = authentication.getName();
+            Long telegramId = null;
+            String username = null;
+            
+            try {
+                // Если имя - это просто число (telegramId)
+                if (nameStr.matches("\\d+")) {
+                    telegramId = Long.parseLong(nameStr);
+                    // Получаем username из базы данных
+                    var userOpt = userService.findByTelegramId(telegramId);
+                    if (userOpt.isPresent()) {
+                        username = userOpt.get().getUsername();
+                    }
+                } else {
+                    // Если имя содержит UserEntity объект, парсим его
+                    LOGGER.warn("⚠️ Получен неожиданный формат имени пользователя: {}", nameStr);
+                    // Попробуем извлечь telegramId из строки
+                    if (nameStr.contains("id=")) {
+                        String[] parts = nameStr.split("id=");
+                        if (parts.length > 1) {
+                            String idPart = parts[1].split(",")[0];
+                            telegramId = Long.parseLong(idPart);
+                            var userOpt = userService.findByTelegramId(telegramId);
+                            if (userOpt.isPresent()) {
+                                username = userOpt.get().getUsername();
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                LOGGER.error("❌ Ошибка парсинга telegramId из authentication.getName(): {}", nameStr, e);
+            }
+            
             response.put("authenticated", true);
-            response.put("telegramId", authentication.getName());
-            response.put("username", authentication.getName());
+            response.put("telegramId", telegramId);
+            response.put("username", username);
             response.put("role", authentication.getAuthorities().stream()
                 .findFirst()
                 .map(authority -> authority.getAuthority())
                 .orElse("ROLE_USER"));
             
-            LOGGER.info("✅ Статус аутентификации: пользователь {} аутентифицирован", authentication.getName());
+            LOGGER.info("✅ Статус аутентификации: пользователь {} (telegramId: {}) аутентифицирован", username, telegramId);
         } else {
             response.put("authenticated", false);
             response.put("message", "No authentication data provided");
