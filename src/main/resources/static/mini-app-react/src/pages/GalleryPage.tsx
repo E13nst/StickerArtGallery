@@ -306,14 +306,7 @@ export const GalleryPage: React.FC = () => {
         user={user}
       />
 
-      <Container 
-        maxWidth="xl" 
-        sx={{ 
-          py: { xs: 2, md: 4 }, // Увеличиваем вертикальные отступы на desktop
-          px: { xs: 2, md: 4 }, // Увеличиваем горизонтальные отступы на desktop
-          pb: { xs: 8, md: 10 } // Минимальный padding снизу для навигации
-        }}
-      >
+      <Container maxWidth="sm" sx={{ py: 2, px: 2, pb: 8 }}>
         {viewMode === 'list' ? (
           <>
             {/* Информация о пользователе */}

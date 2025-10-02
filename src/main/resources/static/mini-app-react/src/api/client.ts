@@ -171,20 +171,29 @@ class ApiClient {
     try {
       const response = await this.client.get<UserInfo>(`/users/${userId}`);
       return response.data;
-    } catch (error) {
-      console.warn('⚠️ API недоступен, используем мок данные для пользователя');
-      // Мок данные для пользователя
-      return {
-        id: 1,
-        telegramId: userId,
-        username: 'mockuser',
-        firstName: 'Mock',
-        lastName: 'User',
-        avatarUrl: 'https://via.placeholder.com/64x64/2481cc/ffffff?text=MU',
-        role: 'USER',
-        artBalance: 150,
-        createdAt: '2025-09-15T10:30:00Z'
-      };
+    } catch (error: any) {
+      // Только для тестового ID возвращаем mock данные
+      if (userId === 123456789) {
+        console.warn('⚠️ API недоступен, используем мок данные для тестового пользователя');
+        return {
+          id: 1,
+          telegramId: userId,
+          username: 'mockuser',
+          firstName: 'Mock',
+          lastName: 'User',
+          avatarUrl: 'https://via.placeholder.com/64x64/2481cc/ffffff?text=MU',
+          role: 'USER',
+          artBalance: 150,
+          createdAt: '2025-09-15T10:30:00Z'
+        };
+      }
+      
+      // Для остальных ID выбрасываем ошибку
+      console.error('❌ Ошибка загрузки пользователя:', error);
+      if (error.response?.status === 404) {
+        throw new Error('Пользователь не найден в базе данных');
+      }
+      throw new Error('Ошибка подключения к серверу');
     }
   }
 
@@ -196,21 +205,25 @@ class ApiClient {
         params: { page, size }
       });
       return response.data;
-    } catch (error) {
-      console.warn('⚠️ API недоступен, используем мок данные для стикерсетов пользователя');
-      // Фильтруем мок данные по userId (для демонстрации)
-             const userMockSets = mockStickerSets.filter(set => (set as any).userId === userId || userId === 123456789);
+    } catch (error: any) {
+      // Только для тестового ID возвращаем mock данные
+      if (userId === 123456789) {
+        console.warn('⚠️ API недоступен, используем мок данные для стикерсетов тестового пользователя');
+        return {
+          content: mockStickerSets,
+          totalElements: mockStickerSets.length,
+          totalPages: Math.ceil(mockStickerSets.length / size),
+          size: size,
+          number: page,
+          first: page === 0,
+          last: page >= Math.ceil(mockStickerSets.length / size) - 1,
+          numberOfElements: mockStickerSets.length
+        };
+      }
       
-      return {
-        content: userMockSets,
-        totalElements: userMockSets.length,
-        totalPages: Math.ceil(userMockSets.length / size),
-        size: size,
-        number: page,
-        first: page === 0,
-        last: page >= Math.ceil(userMockSets.length / size) - 1,
-        numberOfElements: userMockSets.length
-      };
+      // Для остальных ID выбрасываем ошибку
+      console.error('❌ Ошибка загрузки стикерсетов пользователя:', error);
+      throw new Error('Не удалось загрузить стикерсеты пользователя');
     }
   }
 
@@ -221,25 +234,30 @@ class ApiClient {
         params: { name: query, page, size }
       });
       return response.data;
-    } catch (error) {
-      console.warn('⚠️ API поиска недоступен, используем локальную фильтрацию');
-      // Локальная фильтрация мок данных
-       const userMockSets = mockStickerSets.filter(set => 
-         ((set as any).userId === userId || userId === 123456789) &&
-        (set.title.toLowerCase().includes(query.toLowerCase()) ||
-         set.name.toLowerCase().includes(query.toLowerCase()))
-      );
+    } catch (error: any) {
+      // Только для тестового ID возвращаем mock данные
+      if (userId === 123456789) {
+        console.warn('⚠️ API поиска недоступен, используем локальную фильтрацию для тестового пользователя');
+        const userMockSets = mockStickerSets.filter(set => 
+          set.title.toLowerCase().includes(query.toLowerCase()) ||
+          set.name.toLowerCase().includes(query.toLowerCase())
+        );
+        
+        return {
+          content: userMockSets,
+          totalElements: userMockSets.length,
+          totalPages: Math.ceil(userMockSets.length / size),
+          size: size,
+          number: page,
+          first: page === 0,
+          last: page >= Math.ceil(userMockSets.length / size) - 1,
+          numberOfElements: userMockSets.length
+        };
+      }
       
-      return {
-        content: userMockSets,
-        totalElements: userMockSets.length,
-        totalPages: Math.ceil(userMockSets.length / size),
-        size: size,
-        number: page,
-        first: page === 0,
-        last: page >= Math.ceil(userMockSets.length / size) - 1,
-        numberOfElements: userMockSets.length
-      };
+      // Для остальных ID выбрасываем ошибку
+      console.error('❌ Ошибка поиска стикерсетов:', error);
+      throw new Error('Не удалось выполнить поиск стикерсетов');
     }
   }
 }

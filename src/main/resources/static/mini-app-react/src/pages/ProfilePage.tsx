@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import ShareIcon from '@mui/icons-material/Share';
 import MessageIcon from '@mui/icons-material/Message';
+import LogoutIcon from '@mui/icons-material/Logout';
 import { useTelegram } from '@/hooks/useTelegram';
 import { useProfileStore } from '@/store/useProfileStore';
 import { apiClient } from '@/api/client';
@@ -177,6 +178,13 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
+  const handleLogout = () => {
+    // Удаляем сохраненный ID из localStorage
+    localStorage.removeItem('authenticated_user_id');
+    // Перенаправляем на главную страницу
+    navigate('/');
+  };
+
   const handleShareProfile = () => {
     if (tg) {
       tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(`Профиль пользователя ${userInfo?.firstName || 'Unknown'}`)}`);
@@ -280,7 +288,7 @@ export const ProfilePage: React.FC = () => {
         showOptions={false}
       />
 
-      <Container maxWidth={isInTelegramApp ? "sm" : "lg"} sx={{ py: 2 }}>
+      <Container maxWidth="sm" sx={{ py: 2 }}>
         {viewMode === 'list' ? (
           <>
             {/* Информация о пользователе */}
@@ -362,21 +370,21 @@ export const ProfilePage: React.FC = () => {
               <Box sx={{ 
                 display: 'flex', 
                 flexDirection: 'column', 
-                gap: 2,
+                gap: 3,
                 alignItems: 'center',
                 py: 4
               }}>
                 <Typography variant="h6" color="text.secondary" textAlign="center">
-                  Поделиться профилем
+                  Действия
                 </Typography>
                 
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%', maxWidth: 400 }}>
                   <Button
                     variant="contained"
                     startIcon={<ShareIcon />}
                     onClick={handleShareProfile}
                     size="large"
-                    sx={{ minWidth: 200 }}
+                    fullWidth
                   >
                     Поделиться профилем
                   </Button>
@@ -386,9 +394,21 @@ export const ProfilePage: React.FC = () => {
                     startIcon={<MessageIcon />}
                     onClick={handleMessageUser}
                     size="large"
-                    sx={{ minWidth: 200 }}
+                    fullWidth
                   >
                     Написать пользователю
+                  </Button>
+
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<LogoutIcon />}
+                    onClick={handleLogout}
+                    size="large"
+                    fullWidth
+                    sx={{ mt: 2 }}
+                  >
+                    Выйти из профиля
                   </Button>
                 </Box>
               </Box>

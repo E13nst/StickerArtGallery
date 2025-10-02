@@ -80,3 +80,6 @@ dist
 # Temporary folders
 tmp/
 temp/
+
+# Dev version of index.html (not for production)
+index.dev.html

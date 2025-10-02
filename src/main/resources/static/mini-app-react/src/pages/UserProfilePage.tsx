@@ -190,7 +190,7 @@ export const UserProfilePage: React.FC = () => {
         activeTab={3} 
         onChange={(tab) => {
           if (tab === 0) navigate('/');
-          if (tab === 3) navigate('/profile');
+          // Навигация профиля обрабатывается внутри BottomNav
         }}
       />
     </Box>

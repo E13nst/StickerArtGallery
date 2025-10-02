@@ -102,6 +102,8 @@ const LazyImageComponent: React.FC<LazyImageProps> = ({
             width: '100%',
             height: '100%',
             objectFit: 'contain',
+            maxWidth: '100%',
+            maxHeight: '100%',
             display: isLoaded ? 'block' : 'none'
           }}
           onLoad={handleLoad}

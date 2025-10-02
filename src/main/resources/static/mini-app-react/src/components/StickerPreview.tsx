@@ -27,34 +27,17 @@ const StickerPreviewComponent: React.FC<StickerPreviewProps> = ({
     large: { width: 160, height: 160, fontSize: 28 }      // Desktop: 160x160px
   };
 
-  // Адаптивные размеры в зависимости от платформы
   const getAdaptiveSize = () => {
     if (size === 'responsive') {
-      // Responsive - заполняет весь контейнер
       return { width: '100%', height: '100%', fontSize: 16 };
     }
-    
     if (size === 'auto') {
-      // В Telegram - компактнее, в браузере - крупнее
-      if (isInTelegramApp) {
-        console.log('🔍 StickerPreview: Telegram режим, размер medium (120x120)');
-        return sizeMap.medium; // 120x120 в Telegram
-      } else {
-        console.log('🔍 StickerPreview: Браузер режим, размер large (200x200)');
-        return sizeMap.large; // 200x200 в браузере
-      }
+      return isInTelegramApp ? sizeMap.medium : sizeMap.large;
     }
     return sizeMap[size] || sizeMap.medium;
   };
 
   const currentSize = getAdaptiveSize();
-  
-  console.log('🔍 StickerPreview рендер:', {
-    size,
-    isInTelegramApp,
-    currentSize,
-    stickerId: sticker.file_id
-  });
 
   useEffect(() => {
     if (sticker.is_animated) {
@@ -67,24 +50,20 @@ const StickerPreviewComponent: React.FC<StickerPreviewProps> = ({
   const loadLottieAnimation = async () => {
     try {
       const response = await fetch(`/api/stickers/${sticker.file_id}`);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
+      if (!response.ok) throw new Error();
       
       const data = await response.json();
       setAnimationData(data);
       setIsLoaded(true);
-    } catch (error) {
-      console.error('❌ Ошибка загрузки Lottie анимации:', error);
+    } catch {
       setError(true);
       setIsLoaded(true);
     }
   };
 
   const handleImageError = useCallback(() => {
-    console.error('❌ Ошибка загрузки изображения:', `/api/stickers/${sticker.file_id}`);
     setError(true);
-  }, [sticker.file_id]);
+  }, []);
 
   const handleImageLoad = useCallback(() => {
     setIsLoaded(true);
@@ -99,10 +78,7 @@ const StickerPreviewComponent: React.FC<StickerPreviewProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: 'background.paper',
-          borderRadius: 2,
-          border: '1px solid',
-          borderColor: 'divider'
+          backgroundColor: 'transparent'
         }}
       >
         <Typography
@@ -126,10 +102,7 @@ const StickerPreviewComponent: React.FC<StickerPreviewProps> = ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'background.paper',
-        borderRadius: 2,
-        border: '1px solid',
-        borderColor: 'divider',
+        backgroundColor: 'transparent',
         overflow: 'hidden'
       }}
     >
@@ -152,6 +125,13 @@ const StickerPreviewComponent: React.FC<StickerPreviewProps> = ({
           alt={sticker.emoji || 'sticker'}
           onLoad={handleImageLoad}
           onError={handleImageError}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+            maxWidth: '100%',
+            maxHeight: '100%'
+          }}
           placeholder={
             <Typography
               sx={{
@@ -183,7 +163,10 @@ const StickerPreviewComponent: React.FC<StickerPreviewProps> = ({
           autoplay={true}
           style={{
             width: '100%',
-            height: '100%'
+            height: '100%',
+            maxWidth: '100%',
+            maxHeight: '100%',
+            objectFit: 'contain'
           }}
           lottieRef={lottieRef}
         />
