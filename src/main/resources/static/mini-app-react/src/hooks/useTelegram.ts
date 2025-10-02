@@ -39,6 +39,12 @@ export const useTelegram = () => {
       console.log('platform:', telegram.platform);
       console.log('version:', telegram.version);
       
+      // Сохраняем InitData в localStorage для использования в BottomNav
+      if (telegram.initDataUnsafe?.user) {
+        localStorage.setItem('telegram_init_data', JSON.stringify(telegram.initDataUnsafe));
+        console.log('✅ InitData сохранен в localStorage');
+      }
+      
       // Детальная отладка initData
       if (telegram.initData) {
         console.log('🔍 Детальный разбор initData:');

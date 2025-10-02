@@ -28,7 +28,24 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
-    // Проверяем сохраненный ID из localStorage
+    // Сначала проверяем InitData из Telegram WebApp
+    const initData = localStorage.getItem('telegram_init_data');
+    if (initData) {
+      try {
+        const data = JSON.parse(initData);
+        if (data.user && data.user.id) {
+          console.log('✅ Найден ID из Telegram InitData:', data.user.id);
+          setCurrentUserId(data.user.id);
+          // Сохраняем актуальный ID в localStorage
+          localStorage.setItem('authenticated_user_id', data.user.id.toString());
+          return;
+        }
+      } catch (e) {
+        console.warn('⚠️ Ошибка парсинга InitData:', e);
+      }
+    }
+
+    // Если InitData недоступен, проверяем сохраненный ID из localStorage
     const savedUserId = localStorage.getItem('authenticated_user_id');
     if (savedUserId) {
       const id = parseInt(savedUserId, 10);
@@ -39,7 +56,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     } else {
       console.log('ℹ️ Пользователь не авторизован. Для очистки: localStorage.removeItem("authenticated_user_id")');
     }
-    // НЕ вызываем checkAuthStatus автоматически, чтобы можно было тестировать авторизацию
   }, []);
 
   // Показываем нижнюю навигацию везде для лучшего UX
