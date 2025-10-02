@@ -34,6 +34,12 @@ public class StickerSetDto {
     @Schema(description = "Список категорий стикерсета")
     private List<CategoryDto> categories;
     
+    @Schema(description = "Количество лайков стикерсета", example = "42")
+    private Long likesCount;
+    
+    @Schema(description = "Лайкнул ли текущий пользователь этот стикерсет", example = "true")
+    private boolean isLikedByCurrentUser;
+    
     // Конструкторы
     public StickerSetDto() {}
     
@@ -102,6 +108,22 @@ public class StickerSetDto {
         this.categories = categories;
     }
     
+    public Long getLikesCount() {
+        return likesCount;
+    }
+    
+    public void setLikesCount(Long likesCount) {
+        this.likesCount = likesCount;
+    }
+    
+    public boolean isLikedByCurrentUser() {
+        return isLikedByCurrentUser;
+    }
+    
+    public void setLikedByCurrentUser(boolean likedByCurrentUser) {
+        isLikedByCurrentUser = likedByCurrentUser;
+    }
+    
     // Конструктор для создания DTO из Entity
     public static StickerSetDto fromEntity(com.example.sticker_art_gallery.model.telegram.StickerSet entity) {
         if (entity == null) {
@@ -140,6 +162,20 @@ public class StickerSetDto {
                     .map(category -> CategoryDto.fromEntity(category, language))
                     .collect(Collectors.toList())
             );
+        }
+        
+        // Добавляем информацию о лайках
+        dto.setLikesCount((long) entity.getLikesCount());
+        
+        return dto;
+    }
+    
+    // Конструктор для создания DTO из Entity с категориями и информацией о лайках пользователя
+    public static StickerSetDto fromEntity(com.example.sticker_art_gallery.model.telegram.StickerSet entity, String language, Long currentUserId) {
+        StickerSetDto dto = fromEntity(entity, language);
+        
+        if (dto != null && currentUserId != null) {
+            dto.setLikedByCurrentUser(entity.isLikedByUser(currentUserId));
         }
         
         return dto;

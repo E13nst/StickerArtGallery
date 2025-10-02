@@ -11,6 +11,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -66,6 +68,8 @@ public class StickerSetController {
                                 "title": "Мои стикеры",
                                 "name": "my_stickers_by_StickerGalleryBot",
                                 "createdAt": "2025-09-15T10:30:00",
+                                "likesCount": 42,
+                                "isLikedByCurrentUser": true,
                                 "telegramStickerSetInfo": "{\\"name\\":\\"my_stickers_by_StickerGalleryBot\\",\\"title\\":\\"Мои стикеры\\",\\"sticker_type\\":\\"regular\\",\\"is_animated\\":false,\\"stickers\\":[...]}",
                                 "categories": [
                                     {
@@ -127,13 +131,14 @@ public class StickerSetController {
             pageRequest.setDirection(direction);
             
             PageResponse<StickerSetDto> result;
+            Long currentUserId = getCurrentUserIdOrNull();
             if (categoryKeys != null && !categoryKeys.trim().isEmpty()) {
                 // Фильтрация по категориям
                 String[] categoryKeyArray = categoryKeys.split(",");
-                result = stickerSetService.findByCategoryKeys(categoryKeyArray, pageRequest, language);
+                result = stickerSetService.findByCategoryKeys(categoryKeyArray, pageRequest, language, currentUserId);
             } else {
                 // Без фильтрации
-                result = stickerSetService.findAllWithPagination(pageRequest, language);
+                result = stickerSetService.findAllWithPagination(pageRequest, language, currentUserId);
             }
             
             LOGGER.debug("✅ Найдено {} стикерсетов на странице {} из {}", 
@@ -665,6 +670,88 @@ public class StickerSetController {
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при обновлении категорий стикерсета {}: {}", id, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    /**
+     * Получить топ стикерсетов по лайкам
+     */
+    @GetMapping("/top-by-likes")
+    @Operation(
+        summary = "Получить топ стикерсетов по лайкам",
+        description = "Возвращает список стикерсетов, отсортированных по количеству лайков (по убыванию). " +
+                     "Включает информацию о том, лайкнул ли текущий пользователь каждый стикерсет."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Топ стикерсетов по лайкам успешно получен",
+            content = @Content(schema = @Schema(implementation = PageResponse.class),
+                examples = @ExampleObject(value = """
+                    {
+                        "content": [
+                            {
+                                "id": 5,
+                                "userId": 123456789,
+                                "title": "Популярные стикеры",
+                                "name": "popular_stickers_by_StickerGalleryBot",
+                                "createdAt": "2025-01-15T10:30:00",
+                                "likesCount": 42,
+                                "isLikedByCurrentUser": true,
+                                "categories": []
+                            }
+                        ],
+                        "totalElements": 1,
+                        "totalPages": 1,
+                        "size": 20,
+                        "number": 0,
+                        "first": true,
+                        "last": true,
+                        "numberOfElements": 1
+                    }
+                    """))),
+        @ApiResponse(responseCode = "400", description = "Некорректные параметры пагинации"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<PageResponse<StickerSetDto>> getTopStickerSetsByLikes(
+            @Parameter(description = "Номер страницы (начиная с 0)", example = "0")
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @Parameter(description = "Количество элементов на странице (1-100)", example = "20")
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            @Parameter(description = "Код языка для локализации категорий (ru/en)", example = "ru")
+            @RequestParam(defaultValue = "en") String language) {
+        try {
+            LOGGER.info("🏆 Получение топ стикерсетов по лайкам с пагинацией: page={}, size={}", page, size);
+            
+            PageRequest pageRequest = new PageRequest();
+            pageRequest.setPage(page);
+            pageRequest.setSize(size);
+            pageRequest.setSort("likesCount");
+            pageRequest.setDirection("DESC");
+            
+            Long currentUserId = getCurrentUserIdOrNull();
+            PageResponse<StickerSetDto> result = stickerSetService.findAllWithPagination(pageRequest, language, currentUserId);
+            
+            LOGGER.debug("✅ Найдено {} топ стикерсетов на странице {} из {}", 
+                    result.getContent().size(), result.getPage() + 1, result.getTotalPages());
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при получении топа стикерсетов по лайкам: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    /**
+     * Извлечь ID текущего пользователя из SecurityContext (может вернуть null)
+     */
+    private Long getCurrentUserIdOrNull() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated() || 
+                "anonymousUser".equals(authentication.getPrincipal())) {
+                return null;
+            }
+            return Long.valueOf(authentication.getName());
+        } catch (Exception e) {
+            return null;
         }
     }
 } 

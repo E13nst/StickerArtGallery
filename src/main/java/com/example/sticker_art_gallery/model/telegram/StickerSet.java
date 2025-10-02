@@ -1,5 +1,6 @@
 package com.example.sticker_art_gallery.model.telegram;
 
+import com.example.sticker_art_gallery.model.Like;
 import com.example.sticker_art_gallery.model.category.Category;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -47,6 +48,14 @@ public class StickerSet {
     @EqualsAndHashCode.Exclude
     private Set<Category> categories = new HashSet<>();
     
+    /**
+     * Лайки стикерсета (one-to-many)
+     */
+    @OneToMany(mappedBy = "stickerSet", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Set<Like> likes = new HashSet<>();
+    
     @PrePersist
     protected void onCreate() {
         createdAt = java.time.LocalDateTime.now();
@@ -75,5 +84,36 @@ public class StickerSet {
         for (Category category : new HashSet<>(this.categories)) {
             removeCategory(category);
         }
+    }
+    
+    /**
+     * Добавить лайк к стикерсету
+     */
+    public void addLike(Like like) {
+        likes.add(like);
+        like.setStickerSet(this);
+    }
+    
+    /**
+     * Удалить лайк из стикерсета
+     */
+    public void removeLike(Like like) {
+        likes.remove(like);
+        like.setStickerSet(null);
+    }
+    
+    /**
+     * Получить количество лайков
+     */
+    public int getLikesCount() {
+        return likes.size();
+    }
+    
+    /**
+     * Проверить, лайкнул ли пользователь стикерсет
+     */
+    public boolean isLikedByUser(Long userId) {
+        return likes.stream()
+            .anyMatch(like -> like.getUserId().equals(userId));
     }
 } 
