@@ -43,7 +43,7 @@ public class LikeController {
     /**
      * Поставить лайк стикерсету
      */
-    @PostMapping("/sticker-sets/{stickerSetId}")
+    @PostMapping("/stickersets/{stickerSetId}")
     @Operation(
         summary = "Поставить лайк стикерсету",
         description = "Добавляет лайк от текущего пользователя к указанному стикерсету. " +
@@ -86,7 +86,7 @@ public class LikeController {
     /**
      * Убрать лайк со стикерсета
      */
-    @DeleteMapping("/sticker-sets/{stickerSetId}")
+    @DeleteMapping("/stickersets/{stickerSetId}")
     @Operation(
         summary = "Убрать лайк со стикерсета",
         description = "Удаляет лайк текущего пользователя с указанного стикерсета. " +
@@ -119,7 +119,7 @@ public class LikeController {
     /**
      * Переключить лайк стикерсета
      */
-    @PutMapping("/sticker-sets/{stickerSetId}/toggle")
+    @PutMapping("/stickersets/{stickerSetId}/toggle")
     @Operation(
         summary = "Переключить лайк стикерсета",
         description = "Переключает состояние лайка: если лайк есть - убирает его, если нет - ставит. " +
@@ -159,7 +159,7 @@ public class LikeController {
     /**
      * Получить лайкнутые стикерсеты текущего пользователя
      */
-    @GetMapping("/sticker-sets")
+    @GetMapping("/stickersets")
     @Operation(
         summary = "Получить лайкнутые стикерсеты текущего пользователя",
         description = "Возвращает список стикерсетов, которые лайкнул текущий пользователь, " +
@@ -219,7 +219,7 @@ public class LikeController {
     /**
      * Получить топ стикерсетов по лайкам
      */
-    @GetMapping("/top-sticker-sets")
+    @GetMapping("/top-stickersets")
     @Operation(
         summary = "Получить топ стикерсетов по лайкам",
         description = "Возвращает список стикерсетов, отсортированных по количеству лайков (по убыванию). " +

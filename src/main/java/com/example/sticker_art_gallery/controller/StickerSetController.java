@@ -676,7 +676,7 @@ public class StickerSetController {
     /**
      * Получить топ стикерсетов по лайкам
      */
-    @GetMapping("/top-by-likes")
+    @GetMapping("/top-bylikes")
     @Operation(
         summary = "Получить топ стикерсетов по лайкам",
         description = "Возвращает список стикерсетов, отсортированных по количеству лайков (по убыванию). " +
