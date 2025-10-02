@@ -2,7 +2,11 @@ import React from 'react';
 import { 
   Box, 
   Tabs, 
+<<<<<<< HEAD
   Tab,
+=======
+  Tab, 
+>>>>>>> 3d08b0c96d545fddbc1f8bd4d07971ec292eebb5
   useTheme,
   useMediaQuery
 } from '@mui/material';
