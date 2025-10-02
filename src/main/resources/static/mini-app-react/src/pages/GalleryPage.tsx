@@ -25,13 +25,9 @@ export const GalleryPage: React.FC = () => {
     isLoading,
     isAuthLoading,
     stickerSets,
-<<<<<<< HEAD
-    error,
-=======
     authStatus: _authStatus,
     error,
     authError: _authError,
->>>>>>> 3d08b0c96d545fddbc1f8bd4d07971ec292eebb5
     setLoading,
     setAuthLoading,
     setStickerSets,

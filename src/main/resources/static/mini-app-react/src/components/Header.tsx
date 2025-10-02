@@ -31,10 +31,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   title = "🎨 Галерея стикеров",
   onMenuClick,
-<<<<<<< HEAD
-=======
   onOptionsClick: _onOptionsClick,
->>>>>>> 3d08b0c96d545fddbc1f8bd4d07971ec292eebb5
   showMenu = true,
   showOptions = true,
   initData,
