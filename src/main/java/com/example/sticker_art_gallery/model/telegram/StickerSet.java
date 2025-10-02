@@ -40,7 +40,7 @@ public class StickerSet {
      */
     @ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinTable(
-        name = "sticker_set_categories",
+        name = "stickerset_categories",
         joinColumns = @JoinColumn(name = "sticker_set_id"),
         inverseJoinColumns = @JoinColumn(name = "category_id")
     )
