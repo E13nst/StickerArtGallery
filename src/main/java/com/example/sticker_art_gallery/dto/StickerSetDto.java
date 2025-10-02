@@ -3,6 +3,8 @@ package com.example.sticker_art_gallery.dto;
 import jakarta.validation.constraints.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class StickerSetDto {
     
@@ -28,6 +30,9 @@ public class StickerSetDto {
             example = "{\"name\":\"my_stickers_by_StickerGalleryBot\",\"title\":\"Мои стикеры\",\"sticker_type\":\"regular\",\"is_animated\":false,\"is_video\":false,\"stickers\":[...]}", 
             nullable = true)
     private Object telegramStickerSetInfo;
+    
+    @Schema(description = "Список категорий стикерсета")
+    private List<CategoryDto> categories;
     
     // Конструкторы
     public StickerSetDto() {}
@@ -89,19 +94,55 @@ public class StickerSetDto {
         this.telegramStickerSetInfo = telegramStickerSetInfo;
     }
     
+    public List<CategoryDto> getCategories() {
+        return categories;
+    }
+    
+    public void setCategories(List<CategoryDto> categories) {
+        this.categories = categories;
+    }
+    
     // Конструктор для создания DTO из Entity
     public static StickerSetDto fromEntity(com.example.sticker_art_gallery.model.telegram.StickerSet entity) {
         if (entity == null) {
             return null;
         }
         
-        return new StickerSetDto(
+        StickerSetDto dto = new StickerSetDto(
             entity.getId(),
             entity.getUserId(),
             entity.getTitle(),
             entity.getName(),
             entity.getCreatedAt()
         );
+        
+        return dto;
+    }
+    
+    // Конструктор для создания DTO из Entity с категориями
+    public static StickerSetDto fromEntity(com.example.sticker_art_gallery.model.telegram.StickerSet entity, String language) {
+        if (entity == null) {
+            return null;
+        }
+        
+        StickerSetDto dto = new StickerSetDto(
+            entity.getId(),
+            entity.getUserId(),
+            entity.getTitle(),
+            entity.getName(),
+            entity.getCreatedAt()
+        );
+        
+        // Добавляем категории с локализацией
+        if (entity.getCategories() != null && !entity.getCategories().isEmpty()) {
+            dto.setCategories(
+                entity.getCategories().stream()
+                    .map(category -> CategoryDto.fromEntity(category, language))
+                    .collect(Collectors.toList())
+            );
+        }
+        
+        return dto;
     }
     
     @Override

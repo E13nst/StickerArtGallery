@@ -4,6 +4,9 @@ import jakarta.validation.constraints.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 import com.example.sticker_art_gallery.validation.ValidStickerSetName;
 
+import java.util.Set;
+import java.util.HashSet;
+
 /**
  * DTO для создания нового стикерсета
  * Только поле name является обязательным, остальные поля опциональны и могут быть заполнены автоматически
@@ -29,6 +32,10 @@ public class CreateStickerSetDto {
     @Size(min = 1, max = 200, message = "Поле name должно быть от 1 до 200 символов")
     @ValidStickerSetName(message = "Некорректное имя стикерсета или URL. Ожидается имя стикерсета или URL вида https://t.me/addstickers/имя_стикерсета")
     private String name;
+    
+    @Schema(description = "Ключи категорий для стикерсета. Необязательное поле.", 
+            example = "[\"animals\", \"cute\"]")
+    private Set<String> categoryKeys;
     
     // Конструкторы
     public CreateStickerSetDto() {}
@@ -66,6 +73,14 @@ public class CreateStickerSetDto {
     
     public void setName(String name) {
         this.name = name;
+    }
+    
+    public Set<String> getCategoryKeys() {
+        return categoryKeys;
+    }
+    
+    public void setCategoryKeys(Set<String> categoryKeys) {
+        this.categoryKeys = categoryKeys;
     }
     
     /**
@@ -191,6 +206,7 @@ public class CreateStickerSetDto {
                 "userId=" + userId +
                 ", title='" + title + '\'' +
                 ", name='" + name + '\'' +
+                ", categoryKeys=" + categoryKeys +
                 '}';
     }
 }

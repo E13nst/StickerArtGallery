@@ -3,6 +3,8 @@ package com.example.sticker_art_gallery.model.telegram;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -21,4 +23,12 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
     Optional<StickerSet> findByName(String name);
     
     StickerSet findByTitle(String title);
+    
+    /**
+     * Поиск стикерсетов по ключам категорий с пагинацией
+     */
+    @Query("SELECT DISTINCT ss FROM StickerSet ss " +
+           "JOIN ss.categories c " +
+           "WHERE c.key IN :categoryKeys")
+    Page<StickerSet> findByCategoryKeys(@Param("categoryKeys") String[] categoryKeys, Pageable pageable);
 } 

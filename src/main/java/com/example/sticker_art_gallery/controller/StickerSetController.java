@@ -48,8 +48,11 @@ public class StickerSetController {
      */
     @GetMapping
     @Operation(
-        summary = "Получить все стикерсеты с пагинацией",
-        description = "Возвращает список всех стикерсетов в системе с пагинацией и обогащением данных из Telegram Bot API. Требует авторизации через Telegram Web App."
+        summary = "Получить все стикерсеты с пагинацией и фильтрацией",
+        description = "Возвращает список всех стикерсетов в системе с пагинацией, фильтрацией по категориям и обогащением данных из Telegram Bot API. " +
+                     "Поддерживает локализацию названий категорий. " +
+                     "Можно фильтровать по категориям через параметр categoryKeys. " +
+                     "Требует авторизации через Telegram Web App."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Список стикерсетов успешно получен",
@@ -63,7 +66,27 @@ public class StickerSetController {
                                 "title": "Мои стикеры",
                                 "name": "my_stickers_by_StickerGalleryBot",
                                 "createdAt": "2025-09-15T10:30:00",
-                                "telegramStickerSetInfo": "{\\"name\\":\\"my_stickers_by_StickerGalleryBot\\",\\"title\\":\\"Мои стикеры\\",\\"sticker_type\\":\\"regular\\",\\"is_animated\\":false,\\"stickers\\":[...]}"
+                                "telegramStickerSetInfo": "{\\"name\\":\\"my_stickers_by_StickerGalleryBot\\",\\"title\\":\\"Мои стикеры\\",\\"sticker_type\\":\\"regular\\",\\"is_animated\\":false,\\"stickers\\":[...]}",
+                                "categories": [
+                                    {
+                                        "id": 1,
+                                        "key": "animals",
+                                        "name": "Животные",
+                                        "description": "Стикеры с животными",
+                                        "iconUrl": null,
+                                        "displayOrder": 1,
+                                        "isActive": true
+                                    },
+                                    {
+                                        "id": 2,
+                                        "key": "cute",
+                                        "name": "Милые",
+                                        "description": "Милые стикеры",
+                                        "iconUrl": null,
+                                        "displayOrder": 130,
+                                        "isActive": true
+                                    }
+                                ]
                             }
                         ],
                         "page": 0,
@@ -88,10 +111,14 @@ public class StickerSetController {
             @Parameter(description = "Поле для сортировки", example = "createdAt")
             @RequestParam(defaultValue = "createdAt") String sort,
             @Parameter(description = "Направление сортировки", example = "DESC")
-            @RequestParam(defaultValue = "DESC") @Pattern(regexp = "ASC|DESC") String direction) {
+            @RequestParam(defaultValue = "DESC") @Pattern(regexp = "ASC|DESC") String direction,
+            @Parameter(description = "Код языка для локализации категорий (ru/en)", example = "ru")
+            @RequestParam(defaultValue = "en") String language,
+            @Parameter(description = "Фильтр по ключам категорий (через запятую)", example = "animals,memes")
+            @RequestParam(required = false) String categoryKeys) {
         try {
-            LOGGER.info("📋 Получение всех стикерсетов с пагинацией: page={}, size={}, sort={}, direction={}", 
-                    page, size, sort, direction);
+            LOGGER.info("📋 Получение всех стикерсетов с пагинацией: page={}, size={}, sort={}, direction={}, categoryKeys={}", 
+                    page, size, sort, direction, categoryKeys);
             
             PageRequest pageRequest = new PageRequest();
             pageRequest.setPage(page);
@@ -99,7 +126,15 @@ public class StickerSetController {
             pageRequest.setSort(sort);
             pageRequest.setDirection(direction);
             
-            PageResponse<StickerSetDto> result = stickerSetService.findAllWithPagination(pageRequest);
+            PageResponse<StickerSetDto> result;
+            if (categoryKeys != null && !categoryKeys.trim().isEmpty()) {
+                // Фильтрация по категориям
+                String[] categoryKeyArray = categoryKeys.split(",");
+                result = stickerSetService.findByCategoryKeys(categoryKeyArray, pageRequest, language);
+            } else {
+                // Без фильтрации
+                result = stickerSetService.findAllWithPagination(pageRequest, language);
+            }
             
             LOGGER.debug("✅ Найдено {} стикерсетов на странице {} из {}", 
                     result.getContent().size(), result.getPage() + 1, result.getTotalPages());
@@ -284,6 +319,7 @@ public class StickerSetController {
             **Опциональные поля:**
             - `userId` - ID пользователя (если не указан, извлекается из initData)
             - `title` - название стикерсета (если не указано, получается из Telegram API)
+            - `categoryKeys` - массив ключей категорий для стикерсета (например, ["animals", "cute"])
             
             **Процесс валидации:**
             1. Проверка уникальности имени в базе данных
@@ -306,7 +342,28 @@ public class StickerSetController {
                         "userId": 123456789,
                         "title": "Мои стикеры",
                         "name": "my_stickers_by_StickerGalleryBot",
-                        "createdAt": "2025-01-15T14:30:00"
+                        "createdAt": "2025-01-15T14:30:00",
+                        "telegramStickerSetInfo": "{\\"name\\":\\"my_stickers_by_StickerGalleryBot\\",\\"title\\":\\"Мои стикеры\\",\\"sticker_type\\":\\"regular\\",\\"is_animated\\":false,\\"stickers\\":[...]}",
+                        "categories": [
+                            {
+                                "id": 1,
+                                "key": "animals",
+                                "name": "Animals",
+                                "description": "Stickers with animals",
+                                "iconUrl": null,
+                                "displayOrder": 1,
+                                "isActive": true
+                            },
+                            {
+                                "id": 2,
+                                "key": "cute",
+                                "name": "Cute",
+                                "description": "Cute and adorable stickers",
+                                "iconUrl": null,
+                                "displayOrder": 130,
+                                "isActive": true
+                            }
+                        ]
                     }
                     """))),
         @ApiResponse(responseCode = "400", description = "Ошибка валидации данных",
@@ -327,6 +384,12 @@ public class StickerSetController {
                     {
                         "error": "Ошибка валидации",
                         "message": "Не удалось определить ID пользователя. Укажите userId или убедитесь, что вы авторизованы через Telegram Web App"
+                    }
+                    """),
+                @ExampleObject(name = "Несуществующие категории", value = """
+                    {
+                        "error": "Ошибка валидации",
+                        "message": "Категории с ключами [non_existent_category] не найдены"
                     }
                     """)
             })),
@@ -362,6 +425,7 @@ public class StickerSetController {
                 **Опциональные поля:**
                 - `userId` - ID пользователя (положительное число, если не указан - извлекается из initData)
                 - `title` - название стикерсета (строка до 64 символов, если не указано - получается из Telegram API)
+                - `categoryKeys` - массив ключей категорий (например, ["animals", "cute"])
                 
                 **Поддерживаемые форматы для поля name:**
                 - Имя стикерсета: `my_stickers_by_StickerGalleryBot`
@@ -534,6 +598,73 @@ public class StickerSetController {
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при удалении стикерсета с ID: {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    /**
+     * Обновить категории стикерсета
+     */
+    @PutMapping("/{id}/categories")
+    @Operation(
+        summary = "Обновить категории стикерсета",
+        description = "Обновляет категории существующего стикерсета. Полностью заменяет текущие категории на новые. " +
+                     "Передайте пустой массив, чтобы удалить все категории. " +
+                     "Все ключи категорий должны существовать в системе. " +
+                     "Администратор может обновлять любые стикерсеты, обычный пользователь - только свои."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Категории стикерсета успешно обновлены",
+            content = @Content(schema = @Schema(implementation = StickerSetDto.class),
+                examples = @ExampleObject(value = """
+                    {
+                        "id": 1,
+                        "userId": 123456789,
+                        "title": "Мои стикеры",
+                        "name": "my_stickers_by_StickerGalleryBot",
+                        "createdAt": "2025-09-15T10:30:00",
+                        "categories": [
+                            {
+                                "id": 1,
+                                "key": "animals",
+                                "name": "Животные",
+                                "description": "Стикеры с животными"
+                            },
+                            {
+                                "id": 2,
+                                "key": "cute",
+                                "name": "Милые",
+                                "description": "Милые стикеры"
+                            }
+                        ]
+                    }
+                    """))),
+        @ApiResponse(responseCode = "400", description = "Некорректные данные или несуществующие категории"),
+        @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен - можно обновлять только свои стикерсеты"),
+        @ApiResponse(responseCode = "404", description = "Стикерсет с указанным ID не найден"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<StickerSetDto> updateStickerSetCategories(
+            @Parameter(description = "ID стикерсета для обновления категорий", required = true, example = "1")
+            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id,
+            @Parameter(description = "Список ключей категорий", required = true)
+            @RequestBody java.util.Set<String> categoryKeys,
+            @Parameter(description = "Код языка для ответа (ru/en)", example = "ru")
+            @RequestParam(defaultValue = "en") String language) {
+        try {
+            LOGGER.info("🏷️ Обновление категорий стикерсета с ID: {}, категории: {}", id, categoryKeys);
+            
+            StickerSet updatedStickerSet = stickerSetService.updateCategories(id, categoryKeys);
+            
+            LOGGER.info("✅ Категории стикерсета {} успешно обновлены", id);
+            return ResponseEntity.ok(StickerSetDto.fromEntity(updatedStickerSet, language));
+            
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("⚠️ Некорректные данные для обновления категорий стикерсета {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(null);
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при обновлении категорий стикерсета {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
         }
     }
 } 

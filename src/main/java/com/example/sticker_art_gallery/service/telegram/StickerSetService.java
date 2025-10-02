@@ -4,8 +4,10 @@ import com.example.sticker_art_gallery.dto.PageRequest;
 import com.example.sticker_art_gallery.dto.PageResponse;
 import com.example.sticker_art_gallery.dto.StickerSetDto;
 import com.example.sticker_art_gallery.dto.CreateStickerSetDto;
+import com.example.sticker_art_gallery.model.category.Category;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
+import com.example.sticker_art_gallery.service.category.CategoryService;
 import com.example.sticker_art_gallery.service.user.UserService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,8 +18,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import jakarta.transaction.Transactional;
 
 @Service
 public class StickerSetService {
@@ -26,13 +30,15 @@ public class StickerSetService {
     private final StickerSetRepository stickerSetRepository;
     private final UserService userService;
     private final TelegramBotApiService telegramBotApiService;
+    private final CategoryService categoryService;
     
     @Autowired
     public StickerSetService(StickerSetRepository stickerSetRepository, UserService userService, 
-                           TelegramBotApiService telegramBotApiService) {
+                           TelegramBotApiService telegramBotApiService, CategoryService categoryService) {
         this.stickerSetRepository = stickerSetRepository;
         this.userService = userService;
         this.telegramBotApiService = telegramBotApiService;
+        this.categoryService = categoryService;
     }
     
     /**
@@ -87,14 +93,26 @@ public class StickerSetService {
             LOGGER.debug("📝 Получен title из Telegram API: '{}'", title);
         }
         
-        // 5. Создаем стикерсет
-        return createStickerSetInternal(userId, title, stickerSetName);
+        // 5. Обрабатываем категории
+        List<Category> categories = null;
+        if (createDto.getCategoryKeys() != null && !createDto.getCategoryKeys().isEmpty()) {
+            try {
+                categories = categoryService.getCategoriesByKeys(createDto.getCategoryKeys());
+                LOGGER.debug("📁 Найдено категорий: {}", categories.size());
+            } catch (IllegalArgumentException e) {
+                LOGGER.warn("⚠️ Ошибка при получении категорий: {}", e.getMessage());
+                throw e;
+            }
+        }
+        
+        // 6. Создаем стикерсет
+        return createStickerSetInternal(userId, title, stickerSetName, categories);
     }
     
     /**
      * Внутренний метод для создания стикерсета без валидации
      */
-    private StickerSet createStickerSetInternal(Long userId, String title, String name) {
+    private StickerSet createStickerSetInternal(Long userId, String title, String name, List<Category> categories) {
         // Автоматически создаем пользователя, если его нет
         try {
             userService.findOrCreateByTelegramId(userId, null, null, null, null);
@@ -107,10 +125,19 @@ public class StickerSetService {
         stickerSet.setUserId(userId);
         stickerSet.setTitle(title);
         stickerSet.setName(name);
+        
+        // Добавляем категории, если они указаны
+        if (categories != null && !categories.isEmpty()) {
+            for (Category category : categories) {
+                stickerSet.addCategory(category);
+            }
+            LOGGER.debug("📁 Добавлено категорий к стикерсету: {}", categories.size());
+        }
 
         StickerSet savedSet = stickerSetRepository.save(stickerSet);
-        LOGGER.info("📦 Создан стикерпак: ID={}, Title='{}', Name='{}', UserId={}", 
-                savedSet.getId(), title, name, userId);
+        LOGGER.info("📦 Создан стикерпак: ID={}, Title='{}', Name='{}', UserId={}, Categories={}", 
+                savedSet.getId(), title, name, userId, 
+                savedSet.getCategories() != null ? savedSet.getCategories().size() : 0);
 
         return savedSet;
     }
@@ -172,12 +199,12 @@ public class StickerSetService {
     /**
      * Получить все стикерсеты с пагинацией и обогащением данных Bot API
      */
-    public PageResponse<StickerSetDto> findAllWithPagination(PageRequest pageRequest) {
-        LOGGER.debug("📋 Получение всех стикерсетов с пагинацией: page={}, size={}", 
-                pageRequest.getPage(), pageRequest.getSize());
+    public PageResponse<StickerSetDto> findAllWithPagination(PageRequest pageRequest, String language) {
+        LOGGER.debug("📋 Получение всех стикерсетов с пагинацией: page={}, size={}, language={}", 
+                pageRequest.getPage(), pageRequest.getSize(), language);
         
         Page<StickerSet> stickerSetsPage = stickerSetRepository.findAll(pageRequest.toPageable());
-        List<StickerSetDto> enrichedDtos = enrichWithBotApiData(stickerSetsPage.getContent());
+        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language);
         
         return PageResponse.of(stickerSetsPage, enrichedDtos);
     }
@@ -191,6 +218,19 @@ public class StickerSetService {
         
         Page<StickerSet> stickerSetsPage = stickerSetRepository.findByUserId(userId, pageRequest.toPageable());
         List<StickerSetDto> enrichedDtos = enrichWithBotApiData(stickerSetsPage.getContent());
+        
+        return PageResponse.of(stickerSetsPage, enrichedDtos);
+    }
+    
+    /**
+     * Получить стикерсеты по ключам категорий с пагинацией и обогащением данных Bot API
+     */
+    public PageResponse<StickerSetDto> findByCategoryKeys(String[] categoryKeys, PageRequest pageRequest, String language) {
+        LOGGER.debug("🏷️ Получение стикерсетов по категориям {} с пагинацией: page={}, size={}", 
+                String.join(",", categoryKeys), pageRequest.getPage(), pageRequest.getSize());
+        
+        Page<StickerSet> stickerSetsPage = stickerSetRepository.findByCategoryKeys(categoryKeys, pageRequest.toPageable());
+        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language);
         
         return PageResponse.of(stickerSetsPage, enrichedDtos);
     }
@@ -226,23 +266,51 @@ public class StickerSetService {
     }
     
     /**
-     * Обогащает список стикерсетов данными из Bot API (параллельно)
+     * Обновить категории стикерсета
      */
-    private List<StickerSetDto> enrichWithBotApiData(List<StickerSet> stickerSets) {
+    @Transactional
+    public StickerSet updateCategories(Long stickerSetId, Set<String> categoryKeys) {
+        LOGGER.info("🏷️ Обновление категорий стикерсета ID: {}, категории: {}", stickerSetId, categoryKeys);
+        
+        StickerSet stickerSet = stickerSetRepository.findById(stickerSetId)
+            .orElseThrow(() -> new IllegalArgumentException("Стикерсет с ID " + stickerSetId + " не найден"));
+        
+        // Очищаем существующие категории
+        stickerSet.clearCategories();
+        
+        // Добавляем новые категории, если они указаны
+        if (categoryKeys != null && !categoryKeys.isEmpty()) {
+            try {
+                List<Category> categories = categoryService.getCategoriesByKeys(categoryKeys);
+                for (Category category : categories) {
+                    stickerSet.addCategory(category);
+                }
+                LOGGER.info("✅ Добавлено {} категорий к стикерсету {}", categories.size(), stickerSetId);
+            } catch (IllegalArgumentException e) {
+                LOGGER.warn("⚠️ Ошибка при получении категорий: {}", e.getMessage());
+                throw e;
+            }
+        }
+        
+        StickerSet savedStickerSet = stickerSetRepository.save(stickerSet);
+        LOGGER.info("✅ Категории стикерсета {} успешно обновлены", stickerSetId);
+        
+        return savedStickerSet;
+    }
+    
+    /**
+     * Обогащает список стикерсетов данными из Bot API и категориями (последовательно для Hibernate)
+     */
+    private List<StickerSetDto> enrichWithBotApiDataAndCategories(List<StickerSet> stickerSets, String language) {
         if (stickerSets.isEmpty()) {
             return List.of();
         }
         
-        LOGGER.debug("🚀 Обогащение {} стикерсетов данными Bot API (параллельно)", stickerSets.size());
+        LOGGER.debug("🚀 Обогащение {} стикерсетов данными Bot API и категориями (последовательно)", stickerSets.size());
         
-        // Создаем список CompletableFuture для параллельной обработки
-        List<CompletableFuture<StickerSetDto>> futures = stickerSets.stream()
-                .map(stickerSet -> CompletableFuture.supplyAsync(() -> enrichSingleStickerSetSafely(stickerSet)))
-                .collect(Collectors.toList());
-        
-        // Ждем завершения всех запросов
-        List<StickerSetDto> result = futures.stream()
-                .map(CompletableFuture::join)
+        // Обрабатываем последовательно, чтобы избежать проблем с Hibernate Session
+        List<StickerSetDto> result = stickerSets.stream()
+                .map(stickerSet -> enrichSingleStickerSetSafelyWithCategories(stickerSet, language))
                 .collect(Collectors.toList());
         
         LOGGER.debug("✅ Обогащение завершено для {} стикерсетов", result.size());
@@ -250,11 +318,17 @@ public class StickerSetService {
     }
     
     /**
-     * Обогащает один стикерсет данными из Bot API (безопасно)
-     * Если данные Bot API недоступны, возвращает DTO без обогащения, но не выбрасывает исключение
+     * Обогащает список стикерсетов данными из Bot API (параллельно)
      */
-    private StickerSetDto enrichSingleStickerSetSafely(StickerSet stickerSet) {
-        StickerSetDto dto = StickerSetDto.fromEntity(stickerSet);
+    private List<StickerSetDto> enrichWithBotApiData(List<StickerSet> stickerSets) {
+        return enrichWithBotApiDataAndCategories(stickerSets, "en");
+    }
+    
+    /**
+     * Обогащает один стикерсет данными из Bot API и категориями (безопасно)
+     */
+    private StickerSetDto enrichSingleStickerSetSafelyWithCategories(StickerSet stickerSet, String language) {
+        StickerSetDto dto = StickerSetDto.fromEntity(stickerSet, language);
         
         try {
             Object botApiData = telegramBotApiService.getStickerSetInfo(stickerSet.getName());
@@ -268,5 +342,13 @@ public class StickerSetService {
         }
         
         return dto;
+    }
+    
+    /**
+     * Обогащает один стикерсет данными из Bot API (безопасно)
+     * Если данные Bot API недоступны, возвращает DTO без обогащения, но не выбрасывает исключение
+     */
+    private StickerSetDto enrichSingleStickerSetSafely(StickerSet stickerSet) {
+        return enrichSingleStickerSetSafelyWithCategories(stickerSet, "en");
     }
 } 
