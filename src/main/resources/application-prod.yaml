@@ -56,9 +56,18 @@ telegram:
 
 logging:
   level:
+    root: INFO
     com.example.sticker_art_gallery: INFO
-    org.springframework.web: INFO
+    com.example.sticker_art_gallery.service.telegram: WARN  # Уменьшаем логи при загрузке изображений
+    com.example.sticker_art_gallery.util: WARN  # Уменьшаем логи валидации
+    org.springframework.web: WARN
+    org.springframework.security: WARN
+    org.springframework.jdbc: WARN
+    org.hibernate: WARN
+    org.hibernate.SQL: WARN
+    com.zaxxer.hikari: WARN
     org.telegram: INFO
+    org.flywaydb: INFO
   pattern:
     console: "%d{HH:mm:ss.SSS} %highlight(%-5level) %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
