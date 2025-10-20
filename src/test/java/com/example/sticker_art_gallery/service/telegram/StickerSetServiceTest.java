@@ -86,8 +86,8 @@ class StickerSetServiceTest {
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getPrincipal()).thenReturn(testUser);
 
-        when(userService.// findOrCreateByTelegramId - метод удален(eq(141614461L), any(), any(), any(), any()))
-                .thenReturn(testUser);
+        // when(userService.findOrCreateByTelegramId(eq(141614461L), any(), any(), any(), any()))
+        //         .thenReturn(testUser);
 
         StickerSet savedStickerSet = createMockSavedStickerSet("shaitanchick", "Shaitan Chick", 141614461L);
         when(stickerSetRepository.save(any(StickerSet.class))).thenReturn(savedStickerSet);
@@ -104,7 +104,7 @@ class StickerSetServiceTest {
         verify(stickerSetRepository).findByName("shaitanchick");
         verify(telegramBotApiService).validateStickerSetExists("shaitanchick");
         verify(telegramBotApiService).extractTitleFromStickerSetInfo(telegramStickerSetInfo);
-        verify(userService).// findOrCreateByTelegramId - метод удален(eq(141614461L), any(), any(), any(), any());
+        // verify(userService).findOrCreateByTelegramId(eq(141614461L), any(), any(), any(), any());
         verify(stickerSetRepository).save(any(StickerSet.class));
     }
 
@@ -171,8 +171,8 @@ class StickerSetServiceTest {
         when(telegramBotApiService.extractTitleFromStickerSetInfo(telegramStickerSetInfo))
                 .thenReturn("Test Stickers");
 
-        when(userService.// findOrCreateByTelegramId - метод удален(eq(999999999L), any(), any(), any(), any()))
-                .thenReturn(testUser);
+        // when(userService.findOrCreateByTelegramId(eq(999999999L), any(), any(), any(), any()))
+        //         .thenReturn(testUser);
 
         StickerSet savedStickerSet = createMockSavedStickerSet("test_stickers", "Test Stickers", 999999999L);
         when(stickerSetRepository.save(any(StickerSet.class))).thenReturn(savedStickerSet);
@@ -184,7 +184,7 @@ class StickerSetServiceTest {
         assertNotNull(result);
         assertEquals(999999999L, result.getUserId());
 
-        verify(userService).// findOrCreateByTelegramId - метод удален(eq(999999999L), any(), any(), any(), any());
+        // verify(userService).findOrCreateByTelegramId(eq(999999999L), any(), any(), any(), any());
         verify(securityContext, never()).getAuthentication();
     }
 
@@ -208,8 +208,8 @@ class StickerSetServiceTest {
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getPrincipal()).thenReturn(testUser);
 
-        when(userService.// findOrCreateByTelegramId - метод удален(eq(141614461L), any(), any(), any(), any()))
-                .thenReturn(testUser);
+        // when(userService.findOrCreateByTelegramId(eq(141614461L), any(), any(), any(), any()))
+        //         .thenReturn(testUser);
 
         StickerSet savedStickerSet = createMockSavedStickerSet("test_stickers", "Custom Title", 141614461L);
         when(stickerSetRepository.save(any(StickerSet.class))).thenReturn(savedStickerSet);
@@ -295,8 +295,8 @@ class StickerSetServiceTest {
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getPrincipal()).thenReturn(testUser);
 
-        when(userService.// findOrCreateByTelegramId - метод удален(eq(141614461L), any(), any(), any(), any()))
-                .thenReturn(testUser);
+        // when(userService.findOrCreateByTelegramId(eq(141614461L), any(), any(), any(), any()))
+        //         .thenReturn(testUser);
 
         StickerSet savedStickerSet = createMockSavedStickerSet("shaitanchick", "Shaitan Chick", 141614461L);
         when(stickerSetRepository.save(any(StickerSet.class))).thenReturn(savedStickerSet);
