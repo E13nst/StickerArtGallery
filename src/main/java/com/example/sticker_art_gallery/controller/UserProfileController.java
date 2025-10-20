@@ -57,6 +57,7 @@ public class UserProfileController {
             content = @Content(schema = @Schema(implementation = UserProfileDto.class),
                 examples = @ExampleObject(value = """
                     {
+                        "id": 1,
                         "userId": 123456789,
                         "role": "USER",
                         "artBalance": 100,

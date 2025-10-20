@@ -9,9 +9,11 @@ import java.time.OffsetDateTime;
  */
 public class UserProfileDto {
     
+    private Long id; // ID профиля (автоинкремент)
+    
     @NotNull(message = "ID пользователя не может быть null")
     @Positive(message = "ID пользователя должен быть положительным числом")
-    private Long userId;
+    private Long userId; // Telegram ID
     
     @Pattern(regexp = "^(USER|ADMIN)$", message = "Роль должна быть USER или ADMIN")
     private String role;
@@ -26,7 +28,8 @@ public class UserProfileDto {
     // Конструкторы
     public UserProfileDto() {}
     
-    public UserProfileDto(Long userId, String role, Long artBalance, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+    public UserProfileDto(Long id, Long userId, String role, Long artBalance, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+        this.id = id;
         this.userId = userId;
         this.role = role;
         this.artBalance = artBalance;
@@ -43,6 +46,7 @@ public class UserProfileDto {
         }
         
         return new UserProfileDto(
+                entity.getId(),
                 entity.getUserId(),
                 entity.getRole().name(),
                 entity.getArtBalance(),
@@ -56,6 +60,7 @@ public class UserProfileDto {
      */
     public UserProfileEntity toEntity() {
         UserProfileEntity entity = new UserProfileEntity();
+        entity.setId(this.id);
         entity.setUserId(this.userId);
         if (this.role != null) {
             entity.setRole(UserProfileEntity.UserRole.valueOf(this.role));
@@ -67,6 +72,9 @@ public class UserProfileDto {
     }
     
     // Геттеры и сеттеры
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
     
@@ -85,7 +93,8 @@ public class UserProfileDto {
     @Override
     public String toString() {
         return "UserProfileDto{" +
-                "userId=" + userId +
+                "id=" + id +
+                ", userId=" + userId +
                 ", role='" + role + '\'' +
                 ", artBalance=" + artBalance +
                 '}';
