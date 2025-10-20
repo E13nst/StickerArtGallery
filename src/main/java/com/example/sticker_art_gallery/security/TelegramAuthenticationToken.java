@@ -1,6 +1,4 @@
 package com.example.sticker_art_gallery.security;
-
-import com.example.sticker_art_gallery.model.user.UserEntity;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -16,7 +14,7 @@ public class TelegramAuthenticationToken extends AbstractAuthenticationToken {
     private final String initData;
     private final Long telegramId;
     private final String botName;
-    private UserEntity user;
+    private AuthUserPrincipal principal;
     private boolean authenticated = false;
     
     /**
@@ -33,10 +31,10 @@ public class TelegramAuthenticationToken extends AbstractAuthenticationToken {
     /**
      * Конструктор для аутентифицированного токена
      */
-    public TelegramAuthenticationToken(UserEntity user, String initData, Long telegramId, 
+    public TelegramAuthenticationToken(AuthUserPrincipal principal, String initData, Long telegramId, 
                                       String botName, Collection<? extends GrantedAuthority> authorities) {
         super(authorities);
-        this.user = user;
+        this.principal = principal;
         this.initData = initData;
         this.telegramId = telegramId;
         this.botName = botName;
@@ -50,7 +48,7 @@ public class TelegramAuthenticationToken extends AbstractAuthenticationToken {
     
     @Override
     public Object getPrincipal() {
-        return user != null ? user : telegramId;
+        return principal != null ? principal : telegramId;
     }
     
     @Override
@@ -79,23 +77,16 @@ public class TelegramAuthenticationToken extends AbstractAuthenticationToken {
         return botName;
     }
     
-    public UserEntity getUser() {
-        return user;
-    }
-    
-    public void setUser(UserEntity user) {
-        this.user = user;
-    }
+    public AuthUserPrincipal getAuthUser() { return principal; }
+    public void setAuthUser(AuthUserPrincipal principal) { this.principal = principal; }
     
     /**
      * Создает GrantedAuthority на основе роли пользователя
      */
-    public static Collection<GrantedAuthority> createAuthorities(UserEntity user) {
-        if (user == null || user.getRole() == null) {
+    public static Collection<GrantedAuthority> createAuthorities(String roleName) {
+        if (roleName == null || roleName.isBlank()) {
             return Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
         }
-        
-        String roleName = "ROLE_" + user.getRole().name();
-        return Collections.singletonList(new SimpleGrantedAuthority(roleName));
+        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + roleName));
     }
 }

@@ -522,16 +522,16 @@ public class StickerSetController {
             org.springframework.security.core.Authentication authentication = 
                 org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
             
-            if (authentication != null && authentication.getPrincipal() instanceof com.example.sticker_art_gallery.model.user.UserEntity) {
-                com.example.sticker_art_gallery.model.user.UserEntity currentUser = 
-                    (com.example.sticker_art_gallery.model.user.UserEntity) authentication.getPrincipal();
+            if (authentication != null && authentication.isAuthenticated()) {
+                Long currentUserId = Long.valueOf(authentication.getName());
                 
                 // Проверяем: админ или владелец стикерсета
-                boolean isAdmin = currentUser.getRole() == com.example.sticker_art_gallery.model.user.UserEntity.UserRole.ADMIN;
-                boolean isOwner = existingStickerSet.getUserId().equals(currentUser.getId());
+                boolean isAdmin = authentication.getAuthorities().stream()
+                    .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+                boolean isOwner = existingStickerSet.getUserId() != null && existingStickerSet.getUserId().equals(currentUserId);
                 
                 if (!isAdmin && !isOwner) {
-                    LOGGER.warn("⚠️ Пользователь {} попытался обновить чужой стикерсет {}", currentUser.getId(), id);
+                    LOGGER.warn("⚠️ Пользователь {} попытался обновить чужой стикерсет {}", currentUserId, id);
                     return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
                 }
                 
@@ -589,16 +589,16 @@ public class StickerSetController {
             org.springframework.security.core.Authentication authentication = 
                 org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
             
-            if (authentication != null && authentication.getPrincipal() instanceof com.example.sticker_art_gallery.model.user.UserEntity) {
-                com.example.sticker_art_gallery.model.user.UserEntity currentUser = 
-                    (com.example.sticker_art_gallery.model.user.UserEntity) authentication.getPrincipal();
+            if (authentication != null && authentication.isAuthenticated()) {
+                Long currentUserId = Long.valueOf(authentication.getName());
                 
                 // Проверяем: админ или владелец стикерсета
-                boolean isAdmin = currentUser.getRole() == com.example.sticker_art_gallery.model.user.UserEntity.UserRole.ADMIN;
-                boolean isOwner = existingStickerSet.getUserId().equals(currentUser.getId());
+                boolean isAdmin = authentication.getAuthorities().stream()
+                    .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+                boolean isOwner = existingStickerSet.getUserId() != null && existingStickerSet.getUserId().equals(currentUserId);
                 
                 if (!isAdmin && !isOwner) {
-                    LOGGER.warn("⚠️ Пользователь {} попытался удалить чужой стикерсет {}", currentUser.getId(), id);
+                    LOGGER.warn("⚠️ Пользователь {} попытался удалить чужой стикерсет {}", currentUserId, id);
                     return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
                 }
                 

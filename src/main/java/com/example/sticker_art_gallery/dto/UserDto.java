@@ -5,17 +5,13 @@ import jakarta.validation.constraints.*;
 import java.time.OffsetDateTime;
 
 /**
- * DTO для пользователя
+ * DTO для данных пользователя из Telegram
  */
 public class UserDto {
     
+    @NotNull(message = "ID пользователя не может быть null")
+    @Positive(message = "ID пользователя должен быть положительным числом")
     private Long id;
-    
-    // telegramId теперь совпадает с id
-    
-    @Size(max = 255, message = "Username не может быть длиннее 255 символов")
-    @Pattern(regexp = "^[a-zA-Z0-9_]+$", message = "Username может содержать только буквы, цифры и подчеркивания")
-    private String username;
     
     @Size(max = 255, message = "Имя не может быть длиннее 255 символов")
     private String firstName;
@@ -23,25 +19,13 @@ public class UserDto {
     @Size(max = 255, message = "Фамилия не может быть длиннее 255 символов")
     private String lastName;
     
-    @Size(max = 512, message = "URL аватара не может быть длиннее 512 символов")
-    @Pattern(regexp = "^(https?://.*)?$", message = "URL аватара должен начинаться с http:// или https://")
-    private String avatarUrl;
+    @Size(max = 255, message = "Username не может быть длиннее 255 символов")
+    private String username;
     
-    @NotNull(message = "Баланс арт-кредитов не может быть null")
-    @Min(value = 0, message = "Баланс арт-кредитов не может быть отрицательным")
-    private Long artBalance;
+    @Size(max = 10, message = "Код языка не может быть длиннее 10 символов")
+    private String languageCode;
     
-    @Pattern(regexp = "^(USER|ADMIN)$", message = "Роль должна быть USER или ADMIN")
-    private String role;
-    
-    // Полная информация о пользователе из Telegram Bot API (JSON объект). Может быть null, если данные недоступны.
-    private Object telegramUserInfo;
-    
-    // Фото профиля пользователя из Telegram Bot API (результат getUserProfilePhotos). Может быть null, если фото нет.
-    private Object profilePhotos;
-    
-    // File ID самого большого фото профиля для удобной загрузки через STICKER_PROCESSOR. Может быть null.
-    private String profilePhotoFileId;
+    private Boolean isPremium;
     
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
@@ -49,20 +33,15 @@ public class UserDto {
     // Конструкторы
     public UserDto() {}
     
-    public UserDto(Long id, String username, String firstName, String lastName, 
-                   String avatarUrl, Long artBalance, String role, Object telegramUserInfo, 
-                   Object profilePhotos, String profilePhotoFileId,
-                   OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+    public UserDto(Long id, String firstName, String lastName, String username, 
+                  String languageCode, Boolean isPremium,
+                  OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         this.id = id;
-        this.username = username;
         this.firstName = firstName;
         this.lastName = lastName;
-        this.avatarUrl = avatarUrl;
-        this.artBalance = artBalance;
-        this.role = role;
-        this.telegramUserInfo = telegramUserInfo;
-        this.profilePhotos = profilePhotos;
-        this.profilePhotoFileId = profilePhotoFileId;
+        this.username = username;
+        this.languageCode = languageCode;
+        this.isPremium = isPremium;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -77,49 +56,19 @@ public class UserDto {
         
         return new UserDto(
                 entity.getId(),
-                entity.getUsername(),
                 entity.getFirstName(),
                 entity.getLastName(),
-                entity.getAvatarUrl(),
-                entity.getArtBalance(),
-                entity.getRole().name(),
-                null, // telegramUserInfo будет установлен отдельно
-                null, // profilePhotos будет установлен отдельно
-                null, // profilePhotoFileId будет установлен отдельно
+                entity.getUsername(),
+                entity.getLanguageCode(),
+                entity.getIsPremium(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
         );
     }
     
-    /**
-     * Создает Entity из DTO
-     */
-    public UserEntity toEntity() {
-        UserEntity entity = new UserEntity();
-        entity.setId(this.id); // id теперь = telegram_id
-        entity.setUsername(this.username);
-        entity.setFirstName(this.firstName);
-        entity.setLastName(this.lastName);
-        entity.setAvatarUrl(this.avatarUrl);
-        entity.setArtBalance(this.artBalance);
-        if (this.role != null) {
-            entity.setRole(UserEntity.UserRole.valueOf(this.role));
-        }
-        entity.setCreatedAt(this.createdAt);
-        entity.setUpdatedAt(this.updatedAt);
-        return entity;
-    }
-    
     // Геттеры и сеттеры
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    
-    // telegramId теперь совпадает с id
-    public Long getTelegramId() { return id; }
-    public void setTelegramId(Long telegramId) { this.id = telegramId; }
-    
-    public String getUsername() { return username; }
-    public void setUsername(String username) { this.username = username; }
     
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
@@ -127,29 +76,20 @@ public class UserDto {
     public String getLastName() { return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
     
-    public String getAvatarUrl() { return avatarUrl; }
-    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
     
-    public Long getArtBalance() { return artBalance; }
-    public void setArtBalance(Long artBalance) { this.artBalance = artBalance; }
+    public String getLanguageCode() { return languageCode; }
+    public void setLanguageCode(String languageCode) { this.languageCode = languageCode; }
     
-    public String getRole() { return role; }
-    public void setRole(String role) { this.role = role; }
+    public Boolean getIsPremium() { return isPremium; }
+    public void setIsPremium(Boolean isPremium) { this.isPremium = isPremium; }
     
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
     
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
-    
-    public Object getTelegramUserInfo() { return telegramUserInfo; }
-    public void setTelegramUserInfo(Object telegramUserInfo) { this.telegramUserInfo = telegramUserInfo; }
-    
-    public Object getProfilePhotos() { return profilePhotos; }
-    public void setProfilePhotos(Object profilePhotos) { this.profilePhotos = profilePhotos; }
-    
-    public String getProfilePhotoFileId() { return profilePhotoFileId; }
-    public void setProfilePhotoFileId(String profilePhotoFileId) { this.profilePhotoFileId = profilePhotoFileId; }
     
     @Override
     public String toString() {
@@ -158,8 +98,8 @@ public class UserDto {
                 ", username='" + username + '\'' +
                 ", firstName='" + firstName + '\'' +
                 ", lastName='" + lastName + '\'' +
-                ", role='" + role + '\'' +
-                ", artBalance=" + artBalance +
+                ", isPremium=" + isPremium +
                 '}';
     }
 }
+

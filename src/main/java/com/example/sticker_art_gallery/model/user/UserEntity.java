@@ -4,17 +4,15 @@ import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 
 /**
- * Entity пользователя системы
+ * Entity пользователя (кэш данных из Telegram)
+ * Обновляется при каждой аутентификации из initData
  */
 @Entity
 @Table(name = "users")
 public class UserEntity {
     
     @Id
-    private Long id; // Теперь id = telegram_id
-    
-    @Column(name = "username", length = 255)
-    private String username;
+    private Long id; // Telegram ID
     
     @Column(name = "first_name", length = 255)
     private String firstName;
@@ -22,15 +20,14 @@ public class UserEntity {
     @Column(name = "last_name", length = 255)
     private String lastName;
     
-    @Column(name = "avatar_url", length = 512)
-    private String avatarUrl;
+    @Column(name = "username", length = 255)
+    private String username;
     
-    @Column(name = "art_balance", nullable = false)
-    private Long artBalance = 0L;
+    @Column(name = "language_code", length = 10)
+    private String languageCode;
     
-    @Enumerated(EnumType.STRING)
-    @Column(name = "role", length = 16, nullable = false)
-    private UserRole role = UserRole.USER;
+    @Column(name = "is_premium")
+    private Boolean isPremium;
     
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
@@ -44,25 +41,14 @@ public class UserEntity {
         this.updatedAt = OffsetDateTime.now();
     }
     
-    public UserEntity(Long id, String username, String firstName, String lastName, String avatarUrl) {
+    public UserEntity(Long id) {
         this();
-        this.id = id; // id теперь = telegram_id
-        this.username = username;
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.avatarUrl = avatarUrl;
+        this.id = id;
     }
     
     // Геттеры и сеттеры
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    
-    // telegramId теперь доступен через getId()
-    public Long getTelegramId() { return id; }
-    public void setTelegramId(Long telegramId) { this.id = telegramId; }
-    
-    public String getUsername() { return username; }
-    public void setUsername(String username) { this.username = username; }
     
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
@@ -70,14 +56,14 @@ public class UserEntity {
     public String getLastName() { return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
     
-    public String getAvatarUrl() { return avatarUrl; }
-    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
     
-    public Long getArtBalance() { return artBalance; }
-    public void setArtBalance(Long artBalance) { this.artBalance = artBalance; }
+    public String getLanguageCode() { return languageCode; }
+    public void setLanguageCode(String languageCode) { this.languageCode = languageCode; }
     
-    public UserRole getRole() { return role; }
-    public void setRole(UserRole role) { this.role = role; }
+    public Boolean getIsPremium() { return isPremium; }
+    public void setIsPremium(Boolean isPremium) { this.isPremium = isPremium; }
     
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
@@ -90,14 +76,6 @@ public class UserEntity {
         this.updatedAt = OffsetDateTime.now();
     }
     
-    /**
-     * Роли пользователей
-     */
-    public enum UserRole {
-        USER,
-        ADMIN
-    }
-    
     @Override
     public String toString() {
         return "UserEntity{" +
@@ -105,8 +83,8 @@ public class UserEntity {
                 ", username='" + username + '\'' +
                 ", firstName='" + firstName + '\'' +
                 ", lastName='" + lastName + '\'' +
-                ", role=" + role +
-                ", artBalance=" + artBalance +
+                ", isPremium=" + isPremium +
                 '}';
     }
 }
+

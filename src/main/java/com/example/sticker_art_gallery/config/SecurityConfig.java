@@ -96,6 +96,7 @@ public class SecurityConfig {
                 
                 // API для авторизованных пользователей (USER или ADMIN)
                 .requestMatchers("/api/users/**").hasAnyRole("USER", "ADMIN")
+                .requestMatchers("/api/profiles/**").hasAnyRole("USER", "ADMIN")
                 
                 // API только для ADMIN
                 .requestMatchers("/api/bots/**").hasRole("ADMIN")

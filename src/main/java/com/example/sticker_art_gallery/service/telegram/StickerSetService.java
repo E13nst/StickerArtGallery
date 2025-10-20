@@ -8,7 +8,6 @@ import com.example.sticker_art_gallery.model.category.Category;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
 import com.example.sticker_art_gallery.service.category.CategoryService;
-import com.example.sticker_art_gallery.service.user.UserService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.slf4j.Logger;
@@ -28,15 +27,13 @@ public class StickerSetService {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(StickerSetService.class);
     private final StickerSetRepository stickerSetRepository;
-    private final UserService userService;
     private final TelegramBotApiService telegramBotApiService;
     private final CategoryService categoryService;
     
     @Autowired
-    public StickerSetService(StickerSetRepository stickerSetRepository, UserService userService, 
+    public StickerSetService(StickerSetRepository stickerSetRepository, 
                            TelegramBotApiService telegramBotApiService, CategoryService categoryService) {
         this.stickerSetRepository = stickerSetRepository;
-        this.userService = userService;
         this.telegramBotApiService = telegramBotApiService;
         this.categoryService = categoryService;
     }
@@ -113,13 +110,8 @@ public class StickerSetService {
      * Внутренний метод для создания стикерсета без валидации
      */
     private StickerSet createStickerSetInternal(Long userId, String title, String name, List<Category> categories) {
-        // Автоматически создаем пользователя, если его нет
-        try {
-            userService.findOrCreateByTelegramId(userId, null, null, null, null);
-            LOGGER.info("✅ Пользователь {} автоматически создан/найден при создании стикерпака", userId);
-        } catch (Exception e) {
-            LOGGER.warn("⚠️ Не удалось создать/найти пользователя {}: {}", userId, e.getMessage());
-        }
+        // Профиль пользователя создается автоматически при аутентификации
+        LOGGER.debug("Создание стикерсета для пользователя {}", userId);
         
         StickerSet stickerSet = new StickerSet();
         stickerSet.setUserId(userId);
@@ -148,10 +140,9 @@ public class StickerSetService {
     private Long extractUserIdFromAuthentication() {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            if (authentication != null && authentication.getPrincipal() instanceof com.example.sticker_art_gallery.model.user.UserEntity) {
-                com.example.sticker_art_gallery.model.user.UserEntity user = 
-                    (com.example.sticker_art_gallery.model.user.UserEntity) authentication.getPrincipal();
-                return user.getId();
+            if (authentication != null && authentication.isAuthenticated()) {
+                // Principal теперь содержит telegramId в getName()
+                return Long.valueOf(authentication.getName());
             }
             return null;
         } catch (Exception e) {
@@ -181,13 +172,8 @@ public class StickerSetService {
     }
     
     public StickerSet save(StickerSet stickerSet) {
-        // Автоматически создаем пользователя, если его нет
-        try {
-            userService.findOrCreateByTelegramId(stickerSet.getUserId(), null, null, null, null);
-            LOGGER.info("✅ Пользователь {} автоматически создан/найден при сохранении стикерпака", stickerSet.getUserId());
-        } catch (Exception e) {
-            LOGGER.warn("⚠️ Не удалось создать/найти пользователя {}: {}", stickerSet.getUserId(), e.getMessage());
-        }
+        // Профиль пользователя создается автоматически при аутентификации
+        LOGGER.debug("Сохранение стикерсета для пользователя {}", stickerSet.getUserId());
         
         return stickerSetRepository.save(stickerSet);
     }

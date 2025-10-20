@@ -1,9 +1,11 @@
 package com.example.sticker_art_gallery.security;
 
 import com.example.sticker_art_gallery.dto.TelegramInitData;
-import com.example.sticker_art_gallery.model.user.UserEntity;
+import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
+import com.example.sticker_art_gallery.service.profile.UserProfileService;
 import com.example.sticker_art_gallery.service.user.UserService;
 import com.example.sticker_art_gallery.util.TelegramInitDataValidator;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +13,9 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Component;
+
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Провайдер аутентификации для Telegram
@@ -21,12 +26,19 @@ public class TelegramAuthenticationProvider implements AuthenticationProvider {
     private static final Logger LOGGER = LoggerFactory.getLogger(TelegramAuthenticationProvider.class);
     
     private final TelegramInitDataValidator validator;
+    private final UserProfileService userProfileService;
     private final UserService userService;
+    private final ObjectMapper objectMapper;
     
     @Autowired
-    public TelegramAuthenticationProvider(TelegramInitDataValidator validator, UserService userService) {
+    public TelegramAuthenticationProvider(TelegramInitDataValidator validator, 
+                                         UserProfileService userProfileService,
+                                         UserService userService,
+                                         ObjectMapper objectMapper) {
         this.validator = validator;
+        this.userProfileService = userProfileService;
         this.userService = userService;
+        this.objectMapper = objectMapper;
     }
     
     @Override
@@ -64,31 +76,36 @@ public class TelegramAuthenticationProvider implements AuthenticationProvider {
             LOGGER.debug("✅ Извлечены данные пользователя: id={}, username={}, firstName={}, lastName={}", 
                     telegramUser.getId(), telegramUser.getUsername(), telegramUser.getFirstName(), telegramUser.getLastName());
             
-            // Находим или создаем пользователя
-            LOGGER.debug("🔍 Ищем или создаем пользователя в базе данных");
-            UserEntity user = userService.findOrCreateByTelegramId(
-                    telegramUser.getId(),
-                    telegramUser.getUsername(),
-                    telegramUser.getFirstName(),
-                    telegramUser.getLastName(),
-                    telegramUser.getPhotoUrl()
+            // Создаем или обновляем пользователя из данных Telegram
+            userService.upsertFromTelegramData(
+                telegramUser.getId(),
+                telegramUser.getFirstName(),
+                telegramUser.getLastName(),
+                telegramUser.getUsername(),
+                telegramUser.getLanguageCode(),
+                telegramUser.getIsPremium()
             );
-            LOGGER.debug("✅ Пользователь найден/создан: id={}, username={}, role={}", 
-                    user.getId(), user.getUsername(), user.getRole());
             
-            // Создаем authorities на основе роли пользователя
-            LOGGER.debug("🔍 Создаем authorities для роли: {}", user.getRole());
-            var authorities = TelegramAuthenticationToken.createAuthorities(user);
+            // Создаем или получаем профиль пользователя (лениво)
+            LOGGER.debug("🔍 Ищем или создаем профиль пользователя в базе данных");
+            UserProfileEntity profile = userProfileService.getOrCreateDefault(telegramUser.getId());
+            LOGGER.debug("✅ Профиль найден/создан: userId={}, role={}, artBalance={}", 
+                    profile.getUserId(), profile.getRole(), profile.getArtBalance());
+
+            // Создаем authorities на основе роли профиля
+            LOGGER.debug("🔍 Создаем authorities для роли: {}", profile.getRole());
+            var authorities = TelegramAuthenticationToken.createAuthorities(profile.getRole().name());
             LOGGER.debug("✅ Созданы authorities: {}", authorities);
             
             // Создаем аутентифицированный токен
             TelegramAuthenticationToken authenticatedToken = new TelegramAuthenticationToken(
-                    user, initData, telegramId, botName, authorities
+                    new AuthUserPrincipal(profile.getUserId(), profile.getRole()),
+                    initData, telegramId, botName, authorities
             );
             LOGGER.debug("✅ Создан аутентифицированный токен");
             
             LOGGER.info("✅ Пользователь успешно аутентифицирован: {} (роль: {}) для бота: {}", 
-                    user.getUsername(), user.getRole(), botName);
+                    telegramUser.getUsername(), profile.getRole(), botName);
             
             return authenticatedToken;
             
@@ -104,64 +121,39 @@ public class TelegramAuthenticationProvider implements AuthenticationProvider {
     }
     
     /**
-     * Извлекает данные пользователя из initData
-     * В реальном проекте лучше использовать JSON парсер
+     * Извлекает данные пользователя из initData используя ObjectMapper
      */
     private TelegramInitData.TelegramUser extractTelegramUser(String initData) {
         try {
-            // Простой парсинг для извлечения данных пользователя
-            // В реальном проекте используйте ObjectMapper для парсинга JSON
+            // Извлекаем параметр user из initData
+            String userParam = null;
+            String[] params = initData.split("&");
+            for (String param : params) {
+                if (param.startsWith("user=")) {
+                    userParam = param.substring(5); // Убираем "user="
+                    break;
+                }
+            }
             
-            // Извлекаем telegram_id
-            Long telegramId = validator.extractTelegramId(initData);
-            if (telegramId == null) {
+            if (userParam == null) {
+                LOGGER.warn("⚠️ Параметр 'user' не найден в initData");
                 return null;
             }
             
-            // Простой парсинг остальных полей
-            String username = extractValue(initData, "username");
-            String firstName = extractValue(initData, "first_name");
-            String lastName = extractValue(initData, "last_name");
-            String photoUrl = extractValue(initData, "photo_url");
+            // Декодируем URL-encoded JSON
+            String userJson = URLDecoder.decode(userParam, StandardCharsets.UTF_8);
+            LOGGER.debug("🔍 Распарсенный user JSON: {}", userJson);
             
-            return new TelegramInitData.TelegramUser(
-                    telegramId,
-                    false, // isBot
-                    firstName,
-                    lastName,
-                    username,
-                    null, // languageCode
-                    null, // isPremium
-                    null, // addedToAttachmentMenu
-                    null, // allowsWriteToPm
-                    photoUrl
-            );
+            // Парсим JSON с помощью ObjectMapper
+            TelegramInitData.TelegramUser telegramUser = objectMapper.readValue(userJson, TelegramInitData.TelegramUser.class);
+            
+            LOGGER.debug("✅ Пользователь извлечен: id={}, username={}, firstName={}, isPremium={}", 
+                    telegramUser.getId(), telegramUser.getUsername(), telegramUser.getFirstName(), telegramUser.getIsPremium());
+            
+            return telegramUser;
             
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка извлечения данных пользователя: {}", e.getMessage(), e);
-            return null;
-        }
-    }
-    
-    /**
-     * Простой метод извлечения значения из строки
-     */
-    private String extractValue(String initData, String fieldName) {
-        try {
-            int startIndex = initData.indexOf("\"" + fieldName + "\":\"");
-            if (startIndex == -1) {
-                return null;
-            }
-            
-            startIndex = initData.indexOf("\"", startIndex + fieldName.length() + 3) + 1;
-            int endIndex = initData.indexOf("\"", startIndex);
-            
-            if (endIndex == -1) {
-                return null;
-            }
-            
-            return initData.substring(startIndex, endIndex);
-        } catch (Exception e) {
             return null;
         }
     }
