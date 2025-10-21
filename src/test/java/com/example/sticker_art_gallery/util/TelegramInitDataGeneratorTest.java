@@ -1,7 +1,9 @@
 package com.example.sticker_art_gallery.util;
 
 import com.example.sticker_art_gallery.config.AppConfig;
+import io.qameta.allure.*;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -14,6 +16,9 @@ import static org.mockito.Mockito.when;
 /**
  * Тесты для генератора валидной Telegram initData
  */
+@Epic("Тестовые утилиты")
+@Feature("Генератор Telegram initData")
+@DisplayName("Тесты генератора валидной Telegram initData для автотестов")
 class TelegramInitDataGeneratorTest {
     
     private static final String TEST_BOT_TOKEN = "123456789:ABCdefGHIjklMNOpqrsTUVwxyz";
@@ -42,6 +47,11 @@ class TelegramInitDataGeneratorTest {
      * Тест: генератор создает валидную initData, которая проходит валидацию
      */
     @Test
+    @Story("Генерация валидной initData")
+    @DisplayName("Генератор создает валидную initData с полными данными пользователя")
+    @Description("Проверяет, что генератор создает initData с правильной HMAC подписью, " +
+                "которая успешно проходит валидацию TelegramInitDataValidator")
+    @Severity(SeverityLevel.CRITICAL)
     void testGenerateValidInitData() throws Exception {
         // Генерируем initData
         String initData = TelegramInitDataGenerator.builder()
@@ -71,6 +81,10 @@ class TelegramInitDataGeneratorTest {
      * Тест: генератор работает с минимальным набором параметров
      */
     @Test
+    @Story("Генерация валидной initData")
+    @DisplayName("Генератор работает с минимальным набором параметров")
+    @Description("Проверяет, что для генерации достаточно только botToken и userId")
+    @Severity(SeverityLevel.CRITICAL)
     void testGenerateWithMinimalParams() throws Exception {
         String initData = TelegramInitDataGenerator.builder()
                 .botToken(TEST_BOT_TOKEN)
@@ -89,6 +103,10 @@ class TelegramInitDataGeneratorTest {
      * Тест: генератор работает со всеми параметрами
      */
     @Test
+    @Story("Генерация валидной initData")
+    @DisplayName("Генератор работает со всеми возможными параметрами")
+    @Description("Проверяет генерацию initData с полным набором параметров: user данные, queryId, дополнительные параметры")
+    @Severity(SeverityLevel.NORMAL)
     void testGenerateWithAllParams() throws Exception {
         String initData = TelegramInitDataGenerator.builder()
                 .botToken(TEST_BOT_TOKEN)
@@ -114,6 +132,10 @@ class TelegramInitDataGeneratorTest {
      * Тест: генератор с кастомной датой авторизации
      */
     @Test
+    @Story("Генерация валидной initData")
+    @DisplayName("Генератор поддерживает кастомную дату авторизации")
+    @Description("Проверяет, что можно указать произвольную дату авторизации (например, для тестирования устаревших токенов)")
+    @Severity(SeverityLevel.NORMAL)
     void testGenerateWithCustomAuthDate() throws Exception {
         long customAuthDate = Instant.now().getEpochSecond() - 3600; // 1 час назад
         
@@ -134,6 +156,10 @@ class TelegramInitDataGeneratorTest {
      * Тест: генератор выбрасывает исключение при отсутствии обязательных параметров
      */
     @Test
+    @Story("Валидация параметров")
+    @DisplayName("Генератор выбрасывает исключение при отсутствии botToken")
+    @Description("Проверяет, что генератор не позволяет создать initData без указания токена бота")
+    @Severity(SeverityLevel.CRITICAL)
     void testGenerateWithoutBotToken() {
         assertThrows(IllegalArgumentException.class, () -> {
             TelegramInitDataGenerator.builder()
@@ -143,6 +169,10 @@ class TelegramInitDataGeneratorTest {
     }
     
     @Test
+    @Story("Валидация параметров")
+    @DisplayName("Генератор выбрасывает исключение при отсутствии userId")
+    @Description("Проверяет, что генератор не позволяет создать initData без указания ID пользователя")
+    @Severity(SeverityLevel.CRITICAL)
     void testGenerateWithoutUserId() {
         assertThrows(IllegalArgumentException.class, () -> {
             TelegramInitDataGenerator.builder()
@@ -155,6 +185,10 @@ class TelegramInitDataGeneratorTest {
      * Тест: генератор правильно экранирует спецсимволы в JSON
      */
     @Test
+    @Story("Генерация валидной initData")
+    @DisplayName("Генератор правильно экранирует спецсимволы в JSON")
+    @Description("Проверяет, что спецсимволы (кавычки, слеши и т.д.) корректно экранируются в JSON данных пользователя")
+    @Severity(SeverityLevel.NORMAL)
     void testGenerateWithSpecialCharacters() throws Exception {
         String initData = TelegramInitDataGenerator.builder()
                 .botToken(TEST_BOT_TOKEN)
@@ -172,6 +206,11 @@ class TelegramInitDataGeneratorTest {
      * Тест: генератор можно использовать для создания initData разных пользователей
      */
     @Test
+    @Story("Генерация валидной initData")
+    @DisplayName("Генератор создает уникальную initData для разных пользователей")
+    @Description("Проверяет, что генератор может создавать initData для разных пользователей (админ, обычный пользователь) " +
+                "и что данные получаются разными")
+    @Severity(SeverityLevel.NORMAL)
     void testGenerateForDifferentUsers() throws Exception {
         // Админ
         String adminInitData = TelegramInitDataGenerator.builder()
@@ -201,6 +240,10 @@ class TelegramInitDataGeneratorTest {
      * Пример использования в реальном тесте API
      */
     @Test
+    @Story("Примеры использования")
+    @DisplayName("Пример использования генератора в API тестах")
+    @Description("Демонстрирует, как использовать генератор для создания initData в интеграционных тестах API")
+    @Severity(SeverityLevel.TRIVIAL)
     void exampleUsageInApiTest() throws Exception {
         // Создаем валидную initData для тестового пользователя
         String initData = TelegramInitDataGenerator.builder()

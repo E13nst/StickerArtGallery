@@ -2,6 +2,7 @@ package com.example.sticker_art_gallery.controller;
 
 import com.example.sticker_art_gallery.dto.CreateStickerSetDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.qameta.allure.*;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,6 +24,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureWebMvc
 @ActiveProfiles("test")
 @Transactional
+@Epic("API для стикерсетов")
+@Feature("Создание и управление стикерсетами")
 @DisplayName("Интеграционные тесты StickerSetController")
 class StickerSetControllerIntegrationTest {
 
@@ -43,7 +46,11 @@ class StickerSetControllerIntegrationTest {
     }
 
     @Test
+    @Story("Создание стикерсета")
     @DisplayName("POST /api/stickersets с валидными данными должен возвращать 201")
+    @Description("Проверяет создание нового стикерсета с валидным именем. " +
+                "Ожидается, что API вернет 201 Created с полными данными стикерсета.")
+    @Severity(SeverityLevel.BLOCKER)
     void createStickerSet_WithValidData_ShouldReturn201() throws Exception {
         // Given
         CreateStickerSetDto createDto = new CreateStickerSetDto();
@@ -64,7 +71,11 @@ class StickerSetControllerIntegrationTest {
     }
 
     @Test
+    @Story("Создание стикерсета")
     @DisplayName("POST /api/stickersets с URL стикерсета должен возвращать 201")
+    @Description("Проверяет, что API корректно обрабатывает URL стикерсета (t.me/addstickers/NAME) " +
+                "и извлекает из него имя стикерсета автоматически.")
+    @Severity(SeverityLevel.CRITICAL)
     void createStickerSet_WithStickerSetUrl_ShouldReturn201() throws Exception {
         // Given
         CreateStickerSetDto createDto = new CreateStickerSetDto();

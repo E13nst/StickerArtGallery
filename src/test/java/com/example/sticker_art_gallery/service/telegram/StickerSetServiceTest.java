@@ -5,6 +5,7 @@ import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
 import com.example.sticker_art_gallery.model.user.UserEntity;
 import com.example.sticker_art_gallery.service.user.UserService;
+import io.qameta.allure.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +26,8 @@ import static org.mockito.Mockito.*;
 
 @Disabled("Требует обновления после рефакторинга User/UserProfile")
 @ExtendWith(MockitoExtension.class)
+@Epic("Бизнес-логика стикерсетов")
+@Feature("Сервис управления стикерсетами")
 @DisplayName("Тесты StickerSetService")
 class StickerSetServiceTest {
 
@@ -66,7 +69,14 @@ class StickerSetServiceTest {
 
     @Disabled("Проблемы с моками SecurityContextHolder")
     @Test
+    @Story("Создание стикерсета")
     @DisplayName("createStickerSet с новым стикерсетом должен успешно создать стикерсет")
+    @Description("Проверяет, что сервис корректно создает новый стикерсет: " +
+                "1) Извлекает имя из URL; " +
+                "2) Проверяет отсутствие дубликатов; " +
+                "3) Валидирует через Telegram API; " +
+                "4) Сохраняет в БД")
+    @Severity(SeverityLevel.BLOCKER)
     void createStickerSet_WithNewStickerSet_ShouldCreateSuccessfully() {
         // Given
         CreateStickerSetDto createDto = new CreateStickerSetDto();

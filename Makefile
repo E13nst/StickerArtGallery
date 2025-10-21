@@ -84,6 +84,46 @@ test: ## Запустить тесты
 	@$(GRADLE_CMD) test
 	@echo "$(GREEN)✅ Тесты завершены$(NC)"
 
+test-allure: ## Запустить тесты и сгенерировать Allure отчет
+	@echo "$(GREEN)🧪 Запускаем тесты с Allure...$(NC)"
+	@$(GRADLE_CMD) clean test --no-configuration-cache
+	@echo "$(GREEN)📊 Генерируем Allure отчет...$(NC)"
+	@$(GRADLE_CMD) allureReport --no-configuration-cache
+	@echo "$(GREEN)✅ Allure отчет сгенерирован$(NC)"
+	@echo "$(YELLOW)📁 Отчет: build/reports/allure-report/allureReport/index.html$(NC)"
+
+test-allure-serve: ## Запустить тесты и открыть Allure отчет через встроенный сервер
+	@echo "$(GREEN)🧪 Запускаем тесты с Allure...$(NC)"
+	@$(GRADLE_CMD) clean test --no-configuration-cache
+	@echo "$(GREEN)📊 Запускаем Allure сервер (откроет браузер автоматически)...$(NC)"
+	@allure serve build/allure-results
+	@echo "$(GREEN)✅ Отчет открыт в браузере$(NC)"
+
+allure-report: ## Сгенерировать Allure отчет из существующих результатов
+	@echo "$(GREEN)📊 Генерируем Allure отчет...$(NC)"
+	@$(GRADLE_CMD) allureReport --no-configuration-cache
+	@echo "$(GREEN)✅ Отчет сгенерирован$(NC)"
+	@echo "$(YELLOW)📁 Отчет: build/reports/allure-report/allureReport/index.html$(NC)"
+
+allure-serve: ## Открыть существующие результаты тестов через Allure сервер
+	@if [ -d build/allure-results ]; then \
+		echo "$(GREEN)📊 Запускаем Allure сервер...$(NC)"; \
+		allure serve build/allure-results; \
+	else \
+		echo "$(RED)❌ Результаты тестов не найдены!$(NC)"; \
+		echo "$(YELLOW)💡 Сначала запустите: make test$(NC)"; \
+	fi
+
+allure-open: ## Открыть последний Allure отчет (устаревший метод, используйте allure-serve)
+	@echo "$(YELLOW)⚠️  Рекомендуется использовать: make allure-serve$(NC)"
+	@if [ -f build/reports/allure-report/allureReport/index.html ]; then \
+		echo "$(GREEN)🌐 Открываем Allure отчет...$(NC)"; \
+		open build/reports/allure-report/allureReport/index.html; \
+	else \
+		echo "$(RED)❌ Отчет не найден!$(NC)"; \
+		echo "$(YELLOW)💡 Сначала запустите: make test-allure$(NC)"; \
+	fi
+
 clean: ## Очистить проект
 	@echo "$(YELLOW)🧹 Очищаем проект...$(NC)"
 	@$(GRADLE_CMD) clean

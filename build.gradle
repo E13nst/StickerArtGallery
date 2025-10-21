@@ -7,6 +7,7 @@ plugins {
     id 'io.spring.dependency-management' version '1.1.4'
     id 'java'
     id 'org.flywaydb.flyway' version '10.8.1'
+    id 'io.qameta.allure' version '2.11.2'
 }
 
 group = 'com.example'
@@ -68,6 +69,8 @@ dependencies {
     testAnnotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'io.qameta.allure:allure-junit5'
+    testImplementation 'io.qameta.allure:allure-rest-assured'
+    testImplementation 'io.qameta.allure:allure-java-commons'
     testImplementation 'org.mockito:mockito-junit-jupiter:5.12.0'
     testImplementation 'io.rest-assured:rest-assured:5.4.0'
     testImplementation 'io.rest-assured:json-schema-validator:5.4.0'
@@ -90,6 +93,20 @@ test {
         events "passed", "skipped", "failed"
         exceptionFormat "full"
         showStandardStreams = false
+    }
+}
+
+// Allure configuration
+allure {
+    version = '2.25.0'
+    adapter {
+        autoconfigure = true
+        aspectjWeaver = true
+        frameworks {
+            junit5 {
+                adapterVersion = '2.25.0'
+            }
+        }
     }
 }
 
