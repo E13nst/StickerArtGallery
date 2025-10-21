@@ -44,6 +44,9 @@ gradle-app.setting
 ### VS Code ###
 .vscode/
 
+### Cursor ###
+.cursor/
+
 ### Logs ###
 *.log
 logs/
