@@ -40,6 +40,15 @@ public class StickerSetDto {
     @Schema(description = "Лайкнул ли текущий пользователь этот стикерсет", example = "true")
     private boolean isLikedByCurrentUser;
     
+    @Schema(description = "Публичный стикерсет (виден в галерее) или приватный (виден только владельцу)", example = "true")
+    private Boolean isPublic;
+    
+    @Schema(description = "Заблокирован ли стикерсет админом (не виден никому кроме админа)", example = "false")
+    private Boolean isBlocked;
+    
+    @Schema(description = "Причина блокировки стикерсета", example = "Нарушение правил сообщества", nullable = true)
+    private String blockReason;
+    
     // Конструкторы
     public StickerSetDto() {}
     
@@ -124,6 +133,30 @@ public class StickerSetDto {
         isLikedByCurrentUser = likedByCurrentUser;
     }
     
+    public Boolean getIsPublic() {
+        return isPublic;
+    }
+    
+    public void setIsPublic(Boolean isPublic) {
+        this.isPublic = isPublic;
+    }
+    
+    public Boolean getIsBlocked() {
+        return isBlocked;
+    }
+    
+    public void setIsBlocked(Boolean isBlocked) {
+        this.isBlocked = isBlocked;
+    }
+    
+    public String getBlockReason() {
+        return blockReason;
+    }
+    
+    public void setBlockReason(String blockReason) {
+        this.blockReason = blockReason;
+    }
+    
     // Конструктор для создания DTO из Entity
     public static StickerSetDto fromEntity(com.example.sticker_art_gallery.model.telegram.StickerSet entity) {
         if (entity == null) {
@@ -137,6 +170,10 @@ public class StickerSetDto {
             entity.getName(),
             entity.getCreatedAt()
         );
+        
+        dto.setIsPublic(entity.getIsPublic());
+        dto.setIsBlocked(entity.getIsBlocked());
+        dto.setBlockReason(entity.getBlockReason());
         
         return dto;
     }
@@ -154,6 +191,13 @@ public class StickerSetDto {
             entity.getName(),
             entity.getCreatedAt()
         );
+        
+        // Добавляем публичность
+        dto.setIsPublic(entity.getIsPublic());
+        
+        // Добавляем информацию о блокировке
+        dto.setIsBlocked(entity.getIsBlocked());
+        dto.setBlockReason(entity.getBlockReason());
         
         // Добавляем категории с локализацией
         if (entity.getCategories() != null && !entity.getCategories().isEmpty()) {

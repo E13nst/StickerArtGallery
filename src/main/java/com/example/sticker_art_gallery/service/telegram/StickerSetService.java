@@ -17,8 +17,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import jakarta.transaction.Transactional;
 
@@ -52,9 +52,9 @@ public class StickerSetService {
         createDto.normalizeName();
         String stickerSetName = createDto.getName();
         
-        // 1. Проверяем, что стикерсет с таким именем еще не существует в базе
-        StickerSet existingStickerSet = findByName(stickerSetName);
-        if (existingStickerSet != null) {
+        // 1. Проверяем, что стикерсет с таким именем или URL уже не существует в базе (игнорируя регистр)
+        Optional<StickerSet> existingByName = stickerSetRepository.findByNameIgnoreCase(stickerSetName);
+        if (existingByName.isPresent()) {
             throw new IllegalArgumentException("Стикерсет с именем '" + stickerSetName + "' уже существует в галерее");
         }
         
@@ -88,6 +88,12 @@ public class StickerSetService {
                 throw new IllegalArgumentException("Не удалось получить название стикерсета из Telegram API");
             }
             LOGGER.debug("📝 Получен title из Telegram API: '{}'", title);
+        }
+        
+        // 4.1 Проверяем, что стикерсет с таким title не существует (игнорируя регистр)
+        Optional<StickerSet> existingByTitle = stickerSetRepository.findByTitleIgnoreCase(title);
+        if (existingByTitle.isPresent()) {
+            throw new IllegalArgumentException("Стикерсет с названием '" + title + "' уже существует в галерее");
         }
         
         // 5. Обрабатываем категории
@@ -191,12 +197,14 @@ public class StickerSetService {
     
     /**
      * Получить все стикерсеты с пагинацией и обогащением данных Bot API
+     * Возвращает только публичные и не заблокированные стикерсеты для галереи
      */
     public PageResponse<StickerSetDto> findAllWithPagination(PageRequest pageRequest, String language, Long currentUserId) {
-        LOGGER.debug("📋 Получение всех стикерсетов с пагинацией: page={}, size={}, language={}", 
+        LOGGER.debug("📋 Получение публичных и не заблокированных стикерсетов с пагинацией: page={}, size={}, language={}", 
                 pageRequest.getPage(), pageRequest.getSize(), language);
         
-        Page<StickerSet> stickerSetsPage = stickerSetRepository.findAll(pageRequest.toPageable());
+        // Получаем только публичные и не заблокированные стикерсеты для галереи
+        Page<StickerSet> stickerSetsPage = stickerSetRepository.findPublicAndNotBlocked(pageRequest.toPageable());
         List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language, currentUserId);
         
         return PageResponse.of(stickerSetsPage, enrichedDtos);
@@ -223,10 +231,11 @@ public class StickerSetService {
     }
     
     public PageResponse<StickerSetDto> findByCategoryKeys(String[] categoryKeys, PageRequest pageRequest, String language, Long currentUserId) {
-        LOGGER.debug("🏷️ Получение стикерсетов по категориям {} с пагинацией: page={}, size={}", 
+        LOGGER.debug("🏷️ Получение публичных и не заблокированных стикерсетов по категориям {} с пагинацией: page={}, size={}", 
                 String.join(",", categoryKeys), pageRequest.getPage(), pageRequest.getSize());
         
-        Page<StickerSet> stickerSetsPage = stickerSetRepository.findByCategoryKeys(categoryKeys, pageRequest.toPageable());
+        // Получаем только публичные и не заблокированные стикерсеты для галереи
+        Page<StickerSet> stickerSetsPage = stickerSetRepository.findByCategoryKeysPublicAndNotBlocked(categoryKeys, pageRequest.toPageable());
         List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language, currentUserId);
         
         return PageResponse.of(stickerSetsPage, enrichedDtos);
@@ -260,6 +269,62 @@ public class StickerSetService {
         }
         
         return enrichSingleStickerSetSafely(stickerSet);
+    }
+    
+    /**
+     * Изменить видимость стикерсета (публичный/приватный)
+     */
+    @Transactional
+    public StickerSet updateVisibility(Long stickerSetId, Boolean isPublic) {
+        LOGGER.info("👁️ Изменение видимости стикерсета ID: {} на {}", stickerSetId, isPublic ? "публичный" : "приватный");
+        
+        StickerSet stickerSet = stickerSetRepository.findById(stickerSetId)
+            .orElseThrow(() -> new IllegalArgumentException("Стикерсет с ID " + stickerSetId + " не найден"));
+        
+        stickerSet.setIsPublic(isPublic);
+        
+        StickerSet savedStickerSet = stickerSetRepository.save(stickerSet);
+        LOGGER.info("✅ Видимость стикерсета {} успешно изменена на {}", stickerSetId, isPublic ? "публичный" : "приватный");
+        
+        return savedStickerSet;
+    }
+    
+    /**
+     * Заблокировать стикерсет (только для админа)
+     */
+    @Transactional
+    public StickerSet blockStickerSet(Long stickerSetId, String reason) {
+        LOGGER.info("🚫 Блокировка стикерсета ID: {}, причина: {}", stickerSetId, reason);
+        
+        StickerSet stickerSet = stickerSetRepository.findById(stickerSetId)
+            .orElseThrow(() -> new IllegalArgumentException("Стикерсет с ID " + stickerSetId + " не найден"));
+        
+        stickerSet.setIsBlocked(true);
+        stickerSet.setBlockReason(reason);
+        
+        StickerSet savedStickerSet = stickerSetRepository.save(stickerSet);
+        LOGGER.info("✅ Стикерсет {} успешно заблокирован", stickerSetId);
+        
+        return savedStickerSet;
+    }
+    
+    /**
+     * Разблокировать стикерсет (только для админа)
+     */
+    @Transactional
+    public StickerSet unblockStickerSet(Long stickerSetId) {
+        LOGGER.info("✅ Разблокировка стикерсета ID: {}", stickerSetId);
+        
+        StickerSet stickerSet = stickerSetRepository.findById(stickerSetId)
+            .orElseThrow(() -> new IllegalArgumentException("Стикерсет с ID " + stickerSetId + " не найден"));
+        
+        stickerSet.setIsBlocked(false);
+        stickerSet.setBlockReason(null);
+        
+        StickerSet savedStickerSet = stickerSetRepository.save(stickerSet);
+        LOGGER.info("✅ Стикерсет {} успешно разблокирован", stickerSetId);
+        
+        return savedStickerSet;
     }
     
     /**

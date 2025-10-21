@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -678,6 +679,232 @@ public class StickerSetController {
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при обновлении категорий стикерсета {}: {}", id, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    /**
+     * Изменить видимость стикерсета (публичный/приватный)
+     */
+    @PutMapping("/{id}/visibility")
+    @Operation(
+        summary = "Изменить видимость стикерсета",
+        description = "Изменяет видимость стикерсета (публичный/приватный). " +
+                     "Публичные стикерсеты видны в галерее всем пользователям. " +
+                     "Приватные стикерсеты видны только владельцу в его профиле. " +
+                     "Администратор может изменять видимость любых стикерсетов, обычный пользователь - только своих."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Видимость стикерсета успешно изменена",
+            content = @Content(schema = @Schema(implementation = StickerSetDto.class),
+                examples = @ExampleObject(value = """
+                    {
+                        "id": 1,
+                        "userId": 123456789,
+                        "title": "Мои стикеры",
+                        "name": "my_stickers_by_StickerGalleryBot",
+                        "isPublic": false,
+                        "createdAt": "2025-09-15T10:30:00"
+                    }
+                    """))),
+        @ApiResponse(responseCode = "400", description = "Некорректные данные"),
+        @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен - можно изменять видимость только своих стикерсетов"),
+        @ApiResponse(responseCode = "404", description = "Стикерсет с указанным ID не найден"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<?> updateStickerSetVisibility(
+            @Parameter(description = "ID стикерсета для изменения видимости", required = true, example = "1")
+            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id,
+            @Parameter(description = "Новое значение видимости: true - публичный, false - приватный", required = true)
+            @RequestBody java.util.Map<String, Boolean> request) {
+        try {
+            LOGGER.info("👁️ Изменение видимости стикерсета с ID: {}", id);
+            
+            Boolean isPublic = request.get("isPublic");
+            if (isPublic == null) {
+                return ResponseEntity.badRequest()
+                    .body(java.util.Map.of(
+                        "error", "Ошибка валидации",
+                        "message", "Поле 'isPublic' обязательно"
+                    ));
+            }
+            
+            StickerSet existingStickerSet = stickerSetService.findById(id);
+            if (existingStickerSet == null) {
+                LOGGER.warn("⚠️ Стикерсет с ID {} не найден для изменения видимости", id);
+                return ResponseEntity.notFound().build();
+            }
+            
+            // Проверяем права доступа
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            
+            if (authentication != null && authentication.isAuthenticated()) {
+                Long currentUserId = Long.valueOf(authentication.getName());
+                
+                // Проверяем: админ или владелец стикерсета
+                boolean isAdmin = authentication.getAuthorities().stream()
+                    .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+                boolean isOwner = existingStickerSet.getUserId() != null && existingStickerSet.getUserId().equals(currentUserId);
+                
+                if (!isAdmin && !isOwner) {
+                    LOGGER.warn("⚠️ Пользователь {} попытался изменить видимость чужого стикерсета {}", currentUserId, id);
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(java.util.Map.of(
+                            "error", "Доступ запрещен",
+                            "message", "Вы можете изменять видимость только своих стикерсетов"
+                        ));
+                }
+                
+                LOGGER.debug("✅ Проверка прав на изменение видимости пройдена: isAdmin={}, isOwner={}", isAdmin, isOwner);
+            }
+            
+            StickerSet updatedStickerSet = stickerSetService.updateVisibility(id, isPublic);
+            StickerSetDto updatedDto = StickerSetDto.fromEntity(updatedStickerSet);
+            
+            LOGGER.info("✅ Видимость стикерсета {} изменена на {}", id, isPublic ? "публичный" : "приватный");
+            return ResponseEntity.ok(updatedDto);
+            
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("⚠️ Ошибка при изменении видимости стикерсета {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(java.util.Map.of(
+                    "error", "Ошибка валидации",
+                    "message", e.getMessage()
+                ));
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при изменении видимости стикерсета с ID: {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(java.util.Map.of(
+                    "error", "Внутренняя ошибка сервера",
+                    "message", "Произошла непредвиденная ошибка при изменении видимости стикерсета"
+                ));
+        }
+    }
+    
+    /**
+     * Заблокировать стикерсет (только для админа)
+     */
+    @PutMapping("/{id}/block")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+        summary = "Заблокировать стикерсет",
+        description = "Блокирует стикерсет (доступно только админу). " +
+                     "Заблокированные стикерсеты не отображаются в галерее и в профилях пользователей."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Стикерсет успешно заблокирован",
+            content = @Content(schema = @Schema(implementation = StickerSetDto.class),
+                examples = @ExampleObject(value = """
+                    {
+                        "id": 1,
+                        "userId": 123456789,
+                        "title": "Мои стикеры",
+                        "name": "my_stickers_by_StickerGalleryBot",
+                        "isPublic": true,
+                        "isBlocked": true,
+                        "blockReason": "Нарушение правил сообщества",
+                        "createdAt": "2025-09-15T10:30:00"
+                    }
+                    """))),
+        @ApiResponse(responseCode = "400", description = "Некорректные данные"),
+        @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен - только админ может блокировать стикерсеты"),
+        @ApiResponse(responseCode = "404", description = "Стикерсет с указанным ID не найден"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<?> blockStickerSet(
+            @Parameter(description = "ID стикерсета для блокировки", required = true, example = "1")
+            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id,
+            @Parameter(description = "Причина блокировки", required = false)
+            @RequestBody(required = false) java.util.Map<String, String> request) {
+        try {
+            LOGGER.info("🚫 Блокировка стикерсета с ID: {}", id);
+            
+            String reason = request != null ? request.get("reason") : null;
+            if (reason == null || reason.trim().isEmpty()) {
+                reason = "Нарушение правил сообщества";
+            }
+            
+            StickerSet blockedStickerSet = stickerSetService.blockStickerSet(id, reason);
+            StickerSetDto blockedDto = StickerSetDto.fromEntity(blockedStickerSet);
+            
+            LOGGER.info("✅ Стикерсет {} заблокирован по причине: {}", id, reason);
+            return ResponseEntity.ok(blockedDto);
+            
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("⚠️ Ошибка при блокировке стикерсета {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(java.util.Map.of(
+                    "error", "Ошибка валидации",
+                    "message", e.getMessage()
+                ));
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при блокировке стикерсета с ID: {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(java.util.Map.of(
+                    "error", "Внутренняя ошибка сервера",
+                    "message", "Произошла непредвиденная ошибка при блокировке стикерсета"
+                ));
+        }
+    }
+    
+    /**
+     * Разблокировать стикерсет (только для админа)
+     */
+    @PutMapping("/{id}/unblock")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+        summary = "Разблокировать стикерсет",
+        description = "Разблокирует стикерсет (доступно только админу). " +
+                     "Стикерсет снова становится доступным в галерее (если он публичный)."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Стикерсет успешно разблокирован",
+            content = @Content(schema = @Schema(implementation = StickerSetDto.class),
+                examples = @ExampleObject(value = """
+                    {
+                        "id": 1,
+                        "userId": 123456789,
+                        "title": "Мои стикеры",
+                        "name": "my_stickers_by_StickerGalleryBot",
+                        "isPublic": true,
+                        "isBlocked": false,
+                        "blockReason": null,
+                        "createdAt": "2025-09-15T10:30:00"
+                    }
+                    """))),
+        @ApiResponse(responseCode = "400", description = "Некорректные данные"),
+        @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен - только админ может разблокировать стикерсеты"),
+        @ApiResponse(responseCode = "404", description = "Стикерсет с указанным ID не найден"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<?> unblockStickerSet(
+            @Parameter(description = "ID стикерсета для разблокировки", required = true, example = "1")
+            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id) {
+        try {
+            LOGGER.info("✅ Разблокировка стикерсета с ID: {}", id);
+            
+            StickerSet unblockedStickerSet = stickerSetService.unblockStickerSet(id);
+            StickerSetDto unblockedDto = StickerSetDto.fromEntity(unblockedStickerSet);
+            
+            LOGGER.info("✅ Стикерсет {} разблокирован", id);
+            return ResponseEntity.ok(unblockedDto);
+            
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("⚠️ Ошибка при разблокировке стикерсета {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(java.util.Map.of(
+                    "error", "Ошибка валидации",
+                    "message", e.getMessage()
+                ));
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при разблокировке стикерсета с ID: {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(java.util.Map.of(
+                    "error", "Внутренняя ошибка сервера",
+                    "message", "Произошла непредвиденная ошибка при разблокировке стикерсета"
+                ));
         }
     }
     

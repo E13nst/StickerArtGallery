@@ -32,6 +32,15 @@ public class StickerSet {
     @Column(name = "name", nullable = false, unique = true)
     private String name; // Полное имя для Telegram API (например, "my_stickers_by_StickerGalleryBot")
     
+    @Column(name = "is_public", nullable = false)
+    private Boolean isPublic = true; // Публичный стикерсет (виден в галерее) или приватный (виден только владельцу)
+    
+    @Column(name = "is_blocked", nullable = false)
+    private Boolean isBlocked = false; // Заблокирован ли стикерсет админом (не виден никому кроме админа)
+    
+    @Column(name = "block_reason", length = 500)
+    private String blockReason; // Причина блокировки стикерсета
+    
     @Column(name = "created_at")
     private java.time.LocalDateTime createdAt;
     
