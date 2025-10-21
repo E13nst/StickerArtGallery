@@ -1,8 +1,11 @@
 package com.example.sticker_art_gallery.controller;
 
 import com.example.sticker_art_gallery.dto.UserProfileDto;
+import com.example.sticker_art_gallery.dto.UserDto;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
+import com.example.sticker_art_gallery.model.user.UserEntity;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
+import com.example.sticker_art_gallery.service.user.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -38,10 +41,12 @@ public class UserProfileController {
     private static final Logger LOGGER = LoggerFactory.getLogger(UserProfileController.class);
     
     private final UserProfileService userProfileService;
+    private final UserService userService;
     
     @Autowired
-    public UserProfileController(UserProfileService userProfileService) {
+    public UserProfileController(UserProfileService userProfileService, UserService userService) {
         this.userProfileService = userProfileService;
+        this.userService = userService;
     }
     
     /**
@@ -61,6 +66,16 @@ public class UserProfileController {
                         "userId": 123456789,
                         "role": "USER",
                         "artBalance": 100,
+                        "user": {
+                            "id": 123456789,
+                            "username": "testuser",
+                            "firstName": "Test",
+                            "lastName": "User",
+                            "languageCode": "ru",
+                            "isPremium": true,
+                            "createdAt": "2025-10-20T10:00:00Z",
+                            "updatedAt": "2025-10-20T10:00:00Z"
+                        },
                         "createdAt": "2025-01-15T10:30:00Z",
                         "updatedAt": "2025-01-15T14:30:00Z"
                     }
@@ -77,6 +92,13 @@ public class UserProfileController {
             
             if (profileOpt.isPresent()) {
                 UserProfileDto profileDto = UserProfileDto.fromEntity(profileOpt.get());
+                
+                // Загружаем информацию о пользователе из Telegram
+                Optional<UserEntity> userOpt = userService.findById(userId);
+                if (userOpt.isPresent()) {
+                    profileDto.setUser(UserDto.fromEntity(userOpt.get()));
+                }
+                
                 LOGGER.info("✅ Профиль найден: userId={}, role={}, balance={}", 
                            profileDto.getUserId(), profileDto.getRole(), profileDto.getArtBalance());
                 return ResponseEntity.ok(profileDto);
@@ -116,6 +138,13 @@ public class UserProfileController {
             
             if (profileOpt.isPresent()) {
                 UserProfileDto profileDto = UserProfileDto.fromEntity(profileOpt.get());
+                
+                // Загружаем информацию о пользователе из Telegram
+                Optional<UserEntity> userOpt = userService.findById(currentUserId);
+                if (userOpt.isPresent()) {
+                    profileDto.setUser(UserDto.fromEntity(userOpt.get()));
+                }
+                
                 LOGGER.info("✅ Профиль найден: userId={}, role={}, balance={}", 
                            profileDto.getUserId(), profileDto.getRole(), profileDto.getArtBalance());
                 return ResponseEntity.ok(profileDto);
@@ -153,6 +182,13 @@ public class UserProfileController {
             LOGGER.info("💰 Обновление баланса пользователя {}: {}", userId, newBalance);
             UserProfileEntity updatedProfile = userProfileService.updateArtBalance(userId, newBalance);
             UserProfileDto profileDto = UserProfileDto.fromEntity(updatedProfile);
+            
+            // Загружаем информацию о пользователе из Telegram
+            Optional<UserEntity> userOpt = userService.findById(userId);
+            if (userOpt.isPresent()) {
+                profileDto.setUser(UserDto.fromEntity(userOpt.get()));
+            }
+            
             LOGGER.info("✅ Баланс обновлен для пользователя: userId={}, newBalance={}", 
                        profileDto.getUserId(), profileDto.getArtBalance());
             return ResponseEntity.ok(profileDto);
@@ -186,6 +222,13 @@ public class UserProfileController {
             LOGGER.info("💰 Добавление к балансу пользователя {}: {}", userId, amount);
             UserProfileEntity updatedProfile = userProfileService.addToArtBalance(userId, amount);
             UserProfileDto profileDto = UserProfileDto.fromEntity(updatedProfile);
+            
+            // Загружаем информацию о пользователе из Telegram
+            Optional<UserEntity> userOpt = userService.findById(userId);
+            if (userOpt.isPresent()) {
+                profileDto.setUser(UserDto.fromEntity(userOpt.get()));
+            }
+            
             LOGGER.info("✅ Баланс обновлен для пользователя: userId={}, newBalance={}", 
                        profileDto.getUserId(), profileDto.getArtBalance());
             return ResponseEntity.ok(profileDto);

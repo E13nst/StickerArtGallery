@@ -22,17 +22,20 @@ public class UserProfileDto {
     @Min(value = 0, message = "Баланс арт-кредитов не может быть отрицательным")
     private Long artBalance;
     
+    private UserDto user; // Информация о пользователе из Telegram
+    
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
     
     // Конструкторы
     public UserProfileDto() {}
     
-    public UserProfileDto(Long id, Long userId, String role, Long artBalance, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+    public UserProfileDto(Long id, Long userId, String role, Long artBalance, UserDto user, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         this.id = id;
         this.userId = userId;
         this.role = role;
         this.artBalance = artBalance;
+        this.user = user;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -50,6 +53,7 @@ public class UserProfileDto {
                 entity.getUserId(),
                 entity.getRole().name(),
                 entity.getArtBalance(),
+                null, // user будет установлен отдельно в контроллере
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
         );
@@ -83,6 +87,9 @@ public class UserProfileDto {
     
     public Long getArtBalance() { return artBalance; }
     public void setArtBalance(Long artBalance) { this.artBalance = artBalance; }
+    
+    public UserDto getUser() { return user; }
+    public void setUser(UserDto user) { this.user = user; }
     
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }

@@ -18,8 +18,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Optional;
 
@@ -91,45 +89,6 @@ public class UserController {
     }
     
     /**
-     * Получить данные текущего пользователя
-     */
-    @GetMapping("/me")
-    @Operation(
-        summary = "Получить данные текущего пользователя",
-        description = "Возвращает данные текущего авторизованного пользователя из Telegram"
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Данные пользователя получены"),
-        @ApiResponse(responseCode = "404", description = "Пользователь не найден"),
-        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
-    })
-    public ResponseEntity<UserDto> getMyUserData() {
-        try {
-            Long currentUserId = getCurrentUserId();
-            if (currentUserId == null) {
-                LOGGER.warn("⚠️ Не удалось определить ID текущего пользователя");
-                return ResponseEntity.badRequest().build();
-            }
-            
-            LOGGER.info("🔍 Получение данных текущего пользователя: {}", currentUserId);
-            
-            Optional<UserEntity> userOpt = userService.findById(currentUserId);
-            if (userOpt.isEmpty()) {
-                LOGGER.warn("⚠️ Пользователь с ID {} не найден", currentUserId);
-                return ResponseEntity.notFound().build();
-            }
-            
-            UserDto userDto = UserDto.fromEntity(userOpt.get());
-            
-            LOGGER.info("✅ Данные текущего пользователя получены: {}", userDto.getUsername());
-            return ResponseEntity.ok(userDto);
-        } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при получении данных текущего пользователя: {}", e.getMessage(), e);
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-    
-    /**
      * Получить фото профиля пользователя
      */
     @GetMapping("/{id}/photo")
@@ -169,22 +128,6 @@ public class UserController {
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при получении фото профиля пользователя {}: {}", id, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
-        }
-    }
-    
-    /**
-     * Извлечь ID текущего пользователя из SecurityContext
-     */
-    private Long getCurrentUserId() {
-        try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            if (authentication == null || !authentication.isAuthenticated() || 
-                "anonymousUser".equals(authentication.getPrincipal())) {
-                return null;
-            }
-            return Long.valueOf(authentication.getName());
-        } catch (Exception e) {
-            return null;
         }
     }
 }
