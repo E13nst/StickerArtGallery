@@ -683,18 +683,49 @@ public class StickerSetController {
     }
     
     /**
-     * Изменить видимость стикерсета (публичный/приватный)
+     * Опубликовать стикерсет в галерее (сделать публичным)
      */
-    @PutMapping("/{id}/visibility")
+    @PostMapping("/{id}/publish")
     @Operation(
-        summary = "Изменить видимость стикерсета",
-        description = "Изменяет видимость стикерсета (публичный/приватный). " +
-                     "Публичные стикерсеты видны в галерее всем пользователям. " +
-                     "Приватные стикерсеты видны только владельцу в его профиле. " +
-                     "Администратор может изменять видимость любых стикерсетов, обычный пользователь - только своих."
+        summary = "Опубликовать стикерсет в галерее",
+        description = "Делает стикерсет публичным - видимым для всех пользователей в галерее. " +
+                     "Администратор может публиковать любые стикерсеты, обычный пользователь - только свои."
     )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Видимость стикерсета успешно изменена",
+        @ApiResponse(responseCode = "200", description = "Стикерсет успешно опубликован",
+            content = @Content(schema = @Schema(implementation = StickerSetDto.class),
+                examples = @ExampleObject(value = """
+                    {
+                        "id": 1,
+                        "userId": 123456789,
+                        "title": "Мои стикеры",
+                        "name": "my_stickers_by_StickerGalleryBot",
+                        "isPublic": true,
+                        "createdAt": "2025-09-15T10:30:00"
+                    }
+                    """))),
+        @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен - можно публиковать только свои стикерсеты"),
+        @ApiResponse(responseCode = "404", description = "Стикерсет с указанным ID не найден"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<?> publishStickerSet(
+            @Parameter(description = "ID стикерсета для публикации", required = true, example = "1")
+            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id) {
+        return updateStickerSetVisibilityInternal(id, true, "опубликован");
+    }
+    
+    /**
+     * Скрыть стикерсет из галереи (сделать приватным)
+     */
+    @PostMapping("/{id}/unpublish")
+    @Operation(
+        summary = "Скрыть стикерсет из галереи",
+        description = "Делает стикерсет приватным - видимым только владельцу в его профиле. " +
+                     "Администратор может скрывать любые стикерсеты, обычный пользователь - только свои."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Стикерсет успешно скрыт",
             content = @Content(schema = @Schema(implementation = StickerSetDto.class),
                 examples = @ExampleObject(value = """
                     {
@@ -706,28 +737,23 @@ public class StickerSetController {
                         "createdAt": "2025-09-15T10:30:00"
                     }
                     """))),
-        @ApiResponse(responseCode = "400", description = "Некорректные данные"),
         @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
-        @ApiResponse(responseCode = "403", description = "Доступ запрещен - можно изменять видимость только своих стикерсетов"),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен - можно скрывать только свои стикерсеты"),
         @ApiResponse(responseCode = "404", description = "Стикерсет с указанным ID не найден"),
         @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
     })
-    public ResponseEntity<?> updateStickerSetVisibility(
-            @Parameter(description = "ID стикерсета для изменения видимости", required = true, example = "1")
-            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id,
-            @Parameter(description = "Новое значение видимости: true - публичный, false - приватный", required = true)
-            @RequestBody java.util.Map<String, Boolean> request) {
+    public ResponseEntity<?> unpublishStickerSet(
+            @Parameter(description = "ID стикерсета для скрытия", required = true, example = "1")
+            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id) {
+        return updateStickerSetVisibilityInternal(id, false, "скрыт");
+    }
+    
+    /**
+     * Внутренний метод для изменения видимости стикерсета
+     */
+    private ResponseEntity<?> updateStickerSetVisibilityInternal(Long id, Boolean isPublic, String action) {
         try {
-            LOGGER.info("👁️ Изменение видимости стикерсета с ID: {}", id);
-            
-            Boolean isPublic = request.get("isPublic");
-            if (isPublic == null) {
-                return ResponseEntity.badRequest()
-                    .body(java.util.Map.of(
-                        "error", "Ошибка валидации",
-                        "message", "Поле 'isPublic' обязательно"
-                    ));
-            }
+            LOGGER.info("👁️ Изменение видимости стикерсета с ID: {} на {}", id, isPublic ? "публичный" : "приватный");
             
             StickerSet existingStickerSet = stickerSetService.findById(id);
             if (existingStickerSet == null) {
@@ -761,7 +787,7 @@ public class StickerSetController {
             StickerSet updatedStickerSet = stickerSetService.updateVisibility(id, isPublic);
             StickerSetDto updatedDto = StickerSetDto.fromEntity(updatedStickerSet);
             
-            LOGGER.info("✅ Видимость стикерсета {} изменена на {}", id, isPublic ? "публичный" : "приватный");
+            LOGGER.info("✅ Стикерсет {} {}", id, action);
             return ResponseEntity.ok(updatedDto);
             
         } catch (IllegalArgumentException e) {
