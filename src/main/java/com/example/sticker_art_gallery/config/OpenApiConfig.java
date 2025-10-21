@@ -22,9 +22,9 @@ public class OpenApiConfig {
         
         return new OpenAPI()
                 .info(new Info()
-                        .title("Telegram Bot Dream Stream API")
+                        .title("Sticker Art Gallery API")
                         .description("""
-                                API для Telegram ботов с системой аутентификации через Telegram Web App initData.
+                                API для галереи стикеров с системой аутентификации через Telegram Web App initData.
                                 
                                 ## Аутентификация
                                 Для доступа к API необходимо использовать аутентификацию через Telegram initData.
@@ -42,14 +42,15 @@ public class OpenApiConfig {
                                 ## Эндпоинты
                                 - `/auth/**` - публичные эндпоинты аутентификации
                                 - `/api/stickersets/**` - работа со стикерами (требует USER/ADMIN)
-                                - `/api/users/**` - управление пользователями (требует USER/ADMIN)
-                                - `/api/bots/**` - управление ботами (требует ADMIN)
+                                - `/api/categories/**` - работа с категориями стикеров (требует USER/ADMIN)
+                                - `/api/likes/**` - система лайков стикеров (требует USER/ADMIN)
+                                - `/api/users/**` - данные пользователей из Telegram (требует USER/ADMIN)
+                                - `/api/profiles/**` - профили пользователей с балансом (требует USER/ADMIN)
                                 """)
                         .version("1.0.0")
                         .contact(new Contact()
-                                .name("Dream Stream Team")
-                                .email("support@dreamstream.com")
-                                .url("https://dreamstream.com"))
+                                .name("Sticker Art Gallery Team")
+                                .email("support@stickergallery.com"))
                         .license(new License()
                                 .name("MIT License")
                                 .url("https://opensource.org/licenses/MIT")))
