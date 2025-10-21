@@ -1,6 +1,8 @@
 package com.example.sticker_art_gallery.controller;
 
+import com.example.sticker_art_gallery.config.AppConfig;
 import com.example.sticker_art_gallery.dto.CreateStickerSetDto;
+import com.example.sticker_art_gallery.util.TelegramInitDataGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.Disabled;
@@ -19,7 +21,6 @@ import org.springframework.web.context.WebApplicationContext;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@Disabled("Требуют сложной настройки Spring контекста с Spring AI, Redis, PostgreSQL")
 @SpringBootTest
 @AutoConfigureWebMvc
 @ActiveProfiles("test")
@@ -34,15 +35,30 @@ class StickerSetControllerIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+    
+    @Autowired
+    private AppConfig appConfig;
 
     private MockMvc mockMvc;
-
-    private static final String TEST_INIT_DATA = "user=%7B%22id%22%3A141614461%2C%22first_name%22%3A%22Andrey%22%2C%22last_name%22%3A%22Mitroshin%22%2C%22username%22%3A%22E13nst%22%2C%22language_code%22%3A%22ru%22%2C%22is_premium%22%3Atrue%2C%22allows_write_to_pm%22%3Atrue%7D&auth_date=1640995200&hash=test_hash";
+    private String validInitData;
+    
+    private static final Long TEST_USER_ID = 141614461L;
     private static final String BOT_NAME = "StickerGallery";
 
     @org.junit.jupiter.api.BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
+        
+        // Генерируем валидную initData используя реальный токен бота из конфигурации
+        String botToken = appConfig.getTelegram().getBotToken();
+        validInitData = TelegramInitDataGenerator.builder()
+                .botToken(botToken)
+                .userId(TEST_USER_ID)
+                .username("E13nst")
+                .firstName("Andrey")
+                .lastName("Mitroshin")
+                .languageCode("ru")
+                .build();
     }
 
     @Test
@@ -52,20 +68,20 @@ class StickerSetControllerIntegrationTest {
                 "Ожидается, что API вернет 201 Created с полными данными стикерсета.")
     @Severity(SeverityLevel.BLOCKER)
     void createStickerSet_WithValidData_ShouldReturn201() throws Exception {
-        // Given
+        // Given - используем реальный существующий стикерсет
         CreateStickerSetDto createDto = new CreateStickerSetDto();
-        createDto.setName("test_stickers_by_StickerGalleryBot");
+        createDto.setName("https://t.me/addstickers/ShaitanChick");
 
         // When & Then
         mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", TEST_INIT_DATA)
+                        .header("X-Telegram-Init-Data", validInitData)
                         .header("X-Telegram-Bot-Name", BOT_NAME)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createDto)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.name").value("test_stickers_by_stickergallerybot"))
-                .andExpect(jsonPath("$.userId").value(141614461))
+                .andExpect(jsonPath("$.name").value("shaitanchick"))
+                .andExpect(jsonPath("$.userId").value(TEST_USER_ID))
                 .andExpect(jsonPath("$.title").exists())
                 .andExpect(jsonPath("$.createdAt").exists());
     }
@@ -83,7 +99,7 @@ class StickerSetControllerIntegrationTest {
 
         // When & Then
         mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", TEST_INIT_DATA)
+                        .header("X-Telegram-Init-Data", validInitData)
                         .header("X-Telegram-Bot-Name", BOT_NAME)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createDto)))
@@ -105,7 +121,7 @@ class StickerSetControllerIntegrationTest {
 
         // When & Then
         mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", TEST_INIT_DATA)
+                        .header("X-Telegram-Init-Data", validInitData)
                         .header("X-Telegram-Bot-Name", BOT_NAME)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createDto)))
@@ -126,7 +142,7 @@ class StickerSetControllerIntegrationTest {
 
         // When & Then
         mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", TEST_INIT_DATA)
+                        .header("X-Telegram-Init-Data", validInitData)
                         .header("X-Telegram-Bot-Name", BOT_NAME)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createDto)))
@@ -145,7 +161,7 @@ class StickerSetControllerIntegrationTest {
 
         // When & Then
         mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", TEST_INIT_DATA)
+                        .header("X-Telegram-Init-Data", validInitData)
                         .header("X-Telegram-Bot-Name", BOT_NAME)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createDto)))
@@ -163,7 +179,7 @@ class StickerSetControllerIntegrationTest {
 
         // When & Then
         mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", TEST_INIT_DATA)
+                        .header("X-Telegram-Init-Data", validInitData)
                         .header("X-Telegram-Bot-Name", BOT_NAME)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createDto)))
@@ -181,7 +197,7 @@ class StickerSetControllerIntegrationTest {
 
         // When & Then
         mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", TEST_INIT_DATA)
+                        .header("X-Telegram-Init-Data", validInitData)
                         .header("X-Telegram-Bot-Name", BOT_NAME)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createDto)))
@@ -200,7 +216,7 @@ class StickerSetControllerIntegrationTest {
 
         // When & Then
         mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", TEST_INIT_DATA)
+                        .header("X-Telegram-Init-Data", validInitData)
                         .header("X-Telegram-Bot-Name", BOT_NAME)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createDto)))
@@ -219,7 +235,7 @@ class StickerSetControllerIntegrationTest {
 
         // When & Then
         mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", TEST_INIT_DATA)
+                        .header("X-Telegram-Init-Data", validInitData)
                         .header("X-Telegram-Bot-Name", BOT_NAME)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createDto)))
@@ -266,7 +282,7 @@ class StickerSetControllerIntegrationTest {
 
         // When & Then
         mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", TEST_INIT_DATA)
+                        .header("X-Telegram-Init-Data", validInitData)
                         .header("X-Telegram-Bot-Name", BOT_NAME)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonWithoutName))
@@ -283,7 +299,7 @@ class StickerSetControllerIntegrationTest {
 
         // When & Then
         mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", TEST_INIT_DATA)
+                        .header("X-Telegram-Init-Data", validInitData)
                         .header("X-Telegram-Bot-Name", BOT_NAME)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidJson))
@@ -299,7 +315,7 @@ class StickerSetControllerIntegrationTest {
 
         // Сначала создаем стикерсет
         mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", TEST_INIT_DATA)
+                        .header("X-Telegram-Init-Data", validInitData)
                         .header("X-Telegram-Bot-Name", BOT_NAME)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createDto)))
@@ -307,7 +323,7 @@ class StickerSetControllerIntegrationTest {
 
         // Затем пытаемся создать еще один с тем же именем
         mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", TEST_INIT_DATA)
+                        .header("X-Telegram-Init-Data", validInitData)
                         .header("X-Telegram-Bot-Name", BOT_NAME)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createDto)))

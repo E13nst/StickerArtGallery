@@ -3,6 +3,7 @@ package com.example.sticker_art_gallery;
 import com.example.sticker_art_gallery.dto.CreateStickerSetDto;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.service.telegram.StickerSetService;
+import io.qameta.allure.*;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Epic("API для стикерсетов")
+@Feature("Integration тесты API")
 @Disabled("Требуют сложной настройки Spring контекста с Spring AI, Redis, PostgreSQL")
 @SpringBootTest
 @ActiveProfiles("test")

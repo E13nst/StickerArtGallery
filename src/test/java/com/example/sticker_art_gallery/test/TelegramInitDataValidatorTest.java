@@ -1,7 +1,9 @@
 package com.example.sticker_art_gallery.test;
 
 import com.example.sticker_art_gallery.util.TelegramInitDataValidator;
+import io.qameta.allure.*;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,6 +15,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * Простые тесты для проверки валидатора initData
  * ОТКЛЮЧЕНЫ: Требуют сложной настройки Spring контекста
  */
+@Epic("Безопасность")
+@Feature("Валидация Telegram Web App initData")
+@DisplayName("Тесты валидатора Telegram initData")
 @Disabled("Требуют сложной настройки Spring контекста")
 @SpringBootTest
 @ActiveProfiles("test")
@@ -22,6 +27,10 @@ public class TelegramInitDataValidatorTest {
     private TelegramInitDataValidator validator;
 
     @Test
+    @Story("Валидация HMAC подписи")
+    @DisplayName("Валидация initData с невалидным hash должна возвращать false")
+    @Description("Проверяет, что валидатор отклоняет initData с неправильной HMAC подписью")
+    @Severity(SeverityLevel.BLOCKER)
     void testParseInitData() {
         System.out.println("🧪 Тест парсинга initData");
         
@@ -36,6 +45,10 @@ public class TelegramInitDataValidatorTest {
     }
 
     @Test
+    @Story("Извлечение данных пользователя")
+    @DisplayName("Извлечение Telegram ID из initData")
+    @Description("Проверяет корректное извлечение telegram_id из JSON в параметре user")
+    @Severity(SeverityLevel.CRITICAL)
     void testExtractTelegramId() {
         System.out.println("🧪 Тест извлечения telegram_id");
         

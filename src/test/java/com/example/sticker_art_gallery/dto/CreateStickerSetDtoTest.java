@@ -1,5 +1,6 @@
 package com.example.sticker_art_gallery.dto;
 
+import io.qameta.allure.*;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -14,6 +15,8 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Epic("Валидация данных")
+@Feature("DTO для создания стикерсетов")
 @DisplayName("Тесты CreateStickerSetDto")
 class CreateStickerSetDtoTest {
 
@@ -26,7 +29,10 @@ class CreateStickerSetDtoTest {
     }
 
     @Test
+    @Story("Валидация обязательных полей")
     @DisplayName("Создание DTO с корректными данными должно проходить валидацию")
+    @Description("Проверяет, что DTO с корректными name, title и userId успешно проходит валидацию")
+    @Severity(SeverityLevel.BLOCKER)
     void createDtoWithValidData_ShouldPassValidation() {
         // Given
         CreateStickerSetDto dto = new CreateStickerSetDto();
@@ -132,7 +138,10 @@ class CreateStickerSetDtoTest {
             "Test123",
             "valid_name_123"
     })
+    @Story("Валидация имени стикерсета")
     @DisplayName("Корректные имена стикерсетов должны проходить валидацию")
+    @Description("Параметризованный тест проверяет различные форматы корректных имен стикерсетов")
+    @Severity(SeverityLevel.CRITICAL)
     void validStickerSetNames_ShouldPassValidation(String name) {
         // Given
         CreateStickerSetDto dto = new CreateStickerSetDto();
@@ -153,7 +162,10 @@ class CreateStickerSetDtoTest {
             "t.me/addstickers/Test123",
             "https://t.me/addstickers/my_stickers_by_StickerGalleryBot"
     })
+    @Story("Валидация URL стикерсета")
     @DisplayName("Корректные URL стикерсетов должны проходить валидацию")
+    @Description("Параметризованный тест проверяет различные форматы URL Telegram стикерсетов (с https, http, без протокола)")
+    @Severity(SeverityLevel.CRITICAL)
     void validStickerSetUrls_ShouldPassValidation(String url) {
         // Given
         CreateStickerSetDto dto = new CreateStickerSetDto();

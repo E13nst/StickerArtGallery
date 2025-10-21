@@ -1,5 +1,6 @@
 package com.example.sticker_art_gallery.validation;
 
+import io.qameta.allure.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -8,6 +9,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Epic("Валидация данных")
+@Feature("Валидатор имен стикерсетов")
 @DisplayName("Тесты StickerSetNameValidator")
 class StickerSetNameValidatorTest {
 

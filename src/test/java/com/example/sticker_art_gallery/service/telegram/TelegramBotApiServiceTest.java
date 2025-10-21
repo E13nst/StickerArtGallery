@@ -3,6 +3,7 @@ package com.example.sticker_art_gallery.service.telegram;
 import com.example.sticker_art_gallery.config.AppConfig;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.qameta.allure.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+@Epic("Интеграция с Telegram")
+@Feature("Telegram Bot API клиент")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Тесты TelegramBotApiService")
 class TelegramBotApiServiceTest {
