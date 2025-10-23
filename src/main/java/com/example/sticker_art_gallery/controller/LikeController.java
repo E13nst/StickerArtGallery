@@ -7,6 +7,8 @@ import com.example.sticker_art_gallery.dto.PageResponse;
 import com.example.sticker_art_gallery.dto.StickerSetDto;
 import com.example.sticker_art_gallery.dto.StickerSetWithLikesDto;
 import com.example.sticker_art_gallery.service.LikeService;
+import com.example.sticker_art_gallery.service.user.UserService;
+import com.example.sticker_art_gallery.model.user.UserEntity;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -23,6 +25,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.Map;
 import java.util.HashMap;
@@ -39,9 +42,11 @@ public class LikeController {
     private static final Logger LOGGER = LoggerFactory.getLogger(LikeController.class);
     
     private final LikeService likeService;
+    private final UserService userService;
     
-    public LikeController(LikeService likeService) {
+    public LikeController(LikeService likeService, UserService userService) {
         this.likeService = likeService;
+        this.userService = userService;
     }
     
     /**
@@ -176,7 +181,8 @@ public class LikeController {
     @Operation(
         summary = "Получить лайкнутые стикерсеты текущего пользователя",
         description = "Возвращает список стикерсетов, которые лайкнул текущий пользователь, " +
-                     "отсортированных по дате лайка (новые сначала)."
+                     "отсортированных по дате лайка (новые сначала). " +
+                     "Поддерживает локализацию названий категорий через заголовок X-Language (ru/en) или автоматически из initData пользователя."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Список лайкнутых стикерсетов успешно получен",
@@ -210,8 +216,7 @@ public class LikeController {
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Размер страницы", example = "20")
             @RequestParam(defaultValue = "20") int size,
-            @Parameter(description = "Код языка для локализации категорий (ru/en)", example = "ru")
-            @RequestParam(defaultValue = "en") String language) {
+            HttpServletRequest request) {
         try {
             Long userId = getCurrentUserId();
             LOGGER.info("📋 Получение лайкнутых стикерсетов пользователя {}", userId);
@@ -221,6 +226,7 @@ public class LikeController {
             pageRequest.setSize(size);
             pageRequest.setSort("createdAt");
             pageRequest.setDirection("DESC");
+            String language = getLanguageFromHeaderOrUser(request);
             PageResponse<StickerSetDto> result = likeService.getLikedStickerSets(userId, pageRequest, language);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
@@ -236,6 +242,7 @@ public class LikeController {
     @Operation(
         summary = "Получить топ стикерсетов по лайкам",
         description = "Возвращает список стикерсетов, отсортированных по количеству лайков (по убыванию). " +
+                     "Поддерживает локализацию названий категорий через заголовок X-Language (ru/en) или автоматически из initData пользователя. " +
                      "Включает информацию о том, лайкнул ли текущий пользователь каждый стикерсет."
     )
     @ApiResponses(value = {
@@ -273,8 +280,7 @@ public class LikeController {
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Размер страницы", example = "20")
             @RequestParam(defaultValue = "20") int size,
-            @Parameter(description = "Код языка для локализации категорий (ru/en)", example = "ru")
-            @RequestParam(defaultValue = "en") String language) {
+            HttpServletRequest request) {
         try {
             LOGGER.info("🏆 Получение топ стикерсетов по лайкам");
             
@@ -283,6 +289,7 @@ public class LikeController {
             pageRequest.setSize(size);
             pageRequest.setSort("likesCount");
             pageRequest.setDirection("DESC");
+            String language = getLanguageFromHeaderOrUser(request);
             Long currentUserId = getCurrentUserIdOrNull();
             PageResponse<StickerSetWithLikesDto> result = likeService.getTopStickerSetsByLikes(pageRequest, language, currentUserId);
             return ResponseEntity.ok(result);
@@ -422,5 +429,46 @@ public class LikeController {
         } catch (IllegalStateException e) {
             return null;
         }
+    }
+    
+    /**
+     * Извлечь язык из заголовка X-Language или из initData пользователя
+     * @param request HTTP запрос для получения заголовков
+     * @return код языка (ru/en), по умолчанию "en"
+     */
+    private String getLanguageFromHeaderOrUser(HttpServletRequest request) {
+        // Сначала проверяем заголовок X-Language
+        String languageFromHeader = request.getHeader("X-Language");
+        if (languageFromHeader != null && !languageFromHeader.trim().isEmpty()) {
+            String lang = languageFromHeader.trim().toLowerCase();
+            if ("ru".equals(lang) || "en".equals(lang)) {
+                LOGGER.debug("🌐 Язык из заголовка X-Language: {}", lang);
+                return lang;
+            }
+        }
+        
+        // Если заголовок не указан или некорректный, пытаемся получить из initData пользователя
+        Long currentUserId = getCurrentUserIdOrNull();
+        if (currentUserId != null) {
+            try {
+                java.util.Optional<UserEntity> userOpt = userService.findById(currentUserId);
+                if (userOpt.isPresent()) {
+                    String userLanguage = userOpt.get().getLanguageCode();
+                    if (userLanguage != null && !userLanguage.trim().isEmpty()) {
+                        String lang = userLanguage.trim().toLowerCase();
+                        if ("ru".equals(lang) || "en".equals(lang)) {
+                            LOGGER.debug("🌐 Язык из initData пользователя {}: {}", currentUserId, lang);
+                            return lang;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                LOGGER.warn("⚠️ Ошибка при получении языка пользователя {}: {}", currentUserId, e.getMessage());
+            }
+        }
+        
+        // По умолчанию возвращаем английский
+        LOGGER.debug("🌐 Используется язык по умолчанию: en");
+        return "en";
     }
 }

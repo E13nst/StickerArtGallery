@@ -4,6 +4,8 @@ import com.example.sticker_art_gallery.dto.CategoryDto;
 import com.example.sticker_art_gallery.dto.CreateCategoryDto;
 import com.example.sticker_art_gallery.dto.UpdateCategoryDto;
 import com.example.sticker_art_gallery.service.category.CategoryService;
+import com.example.sticker_art_gallery.service.user.UserService;
+import com.example.sticker_art_gallery.model.user.UserEntity;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -15,7 +17,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
 
@@ -29,11 +34,12 @@ import java.util.List;
 public class CategoryController {
 
     private final CategoryService categoryService;
+    private final UserService userService;
 
     @GetMapping
     @Operation(
         summary = "Получить все активные категории",
-        description = "Возвращает список всех активных категорий с локализацией в зависимости от параметра language. " +
+        description = "Возвращает список всех активных категорий с локализацией через заголовок X-Language (ru/en) или автоматически из initData пользователя. " +
                      "Категории возвращаются отсортированными по displayOrder. " +
                      "Поддерживает русский и английский языки для названий и описаний."
     )
@@ -42,10 +48,8 @@ public class CategoryController {
             content = @Content(schema = @Schema(implementation = CategoryDto.class))),
         @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
     })
-    public ResponseEntity<List<CategoryDto>> getAllCategories(
-            @Parameter(description = "Код языка для локализации (ru/en)", example = "ru")
-            @RequestParam(defaultValue = "en") String language
-    ) {
+    public ResponseEntity<List<CategoryDto>> getAllCategories(HttpServletRequest request) {
+        String language = getLanguageFromHeaderOrUser(request);
         List<CategoryDto> categories = categoryService.getAllActiveCategories(language);
         return ResponseEntity.ok(categories);
     }
@@ -55,7 +59,7 @@ public class CategoryController {
         summary = "Получить категорию по ключу",
         description = "Возвращает информацию о категории по её уникальному ключу. " +
                      "Ключ должен содержать только латинские буквы, цифры и подчеркивания. " +
-                     "Поддерживает локализацию названий и описаний."
+                     "Поддерживает локализацию названий и описаний через заголовок X-Language (ru/en) или автоматически из initData пользователя."
     )
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Категория найдена",
@@ -66,10 +70,10 @@ public class CategoryController {
     public ResponseEntity<CategoryDto> getCategoryByKey(
             @Parameter(description = "Уникальный ключ категории", example = "animals")
             @PathVariable String key,
-            @Parameter(description = "Код языка для локализации (ru/en)", example = "ru")
-            @RequestParam(defaultValue = "en") String language
+            HttpServletRequest request
     ) {
         try {
+            String language = getLanguageFromHeaderOrUser(request);
             CategoryDto category = categoryService.getCategoryByKey(key, language);
             return ResponseEntity.ok(category);
         } catch (IllegalArgumentException e) {
@@ -83,6 +87,7 @@ public class CategoryController {
         description = "Создает новую категорию с поддержкой локализации. " +
                      "Поле 'key' является обязательным и должно быть уникальным. " +
                      "Поддерживает создание категорий с названиями и описаниями на русском и английском языках. " +
+                     "Язык ответа определяется через заголовок X-Language (ru/en) или автоматически из initData пользователя. " +
                      "displayOrder определяет порядок отображения в списке категорий."
     )
     @ApiResponses({
@@ -94,10 +99,10 @@ public class CategoryController {
     })
     public ResponseEntity<?> createCategory(
             @Valid @RequestBody CreateCategoryDto createDto,
-            @Parameter(description = "Код языка для ответа (ru/en)", example = "ru")
-            @RequestParam(defaultValue = "en") String language
+            HttpServletRequest request
     ) {
         try {
+            String language = getLanguageFromHeaderOrUser(request);
             CategoryDto category = categoryService.createCategory(createDto, language);
             return ResponseEntity.status(HttpStatus.CREATED).body(category);
         } catch (IllegalArgumentException e) {
@@ -108,7 +113,8 @@ public class CategoryController {
     @PutMapping("/{key}")
     @Operation(
         summary = "Обновить категорию",
-        description = "Обновляет существующую категорию. Требуется авторизация."
+        description = "Обновляет существующую категорию. Требуется авторизация. " +
+                     "Язык ответа определяется через заголовок X-Language (ru/en) или автоматически из initData пользователя."
     )
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Категория успешно обновлена"),
@@ -121,10 +127,10 @@ public class CategoryController {
             @Parameter(description = "Уникальный ключ категории", example = "animals")
             @PathVariable String key,
             @Valid @RequestBody UpdateCategoryDto updateDto,
-            @Parameter(description = "Код языка для ответа (ru/en)", example = "ru")
-            @RequestParam(defaultValue = "en") String language
+            HttpServletRequest request
     ) {
         try {
+            String language = getLanguageFromHeaderOrUser(request);
             CategoryDto category = categoryService.updateCategory(key, updateDto, language);
             return ResponseEntity.ok(category);
         } catch (IllegalArgumentException e) {
@@ -175,6 +181,60 @@ public class CategoryController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
+    }
+    
+    /**
+     * Извлечь ID текущего пользователя из SecurityContext (может вернуть null)
+     */
+    private Long getCurrentUserIdOrNull() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated() || 
+                "anonymousUser".equals(authentication.getPrincipal())) {
+                return null;
+            }
+            return Long.valueOf(authentication.getName());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    
+    /**
+     * Извлечь язык из заголовка X-Language или из initData пользователя
+     * @param request HTTP запрос для получения заголовков
+     * @return код языка (ru/en), по умолчанию "en"
+     */
+    private String getLanguageFromHeaderOrUser(HttpServletRequest request) {
+        // Сначала проверяем заголовок X-Language
+        String languageFromHeader = request.getHeader("X-Language");
+        if (languageFromHeader != null && !languageFromHeader.trim().isEmpty()) {
+            String lang = languageFromHeader.trim().toLowerCase();
+            if ("ru".equals(lang) || "en".equals(lang)) {
+                return lang;
+            }
+        }
+        
+        // Если заголовок не указан или некорректный, пытаемся получить из initData пользователя
+        Long currentUserId = getCurrentUserIdOrNull();
+        if (currentUserId != null) {
+            try {
+                java.util.Optional<UserEntity> userOpt = userService.findById(currentUserId);
+                if (userOpt.isPresent()) {
+                    String userLanguage = userOpt.get().getLanguageCode();
+                    if (userLanguage != null && !userLanguage.trim().isEmpty()) {
+                        String lang = userLanguage.trim().toLowerCase();
+                        if ("ru".equals(lang) || "en".equals(lang)) {
+                            return lang;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // Игнорируем ошибки
+            }
+        }
+        
+        // По умолчанию возвращаем английский
+        return "en";
     }
 }
 

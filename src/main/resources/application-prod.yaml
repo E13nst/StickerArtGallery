@@ -40,7 +40,7 @@ spring:
     baseline-on-migrate: false  # В продакшне базовая миграция должна быть применена явно
 
 # Отключаем тестовые профили
-spring.profiles.exclude: test, unit
+spring.profiles.exclude: unit
 
 management:
   endpoints:

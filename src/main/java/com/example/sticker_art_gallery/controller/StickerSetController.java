@@ -8,6 +8,8 @@ import com.example.sticker_art_gallery.dto.StickerSetWithLikesDto;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.service.telegram.StickerSetService;
 import com.example.sticker_art_gallery.service.LikeService;
+import com.example.sticker_art_gallery.service.user.UserService;
+import com.example.sticker_art_gallery.model.user.UserEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +19,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.NotBlank;
@@ -47,11 +50,13 @@ public class StickerSetController {
     private static final Logger LOGGER = LoggerFactory.getLogger(StickerSetController.class);
     private final StickerSetService stickerSetService;
     private final LikeService likeService;
+    private final UserService userService;
     
     @Autowired
-    public StickerSetController(StickerSetService stickerSetService, LikeService likeService) {
+    public StickerSetController(StickerSetService stickerSetService, LikeService likeService, UserService userService) {
         this.stickerSetService = stickerSetService;
         this.likeService = likeService;
+        this.userService = userService;
     }
     
     /**
@@ -61,7 +66,7 @@ public class StickerSetController {
     @Operation(
         summary = "Получить все стикерсеты с пагинацией и фильтрацией",
         description = "Возвращает список всех стикерсетов в системе с пагинацией, фильтрацией по категориям и обогащением данных из Telegram Bot API. " +
-                     "Поддерживает локализацию названий категорий. " +
+                     "Поддерживает локализацию названий категорий через заголовок X-Language (ru/en) или автоматически из initData пользователя. " +
                      "Можно фильтровать по категориям через параметр categoryKeys. " +
                      "Требует авторизации через Telegram Web App."
     )
@@ -125,10 +130,9 @@ public class StickerSetController {
             @RequestParam(defaultValue = "createdAt") String sort,
             @Parameter(description = "Направление сортировки", example = "DESC")
             @RequestParam(defaultValue = "DESC") @Pattern(regexp = "ASC|DESC") String direction,
-            @Parameter(description = "Код языка для локализации категорий (ru/en)", example = "ru")
-            @RequestParam(defaultValue = "en") String language,
             @Parameter(description = "Фильтр по ключам категорий (через запятую)", example = "animals,memes")
-            @RequestParam(required = false) String categoryKeys) {
+            @RequestParam(required = false) String categoryKeys,
+            HttpServletRequest request) {
         try {
             LOGGER.info("📋 Получение всех стикерсетов с пагинацией: page={}, size={}, sort={}, direction={}, categoryKeys={}", 
                     page, size, sort, direction, categoryKeys);
@@ -139,6 +143,7 @@ public class StickerSetController {
             pageRequest.setSort(sort);
             pageRequest.setDirection(direction);
             
+            String language = getLanguageFromHeaderOrUser(request);
             PageResponse<StickerSetDto> result;
             Long currentUserId = getCurrentUserIdOrNull();
             if (categoryKeys != null && !categoryKeys.trim().isEmpty()) {
@@ -684,14 +689,14 @@ public class StickerSetController {
             @PathVariable @Positive(message = "ID должен быть положительным числом") Long id,
             @Parameter(description = "Список ключей категорий", required = true)
             @RequestBody java.util.Set<String> categoryKeys,
-            @Parameter(description = "Код языка для ответа (ru/en)", example = "ru")
-            @RequestParam(defaultValue = "en") String language) {
+            HttpServletRequest request) {
         try {
             LOGGER.info("🏷️ Обновление категорий стикерсета с ID: {}, категории: {}", id, categoryKeys);
             
             StickerSet updatedStickerSet = stickerSetService.updateCategories(id, categoryKeys);
             
             LOGGER.info("✅ Категории стикерсета {} успешно обновлены", id);
+            String language = getLanguageFromHeaderOrUser(request);
             return ResponseEntity.ok(StickerSetDto.fromEntity(updatedStickerSet, language));
             
         } catch (IllegalArgumentException e) {
@@ -962,6 +967,7 @@ public class StickerSetController {
     @Operation(
         summary = "Получить топ стикерсетов по лайкам",
         description = "Возвращает список стикерсетов, отсортированных по количеству лайков (по убыванию). " +
+                     "Поддерживает локализацию названий категорий через заголовок X-Language (ru/en) или автоматически из initData пользователя. " +
                      "Включает информацию о том, лайкнул ли текущий пользователь каждый стикерсет."
     )
     @ApiResponses(value = {
@@ -998,8 +1004,7 @@ public class StickerSetController {
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @Parameter(description = "Количество элементов на странице (1-100)", example = "20")
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
-            @Parameter(description = "Код языка для локализации категорий (ru/en)", example = "ru")
-            @RequestParam(defaultValue = "en") String language) {
+            HttpServletRequest request) {
         try {
             LOGGER.info("🏆 Получение топ стикерсетов по лайкам с пагинацией: page={}, size={}", page, size);
             
@@ -1009,6 +1014,7 @@ public class StickerSetController {
             pageRequest.setSort("likesCount");
             pageRequest.setDirection("DESC");
             
+            String language = getLanguageFromHeaderOrUser(request);
             Long currentUserId = getCurrentUserIdOrNull();
             PageResponse<StickerSetWithLikesDto> result = likeService.getTopStickerSetsByLikes(pageRequest, language, currentUserId);
             
@@ -1050,5 +1056,46 @@ public class StickerSetController {
         } catch (Exception e) {
             return null;
         }
+    }
+    
+    /**
+     * Извлечь язык из заголовка X-Language или из initData пользователя
+     * @param request HTTP запрос для получения заголовков
+     * @return код языка (ru/en), по умолчанию "en"
+     */
+    private String getLanguageFromHeaderOrUser(HttpServletRequest request) {
+        // Сначала проверяем заголовок X-Language
+        String languageFromHeader = request.getHeader("X-Language");
+        if (languageFromHeader != null && !languageFromHeader.trim().isEmpty()) {
+            String lang = languageFromHeader.trim().toLowerCase();
+            if ("ru".equals(lang) || "en".equals(lang)) {
+                LOGGER.debug("🌐 Язык из заголовка X-Language: {}", lang);
+                return lang;
+            }
+        }
+        
+        // Если заголовок не указан или некорректный, пытаемся получить из initData пользователя
+        Long currentUserId = getCurrentUserIdOrNull();
+        if (currentUserId != null) {
+            try {
+                java.util.Optional<UserEntity> userOpt = userService.findById(currentUserId);
+                if (userOpt.isPresent()) {
+                    String userLanguage = userOpt.get().getLanguageCode();
+                    if (userLanguage != null && !userLanguage.trim().isEmpty()) {
+                        String lang = userLanguage.trim().toLowerCase();
+                        if ("ru".equals(lang) || "en".equals(lang)) {
+                            LOGGER.debug("🌐 Язык из initData пользователя {}: {}", currentUserId, lang);
+                            return lang;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                LOGGER.warn("⚠️ Ошибка при получении языка пользователя {}: {}", currentUserId, e.getMessage());
+            }
+        }
+        
+        // По умолчанию возвращаем английский
+        LOGGER.debug("🌐 Используется язык по умолчанию: en");
+        return "en";
     }
 } 
