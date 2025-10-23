@@ -68,55 +68,84 @@ public class StickerSetController {
         description = "Возвращает список всех стикерсетов в системе с пагинацией, фильтрацией по категориям и обогащением данных из Telegram Bot API. " +
                      "Поддерживает локализацию названий категорий через заголовок X-Language (ru/en) или автоматически из initData пользователя. " +
                      "Можно фильтровать по категориям через параметр categoryKeys. " +
+                     "Можно показать только лайкнутые пользователем стикерсеты через параметр likedOnly=true. " +
                      "Требует авторизации через Telegram Web App."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Список стикерсетов успешно получен",
             content = @Content(schema = @Schema(implementation = PageResponse.class),
-                examples = @ExampleObject(value = """
-                    {
-                        "content": [
-                            {
-                                "id": 1,
-                                "userId": 123456789,
-                                "title": "Мои стикеры",
-                                "name": "my_stickers_by_StickerGalleryBot",
-                                "createdAt": "2025-09-15T10:30:00",
-                                "likesCount": 42,
-                                "isLikedByCurrentUser": true,
-                                "telegramStickerSetInfo": "{\\"name\\":\\"my_stickers_by_StickerGalleryBot\\",\\"title\\":\\"Мои стикеры\\",\\"sticker_type\\":\\"regular\\",\\"is_animated\\":false,\\"stickers\\":[...]}",
-                                "categories": [
-                                    {
-                                        "id": 1,
-                                        "key": "animals",
-                                        "name": "Животные",
-                                        "description": "Стикеры с животными",
-                                        "iconUrl": null,
-                                        "displayOrder": 1,
-                                        "isActive": true
-                                    },
-                                    {
-                                        "id": 2,
-                                        "key": "cute",
-                                        "name": "Милые",
-                                        "description": "Милые стикеры",
-                                        "iconUrl": null,
-                                        "displayOrder": 130,
-                                        "isActive": true
-                                    }
-                                ]
-                            }
-                        ],
-                        "page": 0,
-                        "size": 20,
-                        "totalElements": 156,
-                        "totalPages": 8,
-                        "first": true,
-                        "last": false,
-                        "hasNext": true,
-                        "hasPrevious": false
-                    }
-                    """))),
+                examples = {
+                    @ExampleObject(name = "Обычный список стикерсетов", value = """
+                        {
+                            "content": [
+                                {
+                                    "id": 1,
+                                    "userId": 123456789,
+                                    "title": "Мои стикеры",
+                                    "name": "my_stickers_by_StickerGalleryBot",
+                                    "createdAt": "2025-09-15T10:30:00",
+                                    "likesCount": 42,
+                                    "isLikedByCurrentUser": true,
+                                    "telegramStickerSetInfo": "{\\"name\\":\\"my_stickers_by_StickerGalleryBot\\",\\"title\\":\\"Мои стикеры\\",\\"sticker_type\\":\\"regular\\",\\"is_animated\\":false,\\"stickers\\":[...]}",
+                                    "categories": [
+                                        {
+                                            "id": 1,
+                                            "key": "animals",
+                                            "name": "Животные",
+                                            "description": "Стикеры с животными",
+                                            "iconUrl": null,
+                                            "displayOrder": 1,
+                                            "isActive": true
+                                        }
+                                    ]
+                                }
+                            ],
+                            "page": 0,
+                            "size": 20,
+                            "totalElements": 156,
+                            "totalPages": 8,
+                            "first": true,
+                            "last": false,
+                            "hasNext": true,
+                            "hasPrevious": false
+                        }
+                        """),
+                    @ExampleObject(name = "Только лайкнутые стикерсеты (likedOnly=true)", value = """
+                        {
+                            "content": [
+                                {
+                                    "id": 5,
+                                    "userId": 987654321,
+                                    "title": "Лайкнутые стикеры",
+                                    "name": "liked_stickers_by_StickerGalleryBot",
+                                    "createdAt": "2025-01-15T10:30:00",
+                                    "likesCount": 15,
+                                    "isLikedByCurrentUser": true,
+                                    "telegramStickerSetInfo": "{\\"name\\":\\"liked_stickers_by_StickerGalleryBot\\",\\"title\\":\\"Лайкнутые стикеры\\",\\"sticker_type\\":\\"regular\\",\\"is_animated\\":false,\\"stickers\\":[...]}",
+                                    "categories": [
+                                        {
+                                            "id": 2,
+                                            "key": "cute",
+                                            "name": "Милые",
+                                            "description": "Милые стикеры",
+                                            "iconUrl": null,
+                                            "displayOrder": 130,
+                                            "isActive": true
+                                        }
+                                    ]
+                                }
+                            ],
+                            "page": 0,
+                            "size": 20,
+                            "totalElements": 3,
+                            "totalPages": 1,
+                            "first": true,
+                            "last": true,
+                            "hasNext": false,
+                            "hasPrevious": false
+                        }
+                        """)
+                })),
         @ApiResponse(responseCode = "400", description = "Некорректные параметры пагинации"),
         @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
         @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера или проблемы с Telegram Bot API")
@@ -132,10 +161,12 @@ public class StickerSetController {
             @RequestParam(defaultValue = "DESC") @Pattern(regexp = "ASC|DESC") String direction,
             @Parameter(description = "Фильтр по ключам категорий (через запятую)", example = "animals,memes")
             @RequestParam(required = false) String categoryKeys,
+            @Parameter(description = "Показать только лайкнутые пользователем стикерсеты", example = "false")
+            @RequestParam(defaultValue = "false") boolean likedOnly,
             HttpServletRequest request) {
         try {
-            LOGGER.info("📋 Получение всех стикерсетов с пагинацией: page={}, size={}, sort={}, direction={}, categoryKeys={}", 
-                    page, size, sort, direction, categoryKeys);
+            LOGGER.info("📋 Получение всех стикерсетов с пагинацией: page={}, size={}, sort={}, direction={}, categoryKeys={}, likedOnly={}", 
+                    page, size, sort, direction, categoryKeys, likedOnly);
             
             PageRequest pageRequest = new PageRequest();
             pageRequest.setPage(page);
@@ -146,7 +177,15 @@ public class StickerSetController {
             String language = getLanguageFromHeaderOrUser(request);
             PageResponse<StickerSetDto> result;
             Long currentUserId = getCurrentUserIdOrNull();
-            if (categoryKeys != null && !categoryKeys.trim().isEmpty()) {
+            
+            if (likedOnly) {
+                // Фильтрация только по лайкнутым стикерсетам
+                if (currentUserId == null) {
+                    LOGGER.warn("⚠️ Запрос лайкнутых стикерсетов от неавторизованного пользователя");
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+                }
+                result = likeService.getLikedStickerSets(currentUserId, pageRequest, language);
+            } else if (categoryKeys != null && !categoryKeys.trim().isEmpty()) {
                 // Фильтрация по категориям
                 String[] categoryKeyArray = categoryKeys.split(",");
                 result = stickerSetService.findByCategoryKeys(categoryKeyArray, pageRequest, language, currentUserId);
