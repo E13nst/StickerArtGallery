@@ -1,5 +1,6 @@
 package com.example.sticker_art_gallery.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
@@ -125,6 +126,7 @@ public class StickerSetDto {
         this.likesCount = likesCount;
     }
     
+    @JsonProperty("isLikedByCurrentUser")
     public boolean isLikedByCurrentUser() {
         return isLikedByCurrentUser;
     }
@@ -210,6 +212,9 @@ public class StickerSetDto {
         
         // Добавляем информацию о лайках
         dto.setLikesCount((long) entity.getLikesCount());
+        
+        // Устанавливаем isLikedByCurrentUser по умолчанию в false (будет переопределено, если передан currentUserId)
+        dto.setLikedByCurrentUser(false);
         
         return dto;
     }

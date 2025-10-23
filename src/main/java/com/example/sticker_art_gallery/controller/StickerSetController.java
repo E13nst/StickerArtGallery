@@ -179,14 +179,23 @@ public class StickerSetController {
             Long currentUserId = getCurrentUserIdOrNull();
             
             if (likedOnly) {
-                // Фильтрация только по лайкнутым стикерсетам
+                // Фильтрация по лайкнутым стикерсетам
                 if (currentUserId == null) {
                     LOGGER.warn("⚠️ Запрос лайкнутых стикерсетов от неавторизованного пользователя");
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
                 }
-                result = likeService.getLikedStickerSets(currentUserId, pageRequest, language);
+                
+                // Проверяем, есть ли дополнительная фильтрация по категориям
+                if (categoryKeys != null && !categoryKeys.trim().isEmpty()) {
+                    // Комбинированная фильтрация: лайкнутые + категории
+                    String[] categoryKeyArray = categoryKeys.split(",");
+                    result = likeService.getLikedStickerSetsByCategories(currentUserId, categoryKeyArray, pageRequest, language);
+                } else {
+                    // Только лайкнутые стикерсеты
+                    result = likeService.getLikedStickerSets(currentUserId, pageRequest, language);
+                }
             } else if (categoryKeys != null && !categoryKeys.trim().isEmpty()) {
-                // Фильтрация по категориям
+                // Фильтрация только по категориям (без лайков)
                 String[] categoryKeyArray = categoryKeys.split(",");
                 result = stickerSetService.findByCategoryKeys(categoryKeyArray, pageRequest, language, currentUserId);
             } else {

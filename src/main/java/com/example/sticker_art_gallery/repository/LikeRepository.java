@@ -41,14 +41,18 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
     
     /**
      * Получить стикерсеты, лайкнутые пользователем
+     * Сортировка управляется через Pageable
      */
-    @Query("SELECT DISTINCT l.stickerSet FROM Like l WHERE l.userId = :userId ORDER BY l.createdAt DESC")
+    @Query("SELECT s FROM StickerSet s WHERE s.id IN " +
+           "(SELECT l.stickerSet.id FROM Like l WHERE l.userId = :userId)")
     List<StickerSet> findLikedStickerSetsByUserId(@Param("userId") Long userId);
     
     /**
      * Получить стикерсеты, лайкнутые пользователем с пагинацией
+     * Сортировка управляется через Pageable
      */
-    @Query("SELECT DISTINCT l.stickerSet FROM Like l WHERE l.userId = :userId ORDER BY l.createdAt DESC")
+    @Query("SELECT s FROM StickerSet s WHERE s.id IN " +
+           "(SELECT l.stickerSet.id FROM Like l WHERE l.userId = :userId)")
     Page<StickerSet> findLikedStickerSetsByUserId(@Param("userId") Long userId, Pageable pageable);
     
     /**
@@ -80,4 +84,17 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
      */
     @Query("SELECT l.stickerSet.id FROM Like l WHERE l.userId = :userId AND l.stickerSet.id IN :stickerSetIds")
     List<Long> findLikedStickerSetIdsByUserId(@Param("userId") Long userId, @Param("stickerSetIds") List<Long> stickerSetIds);
+    
+    /**
+     * Получить лайкнутые стикерсеты пользователя по категориям
+     * Сортировка управляется через Pageable
+     */
+    @Query("SELECT s FROM StickerSet s " +
+           "JOIN s.categories c " +
+           "WHERE s.id IN (SELECT l.stickerSet.id FROM Like l WHERE l.userId = :userId) " +
+           "AND c.key IN :categoryKeys")
+    Page<StickerSet> findLikedStickerSetsByUserIdAndCategoryKeys(
+            @Param("userId") Long userId, 
+            @Param("categoryKeys") List<String> categoryKeys, 
+            Pageable pageable);
 }

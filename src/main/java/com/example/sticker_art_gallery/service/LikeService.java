@@ -130,6 +130,26 @@ public class LikeService {
     }
     
     /**
+     * Получить лайкнутые стикерсеты пользователя по категориям
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<StickerSetDto> getLikedStickerSetsByCategories(Long userId, String[] categoryKeys, 
+                                                                        PageRequest pageRequest, String language) {
+        LOGGER.debug("📋 Получение лайкнутых стикерсетов пользователя {} по категориям {} с пагинацией: page={}, size={}", 
+                userId, categoryKeys, pageRequest.getPage(), pageRequest.getSize());
+        
+        List<String> categoryKeyList = java.util.Arrays.asList(categoryKeys);
+        Page<StickerSet> likedStickerSets = likeRepository.findLikedStickerSetsByUserIdAndCategoryKeys(
+                userId, categoryKeyList, pageRequest.toPageable());
+        
+        List<StickerSetDto> dtos = likedStickerSets.getContent().stream()
+            .map(stickerSet -> StickerSetDto.fromEntity(stickerSet, language))
+            .collect(Collectors.toList());
+        
+        return PageResponse.of(likedStickerSets, dtos);
+    }
+    
+    /**
      * Получить топ стикерсетов по лайкам
      */
     @Transactional(readOnly = true)
