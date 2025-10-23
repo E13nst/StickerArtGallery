@@ -22,12 +22,25 @@ spring:
   test:
     database:
       replace: none  # Не заменяем БД на тестовую
+    context:
+      cache:
+        max-size: 0  # Отключаем кэш тестового контекста
+  
+  # Отключаем автоконфигурацию тестов
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTestAutoConfiguration
+      - org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTestAutoConfiguration
+      - org.springframework.boot.test.autoconfigure.json.JsonTestAutoConfiguration
   
   # Flyway для production
   flyway:
     enabled: true
     validate-on-migrate: true
     baseline-on-migrate: false  # В продакшне базовая миграция должна быть применена явно
+
+# Отключаем тестовые профили
+spring.profiles.exclude: test, unit
 
 management:
   endpoints:
@@ -82,6 +95,11 @@ logging:
     com.zaxxer.hikari: WARN
     org.telegram: INFO
     org.flywaydb: INFO
+    # Полностью отключаем логи тестов
+    org.springframework.test: OFF
+    org.junit: OFF
+    org.gradle: OFF
+    org.testcontainers: OFF
   pattern:
     console: "%d{HH:mm:ss.SSS} %highlight(%-5level) %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
