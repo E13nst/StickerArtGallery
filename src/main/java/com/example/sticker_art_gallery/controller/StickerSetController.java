@@ -165,7 +165,9 @@ public class StickerSetController {
     @GetMapping("/{id}")
     @Operation(
         summary = "Получить стикерсет по ID",
-        description = "Возвращает информацию о стикерсете по его уникальному идентификатору."
+        description = "Возвращает информацию о стикерсете по его уникальному идентификатору. " +
+                     "Включает информацию о том, лайкнул ли текущий пользователь этот стикерсет (поле isLikedByCurrentUser). " +
+                     "Для неавторизованных пользователей это поле будет false."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Стикерсет найден",
@@ -176,7 +178,24 @@ public class StickerSetController {
                         "userId": 123456789,
                         "title": "Мои стикеры",
                         "name": "my_stickers_by_StickerGalleryBot",
-                        "createdAt": "2025-09-15T10:30:00"
+                        "createdAt": "2025-09-15T10:30:00",
+                        "likesCount": 42,
+                        "isLikedByCurrentUser": true,
+                        "telegramStickerSetInfo": "{\\"name\\":\\"my_stickers_by_StickerGalleryBot\\",\\"title\\":\\"Мои стикеры\\",\\"sticker_type\\":\\"regular\\",\\"is_animated\\":false,\\"stickers\\":[...]}",
+                        "categories": [
+                            {
+                                "id": 1,
+                                "key": "animals",
+                                "name": "Животные",
+                                "description": "Стикеры с животными",
+                                "iconUrl": null,
+                                "displayOrder": 1,
+                                "isActive": true
+                            }
+                        ],
+                        "isPublic": true,
+                        "isBlocked": false,
+                        "blockReason": null
                     }
                     """))),
         @ApiResponse(responseCode = "400", description = "Некорректный ID (должен быть положительным числом)"),
@@ -189,7 +208,9 @@ public class StickerSetController {
             @PathVariable @Positive(message = "ID должен быть положительным числом") Long id) {
         try {
             LOGGER.info("🔍 Поиск стикерсета по ID: {} с данными Bot API", id);
-            StickerSetDto dto = stickerSetService.findByIdWithBotApiData(id);
+            
+            Long currentUserId = getCurrentUserIdOrNull();
+            StickerSetDto dto = stickerSetService.findByIdWithBotApiData(id, currentUserId);
             
             if (dto == null) {
                 LOGGER.warn("⚠️ Стикерсет с ID {} не найден", id);

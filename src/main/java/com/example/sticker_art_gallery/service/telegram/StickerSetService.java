@@ -257,6 +257,24 @@ public class StickerSetService {
     }
     
     /**
+     * Получить стикерсет по ID с обогащением данных Bot API и информацией о лайке текущего пользователя
+     * Если Bot API недоступен, возвращает стикерсет без обогащения
+     * @param id ID стикерсета
+     * @param currentUserId ID текущего пользователя (может быть null для неавторизованных пользователей)
+     * @return StickerSetDto с полем isLikedByCurrentUser
+     */
+    public StickerSetDto findByIdWithBotApiData(Long id, Long currentUserId) {
+        LOGGER.debug("🔍 Получение стикерсета по ID {} с данными Bot API и информацией о лайке пользователя {}", id, currentUserId);
+        
+        StickerSet stickerSet = stickerSetRepository.findById(id).orElse(null);
+        if (stickerSet == null) {
+            return null;
+        }
+        
+        return enrichSingleStickerSetSafelyWithCategories(stickerSet, "en", currentUserId);
+    }
+    
+    /**
      * Получить стикерсет по имени с обогащением данных Bot API
      * Если Bot API недоступен, возвращает стикерсет без обогащения
      */
