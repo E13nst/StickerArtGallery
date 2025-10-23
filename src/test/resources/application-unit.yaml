@@ -1,0 +1,69 @@
+# Конфигурация для UNIT тестов
+# Минимум зависимостей, быстрые тесты
+
+server:
+  port: 0  # Случайный порт
+
+spring:
+  profiles:
+    active: unit
+  
+  # Отключаем внешние зависимости
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: false
+  
+  # Отключаем Flyway для unit тестов
+  flyway:
+    enabled: false
+  
+  # Отключаем Redis для unit тестов
+  data:
+    redis:
+      repositories:
+        enabled: false
+  
+  # Отключаем внешние сервисы
+  ai:
+    openai:
+      api-key: "test-key"  # Фиктивный ключ
+  
+  # Отключаем автоконфигурацию Liquibase
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration
+
+# Отключаем внешние сервисы
+app:
+  telegram:
+    bot-token: "test-token"
+    bot-name: "test-bot"
+
+telegram:
+  bot:
+    token: "test-token"
+    name: "test-bot"
+    webhook:
+      url: "http://localhost:8080/webhook"
+
+# Отключаем внешний sticker processor
+sticker:
+  processor:
+    url: "http://localhost:9999"  # Несуществующий URL
+
+# Минимальное логирование
+logging:
+  level:
+    root: WARN
+    com.example.sticker_art_gallery: INFO

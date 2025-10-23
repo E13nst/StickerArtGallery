@@ -79,22 +79,62 @@ build: ## Собрать приложение
 	@$(GRADLE_CMD) build
 	@echo "$(GREEN)✅ Сборка завершена$(NC)"
 
-test: ## Запустить тесты
-	@echo "$(GREEN)🧪 Запускаем тесты...$(NC)"
+# UNIT тесты - быстрые, без внешних зависимостей
+test-unit: ## Запустить UNIT тесты (быстрые, без внешних зависимостей)
+	@echo "$(GREEN)🧪 Запускаем UNIT тесты...$(NC)"
 	@$(GRADLE_CMD) test
-	@echo "$(GREEN)✅ Тесты завершены$(NC)"
+	@echo "$(GREEN)✅ UNIT тесты завершены$(NC)"
 
-test-allure: ## Запустить тесты и сгенерировать Allure отчет
-	@echo "$(GREEN)🧪 Запускаем тесты с Allure...$(NC)"
+# INTEGRATION тесты - с внешними зависимостями
+test-integration: ## Запустить INTEGRATION тесты (с внешними зависимостями)
+	@echo "$(GREEN)🔗 Запускаем INTEGRATION тесты...$(NC)"
+	@echo "$(YELLOW)⚠️ ВНИМАНИЕ: Работает с продакшен БД!$(NC)"
+	@$(GRADLE_CMD) integrationTest
+	@echo "$(GREEN)✅ INTEGRATION тесты завершены$(NC)"
+
+# Все тесты
+test-all: ## Запустить все тесты (unit + integration)
+	@echo "$(GREEN)🧪 Запускаем все тесты...$(NC)"
+	@$(GRADLE_CMD) allTests
+	@echo "$(GREEN)✅ Все тесты завершены$(NC)"
+
+# Legacy команда для совместимости
+test: test-unit
+
+# Allure отчеты для UNIT тестов
+test-unit-allure: ## Запустить UNIT тесты с Allure отчетом
+	@echo "$(GREEN)🧪 Запускаем UNIT тесты с Allure...$(NC)"
 	@$(GRADLE_CMD) clean test --no-configuration-cache
 	@echo "$(GREEN)📊 Генерируем Allure отчет...$(NC)"
 	@$(GRADLE_CMD) allureReport --no-configuration-cache
 	@echo "$(GREEN)✅ Allure отчет сгенерирован$(NC)"
 	@echo "$(YELLOW)📁 Отчет: build/reports/allure-report/allureReport/index.html$(NC)"
 
-test-allure-serve: ## Запустить тесты и открыть Allure отчет через встроенный сервер
-	@echo "$(GREEN)🧪 Запускаем тесты с Allure...$(NC)"
-	@$(GRADLE_CMD) clean test --no-configuration-cache
+# Allure отчеты для INTEGRATION тестов
+test-integration-allure: ## Запустить INTEGRATION тесты с Allure отчетом
+	@echo "$(GREEN)🔗 Запускаем INTEGRATION тесты с Allure...$(NC)"
+	@echo "$(YELLOW)⚠️ ВНИМАНИЕ: Работает с продакшен БД!$(NC)"
+	@$(GRADLE_CMD) clean integrationTest --no-configuration-cache
+	@echo "$(GREEN)📊 Генерируем Allure отчет...$(NC)"
+	@$(GRADLE_CMD) allureReport --no-configuration-cache
+	@echo "$(GREEN)✅ Allure отчет сгенерирован$(NC)"
+	@echo "$(YELLOW)📁 Отчет: build/reports/allure-report/allureReport/index.html$(NC)"
+
+# Allure отчеты для всех тестов
+test-all-allure: ## Запустить все тесты с Allure отчетом
+	@echo "$(GREEN)🧪 Запускаем все тесты с Allure...$(NC)"
+	@$(GRADLE_CMD) clean allTests --no-configuration-cache
+	@echo "$(GREEN)📊 Генерируем Allure отчет...$(NC)"
+	@$(GRADLE_CMD) allureReport --no-configuration-cache
+	@echo "$(GREEN)✅ Allure отчет сгенерирован$(NC)"
+	@echo "$(YELLOW)📁 Отчет: build/reports/allure-report/allureReport/index.html$(NC)"
+
+# Legacy команды для совместимости
+test-allure: test-unit-allure
+
+test-allure-serve: ## Запустить все тесты и открыть Allure отчет через встроенный сервер
+	@echo "$(GREEN)🧪 Запускаем все тесты с Allure...$(NC)"
+	@$(GRADLE_CMD) clean allTests --no-configuration-cache
 	@echo "$(GREEN)📊 Запускаем Allure сервер (откроет браузер автоматически)...$(NC)"
 	@allure serve build/allure-results
 	@echo "$(GREEN)✅ Отчет открыт в браузере$(NC)"
