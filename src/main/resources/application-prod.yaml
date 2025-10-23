@@ -17,10 +17,11 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
-  jpa:
-    hibernate:
-      ddl-auto: validate  # Flyway управляет схемой в продакшне
-    show-sql: false  # Отключаем SQL логи в продакшне
+  
+  # Отключаем тесты на проде
+  test:
+    database:
+      replace: none  # Не заменяем БД на тестовую
   
   # Flyway для production
   flyway:
@@ -53,6 +54,16 @@ telegram:
     name: ${TELEGRAM_BOT_NAME}
     webhook:
       url: ${BOT_WEBHOOK_URL}
+
+# Отключаем тесты на проде
+spring:
+  test:
+    database:
+      replace: none  # Не заменяем БД на тестовую
+  jpa:
+    hibernate:
+      ddl-auto: validate  # Flyway управляет схемой в продакшне
+    show-sql: false  # Отключаем SQL логи в продакшне
 
 logging:
   level:

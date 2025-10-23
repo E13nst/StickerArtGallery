@@ -103,9 +103,8 @@ test {
     include '**/*Test.class'
     exclude '**/*IntegrationTest.class'
     
-    doFirst {
-        println '🧪 Запуск UNIT тестов (профиль: unit)'
-    }
+    // Отключаем Configuration Cache для тестов
+    notCompatibleWithConfigurationCache()
 }
 
 // INTEGRATION тесты - с внешними зависимостями
@@ -123,6 +122,9 @@ task integrationTest(type: Test) {
     // Включаем только интеграционные тесты
     include '**/*IntegrationTest.class'
     
+    // Отключаем Configuration Cache для тестов
+    notCompatibleWithConfigurationCache()
+    
     // Загружаем переменные окружения для интеграционных тестов
     doFirst {
         def envFile = file('.env.app')
@@ -137,10 +139,6 @@ task integrationTest(type: Test) {
         } else {
             println '⚠️ Файл .env.app не найден, используем значения по умолчанию'
         }
-    }
-    
-    doFirst {
-        println '🔗 Запуск INTEGRATION тестов (профиль: test)'
     }
 }
 

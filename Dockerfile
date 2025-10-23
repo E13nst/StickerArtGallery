@@ -14,4 +14,5 @@ COPY src/main/resources/application.yaml /app/config/application.yaml
 # COPY prompt.txt /app/prompt.txt
 
 # Command to run the jar file
-CMD ["java", "-jar", "/app/sticker-art-gallery.jar", "--spring.config.location=file:/app/config/application.yaml"]
+# Используем профиль prod и отключаем тесты на проде
+CMD ["java", "-jar", "/app/sticker-art-gallery.jar", "--spring.profiles.active=prod", "--spring.config.location=file:/app/config/application.yaml"]
