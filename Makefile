@@ -92,9 +92,27 @@ test-integration: ## Запустить INTEGRATION тесты (с внешни�
 	@$(GRADLE_CMD) integrationTest
 	@echo "$(GREEN)✅ INTEGRATION тесты завершены$(NC)"
 
+# BENCHMARK тесты - только локально
+test-benchmark: ## Запустить BENCHMARK тесты (только локально, не в CI/CD)
+	@echo "$(GREEN)⚡ Запускаем BENCHMARK тесты...$(NC)"
+	@echo "$(YELLOW)⚠️ RealHttpBenchmarkTest требует запущенное приложение (make start)$(NC)"
+	@$(GRADLE_CMD) benchmarkTest
+	@echo "$(GREEN)✅ BENCHMARK тесты завершены$(NC)"
+
+test-benchmark-allure: ## Запустить BENCHMARK тесты с Allure отчетом
+	@echo "$(GREEN)⚡ Запускаем BENCHMARK тесты с Allure...$(NC)"
+	@echo "$(YELLOW)⚠️ RealHttpBenchmarkTest требует запущенное приложение (make start)$(NC)"
+	@$(GRADLE_CMD) clean benchmarkTest --no-configuration-cache
+	@echo "$(GREEN)📊 Генерируем Allure отчет...$(NC)"
+	@$(GRADLE_CMD) allureReport --no-configuration-cache
+	@echo "$(GREEN)✅ Allure отчет сгенерирован$(NC)"
+	@echo "$(YELLOW)📁 Отчет: build/reports/allure-report/allureReport/index.html$(NC)"
+	@echo "$(YELLOW)💡 Просмотр отчета: allure serve build/allure-results$(NC)"
+
 # Все тесты
-test-all: ## Запустить все тесты (unit + integration)
+test-all: ## Запустить все тесты (unit + integration, БЕЗ benchmark)
 	@echo "$(GREEN)🧪 Запускаем все тесты...$(NC)"
+	@echo "$(YELLOW)💡 Бенчмарки исключены (запускайте отдельно: make test-benchmark)$(NC)"
 	@$(GRADLE_CMD) allTests
 	@echo "$(GREEN)✅ Все тесты завершены$(NC)"
 

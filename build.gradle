@@ -89,7 +89,10 @@ tasks.withType(Javadoc) {
 // JUnit 5 configuration
 // UNIT тесты - быстрые, без внешних зависимостей
 test {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        // Исключаем бенчмарки и интеграционные тесты из обычного запуска
+        excludeTags 'benchmark', 'integration'
+    }
     testLogging {
         events "passed", "skipped", "failed"
         exceptionFormat "full"
@@ -99,9 +102,10 @@ test {
     // Используем профиль unit для быстрых тестов
     systemProperty 'spring.profiles.active', 'unit'
     
-    // Включаем только unit тесты
+    // Включаем только unit тесты (также исключаем по имени для двойной защиты)
     include '**/*Test.class'
     exclude '**/*IntegrationTest.class'
+    exclude '**/benchmark/**'
     
     // Отключаем Configuration Cache для тестов
     notCompatibleWithConfigurationCache()
@@ -109,7 +113,12 @@ test {
 
 // INTEGRATION тесты - с внешними зависимостями
 task integrationTest(type: Test) {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        // Запускаем только интеграционные тесты (по тегу)
+        includeTags 'integration'
+        // Исключаем бенчмарки
+        excludeTags 'benchmark'
+    }
     testLogging {
         events "passed", "skipped", "failed"
         exceptionFormat "full"
@@ -118,9 +127,6 @@ task integrationTest(type: Test) {
     
     // Используем профиль test для интеграционных тестов
     systemProperty 'spring.profiles.active', 'test'
-    
-    // Включаем только интеграционные тесты
-    include '**/*IntegrationTest.class'
     
     // Отключаем Configuration Cache для тестов
     notCompatibleWithConfigurationCache()
@@ -136,10 +142,53 @@ task integrationTest(type: Test) {
                 }
             }
             println '✅ Запуск INTEGRATION тестов с переменными окружения из .env.app'
+            println '⚠️  Работает с продакшен БД!'
         } else {
             println '⚠️ Файл .env.app не найден, используем значения по умолчанию'
         }
     }
+    
+    description = 'Запускает интеграционные тесты (с внешними зависимостями: БД, Redis)'
+    group = 'verification'
+}
+
+// BENCHMARK тесты - только для локального запуска
+task benchmarkTest(type: Test) {
+    useJUnitPlatform {
+        // Запускаем ТОЛЬКО бенчмарки
+        includeTags 'benchmark'
+    }
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+        showStandardStreams = true
+    }
+    
+    // Используем профиль test
+    systemProperty 'spring.profiles.active', 'test'
+    
+    // Отключаем Configuration Cache для тестов
+    notCompatibleWithConfigurationCache()
+    
+    // Загружаем переменные окружения
+    doFirst {
+        def envFile = file('.env.app')
+        if (envFile.exists()) {
+            envFile.readLines().each { line ->
+                if (line && !line.startsWith('#') && line.contains('=')) {
+                    def (key, value) = line.split('=', 2)
+                    environment key.trim(), value.trim()
+                }
+            }
+            println '✅ Запуск BENCHMARK тестов с переменными окружения из .env.app'
+            println '⚠️  RealHttpBenchmarkTest требует запущенное приложение на http://localhost:8080'
+        } else {
+            println '⚠️ Файл .env.app не найден, используем значения по умолчанию'
+        }
+    }
+    
+    description = 'Запускает бенчмарк-тесты (GalleryLoadBenchmarkTest, RealHttpBenchmarkTest)'
+    group = 'verification'
 }
 
 // Все тесты вместе

@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Epic("Производительность")
 @Feature("Бенчмарк галереи и загрузки стикеров")
 @DisplayName("Бенчмарк: загрузка галереи")
+@Tag("benchmark")  // Исключается из CI/CD, только локальный запуск
 class GalleryLoadBenchmarkTest {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(GalleryLoadBenchmarkTest.class);

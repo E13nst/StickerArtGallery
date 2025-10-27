@@ -31,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @Feature("Real HTTP бенчмарк с RestAssured")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@Tag("benchmark")  // Исключается из CI/CD, требует запущенное приложение
 public class RealHttpBenchmarkTest {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(RealHttpBenchmarkTest.class);

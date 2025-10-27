@@ -10,6 +10,7 @@ import com.example.sticker_art_gallery.teststeps.StickerSetTestSteps;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -28,6 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Epic("API для стикерсетов")
 @Feature("Создание и управление стикерсетами")
 @DisplayName("Улучшенные интеграционные тесты StickerSetController")
+@Tag("integration")  // Запускаются только явно: make test-integration
 class ImprovedStickerSetControllerIntegrationTest {
     
     @Autowired
