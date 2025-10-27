@@ -1,5 +1,6 @@
 package com.example.sticker_art_gallery.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -19,6 +20,8 @@ public class StickerCacheDto {
     /**
      * Идентификатор файла в Telegram
      */
+    @JsonProperty("fileId")
+    @JsonAlias({"file_id"})  // Обратная совместимость со старым форматом
     private String fileId;
     
     /**
@@ -50,6 +53,44 @@ public class StickerCacheDto {
      * Время последнего обновления
      */
     private LocalDateTime lastUpdated;
+    
+    /**
+     * Время кеширования (алиас для lastUpdated)
+     */
+    @JsonIgnore
+    public LocalDateTime getCachedAt() {
+        return lastUpdated;
+    }
+    
+    /**
+     * Устанавливает время кеширования
+     */
+    @JsonIgnore
+    public void setCachedAt(LocalDateTime cachedAt) {
+        this.lastUpdated = cachedAt;
+    }
+    
+    /**
+     * Время истечения кеша
+     */
+    @JsonIgnore
+    private LocalDateTime expiresAt;
+    
+    /**
+     * Получает время истечения
+     */
+    @JsonIgnore
+    public LocalDateTime getExpiresAt() {
+        return expiresAt;
+    }
+    
+    /**
+     * Устанавливает время истечения
+     */
+    @JsonIgnore
+    public void setExpiresAt(LocalDateTime expiresAt) {
+        this.expiresAt = expiresAt;
+    }
     
     @JsonCreator
     public StickerCacheDto(
@@ -95,6 +136,41 @@ public class StickerCacheDto {
             return new byte[0];
         }
         return Base64.getDecoder().decode(fileData);
+    }
+    
+    /**
+     * Алиас для getFileBytes()
+     */
+    @JsonIgnore
+    public byte[] getData() {
+        return getFileBytes();
+    }
+    
+    /**
+     * Устанавливает данные из byte array
+     */
+    @JsonIgnore
+    public void setData(byte[] data) {
+        if (data != null) {
+            this.fileData = Base64.getEncoder().encodeToString(data);
+            this.fileSize = data.length;
+        }
+    }
+    
+    /**
+     * Алиас для getMimeType()
+     */
+    @JsonIgnore
+    public String getContentType() {
+        return mimeType;
+    }
+    
+    /**
+     * Устанавливает content type
+     */
+    @JsonIgnore
+    public void setContentType(String contentType) {
+        this.mimeType = contentType;
     }
     
     /**

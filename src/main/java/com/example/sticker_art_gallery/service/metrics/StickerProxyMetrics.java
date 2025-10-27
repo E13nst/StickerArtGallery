@@ -82,14 +82,49 @@ public class StickerProxyMetrics {
     }
     
     /**
+     * Получает общее количество запросов
+     */
+    public long getTotalRequests() {
+        return totalRequests.get();
+    }
+    
+    /**
+     * Получает количество попаданий в кэш
+     */
+    public long getCacheHits() {
+        return cacheHits.get();
+    }
+    
+    /**
+     * Получает количество промахов кэша
+     */
+    public long getCacheMisses() {
+        return cacheMisses.get();
+    }
+    
+    /**
+     * Получает количество прокси-запросов
+     */
+    public long getProxyRequests() {
+        return proxyRequests.get();
+    }
+    
+    /**
+     * Получает количество ошибок
+     */
+    public long getErrors() {
+        return errors.get();
+    }
+    
+    /**
      * Получает статистику метрик
      */
     public MetricsStats getStats() {
-        long total = totalRequests.get();
-        long hits = cacheHits.get();
-        long misses = cacheMisses.get();
-        long proxy = proxyRequests.get();
-        long errorCount = errors.get();
+        long total = getTotalRequests();
+        long hits = getCacheHits();
+        long misses = getCacheMisses();
+        long proxy = getProxyRequests();
+        long errorCount = getErrors();
         long cacheStats = cacheStatsRequests.get();
         long cacheStatsErrorCount = cacheStatsErrors.get();
         

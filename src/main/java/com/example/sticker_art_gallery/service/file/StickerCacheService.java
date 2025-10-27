@@ -18,7 +18,9 @@ public class StickerCacheService {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(StickerCacheService.class);
     private static final String CACHE_KEY_PREFIX = "sticker:file:";
-    private static final long CACHE_TTL_DAYS = 7; // 7 дней
+    
+    @org.springframework.beans.factory.annotation.Value("${app.sticker-cache.ttl-days:7}")
+    private long cacheTtlDays;
     
     private final RedisTemplate<String, Object> redisTemplate;
     
@@ -94,11 +96,11 @@ public class StickerCacheService {
                        stickerCache.getClass().getSimpleName(), stickerCache.getFileSize());
             
             // Сохраняем с TTL
-            redisTemplate.opsForValue().set(key, stickerCache, CACHE_TTL_DAYS, TimeUnit.DAYS);
-            LOGGER.info("✅ Объект сохранен в Redis с TTL {} дней", CACHE_TTL_DAYS);
+            redisTemplate.opsForValue().set(key, stickerCache, cacheTtlDays, TimeUnit.DAYS);
+            LOGGER.info("✅ Объект сохранен в Redis с TTL {} дней", cacheTtlDays);
             
             LOGGER.debug("💾 Стикер '{}' сохранен в кэш (размер: {} байт, TTL: {} дней)", 
-                    stickerCache.getFileId(), stickerCache.getFileSize(), CACHE_TTL_DAYS);
+                    stickerCache.getFileId(), stickerCache.getFileSize(), cacheTtlDays);
             
         } catch (Exception e) {
             LOGGER.warn("❌ Ошибка при сохранении стикера '{}' в кэш: {}", 
@@ -216,5 +218,42 @@ public class StickerCacheService {
             LOGGER.debug("❌ Полная ошибка Redis:", e);
             return false;
         }
+    }
+    
+    /**
+     * Получает ЛЕГКОВЕСНУЮ статистику кеша (только общие метрики, без обхода Redis)
+     * 
+     * ⚠️ СУПЕР БЫСТРО: Не делает SCAN/KEYS, использует только метрики
+     */
+    public java.util.Map<String, Object> getDetailedStats() {
+        java.util.Map<String, Object> stats = new java.util.HashMap<>();
+        
+        try {
+            LOGGER.debug("🔍 Собираем легковесную статистику кеша...");
+            
+            // Используем только Redis INFO для получения общей информации
+            // Без итерации по ключам!
+            stats.put("available", isRedisAvailable());
+            stats.put("note", "Легковесная статистика без обхода ключей Redis. Используйте метрики для детальной информации.");
+            
+            LOGGER.info("✅ Легковесная статистика собрана");
+            
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при сборе статистики: {}", e.getMessage(), e);
+            stats.put("error", e.getMessage());
+            stats.put("errorType", e.getClass().getSimpleName());
+        }
+        
+        return stats;
+    }
+    
+    /**
+     * Форматирует байты в человекочитаемый формат
+     */
+    private String formatBytes(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        int exp = (int) (Math.log(bytes) / Math.log(1024));
+        String pre = "KMGTPE".charAt(exp - 1) + "";
+        return String.format("%.2f %sB", bytes / Math.pow(1024, exp), pre);
     }
 }
