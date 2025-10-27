@@ -27,31 +27,43 @@ public class StickerCacheDto {
     /**
      * Данные файла в base64
      */
+    @JsonProperty("fileData")
+    @JsonAlias({"file_data"})  // Обратная совместимость со старым форматом
     private String fileData;
     
     /**
      * MIME тип файла
      */
+    @JsonProperty("mimeType")
+    @JsonAlias({"mime_type"})  // Обратная совместимость со старым форматом
     private String mimeType;
     
     /**
      * Имя файла
      */
+    @JsonProperty("fileName")
+    @JsonAlias({"file_name"})  // Обратная совместимость со старым форматом
     private String fileName;
     
     /**
      * Размер файла в байтах
      */
+    @JsonProperty("fileSize")
+    @JsonAlias({"file_size"})  // Обратная совместимость со старым форматом
     private long fileSize;
     
     /**
      * Путь к файлу в Telegram (для отладки)
      */
+    @JsonProperty("telegramFilePath")
+    @JsonAlias({"telegram_file_path"})  // Обратная совместимость со старым форматом
     private String telegramFilePath;
     
     /**
      * Время последнего обновления
      */
+    @JsonProperty("lastUpdated")
+    @JsonAlias({"last_updated"})  // Обратная совместимость со старым форматом
     private LocalDateTime lastUpdated;
     
     /**
