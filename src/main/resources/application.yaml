@@ -91,15 +91,26 @@ sticker:
       connect: 5000
       read: 10000
 
-# Подробное логирование для диагностики
+# Логирование (настраивается через переменные окружения)
 logging:
   level:
-    org.springframework.jdbc: INFO
-    org.hibernate.SQL: INFO
-    org.hibernate.type.descriptor.sql.BasicBinder: INFO
-    com.zaxxer.hikari: INFO
-    org.springframework.orm.jpa: INFO
-    com.example.sticker_art_gallery: DEBUG
-    org.springframework.boot.autoconfigure: INFO
-    org.springframework.security: DEBUG
+    # Глобальный уровень (по умолчанию INFO, на проде можно WARN)
+    root: ${LOGGING_LEVEL_ROOT:INFO}
+    
+    # Spring Framework компоненты
+    org.springframework.jdbc: ${LOGGING_LEVEL_SPRING_JDBC:INFO}
+    org.hibernate.SQL: ${LOGGING_LEVEL_HIBERNATE_SQL:INFO}
+    org.hibernate.type.descriptor.sql.BasicBinder: ${LOGGING_LEVEL_HIBERNATE_BINDER:INFO}
+    com.zaxxer.hikari: ${LOGGING_LEVEL_HIKARI:INFO}
+    org.springframework.orm.jpa: ${LOGGING_LEVEL_SPRING_JPA:INFO}
+    org.springframework.boot.autoconfigure: ${LOGGING_LEVEL_SPRING_AUTOCONFIGURE:INFO}
+    org.springframework.security: ${LOGGING_LEVEL_SPRING_SECURITY:INFO}
+    
+    # Наше приложение (по умолчанию DEBUG локально, WARN на проде)
+    com.example.sticker_art_gallery: ${LOGGING_LEVEL_APP:DEBUG}
+  
+  # Паттерн логов (опционально)
+  pattern:
+    console: ${LOGGING_PATTERN_CONSOLE:%d{yyyy-MM-dd HH:mm:ss} - %msg%n}
+    file: ${LOGGING_PATTERN_FILE:%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n}
   

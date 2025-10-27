@@ -80,22 +80,45 @@ spring:
 
 logging:
   level:
-    root: INFO
-    com.example.sticker_art_gallery: INFO
-    com.example.sticker_art_gallery.service.telegram: WARN  # Уменьшаем логи при загрузке изображений
-    com.example.sticker_art_gallery.service.proxy: WARN  # Уменьшаем логи прокси-запросов
-    com.example.sticker_art_gallery.service.metrics: WARN  # Уменьшаем логи метрик
-    com.example.sticker_art_gallery.controller.StickerProxyController: WARN  # Уменьшаем логи прокси-контроллера
-    com.example.sticker_art_gallery.util: WARN  # Уменьшаем логи валидации
-    org.springframework.web: WARN
-    org.springframework.security: WARN
-    org.springframework.jdbc: WARN
-    org.hibernate: WARN
-    org.hibernate.SQL: WARN
-    com.zaxxer.hikari: WARN
-    org.telegram: INFO
-    org.flywaydb: INFO
-    # Полностью отключаем логи тестов
+    # Глобальный уровень (можно переопределить через LOGGING_LEVEL_ROOT)
+    root: ${LOGGING_LEVEL_ROOT:WARN}
+    
+    # Наше приложение (можно переопределить через LOGGING_LEVEL_APP)
+    com.example.sticker_art_gallery: ${LOGGING_LEVEL_APP:WARN}
+    
+    # Конкретные компоненты с шумными логами - ERROR или OFF
+    com.example.sticker_art_gallery.service.telegram: ${LOGGING_LEVEL_TELEGRAM:ERROR}
+    com.example.sticker_art_gallery.service.proxy: ${LOGGING_LEVEL_PROXY:ERROR}
+    com.example.sticker_art_gallery.service.file: ${LOGGING_LEVEL_FILE:ERROR}
+    com.example.sticker_art_gallery.service.metrics: ${LOGGING_LEVEL_METRICS:ERROR}
+    com.example.sticker_art_gallery.controller: ${LOGGING_LEVEL_CONTROLLER:WARN}
+    com.example.sticker_art_gallery.util: ${LOGGING_LEVEL_UTIL:ERROR}
+    
+    # Spring Framework - только критические ошибки
+    org.springframework.web: ${LOGGING_LEVEL_SPRING_WEB:ERROR}
+    org.springframework.security: ${LOGGING_LEVEL_SPRING_SECURITY:ERROR}
+    org.springframework.jdbc: ${LOGGING_LEVEL_SPRING_JDBC:ERROR}
+    org.springframework.boot.autoconfigure: ${LOGGING_LEVEL_SPRING_AUTOCONFIGURE:ERROR}
+    
+    # Hibernate - OFF (не нужны SQL логи на проде)
+    org.hibernate: ${LOGGING_LEVEL_HIBERNATE:ERROR}
+    org.hibernate.SQL: ${LOGGING_LEVEL_HIBERNATE_SQL:OFF}
+    org.hibernate.type.descriptor.sql: ${LOGGING_LEVEL_HIBERNATE_BINDER:OFF}
+    
+    # HikariCP - только критические ошибки
+    com.zaxxer.hikari: ${LOGGING_LEVEL_HIKARI:ERROR}
+    
+    # Telegram API - только важные сообщения
+    org.telegram: ${LOGGING_LEVEL_TELEGRAM_API:WARN}
+    
+    # Flyway - INFO (нужно видеть миграции)
+    org.flywaydb: ${LOGGING_LEVEL_FLYWAY:INFO}
+    
+    # Redis - только ошибки
+    org.springframework.data.redis: ${LOGGING_LEVEL_REDIS:ERROR}
+    io.lettuce: ${LOGGING_LEVEL_LETTUCE:ERROR}
+    
+    # Полностью отключаем тесты (не должны запускаться на проде)
     org.springframework.test: OFF
     org.junit: OFF
     org.gradle: OFF
