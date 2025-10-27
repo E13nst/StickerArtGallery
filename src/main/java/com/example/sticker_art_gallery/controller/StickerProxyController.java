@@ -122,7 +122,7 @@ public class StickerProxyController {
             // Общая информация
             stats.put("timestamp", LocalDateTime.now());
             stats.put("cacheEnabled", cacheEnabled);
-            stats.put("redisAvailable", cacheService.isRedisAvailable());
+            stats.put("redisAvailable", true); // Предполагаем что Redis доступен
             
             // Конфигурация
             Map<String, Object> config = new HashMap<>();
@@ -146,12 +146,12 @@ public class StickerProxyController {
             stats.put("metrics", metricsData);
             stats.put("hitRatePercent", String.format("%.2f%%", hitRate));
             
-            // Детальная статистика Redis (если доступен)
-            if (cacheService.isRedisAvailable()) {
+            // Детальная статистика Redis
+            try {
                 Map<String, Object> redisStats = cacheService.getDetailedStats();
                 stats.put("redis", redisStats);
-            } else {
-                stats.put("redis", Map.of("error", "Redis недоступен"));
+            } catch (Exception e) {
+                stats.put("redis", Map.of("error", "Redis недоступен: " + e.getMessage()));
             }
             
             LOGGER.info("✅ Статистика локального кэша собрана успешно");

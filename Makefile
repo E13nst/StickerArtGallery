@@ -93,21 +93,32 @@ test-integration: ## Запустить INTEGRATION тесты (с внешни�
 	@echo "$(GREEN)✅ INTEGRATION тесты завершены$(NC)"
 
 # BENCHMARK тесты - только локально
-test-benchmark: ## Запустить BENCHMARK тесты (только локально, не в CI/CD)
-	@echo "$(GREEN)⚡ Запускаем BENCHMARK тесты...$(NC)"
-	@echo "$(YELLOW)⚠️ RealHttpBenchmarkTest требует запущенное приложение (make start)$(NC)"
+test-benchmark: ## Запустить BENCHMARK тесты (требует запущенное приложение: make start)
+	@echo "$(GREEN)⚡ Запускаем BENCHMARK тесты (RealHttpBenchmarkTest)...$(NC)"
+	@echo "$(YELLOW)⚠️ ТРЕБОВАНИЕ: Приложение должно быть запущено!$(NC)"
+	@echo "$(YELLOW)💡 Запустите приложение: make start$(NC)"
 	@$(GRADLE_CMD) benchmarkTest
 	@echo "$(GREEN)✅ BENCHMARK тесты завершены$(NC)"
 
 test-benchmark-allure: ## Запустить BENCHMARK тесты с Allure отчетом
 	@echo "$(GREEN)⚡ Запускаем BENCHMARK тесты с Allure...$(NC)"
-	@echo "$(YELLOW)⚠️ RealHttpBenchmarkTest требует запущенное приложение (make start)$(NC)"
+	@echo "$(YELLOW)⚠️ ТРЕБОВАНИЕ: Приложение должно быть запущено!$(NC)"
+	@echo "$(YELLOW)💡 Запустите приложение: make start$(NC)"
 	@$(GRADLE_CMD) clean benchmarkTest --no-configuration-cache
 	@echo "$(GREEN)📊 Генерируем Allure отчет...$(NC)"
 	@$(GRADLE_CMD) allureReport --no-configuration-cache
 	@echo "$(GREEN)✅ Allure отчет сгенерирован$(NC)"
 	@echo "$(YELLOW)📁 Отчет: build/reports/allure-report/allureReport/index.html$(NC)"
-	@echo "$(YELLOW)💡 Просмотр отчета: allure serve build/allure-results$(NC)"
+	@echo "$(YELLOW)💡 Просмотр: make allure-serve$(NC)"
+
+test-benchmark-serve: ## Запустить BENCHMARK тесты и открыть Allure в браузере
+	@echo "$(GREEN)⚡ Запускаем BENCHMARK тесты с Allure сервером...$(NC)"
+	@echo "$(YELLOW)⚠️ ТРЕБОВАНИЕ: Приложение должно быть запущено!$(NC)"
+	@echo "$(YELLOW)💡 Запустите приложение: make start$(NC)"
+	@$(GRADLE_CMD) clean benchmarkTest --no-configuration-cache
+	@echo "$(GREEN)📊 Запускаем Allure сервер (откроет браузер автоматически)...$(NC)"
+	@allure serve build/allure-results
+	@echo "$(GREEN)✅ Отчет открыт в браузере$(NC)"
 
 # Все тесты
 test-all: ## Запустить все тесты (unit + integration, БЕЗ benchmark)
@@ -186,6 +197,7 @@ clean: ## Очистить проект
 	@echo "$(YELLOW)🧹 Очищаем проект...$(NC)"
 	@$(GRADLE_CMD) clean
 	@rm -f $(LOG_FILE)
+	@rm -rf build/allure-results build/reports/allure-report
 	@echo "$(GREEN)✅ Очистка завершена$(NC)"
 
 test-api: ## Тестировать API локально

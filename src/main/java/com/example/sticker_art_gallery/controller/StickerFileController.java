@@ -88,26 +88,19 @@ public class StickerFileController {
                 return ResponseEntity.badRequest().build();
             }
             
-            // 2. Проверяем кэш Redis (если доступен)
-            StickerCacheDto cached = null;
-            if (cacheService.isRedisAvailable()) {
-                cached = cacheService.get(fileId);
-                if (cached != null) {
-                    LOGGER.debug("🎯 Файл найден в кэше: {} байт", cached.getFileSize());
-                    return buildFileResponse(cached, true);
-                }
-            } else {
-                LOGGER.warn("⚠️ Redis недоступен, работаем без кэширования");
+            // 2. Проверяем кэш Redis
+            StickerCacheDto cached = cacheService.get(fileId);
+            if (cached != null) {
+                LOGGER.debug("🎯 Файл найден в кэше: {} байт", cached.getFileSize());
+                return buildFileResponse(cached, true);
             }
             
             // 3. Скачиваем из Telegram API
             LOGGER.debug("📥 Файл не найден в кэше, скачиваем из Telegram...");
             StickerCacheDto downloaded = telegramFileService.downloadFile(fileId, botName);
             
-            // 4. Сохраняем в кэш (если Redis доступен)
-            if (cacheService.isRedisAvailable()) {
-                cacheService.put(downloaded);
-            }
+            // 4. Сохраняем в кэш
+            cacheService.put(downloaded);
             
             // 5. Возвращаем файл
             LOGGER.info("✅ Файл стикера успешно получен: {} байт, MIME: {}", 
@@ -162,7 +155,7 @@ public class StickerFileController {
     public ResponseEntity<CacheStatsResponse> getCacheStats() {
         try {
             long cacheSize = cacheService.getCacheSize();
-            boolean redisAvailable = cacheService.isRedisAvailable();
+            boolean redisAvailable = (cacheSize >= 0); // Redis доступен если getCacheSize не вернул -1
             
             CacheStatsResponse stats = new CacheStatsResponse(cacheSize, redisAvailable);
             

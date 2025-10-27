@@ -37,6 +37,12 @@ public class StickerProxyService {
     @Value("${app.sticker-cache.min-size-bytes:1024}")
     private long cacheMinSizeBytes;
     
+    @Value("${app.sticker-cache.compress.enabled:false}")
+    private boolean cacheCompressEnabled;
+    
+    @Value("${app.sticker-cache.compress.compress-by-size:100000}")
+    private long cacheCompressMinSize;
+    
     private final RestTemplate restTemplate;
     private final StickerProxyMetrics metrics;
     private final StickerCacheService cacheService;
@@ -138,19 +144,48 @@ public class StickerProxyService {
         try {
             StickerCacheDto cacheDto = new StickerCacheDto();
             cacheDto.setFileId(fileId);
-            cacheDto.setData(data);
             cacheDto.setContentType(contentType);
             cacheDto.setFileSize(data.length);
             cacheDto.setCachedAt(LocalDateTime.now());
             cacheDto.setExpiresAt(LocalDateTime.now().plusDays(cacheTtlDays));
             
+            // Решаем, нужно ли сжимать файл
+            boolean shouldCompress = shouldCompress(data.length, contentType);
+            cacheDto.setCompressed(shouldCompress);
+            
+            cacheDto.setData(data); // Автоматически сожмется если флаг установлен
+            
             cacheService.put(cacheDto);
             
-            LOGGER.info("💾 Файл '{}' сохранен в кеш (size: {} bytes, TTL: {} days)", 
-                       fileId, data.length, cacheTtlDays);
+            LOGGER.info("💾 Файл '{}' сохранен в кеш (size: {} bytes, TTL: {} days, compressed: {})", 
+                       fileId, data.length, cacheTtlDays, shouldCompress);
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при кешировании '{}': {}", fileId, e.getMessage());
         }
+    }
+    
+    /**
+     * Решает, нужно ли сжимать файл
+     * Логика:
+     * 1. Если сжатие отключено - НЕ сжимать
+     * 2. Если файл меньше минимального размера - НЕ сжимать
+     * 3. Иначе - сжимать
+     */
+    private boolean shouldCompress(long fileSize, String contentType) {
+        if (!cacheCompressEnabled) {
+            return false; // Сжатие отключено
+        }
+        
+        if (fileSize < cacheCompressMinSize) {
+            return false; // Файл слишком маленький для сжатия
+        }
+        
+        // Дополнительная логика: не сжимаем изображения WebP
+        if (contentType != null && contentType.contains("image/webp")) {
+            return false; // WebP файлы обычно маленькие и уже оптимизированы
+        }
+        
+        return true; // Сжимаем большие TGS и другие файлы
     }
     
     /**

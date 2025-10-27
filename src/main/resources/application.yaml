@@ -9,6 +9,14 @@ app:
     enabled: ${STICKER_CACHE_ENABLED:true}        # Включить/выключить кеширование стикеров
     ttl-days: ${STICKER_CACHE_TTL_DAYS:7}         # Время жизни кеша в днях
     min-size-bytes: ${STICKER_CACHE_MIN_SIZE:1024} # Минимальный размер файла для кеширования (байты)
+    compress:
+      enabled: ${STICKER_CACHE_COMPRESS_ENABLED:false}  # Включить сжатие
+      compress-by-size: ${STICKER_CACHE_COMPRESS_BY_SIZE:100000}  # Сжимать файлы больше N байт
+      format-settings:
+        # Можно настроить сжатие для конкретных типов (опционально)
+        # "application/x-tgsticker": true   # Сжимать TGS файлы
+        # "video/mp4": true                  # Сжимать видео
+        # "image/webp": false               # НЕ сжимать маленькие изображения
 
 spring:
   application:
@@ -66,9 +74,17 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
       database: ${REDIS_DATABASE:0}
-      timeout: 10s
+      timeout: 2000ms        # Timeout для операций (2 сек)
+      connect-timeout: 3000ms # Timeout для подключения (3 сек)
       ssl:
         enabled: ${REDIS_SSL_ENABLED:false}
+      # Connection pool settings
+      lettuce:
+        pool:
+          max-active: 20    # Максимум соединений
+          max-idle: 10      # Макс простаивающих
+          min-idle: 5       # Мин простаивающих
+          max-wait: 3000ms  # Ожидание соединения
 
 # Swagger/OpenAPI конфигурация
 springdoc:
@@ -91,7 +107,7 @@ sticker:
       connect: 5000
       read: 10000
 
-# Логирование (настраивается через переменные окружения)
+# Подробное логирование для диагностики
 logging:
   level:
     # Глобальный уровень (по умолчанию INFO, на проде можно WARN)
@@ -107,7 +123,7 @@ logging:
     org.springframework.security: ${LOGGING_LEVEL_SPRING_SECURITY:INFO}
     
     # Наше приложение (по умолчанию DEBUG локально, WARN на проде)
-    com.example.sticker_art_gallery: ${LOGGING_LEVEL_APP:DEBUG}
+    com.example.sticker_art_gallery: ${LOGGING_LEVEL_APP:INFO}
   
   # Паттерн логов (опционально)
   pattern:

@@ -32,6 +32,13 @@ public class StickerCacheDto {
     private String fileData;
     
     /**
+     * Флаг сжатия данных (false по умолчанию для обратной совместимости)
+     */
+    @JsonProperty("compressed")
+    @JsonAlias({"is_compressed"})
+    private Boolean compressed = false;
+    
+    /**
      * MIME тип файла
      */
     @JsonProperty("mimeType")
@@ -141,13 +148,37 @@ public class StickerCacheDto {
     
     /**
      * Возвращает данные файла как byte array
+     * Автоматически распаковывает если данные сжаты
      */
     @JsonIgnore
     public byte[] getFileBytes() {
         if (fileData == null) {
             return new byte[0];
         }
-        return Base64.getDecoder().decode(fileData);
+        byte[] data = Base64.getDecoder().decode(fileData);
+        
+        // Распаковываем если данные сжаты
+        if (Boolean.TRUE.equals(compressed)) {
+            try {
+                java.util.zip.Inflater inflater = new java.util.zip.Inflater();
+                inflater.setInput(data);
+                
+                java.io.ByteArrayOutputStream outputStream = new java.io.ByteArrayOutputStream(data.length);
+                byte[] buffer = new byte[1024];
+                
+                while (!inflater.finished()) {
+                    int count = inflater.inflate(buffer);
+                    outputStream.write(buffer, 0, count);
+                }
+                
+                inflater.end();
+                return outputStream.toByteArray();
+            } catch (Exception e) {
+                throw new RuntimeException("Ошибка декомпрессии данных", e);
+            }
+        }
+        
+        return data;
     }
     
     /**
@@ -160,12 +191,37 @@ public class StickerCacheDto {
     
     /**
      * Устанавливает данные из byte array
+     * Опционально сжимает данные перед сохранением
      */
     @JsonIgnore
     public void setData(byte[] data) {
         if (data != null) {
-            this.fileData = Base64.getEncoder().encodeToString(data);
             this.fileSize = data.length;
+            
+            // Сжимаем если флаг установлен
+            if (Boolean.TRUE.equals(compressed)) {
+                try {
+                    java.util.zip.Deflater deflater = new java.util.zip.Deflater();
+                    deflater.setInput(data);
+                    deflater.finish();
+                    
+                    java.io.ByteArrayOutputStream outputStream = new java.io.ByteArrayOutputStream(data.length);
+                    byte[] buffer = new byte[1024];
+                    
+                    while (!deflater.finished()) {
+                        int count = deflater.deflate(buffer);
+                        outputStream.write(buffer, 0, count);
+                    }
+                    
+                    deflater.end();
+                    byte[] compressedData = outputStream.toByteArray();
+                    this.fileData = Base64.getEncoder().encodeToString(compressedData);
+                } catch (Exception e) {
+                    throw new RuntimeException("Ошибка компрессии данных", e);
+                }
+            } else {
+                this.fileData = Base64.getEncoder().encodeToString(data);
+            }
         }
     }
     

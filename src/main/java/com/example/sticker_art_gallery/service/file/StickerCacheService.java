@@ -36,19 +36,11 @@ public class StickerCacheService {
      * @return StickerCacheDto или null если не найден
      */
     public StickerCacheDto get(String fileId) {
-        LOGGER.info("🔍 Попытка получить стикер '{}' из кэша", fileId);
-        
-        if (!isRedisAvailable()) {
-            LOGGER.debug("⚠️ Redis недоступен, пропускаем кэш для '{}'", fileId);
-            return null;
-        }
+        LOGGER.debug("🔍 Попытка получить стикер '{}' из кэша", fileId);
         
         try {
             String key = buildCacheKey(fileId);
-            LOGGER.info("🔑 Ищем в Redis по ключу: {}", key);
-            
             Object cached = redisTemplate.opsForValue().get(key);
-            LOGGER.info("📦 Результат из Redis: {}", cached != null ? cached.getClass().getSimpleName() : "null");
             
             if (cached instanceof StickerCacheDto stickerCache) {
                 if (stickerCache.isExpired()) {
@@ -57,17 +49,16 @@ public class StickerCacheService {
                     return null;
                 }
                 
-                LOGGER.info("🎯 Стикер '{}' найден в кэше (размер: {} байт)", fileId, stickerCache.getFileSize());
+                LOGGER.info("🎯 Cache HIT для '{}' (size: {} bytes)", fileId, stickerCache.getFileSize());
                 return stickerCache;
             }
             
-            LOGGER.info("❌ Стикер '{}' не найден в кэше", fileId);
+            LOGGER.debug("❌ Cache MISS для '{}'", fileId);
             return null;
             
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при получении стикера '{}' из кэша: {}", fileId, e.getMessage());
-            LOGGER.debug("❌ Полная ошибка get():", e);
-            return null;
+            LOGGER.debug("⚠️ Redis недоступен для '{}', пропускаем кэш: {}", fileId, e.getMessage());
+            return null; // Graceful degradation - работаем без кеша
         }
     }
     
@@ -78,33 +69,19 @@ public class StickerCacheService {
      */
     public void put(StickerCacheDto stickerCache) {
         if (stickerCache == null || stickerCache.getFileId() == null) {
-            LOGGER.warn("⚠️ Попытка сохранить null стикер в кэш");
-            return;
-        }
-        
-        LOGGER.info("💾 Попытка сохранить стикер '{}' в кэш", stickerCache.getFileId());
-        
-        if (!isRedisAvailable()) {
-            LOGGER.debug("⚠️ Redis недоступен, пропускаем сохранение в кэш для '{}'", stickerCache.getFileId());
-            return;
+            return; // Игнорируем null
         }
         
         try {
             String key = buildCacheKey(stickerCache.getFileId());
-            LOGGER.info("🔑 Сохраняем в Redis по ключу: {}", key);
-            LOGGER.info("📦 Сохраняем объект: {} (размер: {} байт)", 
-                       stickerCache.getClass().getSimpleName(), stickerCache.getFileSize());
-            
-            // Сохраняем с TTL
             redisTemplate.opsForValue().set(key, stickerCache, cacheTtlDays, TimeUnit.DAYS);
-            LOGGER.info("✅ Объект сохранен в Redis с TTL {} дней", cacheTtlDays);
-            
-            LOGGER.debug("💾 Стикер '{}' сохранен в кэш (размер: {} байт, TTL: {} дней)", 
+            LOGGER.debug("💾 Кэш для '{}' (size: {} bytes, TTL: {} days)", 
                     stickerCache.getFileId(), stickerCache.getFileSize(), cacheTtlDays);
             
         } catch (Exception e) {
-            LOGGER.warn("❌ Ошибка при сохранении стикера '{}' в кэш: {}", 
+            LOGGER.debug("⚠️ Redis недоступен, пропускаем кэш для '{}': {}", 
                     stickerCache.getFileId(), e.getMessage());
+            // Graceful degradation - продолжаем без кеша
         }
     }
     
@@ -116,16 +93,9 @@ public class StickerCacheService {
     public void delete(String fileId) {
         try {
             String key = buildCacheKey(fileId);
-            Boolean deleted = redisTemplate.delete(key);
-            
-            if (Boolean.TRUE.equals(deleted)) {
-                LOGGER.debug("🗑️ Стикер '{}' удален из кэша", fileId);
-            } else {
-                LOGGER.debug("❌ Стикер '{}' не найден для удаления", fileId);
-            }
-            
+            redisTemplate.delete(key);
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при удалении стикера '{}' из кэша: {}", fileId, e.getMessage(), e);
+            LOGGER.debug("⚠️ Redis недоступен для delete('{}'): {}", fileId, e.getMessage());
         }
     }
     
@@ -142,7 +112,6 @@ public class StickerCacheService {
             return Boolean.TRUE.equals(exists);
             
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при проверке существования стикера '{}': {}", fileId, e.getMessage(), e);
             return false;
         }
     }
@@ -153,27 +122,13 @@ public class StickerCacheService {
      * @return количество закэшированных стикеров
      */
     public long getCacheSize() {
-        LOGGER.debug("🔢 Запрос размера кэша");
-        
-        if (!isRedisAvailable()) {
-            LOGGER.debug("⚠️ Redis недоступен, размер кэша неизвестен");
-            return -1;
-        }
-        
         try {
             String pattern = CACHE_KEY_PREFIX + "*";
-            LOGGER.debug("🔍 Ищем ключи по паттерну: {}", pattern);
             var keys = redisTemplate.keys(pattern);
-            long size = keys != null ? keys.size() : 0;
-            LOGGER.info("📊 Размер кэша: {} ключей", size);
-            if (keys != null && !keys.isEmpty()) {
-                LOGGER.info("🔑 Найденные ключи: {}", keys);
-            }
-            return size;
+            return keys != null ? keys.size() : 0;
             
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при получении размера кэша: {}", e.getMessage());
-            LOGGER.debug("❌ Полная ошибка getCacheSize:", e);
+            LOGGER.debug("⚠️ Redis недоступен для getCacheSize: {}", e.getMessage());
             return -1;
         }
     }
@@ -185,14 +140,10 @@ public class StickerCacheService {
         try {
             var keys = redisTemplate.keys(CACHE_KEY_PREFIX + "*");
             if (keys != null && !keys.isEmpty()) {
-                Long deleted = redisTemplate.delete(keys);
-                LOGGER.info("🧹 Очищен кэш стикеров: удалено {} записей", deleted);
-            } else {
-                LOGGER.info("🧹 Кэш стикеров уже пуст");
+                redisTemplate.delete(keys);
             }
-            
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при очистке кэша стикеров: {}", e.getMessage(), e);
+            LOGGER.debug("⚠️ Redis недоступен для clearAll: {}", e.getMessage());
         }
     }
     
@@ -205,19 +156,13 @@ public class StickerCacheService {
     
     /**
      * Проверяет доступность Redis
+     * 
+     * @deprecated Удалено - больше не нужна проверка. Redis просто используем в try-catch
      */
+    @Deprecated
     public boolean isRedisAvailable() {
-        try {
-            LOGGER.debug("🔍 Проверяем доступность Redis...");
-            // Простая проверка - пытаемся выполнить операцию
-            Boolean result = redisTemplate.hasKey("test_key");
-            LOGGER.info("✅ Redis доступен! Результат проверки: {}", result);
-            return true;
-        } catch (Exception e) {
-            LOGGER.error("❌ Redis недоступен: {}", e.getMessage());
-            LOGGER.debug("❌ Полная ошибка Redis:", e);
-            return false;
-        }
+        // Legacy метод - оставлен для обратной совместимости, но больше не используется
+        return true;
     }
     
     /**
@@ -229,31 +174,15 @@ public class StickerCacheService {
         java.util.Map<String, Object> stats = new java.util.HashMap<>();
         
         try {
-            LOGGER.debug("🔍 Собираем легковесную статистику кеша...");
-            
-            // Используем только Redis INFO для получения общей информации
-            // Без итерации по ключам!
-            stats.put("available", isRedisAvailable());
+            stats.put("available", true);
             stats.put("note", "Легковесная статистика без обхода ключей Redis. Используйте метрики для детальной информации.");
             
-            LOGGER.info("✅ Легковесная статистика собрана");
-            
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при сборе статистики: {}", e.getMessage(), e);
+            stats.put("available", false);
             stats.put("error", e.getMessage());
-            stats.put("errorType", e.getClass().getSimpleName());
         }
         
         return stats;
     }
     
-    /**
-     * Форматирует байты в человекочитаемый формат
-     */
-    private String formatBytes(long bytes) {
-        if (bytes < 1024) return bytes + " B";
-        int exp = (int) (Math.log(bytes) / Math.log(1024));
-        String pre = "KMGTPE".charAt(exp - 1) + "";
-        return String.format("%.2f %sB", bytes / Math.pow(1024, exp), pre);
-    }
 }

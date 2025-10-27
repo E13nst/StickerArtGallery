@@ -24,8 +24,7 @@ public class RestTemplateConfig {
     
     @Bean
     public RestTemplate restTemplate() {
-        LOGGER.info("🔧 Настройка RestTemplate для проксирования");
-        LOGGER.info("⏱️ Timeout настройки: connect={}ms, read={}ms", connectTimeout, readTimeout);
+        LOGGER.info("🔧 Настройка RestTemplate: connect={}ms, read={}ms", connectTimeout, readTimeout);
         
         // Используем SimpleClientHttpRequestFactory с timeout'ами
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
