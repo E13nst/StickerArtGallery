@@ -1,6 +1,5 @@
 package com.example.sticker_art_gallery.controller;
 
-import com.example.sticker_art_gallery.security.AuthUserPrincipal;
 import com.example.sticker_art_gallery.util.TelegramInitDataValidator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -25,7 +24,7 @@ import java.util.Map;
  * Контроллер для аутентификации
  */
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/auth")
 @Tag(name = "Аутентификация", description = "Эндпоинты для аутентификации через Telegram Web App")
 public class AuthController {
     

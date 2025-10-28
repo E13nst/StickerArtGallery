@@ -123,7 +123,7 @@
         // Тест авторизации
         async function testAuth() {
             try {
-                const response = await fetch('/auth/status', {
+                const response = await fetch('/api/auth/status', {
                     method: 'GET',
                     headers: {
                         'X-Telegram-Init-Data': tg.initData,

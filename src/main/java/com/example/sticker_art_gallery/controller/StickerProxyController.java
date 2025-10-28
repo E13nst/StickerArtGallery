@@ -25,7 +25,7 @@ import java.util.Map;
  * Прокси-контроллер для работы с внешним сервисом стикеров
  */
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/proxy")
 @CrossOrigin(origins = "*", methods = {RequestMethod.GET})
 @Tag(name = "Прокси стикеров", description = "Проксирование запросов к внешнему сервису стикеров")
 public class StickerProxyController {

@@ -186,7 +186,7 @@ public class DevController {
                     }
                     async function testAuth() {
                         try {
-                            const response = await fetch('/auth/status', {
+                            const response = await fetch('/api/auth/status', {
                                 headers: { 'X-Telegram-Init-Data': tg.initData, 'X-Telegram-Bot-Name': 'StickerGallery' }
                             });
                             const data = await response.json();

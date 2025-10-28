@@ -175,7 +175,7 @@ function updateDebugInfo() {
 
 <div class="debug-item">
     <span class="debug-label">🌐 API Endpoint:</span>
-    <span class="debug-value">${window.location.origin}/auth/status</span>
+    <span class="debug-value">${window.location.origin}/api/auth/status</span>
 </div>
 
 <div class="debug-item">
@@ -207,7 +207,7 @@ if (user) {
 
 // API базовый URL
 const API_BASE = '/api/stickersets';
-const AUTH_BASE = '/auth';
+const AUTH_BASE = '/api/auth';
 
 // Функция для добавления заголовков аутентификации
 function getAuthHeaders() {
@@ -248,7 +248,7 @@ async function checkAuthStatus() {
     
     // В Telegram Web App - проверяем авторизацию
     try {
-        const response = await fetch('/auth/status', {
+        const response = await fetch('/api/auth/status', {
             method: 'GET',
             headers: getAuthHeaders()
         });

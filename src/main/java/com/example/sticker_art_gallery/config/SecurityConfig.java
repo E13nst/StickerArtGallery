@@ -11,6 +11,8 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.servlet.util.matcher.MvcRequestMatcher;
+import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
 
 /**
  * Конфигурация Spring Security
@@ -31,7 +33,12 @@ public class SecurityConfig {
     }
     
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    MvcRequestMatcher.Builder mvcRequestMatcherBuilder(HandlerMappingIntrospector introspector) {
+        return new MvcRequestMatcher.Builder(introspector);
+    }
+    
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http, MvcRequestMatcher.Builder mvc) throws Exception {
         http
             // Отключаем CSRF для API
             .csrf(csrf -> csrf.disable())
@@ -65,41 +72,44 @@ public class SecurityConfig {
             // Настройка авторизации
             .authorizeHttpRequests(authz -> authz
                 // Публичные эндпоинты (но фильтр все равно применяется)
-                .requestMatchers("/actuator/**").permitAll()
-                .requestMatchers("/error").permitAll()
-                .requestMatchers("/").permitAll()
-                .requestMatchers("/static/**").permitAll()
-                .requestMatchers("/css/**").permitAll()
-                .requestMatchers("/js/**").permitAll()
-                .requestMatchers("/images/**").permitAll()
-                .requestMatchers("/mini-app/**").permitAll()
-                .requestMatchers("/mini-app/index.html").permitAll()
-                .requestMatchers("/mini-app/app.js").permitAll()
-                .requestMatchers("/mini-app/style.css").permitAll()
-                .requestMatchers("/mini-app/test.html").permitAll()
+                .requestMatchers(mvc.pattern("/actuator/**")).permitAll()
+                .requestMatchers(mvc.pattern("/error")).permitAll()
+                .requestMatchers(mvc.pattern("/")).permitAll()
+                .requestMatchers(mvc.pattern("/static/**")).permitAll()
+                .requestMatchers(mvc.pattern("/css/**")).permitAll()
+                .requestMatchers(mvc.pattern("/js/**")).permitAll()
+                .requestMatchers(mvc.pattern("/images/**")).permitAll()
+                .requestMatchers(mvc.pattern("/mini-app/**")).permitAll()
+                .requestMatchers(mvc.pattern("/mini-app/index.html")).permitAll()
+                .requestMatchers(mvc.pattern("/mini-app/app.js")).permitAll()
+                .requestMatchers(mvc.pattern("/mini-app/style.css")).permitAll()
+                .requestMatchers(mvc.pattern("/mini-app/test.html")).permitAll()
                 
                 // Swagger UI и OpenAPI
-                .requestMatchers("/swagger-ui/**").permitAll()
-                .requestMatchers("/swagger-ui.html").permitAll()
-                .requestMatchers("/v3/api-docs/**").permitAll()
-                .requestMatchers("/swagger-resources/**").permitAll()
-                .requestMatchers("/webjars/**").permitAll()
+                .requestMatchers(mvc.pattern("/swagger-ui/**")).permitAll()
+                .requestMatchers(mvc.pattern("/swagger-ui.html")).permitAll()
+                .requestMatchers(mvc.pattern("/v3/api-docs/**")).permitAll()
+                .requestMatchers(mvc.pattern("/swagger-resources/**")).permitAll()
+                .requestMatchers(mvc.pattern("/webjars/**")).permitAll()
                 
                 // Dev эндпоинты (только в dev профиле)
-                .requestMatchers("/dev/**").permitAll()
+                .requestMatchers(mvc.pattern("/dev/**")).permitAll()
                 
                 // Auth эндпоинты (фильтр применяется, но аутентификация не требуется)
-                .requestMatchers("/auth/**").permitAll()
+                .requestMatchers(mvc.pattern("/api/auth/**")).permitAll()
                 
+                // API прокси стикеров - проксирование к внешнему сервису
+                .requestMatchers(mvc.pattern("/api/proxy/**")).permitAll()
+
                 // API стикерсетов - публичный доступ для тестирования
-                .requestMatchers("/api/stickersets/**").permitAll()
+                .requestMatchers(mvc.pattern("/api/stickersets/**")).permitAll()
                 
                 // API для авторизованных пользователей (USER или ADMIN)
-                .requestMatchers("/api/users/**").hasAnyRole("USER", "ADMIN")
-                .requestMatchers("/api/profiles/**").hasAnyRole("USER", "ADMIN")
+                .requestMatchers(mvc.pattern("/api/users/**")).hasAnyRole("USER", "ADMIN")
+                .requestMatchers(mvc.pattern("/api/profiles/**")).hasAnyRole("USER", "ADMIN")
                 
                 // API только для ADMIN
-                .requestMatchers("/api/bots/**").hasRole("ADMIN")
+                .requestMatchers(mvc.pattern("/api/bots/**")).hasRole("ADMIN")
                 
                 // Все остальные запросы разрешены (временно для отладки)
                 .anyRequest().permitAll()
