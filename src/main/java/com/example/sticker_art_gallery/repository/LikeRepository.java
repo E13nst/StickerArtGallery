@@ -60,9 +60,20 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
      */
     @Query("SELECT s, COUNT(l) as likesCount FROM StickerSet s " +
            "LEFT JOIN s.likes l " +
+           "WHERE s.isPublic = true AND s.isBlocked = false " +
            "GROUP BY s.id " +
            "ORDER BY likesCount DESC, s.createdAt DESC")
     Page<Object[]> findTopStickerSetsByLikes(Pageable pageable);
+    
+    /**
+     * Получить топ официальных стикерсетов по количеству лайков (только публичные и не заблокированные)
+     */
+    @Query("SELECT s, COUNT(l) as likesCount FROM StickerSet s " +
+           "LEFT JOIN s.likes l " +
+           "WHERE s.isPublic = true AND s.isBlocked = false AND s.isOfficial = true " +
+           "GROUP BY s.id " +
+           "ORDER BY likesCount DESC, s.createdAt DESC")
+    Page<Object[]> findTopOfficialStickerSetsByLikes(Pageable pageable);
     
     /**
      * Получить все лайки стикерсета

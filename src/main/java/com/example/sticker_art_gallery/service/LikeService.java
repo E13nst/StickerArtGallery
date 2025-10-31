@@ -183,6 +183,39 @@ public class LikeService {
     }
     
     /**
+     * Получить топ стикерсетов по лайкам c опциональной фильтрацией по официальным
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<StickerSetWithLikesDto> getTopStickerSetsByLikes(PageRequest pageRequest, String language, Long currentUserId, boolean officialOnly) {
+        LOGGER.debug("🏆 Получение {} топ стикерсетов по лайкам с пагинацией: page={}, size={}",
+                officialOnly ? "официальных" : "публичных", pageRequest.getPage(), pageRequest.getSize());
+        Page<Object[]> results = officialOnly
+                ? likeRepository.findTopOfficialStickerSetsByLikes(pageRequest.toPageable())
+                : likeRepository.findTopStickerSetsByLikes(pageRequest.toPageable());
+        
+        List<StickerSetWithLikesDto> dtos = results.getContent().stream()
+            .map(result -> {
+                StickerSet stickerSet = (StickerSet) result[0];
+                Long likesCount = (Long) result[1];
+                
+                StickerSetWithLikesDto dto = new StickerSetWithLikesDto();
+                dto.setStickerSet(StickerSetDto.fromEntity(stickerSet, language));
+                dto.setLikesCount(likesCount);
+                
+                if (currentUserId != null) {
+                    dto.setLikedByCurrentUser(isLikedByUser(currentUserId, stickerSet.getId()));
+                } else {
+                    dto.setLikedByCurrentUser(false);
+                }
+                
+                return dto;
+            })
+            .collect(Collectors.toList());
+        
+        return PageResponse.of(results, dtos);
+    }
+    
+    /**
      * Получить список ID стикерсетов, которые лайкнул пользователь
      */
     @Transactional(readOnly = true)

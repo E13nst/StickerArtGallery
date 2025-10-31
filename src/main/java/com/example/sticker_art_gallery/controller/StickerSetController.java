@@ -1128,9 +1128,11 @@ public class StickerSetController {
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @Parameter(description = "Количество элементов на странице (1-100)", example = "20")
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            @Parameter(description = "Показывать только официальные стикерсеты", example = "false")
+            @RequestParam(defaultValue = "false") boolean officialOnly,
             HttpServletRequest request) {
         try {
-            LOGGER.info("🏆 Получение топ стикерсетов по лайкам с пагинацией: page={}, size={}", page, size);
+            LOGGER.info("🏆 Получение топ стикерсетов по лайкам с пагинацией: page={}, size={}, officialOnly={}", page, size, officialOnly);
             
             PageRequest pageRequest = new PageRequest();
             pageRequest.setPage(page);
@@ -1140,7 +1142,7 @@ public class StickerSetController {
             
             String language = getLanguageFromHeaderOrUser(request);
             Long currentUserId = getCurrentUserIdOrNull();
-            PageResponse<StickerSetWithLikesDto> result = likeService.getTopStickerSetsByLikes(pageRequest, language, currentUserId);
+            PageResponse<StickerSetWithLikesDto> result = likeService.getTopStickerSetsByLikes(pageRequest, language, currentUserId, officialOnly);
             
             // Конвертируем StickerSetWithLikesDto в StickerSetDto для совместимости
             // Создаем временную Page для использования с PageResponse.of
