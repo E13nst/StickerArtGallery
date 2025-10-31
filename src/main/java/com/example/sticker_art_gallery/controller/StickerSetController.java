@@ -161,12 +161,14 @@ public class StickerSetController {
             @RequestParam(defaultValue = "DESC") @Pattern(regexp = "ASC|DESC") String direction,
             @Parameter(description = "Фильтр по ключам категорий (через запятую)", example = "animals,memes")
             @RequestParam(required = false) String categoryKeys,
+            @Parameter(description = "Показывать только официальные стикерсеты", example = "false")
+            @RequestParam(defaultValue = "false") boolean officialOnly,
             @Parameter(description = "Показать только лайкнутые пользователем стикерсеты", example = "false")
             @RequestParam(defaultValue = "false") boolean likedOnly,
             HttpServletRequest request) {
         try {
-            LOGGER.info("📋 Получение всех стикерсетов с пагинацией: page={}, size={}, sort={}, direction={}, categoryKeys={}, likedOnly={}", 
-                    page, size, sort, direction, categoryKeys, likedOnly);
+            LOGGER.info("📋 Получение всех стикерсетов с пагинацией: page={}, size={}, sort={}, direction={}, categoryKeys={}, officialOnly={}, likedOnly={}", 
+                    page, size, sort, direction, categoryKeys, officialOnly, likedOnly);
             
             PageRequest pageRequest = new PageRequest();
             pageRequest.setPage(page);
@@ -197,10 +199,10 @@ public class StickerSetController {
             } else if (categoryKeys != null && !categoryKeys.trim().isEmpty()) {
                 // Фильтрация только по категориям (без лайков)
                 String[] categoryKeyArray = categoryKeys.split(",");
-                result = stickerSetService.findByCategoryKeys(categoryKeyArray, pageRequest, language, currentUserId);
+                result = stickerSetService.findByCategoryKeys(categoryKeyArray, pageRequest, language, currentUserId, officialOnly);
             } else {
                 // Без фильтрации
-                result = stickerSetService.findAllWithPagination(pageRequest, language, currentUserId);
+                result = stickerSetService.findAllWithPagination(pageRequest, language, currentUserId, officialOnly);
             }
             
             LOGGER.debug("✅ Найдено {} стикерсетов на странице {} из {}", 
@@ -1005,6 +1007,80 @@ public class StickerSetController {
                     "error", "Внутренняя ошибка сервера",
                     "message", "Произошла непредвиденная ошибка при разблокировке стикерсета"
                 ));
+        }
+    }
+    
+    /**
+     * Отметить стикерсет как официальный (только для админа)
+     */
+    @PutMapping("/{id}/official")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+        summary = "Отметить как официальный",
+        description = "Устанавливает флаг isOfficial=true для стикерсета (доступно только админу)."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Стикерсет отмечен как официальный",
+            content = @Content(schema = @Schema(implementation = StickerSetDto.class))),
+        @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен - только админ может изменять официальный статус"),
+        @ApiResponse(responseCode = "404", description = "Стикерсет с указанным ID не найден"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<?> markStickerSetOfficial(
+            @Parameter(description = "ID стикерсета", required = true, example = "1")
+            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id) {
+        try {
+            LOGGER.info("🏅 Установка официального статуса для стикерсета {}", id);
+            StickerSet updated = stickerSetService.setOfficial(id);
+            return ResponseEntity.ok(StickerSetDto.fromEntity(updated));
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("⚠️ {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(java.util.Map.of(
+                    "error", "Не найдено",
+                    "message", e.getMessage()
+                ));
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при установке официального статуса стикерсета {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    /**
+     * Снять признак официального стикерсета (только для админа)
+     */
+    @PutMapping("/{id}/unofficial")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+        summary = "Снять официальный статус",
+        description = "Устанавливает флаг isOfficial=false для стикерсета (доступно только админу)."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Стикерсет отмечен как неофициальный",
+            content = @Content(schema = @Schema(implementation = StickerSetDto.class))),
+        @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен - только админ может изменять официальный статус"),
+        @ApiResponse(responseCode = "404", description = "Стикерсет с указанным ID не найден"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<?> markStickerSetUnofficial(
+            @Parameter(description = "ID стикерсета", required = true, example = "1")
+            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id) {
+        try {
+            LOGGER.info("🏷️ Снятие официального статуса для стикерсета {}", id);
+            StickerSet updated = stickerSetService.unsetOfficial(id);
+            return ResponseEntity.ok(StickerSetDto.fromEntity(updated));
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("⚠️ {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(java.util.Map.of(
+                    "error", "Не найдено",
+                    "message", e.getMessage()
+                ));
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при снятии официального статуса стикерсета {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
     

@@ -62,10 +62,24 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
     Page<StickerSet> findPublicAndNotBlocked(Pageable pageable);
     
     /**
+     * Поиск только официальных, публичных и не заблокированных стикерсетов с пагинацией
+     */
+    @Query("SELECT ss FROM StickerSet ss WHERE ss.isPublic = true AND ss.isBlocked = false AND ss.isOfficial = true")
+    Page<StickerSet> findPublicNotBlockedAndOfficial(Pageable pageable);
+    
+    /**
      * Поиск публичных и не заблокированных стикерсетов по ключам категорий с пагинацией
      */
     @Query("SELECT DISTINCT ss FROM StickerSet ss " +
            "JOIN ss.categories c " +
            "WHERE c.key IN :categoryKeys AND ss.isPublic = true AND ss.isBlocked = false")
     Page<StickerSet> findByCategoryKeysPublicAndNotBlocked(@Param("categoryKeys") String[] categoryKeys, Pageable pageable);
+    
+    /**
+     * Поиск официальных, публичных и не заблокированных стикерсетов по ключам категорий с пагинацией
+     */
+    @Query("SELECT DISTINCT ss FROM StickerSet ss " +
+           "JOIN ss.categories c " +
+           "WHERE c.key IN :categoryKeys AND ss.isPublic = true AND ss.isBlocked = false AND ss.isOfficial = true")
+    Page<StickerSet> findByCategoryKeysPublicNotBlockedAndOfficial(@Param("categoryKeys") String[] categoryKeys, Pageable pageable);
 } 

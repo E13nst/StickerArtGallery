@@ -50,6 +50,9 @@ public class StickerSetDto {
     @Schema(description = "Причина блокировки стикерсета", example = "Нарушение правил сообщества", nullable = true)
     private String blockReason;
     
+    @Schema(description = "Официальный стикерсет Telegram", example = "true")
+    private Boolean isOfficial;
+    
     // Конструкторы
     public StickerSetDto() {}
     
@@ -159,6 +162,14 @@ public class StickerSetDto {
         this.blockReason = blockReason;
     }
     
+    public Boolean getIsOfficial() {
+        return isOfficial;
+    }
+    
+    public void setIsOfficial(Boolean isOfficial) {
+        this.isOfficial = isOfficial;
+    }
+    
     // Конструктор для создания DTO из Entity
     public static StickerSetDto fromEntity(com.example.sticker_art_gallery.model.telegram.StickerSet entity) {
         if (entity == null) {
@@ -176,6 +187,7 @@ public class StickerSetDto {
         dto.setIsPublic(entity.getIsPublic());
         dto.setIsBlocked(entity.getIsBlocked());
         dto.setBlockReason(entity.getBlockReason());
+        dto.setIsOfficial(entity.getIsOfficial());
         
         return dto;
     }
@@ -200,6 +212,9 @@ public class StickerSetDto {
         // Добавляем информацию о блокировке
         dto.setIsBlocked(entity.getIsBlocked());
         dto.setBlockReason(entity.getBlockReason());
+        
+        // Добавляем официальность
+        dto.setIsOfficial(entity.getIsOfficial());
         
         // Добавляем категории с локализацией
         if (entity.getCategories() != null && !entity.getCategories().isEmpty()) {

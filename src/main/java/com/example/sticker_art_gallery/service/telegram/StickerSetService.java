@@ -211,6 +211,19 @@ public class StickerSetService {
     }
     
     /**
+     * Получить все стикерсеты с опциональной фильтрацией по официальным
+     */
+    public PageResponse<StickerSetDto> findAllWithPagination(PageRequest pageRequest, String language, Long currentUserId, boolean officialOnly) {
+        LOGGER.debug("📋 Получение {} стикерсетов с пагинацией: page={}, size={}, language={}", 
+                officialOnly ? "официальных" : "публичных", pageRequest.getPage(), pageRequest.getSize(), language);
+        Page<StickerSet> stickerSetsPage = officialOnly
+                ? stickerSetRepository.findPublicNotBlockedAndOfficial(pageRequest.toPageable())
+                : stickerSetRepository.findPublicAndNotBlocked(pageRequest.toPageable());
+        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language, currentUserId);
+        return PageResponse.of(stickerSetsPage, enrichedDtos);
+    }
+    
+    /**
      * Получить стикерсеты пользователя с пагинацией и обогащением данных Bot API
      */
     public PageResponse<StickerSetDto> findByUserIdWithPagination(Long userId, PageRequest pageRequest) {
@@ -238,6 +251,19 @@ public class StickerSetService {
         Page<StickerSet> stickerSetsPage = stickerSetRepository.findByCategoryKeysPublicAndNotBlocked(categoryKeys, pageRequest.toPageable());
         List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language, currentUserId);
         
+        return PageResponse.of(stickerSetsPage, enrichedDtos);
+    }
+    
+    /**
+     * Получить стикерсеты по ключам категорий с опциональной фильтрацией по официальным
+     */
+    public PageResponse<StickerSetDto> findByCategoryKeys(String[] categoryKeys, PageRequest pageRequest, String language, Long currentUserId, boolean officialOnly) {
+        LOGGER.debug("🏷️ Получение {} стикерсетов по категориям {} с пагинацией: page={}, size={}", 
+                officialOnly ? "официальных" : "публичных", String.join(",", categoryKeys), pageRequest.getPage(), pageRequest.getSize());
+        Page<StickerSet> stickerSetsPage = officialOnly
+                ? stickerSetRepository.findByCategoryKeysPublicNotBlockedAndOfficial(categoryKeys, pageRequest.toPageable())
+                : stickerSetRepository.findByCategoryKeysPublicAndNotBlocked(categoryKeys, pageRequest.toPageable());
+        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language, currentUserId);
         return PageResponse.of(stickerSetsPage, enrichedDtos);
     }
     
@@ -343,6 +369,38 @@ public class StickerSetService {
         LOGGER.info("✅ Стикерсет {} успешно разблокирован", stickerSetId);
         
         return savedStickerSet;
+    }
+    
+    /**
+     * Установить официальный статус стикерсета (только для админа)
+     */
+    @Transactional
+    public StickerSet setOfficial(Long stickerSetId) {
+        LOGGER.info("🏅 Установка статуса ОФИЦИАЛЬНЫЙ для стикерсета ID: {}", stickerSetId);
+        
+        StickerSet stickerSet = stickerSetRepository.findById(stickerSetId)
+            .orElseThrow(() -> new IllegalArgumentException("Стикерсет с ID " + stickerSetId + " не найден"));
+        
+        stickerSet.setIsOfficial(true);
+        StickerSet saved = stickerSetRepository.save(stickerSet);
+        LOGGER.info("✅ Стикерсет {} отмечен как официальный", stickerSetId);
+        return saved;
+    }
+    
+    /**
+     * Снять официальный статус стикерсета (только для админа)
+     */
+    @Transactional
+    public StickerSet unsetOfficial(Long stickerSetId) {
+        LOGGER.info("🏷️ Снятие статуса ОФИЦИАЛЬНЫЙ для стикерсета ID: {}", stickerSetId);
+        
+        StickerSet stickerSet = stickerSetRepository.findById(stickerSetId)
+            .orElseThrow(() -> new IllegalArgumentException("Стикерсет с ID " + stickerSetId + " не найден"));
+        
+        stickerSet.setIsOfficial(false);
+        StickerSet saved = stickerSetRepository.save(stickerSet);
+        LOGGER.info("✅ Стикерсет {} отмечен как неофициальный", stickerSetId);
+        return saved;
     }
     
     /**

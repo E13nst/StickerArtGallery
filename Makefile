@@ -183,16 +183,6 @@ allure-serve: ## Открыть существующие результаты т
 		echo "$(YELLOW)💡 Сначала запустите: make test$(NC)"; \
 	fi
 
-allure-open: ## Открыть последний Allure отчет (устаревший метод, используйте allure-serve)
-	@echo "$(YELLOW)⚠️  Рекомендуется использовать: make allure-serve$(NC)"
-	@if [ -f build/reports/allure-report/allureReport/index.html ]; then \
-		echo "$(GREEN)🌐 Открываем Allure отчет...$(NC)"; \
-		open build/reports/allure-report/allureReport/index.html; \
-	else \
-		echo "$(RED)❌ Отчет не найден!$(NC)"; \
-		echo "$(YELLOW)💡 Сначала запустите: make test-allure$(NC)"; \
-	fi
-
 clean: ## Очистить проект
 	@echo "$(YELLOW)🧹 Очищаем проект...$(NC)"
 	@$(GRADLE_CMD) clean

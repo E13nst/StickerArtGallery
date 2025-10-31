@@ -38,6 +38,9 @@ public class StickerSet {
     @Column(name = "is_blocked", nullable = false)
     private Boolean isBlocked = false; // Заблокирован ли стикерсет админом (не виден никому кроме админа)
     
+    @Column(name = "is_official", nullable = false)
+    private Boolean isOfficial = false; // Официальный стикерсет Telegram
+    
     @Column(name = "block_reason", length = 500)
     private String blockReason; // Причина блокировки стикерсета
     
