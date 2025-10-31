@@ -20,6 +20,8 @@ import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 
 /**
  * Общие шаги для интеграционных тестов
@@ -87,6 +89,17 @@ public class StickerSetTestSteps {
             System.out.println("📋 Создан тестовый профиль для пользователя: " + userId);
         }
     }
+
+    @Step("Назначить пользователю роль ADMIN")
+    public void makeAdmin(Long userId) {
+        UserProfileEntity profile = userProfileRepository.findByUserId(userId)
+                .orElseGet(() -> {
+                    UserProfileEntity p = TestDataBuilder.createTestUserProfile(userId);
+                    return userProfileRepository.save(p);
+                });
+        profile.setRole(UserProfileEntity.UserRole.ADMIN);
+        userProfileRepository.save(profile);
+    }
     
     @Step("Очистить тестовые данные")
     public void cleanupTestData() {
@@ -141,6 +154,59 @@ public class StickerSetTestSteps {
                         .param("categoryKeys", categoryKeys)
                         .header("X-Telegram-Init-Data", initData)
                         .header("X-Telegram-Bot-Name", TestDataBuilder.BOT_NAME));
+    }
+
+    @Step("Получить стикерсеты с фильтрами officialOnly/authorId/hasAuthorOnly")
+    public ResultActions getStickerSetsWithFilters(Boolean officialOnly, Long authorId, Boolean hasAuthorOnly, String initData) throws Exception {
+        var req = get("/api/stickersets")
+                .header("X-Telegram-Init-Data", initData)
+                .header("X-Telegram-Bot-Name", TestDataBuilder.BOT_NAME);
+        if (officialOnly != null) req = req.param("officialOnly", officialOnly.toString());
+        if (authorId != null) req = req.param("authorId", authorId.toString());
+        if (hasAuthorOnly != null) req = req.param("hasAuthorOnly", hasAuthorOnly.toString());
+        return mockMvc.perform(req);
+    }
+
+    @Step("Получить топ по лайкам с фильтрами officialOnly/authorId/hasAuthorOnly")
+    public ResultActions getTopByLikesWithFilters(Boolean officialOnly, Long authorId, Boolean hasAuthorOnly, String initData) throws Exception {
+        var req = get("/api/stickersets/top-bylikes")
+                .header("X-Telegram-Init-Data", initData)
+                .header("X-Telegram-Bot-Name", TestDataBuilder.BOT_NAME);
+        if (officialOnly != null) req = req.param("officialOnly", officialOnly.toString());
+        if (authorId != null) req = req.param("authorId", authorId.toString());
+        if (hasAuthorOnly != null) req = req.param("hasAuthorOnly", hasAuthorOnly.toString());
+        return mockMvc.perform(req);
+    }
+
+    @Step("Отметить стикерсет как официальный (ADMIN)")
+    public ResultActions markOfficial(Long id, String initData) throws Exception {
+        return mockMvc.perform(put("/api/stickersets/" + id + "/official")
+                .header("X-Telegram-Init-Data", initData)
+                .header("X-Telegram-Bot-Name", TestDataBuilder.BOT_NAME));
+    }
+
+    @Step("Снять официальный статус (ADMIN)")
+    public ResultActions markUnofficial(Long id, String initData) throws Exception {
+        return mockMvc.perform(put("/api/stickersets/" + id + "/unofficial")
+                .header("X-Telegram-Init-Data", initData)
+                .header("X-Telegram-Bot-Name", TestDataBuilder.BOT_NAME));
+    }
+
+    @Step("Установить автора (ADMIN)")
+    public ResultActions setAuthor(Long id, Long authorId, String initData) throws Exception {
+        java.util.Map<String, Long> body = java.util.Map.of("authorId", authorId);
+        return mockMvc.perform(put("/api/stickersets/" + id + "/author")
+                .header("X-Telegram-Init-Data", initData)
+                .header("X-Telegram-Bot-Name", TestDataBuilder.BOT_NAME)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)));
+    }
+
+    @Step("Очистить автора (ADMIN)")
+    public ResultActions clearAuthor(Long id, String initData) throws Exception {
+        return mockMvc.perform(delete("/api/stickersets/" + id + "/author")
+                .header("X-Telegram-Init-Data", initData)
+                .header("X-Telegram-Bot-Name", TestDataBuilder.BOT_NAME));
     }
     
     @Step("Создать валидную initData")
