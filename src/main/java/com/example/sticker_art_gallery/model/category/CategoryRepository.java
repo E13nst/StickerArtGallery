@@ -74,5 +74,24 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
            "WHERE c.isActive = true " +
            "GROUP BY c.id ORDER BY COUNT(ss) DESC")
     List<Category> findPopularCategories(int limit);
+
+    interface CategoryCountProjection {
+        Long getCategoryId();
+        Long getCnt();
+    }
+
+    /**
+     * Подсчет количества публичных и не заблокированных стикерсетов по активным категориям
+     * с учетом дополнительных фильтров (officialOnly, authorId, hasAuthorOnly)
+     */
+    @Query("SELECT c.id as categoryId, COUNT(ss) as cnt " +
+           "FROM Category c LEFT JOIN c.stickerSets ss ON " +
+           "(ss.isPublic = true AND ss.isBlocked = false " +
+           "AND (:officialOnly = false OR ss.isOfficial = true) " +
+           "AND (:authorId IS NULL OR ss.authorId = :authorId) " +
+           "AND (:hasAuthorOnly = false OR ss.authorId IS NOT NULL)) " +
+           "WHERE c.isActive = true " +
+           "GROUP BY c.id")
+    List<CategoryCountProjection> countStickerSetsByActiveCategories(boolean officialOnly, Long authorId, boolean hasAuthorOnly);
 }
 

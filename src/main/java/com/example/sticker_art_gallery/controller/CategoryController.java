@@ -2,6 +2,7 @@ package com.example.sticker_art_gallery.controller;
 
 import com.example.sticker_art_gallery.dto.CategoryDto;
 import com.example.sticker_art_gallery.dto.CreateCategoryDto;
+import com.example.sticker_art_gallery.dto.CategoryWithCountDto;
 import com.example.sticker_art_gallery.dto.UpdateCategoryDto;
 import com.example.sticker_art_gallery.service.category.CategoryService;
 import com.example.sticker_art_gallery.service.user.UserService;
@@ -52,6 +53,30 @@ public class CategoryController {
         String language = getLanguageFromHeaderOrUser(request);
         List<CategoryDto> categories = categoryService.getAllActiveCategories(language);
         return ResponseEntity.ok(categories);
+    }
+
+    @GetMapping("/counts")
+    @Operation(
+        summary = "Получить активные категории с количеством стикерсетов",
+        description = "Возвращает список активных категорий с количеством публичных и не заблокированных стикерсетов в каждой. " +
+                     "Поддерживает фильтры: officialOnly, authorId, hasAuthorOnly."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Список категорий с количеством успешно получен",
+            content = @Content(schema = @Schema(implementation = CategoryWithCountDto.class))),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<List<CategoryWithCountDto>> getCategoriesWithCounts(
+            @Parameter(description = "Показывать только официальные стикерсеты", example = "false")
+            @RequestParam(defaultValue = "false") boolean officialOnly,
+            @Parameter(description = "Фильтр по автору (Telegram ID)", example = "123456789")
+            @RequestParam(required = false) Long authorId,
+            @Parameter(description = "Показывать только авторские стикерсеты (authorId IS NOT NULL)", example = "false")
+            @RequestParam(defaultValue = "false") boolean hasAuthorOnly,
+            HttpServletRequest request) {
+        String language = getLanguageFromHeaderOrUser(request);
+        List<CategoryWithCountDto> result = categoryService.getActiveCategoriesWithCounts(language, officialOnly, authorId, hasAuthorOnly);
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/{key}")

@@ -2,6 +2,7 @@ package com.example.sticker_art_gallery.service.category;
 
 import com.example.sticker_art_gallery.dto.CategoryDto;
 import com.example.sticker_art_gallery.dto.CreateCategoryDto;
+import com.example.sticker_art_gallery.dto.CategoryWithCountDto;
 import com.example.sticker_art_gallery.dto.UpdateCategoryDto;
 import com.example.sticker_art_gallery.model.category.Category;
 import com.example.sticker_art_gallery.model.category.CategoryRepository;
@@ -35,6 +36,31 @@ public class CategoryService {
         return categoryRepository.findByIsActiveTrueOrderByDisplayOrderAsc()
                 .stream()
                 .map(category -> CategoryDto.fromEntity(category, language))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Получить активные категории с количеством стикерсетов с учетом фильтров
+     */
+    @Transactional(readOnly = true)
+    public List<CategoryWithCountDto> getActiveCategoriesWithCounts(String language, boolean officialOnly, Long authorId, boolean hasAuthorOnly) {
+        log.debug("Getting active categories with counts: lang={}, officialOnly={}, authorId={}, hasAuthorOnly={}", language, officialOnly, authorId, hasAuthorOnly);
+
+        // Берем категории по порядку отображения
+        var categories = categoryRepository.findByIsActiveTrueOrderByDisplayOrderAsc();
+
+        // Считаем количества
+        var counts = categoryRepository.countStickerSetsByActiveCategories(officialOnly, authorId, hasAuthorOnly)
+                .stream()
+                .collect(java.util.stream.Collectors.toMap(CategoryRepository.CategoryCountProjection::getCategoryId, CategoryRepository.CategoryCountProjection::getCnt));
+
+        // Мержим
+        return categories.stream()
+                .map(c -> new CategoryWithCountDto(
+                        c.getKey(),
+                        "ru".equalsIgnoreCase(language) ? c.getNameRu() : c.getNameEn(),
+                        counts.getOrDefault(c.getId(), 0L)
+                ))
                 .collect(Collectors.toList());
     }
 
