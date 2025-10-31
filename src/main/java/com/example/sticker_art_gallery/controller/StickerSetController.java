@@ -1213,9 +1213,13 @@ public class StickerSetController {
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
             @Parameter(description = "Показывать только официальные стикерсеты", example = "false")
             @RequestParam(defaultValue = "false") boolean officialOnly,
+            @Parameter(description = "Фильтр по автору (Telegram ID)", example = "123456789")
+            @RequestParam(required = false) Long authorId,
+            @Parameter(description = "Показывать только авторские стикерсеты (authorId IS NOT NULL)", example = "false")
+            @RequestParam(defaultValue = "false") boolean hasAuthorOnly,
             HttpServletRequest request) {
         try {
-            LOGGER.info("🏆 Получение топ стикерсетов по лайкам с пагинацией: page={}, size={}, officialOnly={}", page, size, officialOnly);
+            LOGGER.info("🏆 Получение топ стикерсетов по лайкам с пагинацией: page={}, size={}, officialOnly={}, authorId={}, hasAuthorOnly={}", page, size, officialOnly, authorId, hasAuthorOnly);
             
             PageRequest pageRequest = new PageRequest();
             pageRequest.setPage(page);
@@ -1225,7 +1229,7 @@ public class StickerSetController {
             
             String language = getLanguageFromHeaderOrUser(request);
             Long currentUserId = getCurrentUserIdOrNull();
-            PageResponse<StickerSetWithLikesDto> result = likeService.getTopStickerSetsByLikes(pageRequest, language, currentUserId, officialOnly);
+            PageResponse<StickerSetWithLikesDto> result = likeService.getTopStickerSetsByLikes(pageRequest, language, currentUserId, officialOnly, authorId, hasAuthorOnly);
             
             // Конвертируем StickerSetWithLikesDto в StickerSetDto для совместимости
             // Создаем временную Page для использования с PageResponse.of

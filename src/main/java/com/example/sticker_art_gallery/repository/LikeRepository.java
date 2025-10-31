@@ -74,6 +74,22 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
            "GROUP BY s.id " +
            "ORDER BY likesCount DESC, s.createdAt DESC")
     Page<Object[]> findTopOfficialStickerSetsByLikes(Pageable pageable);
+
+    /**
+     * Получить топ стикерсетов по лайкам с фильтрами officialOnly/authorId/hasAuthorOnly
+     */
+    @Query("SELECT s, COUNT(l) as likesCount FROM StickerSet s " +
+           "LEFT JOIN s.likes l " +
+           "WHERE s.isPublic = true AND s.isBlocked = false " +
+           "AND (:officialOnly = false OR s.isOfficial = true) " +
+           "AND (:authorId IS NULL OR s.authorId = :authorId) " +
+           "AND (:hasAuthorOnly = false OR s.authorId IS NOT NULL) " +
+           "GROUP BY s.id " +
+           "ORDER BY likesCount DESC, s.createdAt DESC")
+    Page<Object[]> findTopStickerSetsByLikesFiltered(@Param("officialOnly") boolean officialOnly,
+                                                     @Param("authorId") Long authorId,
+                                                     @Param("hasAuthorOnly") boolean hasAuthorOnly,
+                                                     Pageable pageable);
     
     /**
      * Получить все лайки стикерсета
