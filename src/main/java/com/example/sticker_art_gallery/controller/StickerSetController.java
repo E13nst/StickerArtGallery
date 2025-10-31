@@ -163,12 +163,16 @@ public class StickerSetController {
             @RequestParam(required = false) String categoryKeys,
             @Parameter(description = "Показывать только официальные стикерсеты", example = "false")
             @RequestParam(defaultValue = "false") boolean officialOnly,
+            @Parameter(description = "Фильтр по автору (Telegram ID)", example = "123456789")
+            @RequestParam(required = false) Long authorId,
+            @Parameter(description = "Показывать только авторские стикерсеты (authorId IS NOT NULL)", example = "false")
+            @RequestParam(defaultValue = "false") boolean hasAuthorOnly,
             @Parameter(description = "Показать только лайкнутые пользователем стикерсеты", example = "false")
             @RequestParam(defaultValue = "false") boolean likedOnly,
             HttpServletRequest request) {
         try {
-            LOGGER.info("📋 Получение всех стикерсетов с пагинацией: page={}, size={}, sort={}, direction={}, categoryKeys={}, officialOnly={}, likedOnly={}", 
-                    page, size, sort, direction, categoryKeys, officialOnly, likedOnly);
+            LOGGER.info("📋 Получение всех стикерсетов с пагинацией: page={}, size={}, sort={}, direction={}, categoryKeys={}, officialOnly={}, authorId={}, hasAuthorOnly={}, likedOnly={}", 
+                    page, size, sort, direction, categoryKeys, officialOnly, authorId, hasAuthorOnly, likedOnly);
             
             PageRequest pageRequest = new PageRequest();
             pageRequest.setPage(page);
@@ -199,10 +203,10 @@ public class StickerSetController {
             } else if (categoryKeys != null && !categoryKeys.trim().isEmpty()) {
                 // Фильтрация только по категориям (без лайков)
                 String[] categoryKeyArray = categoryKeys.split(",");
-                result = stickerSetService.findByCategoryKeys(categoryKeyArray, pageRequest, language, currentUserId, officialOnly);
+                result = stickerSetService.findByCategoryKeys(categoryKeyArray, pageRequest, language, currentUserId, officialOnly, authorId, hasAuthorOnly);
             } else {
                 // Без фильтрации
-                result = stickerSetService.findAllWithPagination(pageRequest, language, currentUserId, officialOnly);
+                result = stickerSetService.findAllWithPagination(pageRequest, language, currentUserId, officialOnly, authorId, hasAuthorOnly);
             }
             
             LOGGER.debug("✅ Найдено {} стикерсетов на странице {} из {}", 

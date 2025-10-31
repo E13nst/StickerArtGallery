@@ -62,6 +62,19 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
     Page<StickerSet> findPublicAndNotBlocked(Pageable pageable);
     
     /**
+     * Публичные, не заблокированные стикерсеты с гибкой фильтрацией по official/author
+     */
+    @Query("SELECT ss FROM StickerSet ss " +
+           "WHERE ss.isPublic = true AND ss.isBlocked = false " +
+           "AND (:officialOnly = false OR ss.isOfficial = true) " +
+           "AND (:authorId IS NULL OR ss.authorId = :authorId) " +
+           "AND (:hasAuthorOnly = false OR ss.authorId IS NOT NULL)")
+    Page<StickerSet> findPublicNotBlockedFiltered(@Param("officialOnly") boolean officialOnly,
+                                                   @Param("authorId") Long authorId,
+                                                   @Param("hasAuthorOnly") boolean hasAuthorOnly,
+                                                   Pageable pageable);
+
+    /**
      * Поиск только официальных, публичных и не заблокированных стикерсетов с пагинацией
      */
     @Query("SELECT ss FROM StickerSet ss WHERE ss.isPublic = true AND ss.isBlocked = false AND ss.isOfficial = true")
@@ -74,6 +87,21 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
            "JOIN ss.categories c " +
            "WHERE c.key IN :categoryKeys AND ss.isPublic = true AND ss.isBlocked = false")
     Page<StickerSet> findByCategoryKeysPublicAndNotBlocked(@Param("categoryKeys") String[] categoryKeys, Pageable pageable);
+    
+    /**
+     * Публичные, не заблокированные по категориям с гибкой фильтрацией по official/author
+     */
+    @Query("SELECT DISTINCT ss FROM StickerSet ss " +
+           "JOIN ss.categories c " +
+           "WHERE c.key IN :categoryKeys AND ss.isPublic = true AND ss.isBlocked = false " +
+           "AND (:officialOnly = false OR ss.isOfficial = true) " +
+           "AND (:authorId IS NULL OR ss.authorId = :authorId) " +
+           "AND (:hasAuthorOnly = false OR ss.authorId IS NOT NULL)")
+    Page<StickerSet> findByCategoryKeysPublicNotBlockedFiltered(@Param("categoryKeys") String[] categoryKeys,
+                                                                @Param("officialOnly") boolean officialOnly,
+                                                                @Param("authorId") Long authorId,
+                                                                @Param("hasAuthorOnly") boolean hasAuthorOnly,
+                                                                Pageable pageable);
     
     /**
      * Поиск официальных, публичных и не заблокированных стикерсетов по ключам категорий с пагинацией
