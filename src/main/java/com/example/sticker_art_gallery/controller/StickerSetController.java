@@ -144,6 +144,57 @@ public class StickerSetController {
                             "hasNext": false,
                             "hasPrevious": false
                         }
+                        """),
+                    @ExampleObject(name = "Фильтр по автору (authorId=123456789)", value = """
+                        {
+                            "content": [
+                                {
+                                    "id": 10,
+                                    "userId": 543210987,
+                                    "title": "Авторский набор",
+                                    "name": "author_pack_by_StickerGalleryBot",
+                                    "authorId": 123456789,
+                                    "createdAt": "2025-05-10T10:30:00",
+                                    "likesCount": 7,
+                                    "isLikedByCurrentUser": false,
+                                    "categories": []
+                                }
+                            ],
+                            "page": 0,
+                            "size": 20,
+                            "totalElements": 1,
+                            "totalPages": 1,
+                            "first": true,
+                            "last": true,
+                            "hasNext": false,
+                            "hasPrevious": false
+                        }
+                        """),
+                    @ExampleObject(name = "Только авторские (hasAuthorOnly=true) и официальные (officialOnly=true)", value = """
+                        {
+                            "content": [
+                                {
+                                    "id": 12,
+                                    "userId": 222222222,
+                                    "title": "Официальный авторский",
+                                    "name": "official_author_by_StickerGalleryBot",
+                                    "authorId": 111111111,
+                                    "isOfficial": true,
+                                    "createdAt": "2025-06-01T09:00:00",
+                                    "likesCount": 24,
+                                    "isLikedByCurrentUser": false,
+                                    "categories": []
+                                }
+                            ],
+                            "page": 0,
+                            "size": 20,
+                            "totalElements": 1,
+                            "totalPages": 1,
+                            "first": true,
+                            "last": true,
+                            "hasNext": false,
+                            "hasPrevious": false
+                        }
                         """)
                 })),
         @ApiResponse(responseCode = "400", description = "Некорректные параметры пагинации"),
@@ -1180,7 +1231,8 @@ public class StickerSetController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Топ стикерсетов по лайкам успешно получен",
             content = @Content(schema = @Schema(implementation = PageResponse.class),
-                examples = @ExampleObject(value = """
+                examples = {
+                    @ExampleObject(name = "Обычный топ", value = """
                     {
                         "content": [
                             {
@@ -1202,7 +1254,74 @@ public class StickerSetController {
                         "last": true,
                         "numberOfElements": 1
                     }
-                    """))),
+                    """),
+                    @ExampleObject(name = "Топ официальных (officialOnly=true)", value = """
+                    {
+                        "content": [
+                            {
+                                "id": 6,
+                                "userId": 333333333,
+                                "title": "Оф топ",
+                                "name": "official_top_by_StickerGalleryBot",
+                                "isOfficial": true,
+                                "likesCount": 99,
+                                "categories": []
+                            }
+                        ],
+                        "totalElements": 1,
+                        "totalPages": 1,
+                        "size": 20,
+                        "number": 0,
+                        "first": true,
+                        "last": true,
+                        "numberOfElements": 1
+                    }
+                    """),
+                    @ExampleObject(name = "Топ по автору (authorId=123456789)", value = """
+                    {
+                        "content": [
+                            {
+                                "id": 7,
+                                "userId": 444444444,
+                                "title": "Авторский топ",
+                                "name": "author_top_by_StickerGalleryBot",
+                                "authorId": 123456789,
+                                "likesCount": 50,
+                                "categories": []
+                            }
+                        ],
+                        "totalElements": 1,
+                        "totalPages": 1,
+                        "size": 20,
+                        "number": 0,
+                        "first": true,
+                        "last": true,
+                        "numberOfElements": 1
+                    }
+                    """),
+                    @ExampleObject(name = "Топ только авторских (hasAuthorOnly=true)", value = """
+                    {
+                        "content": [
+                            {
+                                "id": 8,
+                                "userId": 555555555,
+                                "title": "Авторские",
+                                "name": "authored_top_by_StickerGalleryBot",
+                                "authorId": 999999999,
+                                "likesCount": 25,
+                                "categories": []
+                            }
+                        ],
+                        "totalElements": 1,
+                        "totalPages": 1,
+                        "size": 20,
+                        "number": 0,
+                        "first": true,
+                        "last": true,
+                        "numberOfElements": 1
+                    }
+                    """)
+                })),
         @ApiResponse(responseCode = "400", description = "Некорректные параметры пагинации"),
         @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
     })
