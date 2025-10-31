@@ -44,6 +44,9 @@ public class StickerSet {
     @Column(name = "block_reason", length = 500)
     private String blockReason; // Причина блокировки стикерсета
     
+    @Column(name = "author_id")
+    private Long authorId; // Telegram ID автора стикерсета (nullable)
+
     @Column(name = "created_at")
     private java.time.LocalDateTime createdAt;
     

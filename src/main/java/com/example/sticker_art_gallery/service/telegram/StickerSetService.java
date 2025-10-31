@@ -404,6 +404,33 @@ public class StickerSetService {
     }
     
     /**
+     * Установить автора стикерсета (только для админа)
+     */
+    @Transactional
+    public StickerSet setAuthor(Long stickerSetId, Long authorId) {
+        if (authorId == null || authorId <= 0) {
+            throw new IllegalArgumentException("authorId должен быть положительным числом");
+        }
+        LOGGER.info("✍️ Установка автора {} для стикерсета {}", authorId, stickerSetId);
+        StickerSet stickerSet = stickerSetRepository.findById(stickerSetId)
+            .orElseThrow(() -> new IllegalArgumentException("Стикерсет с ID " + stickerSetId + " не найден"));
+        stickerSet.setAuthorId(authorId);
+        return stickerSetRepository.save(stickerSet);
+    }
+    
+    /**
+     * Очистить автора стикерсета (только для админа)
+     */
+    @Transactional
+    public StickerSet clearAuthor(Long stickerSetId) {
+        LOGGER.info("🧹 Очистка автора для стикерсета {}", stickerSetId);
+        StickerSet stickerSet = stickerSetRepository.findById(stickerSetId)
+            .orElseThrow(() -> new IllegalArgumentException("Стикерсет с ID " + stickerSetId + " не найден"));
+        stickerSet.setAuthorId(null);
+        return stickerSetRepository.save(stickerSet);
+    }
+    
+    /**
      * Обновить категории стикерсета
      */
     @Transactional

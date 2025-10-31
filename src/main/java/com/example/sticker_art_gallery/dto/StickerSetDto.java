@@ -52,6 +52,9 @@ public class StickerSetDto {
     
     @Schema(description = "Официальный стикерсет Telegram", example = "true")
     private Boolean isOfficial;
+
+    @Schema(description = "Telegram ID автора стикерсета (только отображение)", example = "123456789", nullable = true)
+    private Long authorId;
     
     // Конструкторы
     public StickerSetDto() {}
@@ -170,6 +173,14 @@ public class StickerSetDto {
         this.isOfficial = isOfficial;
     }
     
+    public Long getAuthorId() {
+        return authorId;
+    }
+    
+    public void setAuthorId(Long authorId) {
+        this.authorId = authorId;
+    }
+    
     // Конструктор для создания DTO из Entity
     public static StickerSetDto fromEntity(com.example.sticker_art_gallery.model.telegram.StickerSet entity) {
         if (entity == null) {
@@ -188,6 +199,7 @@ public class StickerSetDto {
         dto.setIsBlocked(entity.getIsBlocked());
         dto.setBlockReason(entity.getBlockReason());
         dto.setIsOfficial(entity.getIsOfficial());
+        dto.setAuthorId(entity.getAuthorId());
         
         return dto;
     }
@@ -215,6 +227,9 @@ public class StickerSetDto {
         
         // Добавляем официальность
         dto.setIsOfficial(entity.getIsOfficial());
+        
+        // Добавляем автора
+        dto.setAuthorId(entity.getAuthorId());
         
         // Добавляем категории с локализацией
         if (entity.getCategories() != null && !entity.getCategories().isEmpty()) {
