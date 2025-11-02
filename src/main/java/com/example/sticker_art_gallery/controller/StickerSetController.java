@@ -1,14 +1,11 @@
 package com.example.sticker_art_gallery.controller;
 
-import com.example.sticker_art_gallery.dto.StickerSetDto;
-import com.example.sticker_art_gallery.dto.CreateStickerSetDto;
-import com.example.sticker_art_gallery.dto.PageRequest;
-import com.example.sticker_art_gallery.dto.PageResponse;
-import com.example.sticker_art_gallery.dto.StickerSetWithLikesDto;
+import com.example.sticker_art_gallery.dto.*;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.service.telegram.StickerSetService;
 import com.example.sticker_art_gallery.service.LikeService;
 import com.example.sticker_art_gallery.service.user.UserService;
+import com.example.sticker_art_gallery.service.ai.AutoCategorizationService;
 import com.example.sticker_art_gallery.model.user.UserEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,12 +48,15 @@ public class StickerSetController {
     private final StickerSetService stickerSetService;
     private final LikeService likeService;
     private final UserService userService;
+    private final AutoCategorizationService autoCategorizationService;
     
     @Autowired
-    public StickerSetController(StickerSetService stickerSetService, LikeService likeService, UserService userService) {
+    public StickerSetController(StickerSetService stickerSetService, LikeService likeService, 
+                               UserService userService, AutoCategorizationService autoCategorizationService) {
         this.stickerSetService = stickerSetService;
         this.likeService = likeService;
         this.userService = userService;
+        this.autoCategorizationService = autoCategorizationService;
     }
     
     /**
@@ -814,6 +814,81 @@ public class StickerSetController {
     }
     
     /**
+     * Предложить категории для стикерсета (предпросмотр или применение)
+     */
+    @PostMapping("/{id}/suggest-categories")
+    @Operation(
+        summary = "Предложить категории для стикерсета",
+        description = "Использует AI (ChatGPT) для анализа title стикерсета и предложения наиболее подходящих категорий. " +
+                     "С параметром apply=false возвращает только предпросмотр, с apply=true - применяет категории. " +
+                     "Доступно владельцу стикерсета или администратору. " +
+                     "Для работы требуется переменная окружения OPENAI_API_KEY."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Категории успешно предложены",
+            content = @Content(schema = @Schema(implementation = CategorySuggestionResult.class),
+                examples = @ExampleObject(value = """
+                    {
+                        "analyzedTitle": "Cute Cats",
+                        "suggestedCategories": [
+                            {
+                                "categoryKey": "animals",
+                                "categoryName": "Животные",
+                                "confidence": 0.95,
+                                "reason": "Contains cat-related imagery"
+                            },
+                            {
+                                "categoryKey": "cute",
+                                "categoryName": "Милые",
+                                "confidence": 0.87,
+                                "reason": "Title explicitly mentions cute theme"
+                            }
+                        ]
+                    }
+                    """))),
+        @ApiResponse(responseCode = "400", description = "Некорректные данные или стикерсет без title"),
+        @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен - можно категоризовать только свои стикерсеты"),
+        @ApiResponse(responseCode = "404", description = "Стикерсет с указанным ID не найден"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера или ошибка при работе с AI")
+    })
+    public ResponseEntity<CategorySuggestionResult> suggestCategoriesForStickerSet(
+            @Parameter(description = "ID стикерсета", required = true, example = "1")
+            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id,
+            @Parameter(description = "Применить категории (true) или только предпросмотр (false)", example = "false")
+            @RequestParam(defaultValue = "false") boolean apply,
+            HttpServletRequest request) {
+        try {
+            String language = getLanguageFromHeaderOrUser(request);
+            LOGGER.info("🤖 Предложение категорий для стикерсета ID: {}, apply={}", id, apply);
+            
+            // Проверка прав доступа (владелец или админ)
+            Long currentUserId = getCurrentUserId();
+            StickerSet stickerSet = stickerSetService.findById(id);
+            if (stickerSet == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            if (!isOwnerOrAdmin(stickerSet.getUserId(), currentUserId)) {
+                LOGGER.warn("⚠️ Пользователь {} попытался категоризовать чужой стикерсет {}", currentUserId, id);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            
+            CategorySuggestionResult result = autoCategorizationService.suggestCategoriesForStickerSet(id, apply, language);
+            
+            LOGGER.info("✅ Категории для стикерсета {} предложены (apply={})", id, apply);
+            return ResponseEntity.ok(result);
+            
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("⚠️ Некорректные данные для предложения категорий стикерсета {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(null);
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при предложении категорий стикерсета {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    /**
      * Опубликовать стикерсет в галерее (сделать публичным)
      */
     @PostMapping("/{id}/publish")
@@ -1388,6 +1463,60 @@ public class StickerSetController {
         } catch (Exception e) {
             return null;
         }
+    }
+    
+    /**
+     * Извлечь ID текущего пользователя (с исключением если не авторизован)
+     */
+    private Long getCurrentUserId() {
+        Long userId = getCurrentUserIdOrNull();
+        if (userId == null) {
+            throw new IllegalStateException("Пользователь не авторизован");
+        }
+        return userId;
+    }
+    
+    /**
+     * Проверка, является ли пользователь владельцем или админом
+     */
+    private boolean isOwnerOrAdmin(Long ownerId, Long currentUserId) {
+        if (currentUserId == null) {
+            return false;
+        }
+        
+        // Если текущий пользователь является владельцем
+        if (currentUserId.equals(ownerId)) {
+            return true;
+        }
+        
+        // Проверяем, является ли пользователь администратором
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null) {
+                return authentication.getAuthorities().stream()
+                        .anyMatch(auth -> "ROLE_ADMIN".equals(auth.getAuthority()));
+            }
+        } catch (Exception e) {
+            LOGGER.warn("⚠️ Ошибка при проверке прав администратора: {}", e.getMessage());
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Проверка, является ли пользователь админом
+     */
+    private boolean isAdmin() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null) {
+                return authentication.getAuthorities().stream()
+                        .anyMatch(auth -> "ROLE_ADMIN".equals(auth.getAuthority()));
+            }
+        } catch (Exception e) {
+            LOGGER.warn("⚠️ Ошибка при проверке прав администратора: {}", e.getMessage());
+        }
+        return false;
     }
     
     /**

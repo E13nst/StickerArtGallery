@@ -1,0 +1,16 @@
+Existing categories in our system:
+${existingCategories}
+
+Sticker set titles in our collection (total: ${totalCount}):
+${stickerSetTitles}
+
+Task: Analyze the sticker set titles and identify themes that are NOT well covered by existing categories. Propose up to ${maxNewCategories} new categories that would improve organization.
+
+Focus on:
+- Common themes appearing in multiple titles
+- Topics that don't fit well into existing categories
+- Categories that would help users discover sticker sets
+
+Return STRICT JSON only (no markdown). Use keys:
+proposedCategories: [ { key, name_en, name_ru, description_en, description_ru, reasoning, exampleTitles, estimatedCount } ]
+

@@ -86,4 +86,54 @@ public class ValidationExceptionHandler {
         
         return ResponseEntity.badRequest().body(response);
     }
+
+    /**
+     * Обработка IllegalArgumentException (400)
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
+        LOGGER.warn("⚠️ Некорректные данные: {}", ex.getMessage());
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "Bad Request");
+        body.put("message", ex.getMessage());
+        body.put("rootCause", getRootCauseMessage(ex));
+        body.put("timestamp", java.time.OffsetDateTime.now());
+        return ResponseEntity.status(org.springframework.http.HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    /**
+     * Обработка RuntimeException (500)
+     */
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<Map<String, Object>> handleRuntime(RuntimeException ex) {
+        LOGGER.error("❌ Внутренняя ошибка: {}", ex.getMessage(), ex);
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "Internal Server Error");
+        body.put("message", ex.getMessage());
+        body.put("rootCause", getRootCauseMessage(ex));
+        body.put("timestamp", java.time.OffsetDateTime.now());
+        return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+    }
+
+    /**
+     * Fallback для любых непойманных исключений (500)
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleAny(Exception ex) {
+        LOGGER.error("❌ Необработанная ошибка: {}", ex.getMessage(), ex);
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "Internal Server Error");
+        body.put("message", ex.getMessage());
+        body.put("rootCause", getRootCauseMessage(ex));
+        body.put("timestamp", java.time.OffsetDateTime.now());
+        return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+    }
+
+    private String getRootCauseMessage(Throwable ex) {
+        Throwable cause = ex;
+        while (cause.getCause() != null && cause.getCause() != cause) {
+            cause = cause.getCause();
+        }
+        return cause != null ? cause.getMessage() : null;
+    }
 }

@@ -17,6 +17,14 @@ app:
         # "application/x-tgsticker": true   # Сжимать TGS файлы
         # "video/mp4": true                  # Сжимать видео
         # "image/webp": false               # НЕ сжимать маленькие изображения
+  ai:
+    auto-category:
+      max-categories: ${AI_AUTO_CATEGORY_MAX_CATEGORIES:5}
+      max-retries: ${AI_AUTO_CATEGORY_MAX_RETRIES:2}
+      cache-ttl-minutes: ${AI_AUTO_CATEGORY_CACHE_TTL:60}
+      batch-size: ${AI_AUTO_CATEGORY_BATCH_SIZE:50}  # Для анализа всех стикерсетов
+      min-stickerset-count: ${AI_AUTO_CATEGORY_MIN_COUNT:5}  # Минимум стикерсетов для новой категории
+      max-new-categories: ${AI_AUTO_CATEGORY_MAX_NEW:0}  # 0 = без ограничений
 
 spring:
   application:
@@ -26,13 +34,13 @@ spring:
       api-key: ${OPENAI_API_KEY}
       chat:
         options:
-          model: gpt-4o
-          temperature: 0.9
-      proxy:
-        host: ${OPENAI_PROXY_HOST:}
-        port: ${OPENAI_PROXY_PORT:}
-        username: ${OPENAI_PROXY_USERNAME:}
-        password: ${OPENAI_PROXY_PASSWORD:}
+          model: ${OPENAI_MODEL:gpt-4o-mini}
+          temperature: ${OPENAI_TEMPERATURE:0.7}
+#      proxy:
+#        host: ${OPENAI_PROXY_HOST:}
+#        port: ${OPENAI_PROXY_PORT:}
+#        username: ${OPENAI_PROXY_USERNAME:}
+#        password: ${OPENAI_PROXY_PASSWORD:}
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:mindbase}
     username: ${DB_USERNAME:dalek}

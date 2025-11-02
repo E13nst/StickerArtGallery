@@ -30,8 +30,10 @@ public class AIServiceImpl implements AIService {
 
     @Override
     public String completion(String conversationId, String message, String prompt, Integer memWindow) {
-        logger.info("\uD83E\uDD16 AI Request | Conversation: {} | Message: '{}'", 
-            conversationId, truncateText(message, 100));
+        logger.info("\uD83E\uDD16 AI Request | Conversation: {} | Message length: {} chars", 
+            conversationId, message != null ? message.length() : 0);
+        logger.info("\uD83E\uDD16 AI Request full message:\n{}", message);
+        logger.info("\uD83E\uDD16 AI Request system prompt:\n{}", prompt);
         String response = chatClient.prompt()
                 .advisors(a -> a
                         .param(CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId)

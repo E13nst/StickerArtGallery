@@ -8,12 +8,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.example.sticker_art_gallery.service.ai.AIService;
+import io.swagger.v3.oas.annotations.Parameter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -35,6 +37,97 @@ public class DevController {
     
     @Value("${telegram.test.bot-name:}")
     private String testBotName;
+    
+    private final AIService aiService;
+    
+    @Autowired
+    public DevController(AIService aiService) {
+        this.aiService = aiService;
+    }
+    
+    /**
+     * Тестовый эндпоинт для проверки подключения к ChatGPT (GET с параметрами)
+     */
+    @GetMapping("/test-chatgpt")
+    @Operation(
+        summary = "Тест подключения к ChatGPT (GET)",
+        description = "Простой тест для проверки работоспособности подключения к OpenAI ChatGPT. " +
+                     "Принимает message и prompt через параметры запроса, возвращает ответ от AI."
+    )
+    @ApiResponse(responseCode = "200", description = "Ответ от ChatGPT получен",
+        content = @Content(schema = @Schema(implementation = Map.class)))
+    @ApiResponse(responseCode = "500", description = "Ошибка при вызове ChatGPT")
+    public ResponseEntity<Map<String, Object>> testChatGPTGet(
+            @Parameter(description = "Сообщение пользователя для AI", example = "Привет, как дела?")
+            @RequestParam(required = false, defaultValue = "Привет! Как дела?") String message,
+            @Parameter(description = "Системный промпт для AI", example = "Ты дружелюбный помощник")
+            @RequestParam(required = false, defaultValue = "Ты дружелюбный помощник.") String prompt) {
+        return testChatGPT(message, prompt);
+    }
+    
+    /**
+     * Тестовый эндпоинт для проверки подключения к ChatGPT (POST с JSON body)
+     */
+    @PostMapping("/test-chatgpt")
+    @Operation(
+        summary = "Тест подключения к ChatGPT (POST)",
+        description = "Простой тест для проверки работоспособности подключения к OpenAI ChatGPT. " +
+                     "Принимает message и prompt через JSON body, возвращает ответ от AI."
+    )
+    @ApiResponse(responseCode = "200", description = "Ответ от ChatGPT получен",
+        content = @Content(schema = @Schema(implementation = Map.class),
+            examples = @ExampleObject(value = """
+                {
+                    "success": true,
+                    "message": "Ответ от AI",
+                    "response": "Текст ответа от ChatGPT",
+                    "responseLength": 150,
+                    "timestamp": "2025-11-02T08:30:00Z"
+                }
+                """)))
+    @ApiResponse(responseCode = "500", description = "Ошибка при вызове ChatGPT")
+    public ResponseEntity<Map<String, Object>> testChatGPTPost(
+            @RequestBody Map<String, String> body) {
+        String message = body != null && body.containsKey("message") ? body.get("message") : "Привет! Как дела?";
+        String prompt = body != null && body.containsKey("prompt") ? body.get("prompt") : "Ты дружелюбный помощник.";
+        return testChatGPT(message, prompt);
+    }
+    
+    /**
+     * Общий метод для тестирования ChatGPT
+     */
+    private ResponseEntity<Map<String, Object>> testChatGPT(String message, String prompt) {
+        LOGGER.info("🧪 Тест подключения к ChatGPT | message length: {} chars, prompt length: {} chars", 
+            message != null ? message.length() : 0, prompt != null ? prompt.length() : 0);
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            String conversationId = "test-chatgpt-" + System.currentTimeMillis();
+            String aiResponse = aiService.completion(conversationId, message, prompt, null);
+            
+            response.put("success", true);
+            response.put("message", "Ответ от AI получен успешно");
+            response.put("response", aiResponse);
+            response.put("responseLength", aiResponse != null ? aiResponse.length() : 0);
+            response.put("conversationId", conversationId);
+            response.put("timestamp", java.time.Instant.now().toString());
+            
+            LOGGER.info("✅ Тест ChatGPT успешен | response length: {} chars", aiResponse != null ? aiResponse.length() : 0);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при тесте ChatGPT: {}", e.getMessage(), e);
+            
+            response.put("success", false);
+            response.put("message", "Ошибка при вызове ChatGPT");
+            response.put("error", e.getMessage());
+            response.put("errorType", e.getClass().getSimpleName());
+            response.put("timestamp", java.time.Instant.now().toString());
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
     
     /**
      * Получить тестовый initData для Swagger UI

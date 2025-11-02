@@ -1,0 +1,10 @@
+Sticker set title: ${title}
+
+Available categories (choose ONLY from this list):
+${availableCategories}
+
+Please analyze the sticker set title and return up to ${maxCategories} most appropriate categories from the list above.
+
+Return STRICT JSON only (no markdown). Use keys:
+categories: [ { key, confidence, reason } ]
+
