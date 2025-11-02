@@ -100,3 +100,7 @@ StickerArtWeb
 
 # AspectJ core dumps
 ajcore.*.txt
+
+# Scripts directory (except README.md)
+scripts/
+!scripts/README.md

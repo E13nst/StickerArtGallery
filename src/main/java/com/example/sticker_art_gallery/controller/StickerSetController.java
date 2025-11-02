@@ -816,11 +816,13 @@ public class StickerSetController {
     /**
      * Предложить категории для стикерсета (предпросмотр или применение)
      */
-    @PostMapping("/{id}/suggest-categories")
+    @PostMapping("/{id}/ai/suggest-categories")
     @Operation(
         summary = "Предложить категории для стикерсета",
         description = "Использует AI (ChatGPT) для анализа title стикерсета и предложения наиболее подходящих категорий. " +
                      "С параметром apply=false возвращает только предпросмотр, с apply=true - применяет категории. " +
+                     "Параметр minConfidence задает минимальный уровень уверенности (0.0-1.0) для применения категорий " +
+                     "при apply=true. При apply=false этот параметр не имеет значения. " +
                      "Доступно владельцу стикерсета или администратору. " +
                      "Для работы требуется переменная окружения OPENAI_API_KEY."
     )
@@ -857,10 +859,24 @@ public class StickerSetController {
             @PathVariable @Positive(message = "ID должен быть положительным числом") Long id,
             @Parameter(description = "Применить категории (true) или только предпросмотр (false)", example = "false")
             @RequestParam(defaultValue = "false") boolean apply,
+            @Parameter(description = "Минимальный уровень уверенности (0.0-1.0) для применения категорий при apply=true. " +
+                                    "Категории с confidence ниже этого значения не будут применены. " +
+                                    "При apply=false этот параметр не имеет значения.", example = "0.8")
+            @RequestParam(required = false) 
+            @jakarta.validation.constraints.DecimalMin(value = "0.0", message = "minConfidence должен быть >= 0.0")
+            @jakarta.validation.constraints.DecimalMax(value = "1.0", message = "minConfidence должен быть <= 1.0")
+            Double minConfidence,
             HttpServletRequest request) {
         try {
+            // Валидация minConfidence (если указан)
+            if (minConfidence != null && (minConfidence < 0.0 || minConfidence > 1.0)) {
+                LOGGER.warn("⚠️ Некорректное значение minConfidence: {} (должно быть от 0.0 до 1.0)", minConfidence);
+                return ResponseEntity.badRequest().body(null);
+            }
+            
             String language = getLanguageFromHeaderOrUser(request);
-            LOGGER.info("🤖 Предложение категорий для стикерсета ID: {}, apply={}", id, apply);
+            LOGGER.info("🤖 Предложение категорий для стикерсета ID: {}, apply={}, minConfidence={}", 
+                id, apply, minConfidence);
             
             // Проверка прав доступа (владелец или админ)
             Long currentUserId = getCurrentUserId();
@@ -874,9 +890,11 @@ public class StickerSetController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
             
-            CategorySuggestionResult result = autoCategorizationService.suggestCategoriesForStickerSet(id, apply, language);
+            CategorySuggestionResult result = autoCategorizationService.suggestCategoriesForStickerSet(
+                id, apply, language, minConfidence);
             
-            LOGGER.info("✅ Категории для стикерсета {} предложены (apply={})", id, apply);
+            LOGGER.info("✅ Категории для стикерсета {} предложены (apply={}, применено: {})", 
+                id, apply, apply ? result.getSuggestedCategories().size() : "N/A");
             return ResponseEntity.ok(result);
             
         } catch (IllegalArgumentException e) {

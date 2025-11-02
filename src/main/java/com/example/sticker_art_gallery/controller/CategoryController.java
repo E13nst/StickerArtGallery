@@ -218,7 +218,7 @@ public class CategoryController {
     /**
      * Предложить категории для произвольного title (метод #1)
      */
-    @GetMapping("/suggest")
+    @GetMapping("/ai/suggest")
     @Operation(
         summary = "Предложить категории для заголовка стикерсета",
         description = "Использует AI для анализа произвольного title и предложения подходящих категорий из существующих. " +
@@ -253,96 +253,6 @@ public class CategoryController {
         }
     }
     
-    /**
-     * Предложить новые категории на основе анализа всех стикерсетов (метод #3, только админ)
-     */
-    @GetMapping("/suggest-new")
-    @Operation(
-        summary = "[Админ] Предложить новые категории",
-        description = "Анализирует все стикерсеты в системе и предлагает новые категории для улучшения организации. " +
-                     "Доступно только администраторам. Возвращает предпросмотр без создания категорий."
-    )
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Новые категории предложены",
-            content = @Content(schema = @Schema(implementation = NewCategoryProposal.class))),
-        @ApiResponse(responseCode = "401", description = "Не авторизован"),
-        @ApiResponse(responseCode = "403", description = "Доступ запрещен - требуются права администратора"),
-        @ApiResponse(responseCode = "500", description = "Ошибка при работе с AI")
-    })
-    public ResponseEntity<?> suggestNewCategories(HttpServletRequest request) {
-        try {
-            if (!isAdmin()) {
-                LOGGER.warn("⚠️ Попытка доступа к suggest-new без прав администратора");
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
-            
-            String language = getLanguageFromHeaderOrUser(request);
-            LOGGER.info("🤖 Админ запросил предложение новых категорий");
-            
-            List<NewCategoryProposal> proposals = autoCategorizationService.suggestNewCategories(false, language);
-            
-            LOGGER.info("✅ AI предложил {} новых категорий", proposals.size());
-            return ResponseEntity.ok(proposals);
-            
-        } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при предложении новых категорий: {}", e.getMessage(), e);
-            return buildErrorResponse(e, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-    
-    /**
-     * Создать новые категории на основе предложений AI (метод #3, только админ)
-     */
-    @PostMapping("/suggest-new")
-    @Operation(
-        summary = "[Админ] Создать новые категории по предложениям AI",
-        description = "Анализирует все стикерсеты и создает новые категории на основе предложений AI. " +
-                     "Доступно только администраторам."
-    )
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Новые категории созданы",
-            content = @Content(schema = @Schema(implementation = NewCategoryProposal.class))),
-        @ApiResponse(responseCode = "401", description = "Не авторизован"),
-        @ApiResponse(responseCode = "403", description = "Доступ запрещен - требуются права администратора"),
-        @ApiResponse(responseCode = "500", description = "Ошибка при работе с AI или создании категорий")
-    })
-    public ResponseEntity<?> createNewCategoriesFromAI(HttpServletRequest request) {
-        try {
-            if (!isAdmin()) {
-                LOGGER.warn("⚠️ Попытка создания категорий через AI без прав администратора");
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
-            
-            String language = getLanguageFromHeaderOrUser(request);
-            LOGGER.info("🤖 Админ запустил создание новых категорий через AI");
-            
-            List<NewCategoryProposal> proposals = autoCategorizationService.suggestNewCategories(true, language);
-            
-            LOGGER.info("✅ Создано {} новых категорий через AI", proposals.size());
-            return ResponseEntity.ok(proposals);
-            
-        } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при создании новых категорий: {}", e.getMessage(), e);
-            return buildErrorResponse(e, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    private ResponseEntity<Map<String, Object>> buildErrorResponse(Exception e, HttpStatus status) {
-        Map<String, Object> body = new java.util.HashMap<>();
-        body.put("error", status.getReasonPhrase());
-        body.put("message", e.getMessage());
-        body.put("rootCause", getRootCauseMessage(e));
-        body.put("timestamp", java.time.OffsetDateTime.now());
-        return ResponseEntity.status(status).body(body);
-    }
-
-    private String getRootCauseMessage(Throwable ex) {
-        Throwable cause = ex;
-        while (cause.getCause() != null && cause.getCause() != cause) {
-            cause = cause.getCause();
-        }
-        return cause != null ? cause.getMessage() : null;
-    }
     
     /**
      * Извлечь ID текущего пользователя из SecurityContext (может вернуть null)
@@ -418,7 +328,7 @@ public class CategoryController {
      * Тестовый эндпоинт для проверки подключения к ChatGPT (GET с параметрами)
      * Доступен только для администраторов
      */
-    @GetMapping("/test-chatgpt")
+    @GetMapping("/ai/test-chatgpt")
     @Operation(
         summary = "Тест подключения к ChatGPT (GET)",
         description = "Простой тест для проверки работоспособности подключения к OpenAI ChatGPT. " +
@@ -449,7 +359,7 @@ public class CategoryController {
      * Тестовый эндпоинт для проверки подключения к ChatGPT (POST с JSON body)
      * Доступен только для администраторов
      */
-    @PostMapping("/test-chatgpt")
+    @PostMapping("/ai/test-chatgpt")
     @Operation(
         summary = "Тест подключения к ChatGPT (POST)",
         description = "Простой тест для проверки работоспособности подключения к OpenAI ChatGPT. " +
