@@ -8,6 +8,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -85,6 +86,19 @@ public class ValidationExceptionHandler {
         response.put("timestamp", java.time.OffsetDateTime.now());
         
         return ResponseEntity.badRequest().body(response);
+    }
+    
+    /**
+     * Обработка ошибок парсинга JSON (некорректное тело запроса)
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleJsonParseError(HttpMessageNotReadableException ex) {
+        LOGGER.warn("❌ Некорректный JSON в запросе: {}", ex.getMessage());
+        Map<String, Object> response = new HashMap<>();
+        response.put("error", "Bad Request");
+        response.put("message", "Некорректный JSON в запросе");
+        response.put("timestamp", java.time.OffsetDateTime.now());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
     /**

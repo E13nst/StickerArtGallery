@@ -13,6 +13,8 @@ import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,10 +32,12 @@ public class LikeService {
     
     private final LikeRepository likeRepository;
     private final StickerSetRepository stickerSetRepository;
+    private final CacheManager cacheManager;
     
-    public LikeService(LikeRepository likeRepository, StickerSetRepository stickerSetRepository) {
+    public LikeService(LikeRepository likeRepository, StickerSetRepository stickerSetRepository, CacheManager cacheManager) {
         this.likeRepository = likeRepository;
         this.stickerSetRepository = stickerSetRepository;
+        this.cacheManager = cacheManager;
     }
     
     /**
@@ -57,6 +61,10 @@ public class LikeService {
         like.setStickerSet(stickerSet);
         
         Like savedLike = likeRepository.save(like);
+        // Денормализованный счётчик
+        stickerSetRepository.incrementLikesCount(stickerSetId);
+        // Инвалидируем кэши, зависящие от данных стикерсета
+        evictStickerSetCaches(stickerSet);
         LOGGER.info("✅ Лайк успешно поставлен: {}", savedLike.getId());
         
         return LikeDto.fromEntity(savedLike);
@@ -72,7 +80,23 @@ public class LikeService {
             .orElseThrow(() -> new IllegalArgumentException("Лайк не найден"));
         
         likeRepository.delete(like);
+        // Денормализованный счётчик
+        stickerSetRepository.decrementLikesCount(stickerSetId);
+        // Инвалидируем кэши, зависящие от данных стикерсета
+        stickerSetRepository.findById(stickerSetId).ifPresent(this::evictStickerSetCaches);
         LOGGER.info("✅ Лайк успешно удален");
+    }
+
+    private void evictStickerSetCaches(StickerSet stickerSet) {
+        if (stickerSet == null || cacheManager == null) return;
+        try {
+            Cache cache = cacheManager.getCache("stickerSetInfo");
+            if (cache != null && stickerSet.getName() != null) {
+                cache.evict(stickerSet.getName());
+            }
+        } catch (Exception e) {
+            LOGGER.debug("⚠️ Не удалось инвалидировать кэш stickerSetInfo для {}: {}", stickerSet.getName(), e.getMessage());
+        }
     }
     
     /**
@@ -101,7 +125,9 @@ public class LikeService {
      */
     @Transactional(readOnly = true)
     public long getLikesCount(Long stickerSetId) {
-        return likeRepository.countByStickerSetId(stickerSetId);
+        return stickerSetRepository.findById(stickerSetId)
+                .map(ss -> ss.getLikesCount() == null ? 0 : ss.getLikesCount().longValue())
+                .orElse(0L);
     }
     
     /**

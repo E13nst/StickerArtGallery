@@ -200,6 +200,11 @@ public class StickerSetDto {
         dto.setBlockReason(entity.getBlockReason());
         dto.setIsOfficial(entity.getIsOfficial());
         dto.setAuthorId(entity.getAuthorId());
+        if (entity.getLikesCount() != null) {
+            dto.setLikesCount(entity.getLikesCount().longValue());
+        } else {
+            dto.setLikesCount(0L);
+        }
         
         return dto;
     }
@@ -230,6 +235,12 @@ public class StickerSetDto {
         
         // Добавляем автора
         dto.setAuthorId(entity.getAuthorId());
+        // Добавляем количество лайков из денормализованного поля
+        if (entity.getLikesCount() != null) {
+            dto.setLikesCount(entity.getLikesCount().longValue());
+        } else {
+            dto.setLikesCount(0L);
+        }
         
         // Добавляем категории с локализацией
         if (entity.getCategories() != null && !entity.getCategories().isEmpty()) {

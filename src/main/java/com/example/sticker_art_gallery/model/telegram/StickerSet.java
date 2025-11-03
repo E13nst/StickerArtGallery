@@ -50,6 +50,9 @@ public class StickerSet {
     @Column(name = "created_at")
     private java.time.LocalDateTime createdAt;
     
+    @Column(name = "likes_count", nullable = false)
+    private Integer likesCount = 0;
+    
     /**
      * Категории стикерсета (many-to-many)
      */
@@ -118,10 +121,10 @@ public class StickerSet {
     }
     
     /**
-     * Получить количество лайков
+     * Количество лайков из денормализованного поля
      */
-    public int getLikesCount() {
-        return likes.size();
+    public Integer getLikesCount() {
+        return likesCount == null ? 0 : likesCount;
     }
     
     /**

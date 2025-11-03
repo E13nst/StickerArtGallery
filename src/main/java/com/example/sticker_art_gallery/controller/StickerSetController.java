@@ -206,7 +206,7 @@ public class StickerSetController {
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @Parameter(description = "Количество элементов на странице (1-100)", example = "20")
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
-            @Parameter(description = "Поле для сортировки", example = "createdAt")
+            @Parameter(description = "Поле для сортировки (например: createdAt, likesCount)", example = "likesCount")
             @RequestParam(defaultValue = "createdAt") String sort,
             @Parameter(description = "Направление сортировки", example = "DESC")
             @RequestParam(defaultValue = "DESC") @Pattern(regexp = "ASC|DESC") String direction,

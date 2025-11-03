@@ -3,6 +3,7 @@ package com.example.sticker_art_gallery.model.telegram;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -110,4 +111,12 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
            "JOIN ss.categories c " +
            "WHERE c.key IN :categoryKeys AND ss.isPublic = true AND ss.isBlocked = false AND ss.isOfficial = true")
     Page<StickerSet> findByCategoryKeysPublicNotBlockedAndOfficial(@Param("categoryKeys") String[] categoryKeys, Pageable pageable);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update StickerSet ss set ss.likesCount = ss.likesCount + 1 where ss.id = :id")
+    int incrementLikesCount(@Param("id") Long id);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update StickerSet ss set ss.likesCount = CASE WHEN ss.likesCount > 0 THEN ss.likesCount - 1 ELSE 0 END where ss.id = :id")
+    int decrementLikesCount(@Param("id") Long id);
 } 
