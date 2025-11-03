@@ -61,8 +61,10 @@ public class LikeService {
         like.setStickerSet(stickerSet);
         
         Like savedLike = likeRepository.save(like);
-        // Денормализованный счётчик
+        // Денормализованный счётчик - сначала инкремент для быстродействия
         stickerSetRepository.incrementLikesCount(stickerSetId);
+        // Пересчет агрегации для гарантии корректности (исправляет расхождения)
+        stickerSetRepository.recalculateLikesCount(stickerSetId);
         // Инвалидируем кэши, зависящие от данных стикерсета
         evictStickerSetCaches(stickerSet);
         LOGGER.info("✅ Лайк успешно поставлен: {}", savedLike.getId());
@@ -80,8 +82,10 @@ public class LikeService {
             .orElseThrow(() -> new IllegalArgumentException("Лайк не найден"));
         
         likeRepository.delete(like);
-        // Денормализованный счётчик
+        // Денормализованный счётчик - сначала декремент для быстродействия
         stickerSetRepository.decrementLikesCount(stickerSetId);
+        // Пересчет агрегации для гарантии корректности (исправляет расхождения)
+        stickerSetRepository.recalculateLikesCount(stickerSetId);
         // Инвалидируем кэши, зависящие от данных стикерсета
         stickerSetRepository.findById(stickerSetId).ifPresent(this::evictStickerSetCaches);
         LOGGER.info("✅ Лайк успешно удален");

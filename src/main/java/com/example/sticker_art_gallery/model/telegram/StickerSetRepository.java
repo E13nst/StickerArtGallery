@@ -119,4 +119,16 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update StickerSet ss set ss.likesCount = CASE WHEN ss.likesCount > 0 THEN ss.likesCount - 1 ELSE 0 END where ss.id = :id")
     int decrementLikesCount(@Param("id") Long id);
+
+    /**
+     * Пересчитать likes_count на основе реального количества записей в таблице likes
+     * Используется для исправления расхождений между денормализованным полем и реальными данными
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "UPDATE stickersets s " +
+           "SET likes_count = COALESCE((" +
+           "  SELECT COUNT(*) FROM likes l WHERE l.stickerset_id = s.id" +
+           "), 0) " +
+           "WHERE s.id = :id", nativeQuery = true)
+    int recalculateLikesCount(@Param("id") Long id);
 } 
