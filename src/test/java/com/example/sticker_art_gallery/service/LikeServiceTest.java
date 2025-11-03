@@ -5,6 +5,7 @@ import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
 import com.example.sticker_art_gallery.testdata.TestDataBuilder;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -18,7 +19,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Transactional
 @Epic("Лайки")
 @Feature("Сервис лайков")
-@DisplayName("Юнит-тесты LikeService (денормализованный likes_count)")
+@DisplayName("Интеграционный тест LikeService (денормализованный likes_count)")
+@Tag("integration")
 class LikeServiceTest {
 
     @Autowired
