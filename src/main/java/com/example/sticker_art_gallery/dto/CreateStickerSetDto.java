@@ -5,7 +5,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import com.example.sticker_art_gallery.validation.ValidStickerSetName;
 
 import java.util.Set;
-import java.util.HashSet;
 
 /**
  * DTO для создания нового стикерсета
@@ -13,11 +12,6 @@ import java.util.HashSet;
  */
 @Schema(description = "Данные для создания нового стикерсета")
 public class CreateStickerSetDto {
-    
-    @Schema(description = "Telegram ID пользователя. Если не указан, будет извлечен из initData.", 
-            example = "123456789", required = false)
-    @Positive(message = "ID пользователя должен быть положительным числом")
-    private Long userId;
     
     @Schema(description = "Название стикерсета. Если не указано, будет получено из Telegram API.", 
             example = "Мои стикеры", required = false, maxLength = 64)
@@ -44,20 +38,12 @@ public class CreateStickerSetDto {
         this.name = name;
     }
     
-    public CreateStickerSetDto(Long userId, String title, String name) {
-        this.userId = userId;
+    public CreateStickerSetDto(String title, String name) {
         this.title = title;
         this.name = name;
     }
     
     // Геттеры и сеттеры
-    public Long getUserId() {
-        return userId;
-    }
-    
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
     
     public String getTitle() {
         return title;
@@ -81,13 +67,6 @@ public class CreateStickerSetDto {
     
     public void setCategoryKeys(Set<String> categoryKeys) {
         this.categoryKeys = categoryKeys;
-    }
-    
-    /**
-     * Проверяет, указан ли userId
-     */
-    public boolean hasUserId() {
-        return userId != null;
     }
     
     /**
@@ -203,8 +182,7 @@ public class CreateStickerSetDto {
     @Override
     public String toString() {
         return "CreateStickerSetDto{" +
-                "userId=" + userId +
-                ", title='" + title + '\'' +
+                "title='" + title + '\'' +
                 ", name='" + name + '\'' +
                 ", categoryKeys=" + categoryKeys +
                 '}';

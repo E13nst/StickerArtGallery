@@ -13,7 +13,6 @@ public class TestDataBuilder {
     
     // Тестовые константы
     public static final Long TEST_USER_ID = 141614461L;
-    public static final String BOT_NAME = "StickerGallery";
     public static final String TEST_USERNAME = "test_integration_user";
     public static final String TEST_FIRST_NAME = "Test";
     public static final String TEST_LAST_NAME = "User";
@@ -52,16 +51,6 @@ public class TestDataBuilder {
         CreateStickerSetDto dto = new CreateStickerSetDto();
         dto.setName(name);
         dto.setTitle(title);
-        return dto;
-    }
-    
-    /**
-     * Создает CreateStickerSetDto с кастомным userId
-     */
-    public static CreateStickerSetDto createStickerSetDtoWithUserId(String name, Long userId) {
-        CreateStickerSetDto dto = new CreateStickerSetDto();
-        dto.setName(name);
-        dto.setUserId(userId);
         return dto;
     }
     

@@ -135,24 +135,6 @@ class ImprovedStickerSetControllerIntegrationTest {
     }
     
     @Test
-    @Story("Создание стикерсета")
-    @DisplayName("POST /api/stickersets с указанным userId должен использовать переданный userId")
-    @Severity(SeverityLevel.NORMAL)
-    void createStickerSet_WithProvidedUserId_ShouldUseProvidedUserId() throws Exception {
-        // Given
-        CreateStickerSetDto createDto = TestDataBuilder.createStickerSetDtoWithUserId("test_stickers", 999999999L);
-        
-        // When
-        ResultActions result = testSteps.createStickerSet(createDto, validInitData);
-        
-        // Then
-        result.andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.name").value("test_stickers"))
-                .andExpect(jsonPath("$.userId").value(999999999));
-    }
-    
-    @Test
     @Story("Валидация данных")
     @DisplayName("POST /api/stickersets с пустым именем должен возвращать 400")
     @Severity(SeverityLevel.CRITICAL)

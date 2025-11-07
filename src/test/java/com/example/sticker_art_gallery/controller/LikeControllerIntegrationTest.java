@@ -77,7 +77,6 @@ class LikeControllerIntegrationTest {
         // Ставим один лайк первому
         mockMvc.perform(post("/api/likes/stickersets/" + id1)
                 .header("X-Telegram-Init-Data", initData)
-                .header("X-Telegram-Bot-Name", com.example.sticker_art_gallery.testdata.TestDataBuilder.BOT_NAME)
                 .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk());
 
@@ -96,8 +95,7 @@ class LikeControllerIntegrationTest {
 
         // Уберём лайк и проверим, что счётчик и порядок меняются
         mockMvc.perform(delete("/api/likes/stickersets/" + id1)
-                .header("X-Telegram-Init-Data", initData)
-                .header("X-Telegram-Bot-Name", com.example.sticker_art_gallery.testdata.TestDataBuilder.BOT_NAME))
+                .header("X-Telegram-Init-Data", initData))
             .andExpect(status().isOk());
 
         String s1after = mockMvc.perform(get("/api/stickersets/" + id1))

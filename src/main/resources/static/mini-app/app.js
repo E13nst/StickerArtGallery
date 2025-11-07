@@ -218,9 +218,7 @@ function getAuthHeaders() {
     
     if (initData) {
         headers['X-Telegram-Init-Data'] = initData;
-        headers['X-Telegram-Bot-Name'] = 'StickerGallery';
         console.log('✅ Заголовки аутентификации добавлены');
-        console.log('X-Telegram-Bot-Name: StickerGallery');
         console.log('X-Telegram-Init-Data: present');
     } else {
         console.warn('⚠️ initData отсутствует, запрос без аутентификации');

@@ -53,7 +53,6 @@ CreateStickerSetDto dto = TestDataBuilder.createBasicStickerSetDto();
 public ResultActions createStickerSet(CreateStickerSetDto createDto, String initData) throws Exception {
     return mockMvc.perform(post("/api/stickersets")
                     .header("X-Telegram-Init-Data", initData)
-                    .header("X-Telegram-Bot-Name", TestDataBuilder.BOT_NAME)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(createDto)));
 }
@@ -101,15 +100,13 @@ public class StickerSetApiPage {
     public ResultActions createStickerSet(CreateStickerSetDto dto, String initData) throws Exception {
         return mockMvc.perform(post("/api/stickersets")
                 .header("X-Telegram-Init-Data", initData)
-                .header("X-Telegram-Bot-Name", "StickerGallery")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(dto)));
     }
     
     public ResultActions getAllStickerSets(String initData) throws Exception {
         return mockMvc.perform(get("/api/stickersets")
-                .header("X-Telegram-Init-Data", initData)
-                .header("X-Telegram-Bot-Name", "StickerGallery"));
+                .header("X-Telegram-Init-Data", initData));
     }
 }
 ```
@@ -124,8 +121,7 @@ void likeStickerSet_ShouldAddLike() throws Exception {
     
     // When
     ResultActions result = mockMvc.perform(post("/api/likes/stickersets/" + stickerSetId)
-            .header("X-Telegram-Init-Data", validInitData)
-            .header("X-Telegram-Bot-Name", BOT_NAME));
+            .header("X-Telegram-Init-Data", validInitData));
     
     // Then
     result.andExpect(status().isOk())

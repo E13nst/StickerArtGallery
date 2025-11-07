@@ -10,7 +10,6 @@ BASE_URL="${BASE_URL:-http://localhost:8080}"
 
 # Пример initData (нужно будет использовать реальные данные с проды)
 INIT_DATA="${INIT_DATA}"
-BOT_NAME="${BOT_NAME:-StickerGallery}"
 
 echo "🧪 Тестирование пересчета likes_count для стикерсета ID $STICKER_SET_ID"
 echo "=========================================="
@@ -25,8 +24,7 @@ fi
 # 1. Получаем информацию о стикерсете до пересчета
 echo "1. Проверяем текущее состояние стикерсета..."
 STICKERSET_INFO=$(curl -s "$BASE_URL/api/stickersets/$STICKER_SET_ID" \
-    -H "X-Telegram-Init-Data: $INIT_DATA" \
-    -H "X-Telegram-Bot-Name: $BOT_NAME")
+    -H "X-Telegram-Init-Data: $INIT_DATA")
 
 LIKES_COUNT_BEFORE=$(echo "$STICKERSET_INFO" | jq -r '.likesCount // 0')
 echo "   likes_count в таблице stickersets: $LIKES_COUNT_BEFORE"
@@ -37,7 +35,6 @@ echo "2. Вызываем toggle для пересчета агрегации...
 TOGGLE_RESPONSE=$(curl -s -X PUT "$BASE_URL/api/likes/stickersets/$STICKER_SET_ID/toggle" \
     -H "Content-Type: application/json" \
     -H "X-Telegram-Init-Data: $INIT_DATA" \
-    -H "X-Telegram-Bot-Name: $BOT_NAME" \
     -w "\n%{http_code}")
 
 HTTP_CODE=$(echo "$TOGGLE_RESPONSE" | tail -n 1)
@@ -60,8 +57,7 @@ fi
 echo ""
 echo "3. Проверяем likes_count после пересчета..."
 STICKERSET_INFO_AFTER=$(curl -s "$BASE_URL/api/stickersets/$STICKER_SET_ID" \
-    -H "X-Telegram-Init-Data: $INIT_DATA" \
-    -H "X-Telegram-Bot-Name: $BOT_NAME")
+    -H "X-Telegram-Init-Data: $INIT_DATA")
 
 LIKES_COUNT_AFTER=$(echo "$STICKERSET_INFO_AFTER" | jq -r '.likesCount // 0')
 echo "   likes_count после пересчета: $LIKES_COUNT_AFTER"

@@ -126,8 +126,7 @@
                 const response = await fetch('/api/auth/status', {
                     method: 'GET',
                     headers: {
-                        'X-Telegram-Init-Data': tg.initData,
-                        'X-Telegram-Bot-Name': 'StickerGallery'
+                        'X-Telegram-Init-Data': tg.initData
                     }
                 });
                 
@@ -150,8 +149,7 @@
                 const response = await fetch('/api/stickersets', {
                     method: 'GET',
                     headers: {
-                        'X-Telegram-Init-Data': tg.initData,
-                        'X-Telegram-Bot-Name': 'StickerGallery'
+                        'X-Telegram-Init-Data': tg.initData
                     }
                 });
                 

@@ -25,8 +25,7 @@ fi
 # 3. Попробуем с невалидным initData
 echo "3. Тест с невалидным initData..."
 RESPONSE=$(curl -s -w "%{http_code}" -X PUT "$BASE_URL/api/likes/stickersets/$STICKER_SET_ID/toggle" \
-  -H "X-Telegram-Init-Data: invalid_data" \
-  -H "X-Telegram-Bot-Name: StickerGallery")
+  -H "X-Telegram-Init-Data: invalid_data")
 HTTP_CODE="${RESPONSE: -3}"
 echo "   Код ответа с невалидными данными: $HTTP_CODE"
 

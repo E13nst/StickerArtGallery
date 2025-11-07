@@ -12,6 +12,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.lang.NonNull;
 import java.io.IOException;
 
 /**
@@ -22,7 +23,6 @@ public class TelegramAuthenticationFilter extends OncePerRequestFilter {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(TelegramAuthenticationFilter.class);
     private static final String TELEGRAM_INIT_DATA_HEADER = "X-Telegram-Init-Data";
-    private static final String TELEGRAM_BOT_NAME_HEADER = "X-Telegram-Bot-Name";
     private static final String DEFAULT_BOT_NAME = "StickerGallery";
     
     private final TelegramInitDataValidator validator;
@@ -36,32 +36,19 @@ public class TelegramAuthenticationFilter extends OncePerRequestFilter {
     }
     
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, 
-                                  FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, 
+                                  @NonNull FilterChain filterChain) throws ServletException, IOException {
         
         String initData = request.getHeader(TELEGRAM_INIT_DATA_HEADER);
-        String botName = request.getHeader(TELEGRAM_BOT_NAME_HEADER);
+        String botName = DEFAULT_BOT_NAME;
         
-        // Устанавливаем значение по умолчанию для botName если оно не указано
-        boolean botNameWasEmpty = (botName == null || botName.trim().isEmpty());
-        if (botNameWasEmpty && initData != null && !initData.trim().isEmpty()) {
-            botName = DEFAULT_BOT_NAME;
-            LOGGER.info("📝 Заголовок X-Telegram-Bot-Name не указан в запросе к {}. Устанавливаем значение по умолчанию: {}", 
-                    request.getRequestURI(), DEFAULT_BOT_NAME);
-        }
-        
-        LOGGER.debug("🔍 TelegramAuthenticationFilter: Запрос к {} | InitData: {} | BotName: {} | DefaultUsed: {}", 
+        LOGGER.debug("🔍 TelegramAuthenticationFilter: Запрос к {} | InitData: {} | BotName: {}", 
                 request.getRequestURI(), 
-                initData != null ? "present" : "null", 
-                botName != null ? botName : "null",
-                botNameWasEmpty && botName != null);
+                initData != null && !initData.trim().isEmpty() ? "present" : "null", 
+                botName);
         
-        if (initData != null && !initData.trim().isEmpty() && botName != null && !botName.trim().isEmpty()) {
-            if (botNameWasEmpty) {
-                LOGGER.info("🔍 Обнаружен заголовок X-Telegram-Init-Data. Используется бот по умолчанию: {}", botName);
-            } else {
-                LOGGER.info("🔍 Обнаружены заголовки X-Telegram-Init-Data и X-Telegram-Bot-Name для бота: {}", botName);
-            }
+        if (initData != null && !initData.trim().isEmpty()) {
+            LOGGER.info("🔍 Обнаружен заголовок X-Telegram-Init-Data. Используется бот по умолчанию: {}", botName);
             LOGGER.debug("🔍 InitData (первые 50 символов): {}", 
                     initData.length() > 50 ? initData.substring(0, 50) + "..." : initData);
             
@@ -106,9 +93,7 @@ public class TelegramAuthenticationFilter extends OncePerRequestFilter {
                 LOGGER.error("❌ Ошибка обработки Telegram аутентификации для бота {}: {}", botName, e.getMessage(), e);
             }
         } else {
-            LOGGER.debug("🔍 Заголовки Telegram отсутствуют или пусты | InitData: {} | BotName: {}", 
-                    initData != null ? "present" : "null", 
-                    botName != null ? botName : "null");
+            LOGGER.debug("🔍 Заголовок X-Telegram-Init-Data отсутствует или пуст | BotName: {}", botName);
         }
         
         // Продолжаем цепочку фильтров
@@ -116,7 +101,7 @@ public class TelegramAuthenticationFilter extends OncePerRequestFilter {
     }
     
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) throws ServletException {
         String path = request.getRequestURI();
         
         // Не фильтруем запросы к статическим ресурсам и некоторым системным эндпоинтам

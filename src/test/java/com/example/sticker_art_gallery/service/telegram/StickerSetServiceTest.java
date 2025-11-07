@@ -165,39 +165,6 @@ class StickerSetServiceTest {
         verify(stickerSetRepository, never()).save(any());
     }
 
-    @Test
-    @DisplayName("createStickerSet с указанным userId должен использовать его вместо извлечения из аутентификации")
-    void createStickerSet_WithProvidedUserId_ShouldUseProvidedUserId() {
-        // Given
-        CreateStickerSetDto createDto = new CreateStickerSetDto();
-        createDto.setName("test_stickers");
-        createDto.setUserId(999999999L);
-
-        when(stickerSetRepository.findByName("test_stickers")).thenReturn(Optional.empty());
-        
-        Object telegramStickerSetInfo = createMockTelegramStickerSetInfo("Test Stickers");
-        when(telegramBotApiService.validateStickerSetExists("test_stickers"))
-                .thenReturn(telegramStickerSetInfo);
-        when(telegramBotApiService.extractTitleFromStickerSetInfo(telegramStickerSetInfo))
-                .thenReturn("Test Stickers");
-
-        // when(userService.findOrCreateByTelegramId(eq(999999999L), any(), any(), any(), any()))
-        //         .thenReturn(testUser);
-
-        StickerSet savedStickerSet = createMockSavedStickerSet("test_stickers", "Test Stickers", 999999999L);
-        when(stickerSetRepository.save(any(StickerSet.class))).thenReturn(savedStickerSet);
-
-        // When
-        StickerSet result = stickerSetService.createStickerSet(createDto);
-
-        // Then
-        assertNotNull(result);
-        assertEquals(999999999L, result.getUserId());
-
-        // verify(userService).findOrCreateByTelegramId(eq(999999999L), any(), any(), any(), any());
-        verify(securityContext, never()).getAuthentication();
-    }
-
     @Disabled("Проблемы с моками SecurityContextHolder")
     @Test
     @DisplayName("createStickerSet с указанным title должен использовать его вместо извлечения из Telegram API")

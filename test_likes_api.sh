@@ -41,8 +41,7 @@ fi
 # 4. Попробуем с простыми заголовками
 echo "4. Тест с простыми заголовками..."
 RESPONSE=$(curl -s -w "%{http_code}" -X PUT "$BASE_URL/api/likes/stickersets/$STICKER_SET_ID/toggle" \
-  -H "X-Telegram-Init-Data: test" \
-  -H "X-Telegram-Bot-Name: StickerGallery")
+  -H "X-Telegram-Init-Data: test")
 HTTP_CODE="${RESPONSE: -3}"
 echo "Код ответа: $HTTP_CODE"
 

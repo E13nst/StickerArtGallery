@@ -7,7 +7,6 @@
 В Amvera нужно настроить следующие переменные окружения:
 
 - `TELEGRAM_API_TOKEN` - токен вашего Telegram бота
-- `TELEGRAM_BOT_NAME` - имя бота
 - `OPENAI_API_KEY` - ключ API OpenAI
 - `BOT_WEBHOOK_URL` - URL вашего приложения на Amvera (например: `https://your-app-name.amvera.io`)
 

@@ -29,6 +29,7 @@ import java.util.Map;
 public class AuthController {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthController.class);
+    private static final String DEFAULT_BOT_NAME = "StickerGallery";
     
     private final TelegramInitDataValidator validator;
     
@@ -134,7 +135,9 @@ public class AuthController {
                     """)))
             @RequestBody Map<String, String> request) {
         String initData = request.get("initData");
-        String botName = request.get("botName");
+        String botNameRaw = request.get("botName");
+        String botName = resolveBotName(botNameRaw);
+        boolean usingDefaultBot = botNameRaw == null || botNameRaw.trim().isEmpty();
         
         Map<String, Object> response = new HashMap<>();
         
@@ -144,12 +147,10 @@ public class AuthController {
             return ResponseEntity.badRequest().body(response);
         }
         
-        if (botName == null || botName.trim().isEmpty()) {
-            response.put("valid", false);
-            response.put("error", "Bot name is required");
-            return ResponseEntity.badRequest().body(response);
+        if (usingDefaultBot) {
+            LOGGER.debug("Используется имя бота по умолчанию '{}' для проверки initData", DEFAULT_BOT_NAME);
         }
-        
+
         boolean isValid = validator.validateInitData(initData, botName);
         response.put("valid", isValid);
         response.put("botName", botName);
@@ -199,7 +200,9 @@ public class AuthController {
             @Parameter(description = "Данные для поиска пользователя", required = true)
             @RequestBody Map<String, String> request) {
         String initData = request.get("initData");
-        String botName = request.get("botName");
+        String botNameRaw = request.get("botName");
+        String botName = resolveBotName(botNameRaw);
+        boolean usingDefaultBot = botNameRaw == null || botNameRaw.trim().isEmpty();
         
         Map<String, Object> response = new HashMap<>();
         
@@ -209,13 +212,10 @@ public class AuthController {
             return ResponseEntity.badRequest().body(response);
         }
         
-        if (botName == null || botName.trim().isEmpty()) {
-            response.put("success", false);
-            response.put("error", "Bot name is required");
-            return ResponseEntity.badRequest().body(response);
-        }
-        
         try {
+            if (usingDefaultBot) {
+                LOGGER.debug("Используется имя бота по умолчанию '{}' для получения информации о пользователе", DEFAULT_BOT_NAME);
+            }
             // Валидируем initData для конкретного бота
             if (!validator.validateInitData(initData, botName)) {
                 response.put("success", false);
@@ -281,7 +281,9 @@ public class AuthController {
             @Parameter(description = "Данные для регистрации пользователя", required = true)
             @RequestBody Map<String, String> request) {
         String initData = request.get("initData");
-        String botName = request.get("botName");
+        String botNameRaw = request.get("botName");
+        String botName = resolveBotName(botNameRaw);
+        boolean usingDefaultBot = botNameRaw == null || botNameRaw.trim().isEmpty();
         
         Map<String, Object> response = new HashMap<>();
         
@@ -291,13 +293,10 @@ public class AuthController {
             return ResponseEntity.badRequest().body(response);
         }
         
-        if (botName == null || botName.trim().isEmpty()) {
-            response.put("success", false);
-            response.put("error", "Bot name is required");
-            return ResponseEntity.badRequest().body(response);
-        }
-        
         try {
+            if (usingDefaultBot) {
+                LOGGER.debug("Используется имя бота по умолчанию '{}' для регистрации пользователя", DEFAULT_BOT_NAME);
+            }
             // Валидируем initData для конкретного бота
             if (!validator.validateInitData(initData, botName)) {
                 response.put("success", false);
@@ -327,6 +326,13 @@ public class AuthController {
         }
         
         return ResponseEntity.ok(response);
+    }
+    
+    private String resolveBotName(String botName) {
+        if (botName == null || botName.trim().isEmpty()) {
+            return DEFAULT_BOT_NAME;
+        }
+        return botName.trim();
     }
     
 }

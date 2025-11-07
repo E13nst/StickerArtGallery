@@ -121,7 +121,6 @@ public class StickerSetTestSteps {
     public ResultActions createStickerSet(CreateStickerSetDto createDto, String initData) throws Exception {
         return mockMvc.perform(post("/api/stickersets")
                         .header("X-Telegram-Init-Data", initData)
-                        .header("X-Telegram-Bot-Name", TestDataBuilder.BOT_NAME)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createDto)));
     }
@@ -129,38 +128,33 @@ public class StickerSetTestSteps {
     @Step("Получить все стикерсеты через API")
     public ResultActions getAllStickerSets(String initData) throws Exception {
         return mockMvc.perform(get("/api/stickersets")
-                        .header("X-Telegram-Init-Data", initData)
-                        .header("X-Telegram-Bot-Name", TestDataBuilder.BOT_NAME));
+                        .header("X-Telegram-Init-Data", initData));
     }
     
     @Step("Получить только лайкнутые стикерсеты через API")
     public ResultActions getLikedStickerSets(String initData) throws Exception {
         return mockMvc.perform(get("/api/stickersets")
                         .param("likedOnly", "true")
-                        .header("X-Telegram-Init-Data", initData)
-                        .header("X-Telegram-Bot-Name", TestDataBuilder.BOT_NAME));
+                        .header("X-Telegram-Init-Data", initData));
     }
     
     @Step("Получить стикерсет по ID через API")
     public ResultActions getStickerSetById(Long id, String initData) throws Exception {
         return mockMvc.perform(get("/api/stickersets/" + id)
-                        .header("X-Telegram-Init-Data", initData)
-                        .header("X-Telegram-Bot-Name", TestDataBuilder.BOT_NAME));
+                        .header("X-Telegram-Init-Data", initData));
     }
     
     @Step("Получить стикерсеты с фильтрацией по категориям")
     public ResultActions getStickerSetsByCategory(String categoryKeys, String initData) throws Exception {
         return mockMvc.perform(get("/api/stickersets")
                         .param("categoryKeys", categoryKeys)
-                        .header("X-Telegram-Init-Data", initData)
-                        .header("X-Telegram-Bot-Name", TestDataBuilder.BOT_NAME));
+                        .header("X-Telegram-Init-Data", initData));
     }
 
     @Step("Получить стикерсеты с фильтрами officialOnly/authorId/hasAuthorOnly")
     public ResultActions getStickerSetsWithFilters(Boolean officialOnly, Long authorId, Boolean hasAuthorOnly, String initData) throws Exception {
         var req = get("/api/stickersets")
-                .header("X-Telegram-Init-Data", initData)
-                .header("X-Telegram-Bot-Name", TestDataBuilder.BOT_NAME);
+                .header("X-Telegram-Init-Data", initData);
         if (officialOnly != null) req = req.param("officialOnly", officialOnly.toString());
         if (authorId != null) req = req.param("authorId", authorId.toString());
         if (hasAuthorOnly != null) req = req.param("hasAuthorOnly", hasAuthorOnly.toString());
@@ -170,8 +164,7 @@ public class StickerSetTestSteps {
     @Step("Получить топ по лайкам с фильтрами officialOnly/authorId/hasAuthorOnly")
     public ResultActions getTopByLikesWithFilters(Boolean officialOnly, Long authorId, Boolean hasAuthorOnly, String initData) throws Exception {
         var req = get("/api/stickersets/top-bylikes")
-                .header("X-Telegram-Init-Data", initData)
-                .header("X-Telegram-Bot-Name", TestDataBuilder.BOT_NAME);
+                .header("X-Telegram-Init-Data", initData);
         if (officialOnly != null) req = req.param("officialOnly", officialOnly.toString());
         if (authorId != null) req = req.param("authorId", authorId.toString());
         if (hasAuthorOnly != null) req = req.param("hasAuthorOnly", hasAuthorOnly.toString());
@@ -181,15 +174,13 @@ public class StickerSetTestSteps {
     @Step("Отметить стикерсет как официальный (ADMIN)")
     public ResultActions markOfficial(Long id, String initData) throws Exception {
         return mockMvc.perform(put("/api/stickersets/" + id + "/official")
-                .header("X-Telegram-Init-Data", initData)
-                .header("X-Telegram-Bot-Name", TestDataBuilder.BOT_NAME));
+                .header("X-Telegram-Init-Data", initData));
     }
 
     @Step("Снять официальный статус (ADMIN)")
     public ResultActions markUnofficial(Long id, String initData) throws Exception {
         return mockMvc.perform(put("/api/stickersets/" + id + "/unofficial")
-                .header("X-Telegram-Init-Data", initData)
-                .header("X-Telegram-Bot-Name", TestDataBuilder.BOT_NAME));
+                .header("X-Telegram-Init-Data", initData));
     }
 
     @Step("Установить автора (ADMIN)")
@@ -197,7 +188,6 @@ public class StickerSetTestSteps {
         java.util.Map<String, Long> body = java.util.Map.of("authorId", authorId);
         return mockMvc.perform(put("/api/stickersets/" + id + "/author")
                 .header("X-Telegram-Init-Data", initData)
-                .header("X-Telegram-Bot-Name", TestDataBuilder.BOT_NAME)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(body)));
     }
@@ -205,8 +195,7 @@ public class StickerSetTestSteps {
     @Step("Очистить автора (ADMIN)")
     public ResultActions clearAuthor(Long id, String initData) throws Exception {
         return mockMvc.perform(delete("/api/stickersets/" + id + "/author")
-                .header("X-Telegram-Init-Data", initData)
-                .header("X-Telegram-Bot-Name", TestDataBuilder.BOT_NAME));
+                .header("X-Telegram-Init-Data", initData));
     }
     
     @Step("Создать валидную initData")

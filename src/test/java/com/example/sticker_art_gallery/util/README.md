@@ -49,7 +49,6 @@ void testGetMyProfile() throws Exception {
     // Настраиваем заголовки
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Telegram-Init-Data", initData);
-    headers.set("X-Telegram-Bot-Name", "StickerGallery");
     
     HttpEntity<Void> request = new HttpEntity<>(headers);
     
@@ -78,7 +77,6 @@ void testCreateStickerSet() throws Exception {
     
     mockMvc.perform(post("/api/stickersets")
             .header("X-Telegram-Init-Data", initData)
-            .header("X-Telegram-Bot-Name", "StickerGallery")
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"name\":\"test_stickers\"}"))
         .andExpect(status().isOk());
@@ -98,7 +96,6 @@ void testAsyncRequest() throws Exception {
     StickerSetDto result = webClient.get()
         .uri("/api/stickersets/1")
         .header("X-Telegram-Init-Data", initData)
-        .header("X-Telegram-Bot-Name", "StickerGallery")
         .retrieve()
         .bodyToMono(StickerSetDto.class)
         .block();
@@ -209,7 +206,6 @@ void setUp() throws Exception {
 ```java
 public class TestConstants {
     public static final String BOT_TOKEN = "test_bot_token";
-    public static final String BOT_NAME = "StickerGallery";
     
     public static final Long ADMIN_USER_ID = 111111111L;
     public static final Long REGULAR_USER_ID = 222222222L;

@@ -256,7 +256,6 @@ class TelegramInitDataGeneratorTest {
         
         // Теперь можно использовать эту initData в HTTP запросах:
         // headers.set("X-Telegram-Init-Data", initData);
-        // headers.set("X-Telegram-Bot-Name", "TestBot");
         
         // Или извлечь telegram_id для создания тестовых данных
         Long telegramId = validator.extractTelegramId(initData);
@@ -264,7 +263,6 @@ class TelegramInitDataGeneratorTest {
         
         System.out.println("✅ Пример initData для API тестов:");
         System.out.println("X-Telegram-Init-Data: " + initData);
-        System.out.println("X-Telegram-Bot-Name: TestBot");
     }
 }
 

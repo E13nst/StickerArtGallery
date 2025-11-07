@@ -156,7 +156,6 @@ make test-api
 curl -X GET "http://localhost:8080/auth/status" \
   -H "accept: application/json" \
   -H "X-Telegram-Init-Data: your_init_data_here" \
-  -H "X-Telegram-Bot-Name: StickerGallery"
 ```
 
 ## 🚀 Развертывание

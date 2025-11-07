@@ -280,7 +280,7 @@ public class DevController {
                     async function testAuth() {
                         try {
                             const response = await fetch('/api/auth/status', {
-                                headers: { 'X-Telegram-Init-Data': tg.initData, 'X-Telegram-Bot-Name': 'StickerGallery' }
+                                headers: { 'X-Telegram-Init-Data': tg.initData }
                             });
                             const data = await response.json();
                             document.getElementById('authStatus').innerHTML = 'Результат: ' + (data.authenticated ? '✅ Да' : '❌ Нет');
@@ -291,7 +291,7 @@ public class DevController {
                     async function testAPI() {
                         try {
                             const response = await fetch('/api/stickersets', {
-                                headers: { 'X-Telegram-Init-Data': tg.initData, 'X-Telegram-Bot-Name': 'StickerGallery' }
+                                headers: { 'X-Telegram-Init-Data': tg.initData }
                             });
                             if (response.ok) {
                                 const data = await response.json();

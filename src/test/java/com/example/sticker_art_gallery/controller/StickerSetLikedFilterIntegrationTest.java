@@ -136,8 +136,7 @@ class StickerSetLikedFilterIntegrationTest {
         // When
         ResultActions result = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/stickersets")
                         .param("likedOnly", "false")
-                        .header("X-Telegram-Init-Data", validInitData)
-                        .header("X-Telegram-Bot-Name", TestDataBuilder.BOT_NAME));
+                        .header("X-Telegram-Init-Data", validInitData));
         
         // Then
         result.andExpect(status().isOk())
@@ -164,8 +163,7 @@ class StickerSetLikedFilterIntegrationTest {
                         .param("size", "10")
                         .param("sort", "createdAt")
                         .param("direction", "DESC")
-                        .header("X-Telegram-Init-Data", validInitData)
-                        .header("X-Telegram-Bot-Name", TestDataBuilder.BOT_NAME));
+                        .header("X-Telegram-Init-Data", validInitData));
         
         // Then
         result.andExpect(status().isOk())

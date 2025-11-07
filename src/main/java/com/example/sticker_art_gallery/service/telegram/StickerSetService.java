@@ -70,15 +70,12 @@ public class StickerSetService {
             throw new IllegalArgumentException("Не удалось проверить существование стикерсета в Telegram: " + e.getMessage());
         }
         
-        // 3. Определяем userId
-        Long userId = createDto.getUserId();
+        // 3. Извлекаем userId только из аутентификации (initData)
+        Long userId = extractUserIdFromAuthentication();
         if (userId == null) {
-            userId = extractUserIdFromAuthentication();
-            if (userId == null) {
-                throw new IllegalArgumentException("Не удалось определить ID пользователя. Укажите userId или убедитесь, что вы авторизованы через Telegram Web App");
-            }
-            LOGGER.debug("📱 Извлечен userId из аутентификации: {}", userId);
+            throw new IllegalArgumentException("Не удалось определить ID пользователя. Убедитесь, что вы авторизованы через Telegram Web App");
         }
+        LOGGER.debug("📱 Извлечен userId из аутентификации: {}", userId);
         
         // 4. Определяем title
         String title = createDto.getTitle();

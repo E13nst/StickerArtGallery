@@ -31,14 +31,13 @@ class CreateStickerSetDtoTest {
     @Test
     @Story("Валидация обязательных полей")
     @DisplayName("Создание DTO с корректными данными должно проходить валидацию")
-    @Description("Проверяет, что DTO с корректными name, title и userId успешно проходит валидацию")
+    @Description("Проверяет, что DTO с корректными name и title успешно проходит валидацию")
     @Severity(SeverityLevel.BLOCKER)
     void createDtoWithValidData_ShouldPassValidation() {
         // Given
         CreateStickerSetDto dto = new CreateStickerSetDto();
         dto.setName("my_stickers_by_StickerGalleryBot");
         dto.setTitle("Мои стикеры");
-        dto.setUserId(123456789L);
 
         // When
         Set<ConstraintViolation<CreateStickerSetDto>> violations = validator.validate(dto);
@@ -93,24 +92,6 @@ class CreateStickerSetDtoTest {
         assertTrue(violations.stream()
                 .anyMatch(v -> v.getPropertyPath().toString().equals("name")), 
                 "Должно быть нарушение для поля name");
-    }
-
-    @Test
-    @DisplayName("Создание DTO с отрицательным userId должно не проходить валидацию")
-    void createDtoWithNegativeUserId_ShouldFailValidation() {
-        // Given
-        CreateStickerSetDto dto = new CreateStickerSetDto();
-        dto.setName("test_stickers");
-        dto.setUserId(-1L);
-
-        // When
-        Set<ConstraintViolation<CreateStickerSetDto>> violations = validator.validate(dto);
-
-        // Then
-        assertFalse(violations.isEmpty(), "Должны быть нарушения валидации");
-        assertTrue(violations.stream()
-                .anyMatch(v -> v.getPropertyPath().toString().equals("userId")), 
-                "Должно быть нарушение для поля userId");
     }
 
     @Test
@@ -200,27 +181,6 @@ class CreateStickerSetDtoTest {
         // Then
         assertFalse(violations.isEmpty(), 
                 "Имя/URL '" + invalidName + "' не должен проходить валидацию");
-    }
-
-    @Test
-    @DisplayName("hasUserId должен возвращать true когда userId установлен")
-    void hasUserId_WhenUserIdIsSet_ShouldReturnTrue() {
-        // Given
-        CreateStickerSetDto dto = new CreateStickerSetDto();
-        dto.setUserId(123456789L);
-
-        // When & Then
-        assertTrue(dto.hasUserId());
-    }
-
-    @Test
-    @DisplayName("hasUserId должен возвращать false когда userId не установлен")
-    void hasUserId_WhenUserIdIsNull_ShouldReturnFalse() {
-        // Given
-        CreateStickerSetDto dto = new CreateStickerSetDto();
-
-        // When & Then
-        assertFalse(dto.hasUserId());
     }
 
     @Test

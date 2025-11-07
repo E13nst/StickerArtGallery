@@ -50,10 +50,11 @@ class StickerSetApiIntegrationTest {
                 assertNotNull(result.getCreatedAt());
                 
             } catch (Exception e) {
-                // В тестовой среде ожидаем ошибку подключения к Telegram API
+                // В тестовой среде ожидаем ошибку авторизации или подключения к Telegram API
                 assertTrue(e.getMessage().contains("Telegram") || 
                           e.getMessage().contains("Network") ||
-                          e.getMessage().contains("API"));
+                          e.getMessage().contains("API") ||
+                          e.getMessage().contains("ID пользователя"));
             }
         });
     }
@@ -77,10 +78,11 @@ class StickerSetApiIntegrationTest {
                 assertNotNull(result.getCreatedAt());
                 
             } catch (Exception e) {
-                // В тестовой среде ожидаем ошибку подключения к Telegram API
+                // В тестовой среде ожидаем ошибку авторизации или подключения к Telegram API
                 assertTrue(e.getMessage().contains("Telegram") || 
                           e.getMessage().contains("Network") ||
-                          e.getMessage().contains("API"));
+                          e.getMessage().contains("API") ||
+                          e.getMessage().contains("ID пользователя"));
             }
         });
     }
@@ -187,33 +189,23 @@ class StickerSetApiIntegrationTest {
     }
 
     @Test
-    @DisplayName("Вспомогательные методы: hasUserId и hasTitle должны работать корректно")
-    void helperMethods_hasUserIdAndHasTitle_ShouldWorkCorrectly() {
-        // Test hasUserId
+    @DisplayName("Вспомогательные методы: hasTitle должен работать корректно")
+    void helperMethods_hasTitle_ShouldWorkCorrectly() {
         CreateStickerSetDto dto1 = new CreateStickerSetDto();
-        dto1.setUserId(123456789L);
-        assertTrue(dto1.hasUserId());
+        dto1.setTitle("Test Title");
+        assertTrue(dto1.hasTitle());
 
         CreateStickerSetDto dto2 = new CreateStickerSetDto();
-        dto2.setUserId(null);
-        assertFalse(dto2.hasUserId());
+        dto2.setTitle(null);
+        assertFalse(dto2.hasTitle());
 
-        // Test hasTitle
         CreateStickerSetDto dto3 = new CreateStickerSetDto();
-        dto3.setTitle("Test Title");
-        assertTrue(dto3.hasTitle());
+        dto3.setTitle("");
+        assertFalse(dto3.hasTitle());
 
         CreateStickerSetDto dto4 = new CreateStickerSetDto();
-        dto4.setTitle(null);
+        dto4.setTitle("   ");
         assertFalse(dto4.hasTitle());
-
-        CreateStickerSetDto dto5 = new CreateStickerSetDto();
-        dto5.setTitle("");
-        assertFalse(dto5.hasTitle());
-
-        CreateStickerSetDto dto6 = new CreateStickerSetDto();
-        dto6.setTitle("   ");
-        assertFalse(dto6.hasTitle());
     }
 
     @Test
@@ -223,7 +215,6 @@ class StickerSetApiIntegrationTest {
         CreateStickerSetDto createDto = new CreateStickerSetDto();
         createDto.setName("comprehensive_test_stickers");
         createDto.setTitle("Comprehensive Test Stickers");
-        createDto.setUserId(999999999L);
 
         // When & Then
         assertDoesNotThrow(() -> {
@@ -233,15 +224,16 @@ class StickerSetApiIntegrationTest {
                 // Проверяем все поля
                 assertEquals("comprehensive_test_stickers", result.getName());
                 assertEquals("Comprehensive Test Stickers", result.getTitle());
-                assertEquals(999999999L, result.getUserId());
+                assertNotNull(result.getUserId());
                 assertNotNull(result.getId());
                 assertNotNull(result.getCreatedAt());
                 
             } catch (Exception e) {
-                // В тестовой среде ожидаем ошибку подключения к Telegram API
+                // В тестовой среде ожидаем ошибку авторизации или подключения к Telegram API
                 assertTrue(e.getMessage().contains("Telegram") || 
                           e.getMessage().contains("Network") ||
-                          e.getMessage().contains("API"));
+                          e.getMessage().contains("API") ||
+                          e.getMessage().contains("ID пользователя"));
             }
         });
     }

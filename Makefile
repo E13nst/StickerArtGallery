@@ -196,8 +196,7 @@ test-api: ## Тестировать API локально
 		echo "$(YELLOW)📡 Тестируем /auth/status...$(NC)"; \
 		curl -s -X GET "http://localhost:$(PORT)/auth/status" \
 			-H "accept: application/json" \
-			-H "X-Telegram-Init-Data: auth_date=1757578572&hash=19b955b385ee8336c73f8032e12bf006d9b5e2267ccec761a8f06af6af303e7c&query_id=AAF93XAIAAAAAH3dcAjRIlQI&user=%7B%22id%22%3A141614461%2C%22first_name%22%3A%22Andrey%22%2C%22last_name%22%3A%22Mitroshin%22%2C%22username%22%3A%22E13nst%22%2C%22language_code%22%3A%22ru%22%7D" \
-			-H "X-Telegram-Bot-Name: StickerGallery" | jq . || echo "$(RED)❌ Ошибка тестирования API$(NC)"; \
+			-H "X-Telegram-Init-Data: auth_date=1757578572&hash=19b955b385ee8336c73f8032e12bf006d9b5e2267ccec761a8f06af6af303e7c&query_id=AAF93XAIAAAAAH3dcAjRIlQI&user=%7B%22id%22%3A141614461%2C%22first_name%22%3A%22Andrey%22%2C%22last_name%22%3A%22Mitroshin%22%2C%22username%22%3A%22E13nst%22%2C%22language_code%22%3A%22ru%22%7D" | jq . || echo "$(RED)❌ Ошибка тестирования API$(NC)"; \
 	else \
 		echo "$(RED)❌ Приложение не запущено! Запустите командой: make start$(NC)"; \
 	fi

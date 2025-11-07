@@ -24,7 +24,6 @@ cd sticker-art-gallery
 ```bash
 # Telegram Bot Configuration
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
-TELEGRAM_BOT_NAME=your_bot_name_here
 
 # Database Configuration
 DB_HOST=localhost
