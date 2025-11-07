@@ -40,7 +40,7 @@ class StickerSetApiIntegrationTest {
             // Этот тест может не пройти в тестовой среде из-за отсутствия реального подключения к Telegram API
             // В реальном тесте мы бы мокали TelegramBotApiService
             try {
-                StickerSet result = stickerSetService.createStickerSet(createDto);
+                StickerSet result = stickerSetService.createStickerSet(createDto, "ru");
                 
                 // Проверяем, что имя было извлечено из URL
                 assertEquals("shaitanchick", result.getName());
@@ -69,7 +69,7 @@ class StickerSetApiIntegrationTest {
         // When & Then
         assertDoesNotThrow(() -> {
             try {
-                StickerSet result = stickerSetService.createStickerSet(createDto);
+                StickerSet result = stickerSetService.createStickerSet(createDto, "ru");
                 
                 // Проверяем результат
                 assertEquals("test_integration_stickers", result.getName());
@@ -96,7 +96,7 @@ class StickerSetApiIntegrationTest {
 
         // When & Then
         assertThrows(Exception.class, () -> {
-            stickerSetService.createStickerSet(createDto);
+            stickerSetService.createStickerSet(createDto, "ru");
         });
     }
 
@@ -109,7 +109,7 @@ class StickerSetApiIntegrationTest {
 
         // When & Then
         assertThrows(Exception.class, () -> {
-            stickerSetService.createStickerSet(createDto);
+            stickerSetService.createStickerSet(createDto, "ru");
         });
     }
 
@@ -122,7 +122,7 @@ class StickerSetApiIntegrationTest {
 
         // When & Then
         assertThrows(Exception.class, () -> {
-            stickerSetService.createStickerSet(createDto);
+            stickerSetService.createStickerSet(createDto, "ru");
         });
     }
 
@@ -219,7 +219,7 @@ class StickerSetApiIntegrationTest {
         // When & Then
         assertDoesNotThrow(() -> {
             try {
-                StickerSet result = stickerSetService.createStickerSet(createDto);
+                StickerSet result = stickerSetService.createStickerSet(createDto, "ru");
                 
                 // Проверяем все поля
                 assertEquals("comprehensive_test_stickers", result.getName());

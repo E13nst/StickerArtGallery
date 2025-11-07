@@ -167,9 +167,14 @@ class StickerSetControllerTest {
         request.setName("test_stickers");
         
         // When
+        URI uri = UriComponentsBuilder.fromPath("/api/stickersets")
+                .queryParam("name", request.getName())
+                .build()
+                .toUri();
+        
         ResponseEntity<StickerSetDto> response = restTemplate.postForEntity(
-            "/api/stickersets", 
-            request, 
+            uri,
+            null,
             StickerSetDto.class
         );
         

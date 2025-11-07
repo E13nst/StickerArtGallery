@@ -21,6 +21,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import java.util.UUID;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -133,6 +134,27 @@ class ImprovedStickerSetControllerIntegrationTest {
                 .andExpect(jsonPath("$.title").value("Custom Title"))
                 .andExpect(jsonPath("$.userId").value(TestDataBuilder.TEST_USER_ID));
     }
+
+    @Test
+    @Story("Создание стикерсета")
+    @DisplayName("POST /api/stickersets с isPublic=false должен создавать приватный набор")
+    @Severity(SeverityLevel.NORMAL)
+    void createStickerSet_WithIsPublicFalse_ShouldCreatePrivateSet() throws Exception {
+        // Given
+        CreateStickerSetDto createDto = TestDataBuilder.createStickerSetDtoWithUrl("citati_prosto");
+        createDto.setTitle("Private Set");
+        createDto.setIsPublic(false);
+
+        // When
+        ResultActions result = testSteps.createStickerSet(createDto, validInitData);
+
+        // Then
+        result.andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.name").value("citati_prosto"))
+                .andExpect(jsonPath("$.isPublic").value(false))
+                .andExpect(jsonPath("$.userId").value(TestDataBuilder.TEST_USER_ID));
+    }
     
     @Test
     @Story("Валидация данных")
@@ -166,9 +188,9 @@ class ImprovedStickerSetControllerIntegrationTest {
     
     @Test
     @Story("Авторизация")
-    @DisplayName("POST /api/stickersets с некорректным initData должен возвращать 400")
+    @DisplayName("POST /api/stickersets с некорректным initData должен возвращать 401")
     @Severity(SeverityLevel.CRITICAL)
-    void createStickerSet_WithInvalidInitData_ShouldReturn400() throws Exception {
+    void createStickerSet_WithInvalidInitData_ShouldReturn401() throws Exception {
         // Given
         CreateStickerSetDto createDto = TestDataBuilder.createBasicStickerSetDto();
         String invalidInitData = TestDataBuilder.createInvalidInitData();
@@ -177,7 +199,26 @@ class ImprovedStickerSetControllerIntegrationTest {
         ResultActions result = testSteps.createStickerSet(createDto, invalidInitData);
         
         // Then
-        testSteps.verifyValidationError(result);
+        testSteps.verifyUnauthorizedError(result);
+    }
+
+    @Test
+    @Story("Безопасность")
+    @DisplayName("POST /api/stickersets для заблокированного пользователя должен возвращать 400")
+    @Severity(SeverityLevel.CRITICAL)
+    void createStickerSet_WithBlockedUser_ShouldReturn403() throws Exception {
+        userProfileRepository.findByUserId(TestDataBuilder.TEST_USER_ID).ifPresent(profile -> {
+            profile.setIsBlocked(true);
+            userProfileRepository.save(profile);
+        });
+
+        CreateStickerSetDto createDto = TestDataBuilder.createStickerSetDtoWithUrl("blocked_test_" + UUID.randomUUID());
+
+        ResultActions result = testSteps.createStickerSet(createDto, validInitData);
+
+        result.andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("Forbidden"))
+                .andExpect(jsonPath("$.message").value("User is blocked"));
     }
     
     @Test

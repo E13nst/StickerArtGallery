@@ -4,6 +4,7 @@ import com.example.sticker_art_gallery.util.TelegramInitDataValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -14,6 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.lang.NonNull;
 import java.io.IOException;
+import org.springframework.http.HttpStatus;
 
 /**
  * Фильтр для аутентификации через Telegram initData
@@ -86,6 +88,13 @@ public class TelegramAuthenticationFilter extends OncePerRequestFilter {
                     LOGGER.warn("❌ Не удалось извлечь telegram_id из initData");
                 }
                 
+            } catch (DisabledException e) {
+                LOGGER.warn("❌ Пользователь заблокирован. Доступ запрещен: {}", e.getMessage());
+                SecurityContextHolder.clearContext();
+                response.setStatus(HttpStatus.FORBIDDEN.value());
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"error\":\"Forbidden\",\"message\":\"User is blocked\"}");
+                return;
             } catch (Exception e) {
                 LOGGER.error("❌ Ошибка обработки Telegram аутентификации: {}", e.getMessage(), e);
             }

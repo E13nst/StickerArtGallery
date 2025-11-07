@@ -4,7 +4,7 @@ import com.example.sticker_art_gallery.dto.CreateStickerSetDto;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
 import com.example.sticker_art_gallery.model.user.UserEntity;
-import com.example.sticker_art_gallery.service.user.UserService;
+import com.example.sticker_art_gallery.service.category.CategoryService;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -35,7 +35,7 @@ class StickerSetServiceTest {
     private StickerSetRepository stickerSetRepository;
 
     @Mock
-    private UserService userService;
+    private CategoryService categoryService;
 
     @Mock
     private TelegramBotApiService telegramBotApiService;
@@ -83,7 +83,7 @@ class StickerSetServiceTest {
         createDto.setName("https://t.me/addstickers/ShaitanChick");
 
         // Настраиваем моки
-        when(stickerSetRepository.findByName("shaitanchick")).thenReturn(Optional.empty());
+        when(stickerSetRepository.findByNameIgnoreCase("shaitanchick")).thenReturn(Optional.empty());
         
         Object telegramStickerSetInfo = createMockTelegramStickerSetInfo("Shaitan Chick");
         when(telegramBotApiService.validateStickerSetExists("shaitanchick"))
@@ -95,6 +95,7 @@ class StickerSetServiceTest {
         when(SecurityContextHolder.getContext()).thenReturn(securityContext);
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getPrincipal()).thenReturn(testUser);
+        when(authentication.getName()).thenReturn(String.valueOf(testUser.getId()));
 
         // when(userService.findOrCreateByTelegramId(eq(141614461L), any(), any(), any(), any()))
         //         .thenReturn(testUser);
@@ -103,7 +104,9 @@ class StickerSetServiceTest {
         when(stickerSetRepository.save(any(StickerSet.class))).thenReturn(savedStickerSet);
 
         // When
-        StickerSet result = stickerSetService.createStickerSet(createDto);
+        when(authentication.getName()).thenReturn(String.valueOf(testUser.getId()));
+
+        StickerSet result = stickerSetService.createStickerSet(createDto, "ru");
 
         // Then
         assertNotNull(result);
@@ -111,7 +114,7 @@ class StickerSetServiceTest {
         assertEquals("Shaitan Chick", result.getTitle());
         assertEquals(141614461L, result.getUserId());
 
-        verify(stickerSetRepository).findByName("shaitanchick");
+        verify(stickerSetRepository).findByNameIgnoreCase("shaitanchick");
         verify(telegramBotApiService).validateStickerSetExists("shaitanchick");
         verify(telegramBotApiService).extractTitleFromStickerSetInfo(telegramStickerSetInfo);
         // verify(userService).findOrCreateByTelegramId(eq(141614461L), any(), any(), any(), any());
@@ -125,18 +128,18 @@ class StickerSetServiceTest {
         CreateStickerSetDto createDto = new CreateStickerSetDto();
         createDto.setName("existing_sticker_set");
 
-        when(stickerSetRepository.findByName("existing_sticker_set"))
+        when(stickerSetRepository.findByNameIgnoreCase("existing_sticker_set"))
                 .thenReturn(Optional.of(existingStickerSet));
 
         // When & Then
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            stickerSetService.createStickerSet(createDto);
+            stickerSetService.createStickerSet(createDto, "ru");
         });
 
         assertEquals("Стикерсет с именем 'existing_sticker_set' уже существует в галерее", 
                 exception.getMessage());
 
-        verify(stickerSetRepository).findByName("existing_sticker_set");
+        verify(stickerSetRepository).findByNameIgnoreCase("existing_sticker_set");
         verify(telegramBotApiService, never()).validateStickerSetExists(any());
         verify(stickerSetRepository, never()).save(any());
     }
@@ -148,19 +151,19 @@ class StickerSetServiceTest {
         CreateStickerSetDto createDto = new CreateStickerSetDto();
         createDto.setName("nonexistent_sticker_set");
 
-        when(stickerSetRepository.findByName("nonexistent_sticker_set"))
+        when(stickerSetRepository.findByNameIgnoreCase("nonexistent_sticker_set"))
                 .thenReturn(Optional.empty());
         when(telegramBotApiService.validateStickerSetExists("nonexistent_sticker_set"))
                 .thenReturn(null);
 
         // When & Then
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            stickerSetService.createStickerSet(createDto);
+            stickerSetService.createStickerSet(createDto, "ru");
         });
 
         assertTrue(exception.getMessage().contains("Стикерсет 'nonexistent_sticker_set' не найден в Telegram"));
 
-        verify(stickerSetRepository).findByName("nonexistent_sticker_set");
+        verify(stickerSetRepository).findByNameIgnoreCase("nonexistent_sticker_set");
         verify(telegramBotApiService).validateStickerSetExists("nonexistent_sticker_set");
         verify(stickerSetRepository, never()).save(any());
     }
@@ -174,7 +177,7 @@ class StickerSetServiceTest {
         createDto.setName("test_stickers");
         createDto.setTitle("Custom Title");
 
-        when(stickerSetRepository.findByName("test_stickers")).thenReturn(Optional.empty());
+        when(stickerSetRepository.findByNameIgnoreCase("test_stickers")).thenReturn(Optional.empty());
         
         Object telegramStickerSetInfo = createMockTelegramStickerSetInfo("Telegram Title");
         when(telegramBotApiService.validateStickerSetExists("test_stickers"))
@@ -184,6 +187,7 @@ class StickerSetServiceTest {
         when(SecurityContextHolder.getContext()).thenReturn(securityContext);
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getPrincipal()).thenReturn(testUser);
+        when(authentication.getName()).thenReturn(String.valueOf(testUser.getId()));
 
         // when(userService.findOrCreateByTelegramId(eq(141614461L), any(), any(), any(), any()))
         //         .thenReturn(testUser);
@@ -192,7 +196,9 @@ class StickerSetServiceTest {
         when(stickerSetRepository.save(any(StickerSet.class))).thenReturn(savedStickerSet);
 
         // When
-        StickerSet result = stickerSetService.createStickerSet(createDto);
+        when(authentication.getName()).thenReturn(String.valueOf(testUser.getId()));
+
+        StickerSet result = stickerSetService.createStickerSet(createDto, "ru");
 
         // Then
         assertNotNull(result);
@@ -210,7 +216,7 @@ class StickerSetServiceTest {
         CreateStickerSetDto createDto = new CreateStickerSetDto();
         createDto.setName("test_stickers");
 
-        when(stickerSetRepository.findByName("test_stickers")).thenReturn(Optional.empty());
+        when(stickerSetRepository.findByNameIgnoreCase("test_stickers")).thenReturn(Optional.empty());
         
         Object telegramStickerSetInfo = createMockTelegramStickerSetInfo("Test Stickers");
         when(telegramBotApiService.validateStickerSetExists("test_stickers"))
@@ -224,10 +230,10 @@ class StickerSetServiceTest {
 
         // When & Then
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            stickerSetService.createStickerSet(createDto);
+            stickerSetService.createStickerSet(createDto, "ru");
         });
 
-        assertEquals("Не удалось определить ID пользователя. Укажите userId или убедитесь, что вы авторизованы через Telegram Web App", 
+        assertEquals("Не удалось определить ID пользователя. Убедитесь, что вы авторизованы через Telegram Web App",
                 exception.getMessage());
     }
 
@@ -238,13 +244,13 @@ class StickerSetServiceTest {
         CreateStickerSetDto createDto = new CreateStickerSetDto();
         createDto.setName("test_stickers");
 
-        when(stickerSetRepository.findByName("test_stickers")).thenReturn(Optional.empty());
+        when(stickerSetRepository.findByNameIgnoreCase("test_stickers")).thenReturn(Optional.empty());
         when(telegramBotApiService.validateStickerSetExists("test_stickers"))
                 .thenThrow(new RuntimeException("Network error"));
 
         // When & Then
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            stickerSetService.createStickerSet(createDto);
+            stickerSetService.createStickerSet(createDto, "ru");
         });
 
         assertEquals("Не удалось проверить существование стикерсета в Telegram: Network error", 
@@ -259,7 +265,7 @@ class StickerSetServiceTest {
         CreateStickerSetDto createDto = new CreateStickerSetDto();
         createDto.setName("https://t.me/addstickers/ShaitanChick");
 
-        when(stickerSetRepository.findByName("shaitanchick")).thenReturn(Optional.empty());
+        when(stickerSetRepository.findByNameIgnoreCase("shaitanchick")).thenReturn(Optional.empty());
         
         Object telegramStickerSetInfo = createMockTelegramStickerSetInfo("Shaitan Chick");
         when(telegramBotApiService.validateStickerSetExists("shaitanchick"))
@@ -279,13 +285,15 @@ class StickerSetServiceTest {
         when(stickerSetRepository.save(any(StickerSet.class))).thenReturn(savedStickerSet);
 
         // When
-        StickerSet result = stickerSetService.createStickerSet(createDto);
+        when(authentication.getName()).thenReturn(String.valueOf(testUser.getId()));
+
+        StickerSet result = stickerSetService.createStickerSet(createDto, "ru");
 
         // Then
         assertNotNull(result);
         assertEquals("shaitanchick", result.getName());
 
-        verify(stickerSetRepository).findByName("shaitanchick");
+        verify(stickerSetRepository).findByNameIgnoreCase("shaitanchick");
         verify(telegramBotApiService).validateStickerSetExists("shaitanchick");
     }
 

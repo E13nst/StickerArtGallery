@@ -30,6 +30,9 @@ public class CreateStickerSetDto {
     @Schema(description = "Ключи категорий для стикерсета. Необязательное поле.", 
             example = "[\"animals\", \"cute\"]")
     private Set<String> categoryKeys;
+
+    @Schema(description = "Флаг публикации в галерее. По умолчанию true.", example = "true")
+    private Boolean isPublic = true;
     
     // Конструкторы
     public CreateStickerSetDto() {}
@@ -67,6 +70,14 @@ public class CreateStickerSetDto {
     
     public void setCategoryKeys(Set<String> categoryKeys) {
         this.categoryKeys = categoryKeys;
+    }
+
+    public Boolean getIsPublic() {
+        return isPublic;
+    }
+
+    public void setIsPublic(Boolean isPublic) {
+        this.isPublic = isPublic;
     }
     
     /**
@@ -185,6 +196,7 @@ public class CreateStickerSetDto {
                 "title='" + title + '\'' +
                 ", name='" + name + '\'' +
                 ", categoryKeys=" + categoryKeys +
+                ", isPublic=" + isPublic +
                 '}';
     }
 }

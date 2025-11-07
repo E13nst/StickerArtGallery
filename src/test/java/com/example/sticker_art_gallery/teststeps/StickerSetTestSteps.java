@@ -119,10 +119,20 @@ public class StickerSetTestSteps {
     
     @Step("Создать стикерсет через API")
     public ResultActions createStickerSet(CreateStickerSetDto createDto, String initData) throws Exception {
-        return mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", initData)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createDto)));
+        var requestBuilder = post("/api/stickersets")
+                .header("X-Telegram-Init-Data", initData);
+
+        if (createDto.getName() != null) {
+            requestBuilder = requestBuilder.param("name", createDto.getName());
+        }
+        if (createDto.getTitle() != null) {
+            requestBuilder = requestBuilder.param("title", createDto.getTitle());
+        }
+        if (createDto.getIsPublic() != null) {
+            requestBuilder = requestBuilder.param("isPublic", createDto.getIsPublic().toString());
+        }
+
+        return mockMvc.perform(requestBuilder);
     }
     
     @Step("Получить все стикерсеты через API")
@@ -210,6 +220,7 @@ public class StickerSetTestSteps {
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.id").exists())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.name").value(expectedName))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.userId").value(expectedUserId))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.isPublic").value(true))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.createdAt").exists());
     }
     

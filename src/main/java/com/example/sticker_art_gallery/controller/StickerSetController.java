@@ -458,37 +458,25 @@ public class StickerSetController {
         description = """
             Создает новый стикерсет для пользователя с расширенной валидацией и автоматическим заполнением данных.
             
-            **Обязательные поля запроса:**
+            **Обязательные query-параметры:**
             - `name` — уникальное имя стикерсета для Telegram API или URL вида `https://t.me/addstickers/<name>`
             
-            **Автоматически определяемые значения:**
-            - `userId` — определяется из заголовка `X-Telegram-Init-Data`
-            - `title` — если не передан, подтягивается из Telegram Bot API
+            **Опциональные query-параметры:**
+            - `title` — текстовое название до 64 символов (если не указано, подтягивается из Telegram Bot API)
+            - `isPublic` — флаг доступности в галерее (по умолчанию `true`)
             
-            **Опциональные поля запроса:**
-            - `title` — текстовое название до 64 символов (переопределяет значение из Telegram)
-            - `categoryKeys` — массив ключей категорий; для каждого ключа проверяется существование категории
+            **Что определяется автоматически:**
+            - `userId` — из заголовка `X-Telegram-Init-Data`
+            - `title` — если не передан, подтягивается из Telegram Bot API
             
             **Правила обработки:**
             1. Нормализация имени (`name`) и проверка уникальности в базе
             2. Подтверждение существования стикерсета через Telegram Bot API
-            3. Автозаполнение отсутствующих данных (title, userId)
-            4. Привязка категорий и создание записи в базе данных
+            3. Проверка, что пользователь авторизован и не заблокирован
+            4. Автозаполнение отсутствующих данных и создание записи в базе данных
             
             **Поля ответа (`StickerSetDto`):**
-            - `id` — идентификатор созданного стикерсета в базе
-            - `userId` — Telegram ID владельца
-            - `title` — итоговое название
-            - `name` — нормализованное имя, используемое в Telegram API
-            - `createdAt` — дата/время создания на стороне сервиса
-            - `likesCount` — текущее число лайков (по умолчанию 0)
-            - `isPublic` — флаг доступности в галерее (true по умолчанию)
-            - `isBlocked` и `blockReason` — флаги модерации (false/null по умолчанию)
-            - `isOfficial` — признак официального стикерсета Telegram
-            - `authorId` — Telegram ID автора (если известен)
-            - `categories` — список категорий, привязанных к стикерсету (может отсутствовать)
-            - `telegramStickerSetInfo` — доп. информация из Telegram Bot API (может отсутствовать)
-            - `isLikedByCurrentUser` — лайкал ли текущий пользователь (false для новосозданного стикерсета)
+            - `id`, `userId`, `title`, `name`, `createdAt`, `likesCount`, `isPublic`, `isBlocked`, `isOfficial`, `authorId`, `categories`, `telegramStickerSetInfo`, `isLikedByCurrentUser`
             
             **Необходимые заголовки:**
             - `X-Telegram-Init-Data` — подписанные данные Telegram Web App (используются для идентификации пользователя)
@@ -577,31 +565,26 @@ public class StickerSetController {
                 """)))
     })
     public ResponseEntity<?> createStickerSet(
-            @Parameter(description = """
-                Данные для создания стикерсета.
-                
-                **Обязательные поля:**
-                - `name` - имя стикерсета или URL стикерсета (строка, 1-200 символов)
-                
-                **Опциональные поля:**
-                - `title` - название стикерсета (строка до 64 символов, если не указано - получается из Telegram API)
-                - `categoryKeys` - массив ключей категорий (например, ["animals", "cute"])
-                
-                **Поддерживаемые форматы для поля name:**
-                - Имя стикерсета: `my_stickers_by_StickerGalleryBot`
-                - URL стикерсета: `https://t.me/addstickers/ShaitanChick`
-                
-                **Примеры запросов:**
-                - Минимальный (имя): `{"name": "my_stickers_by_StickerGalleryBot"}`
-                - Минимальный (URL): `{"name": "https://t.me/addstickers/ShaitanChick"}`
-                - С title: `{"name": "my_stickers", "title": "Мои стикеры"}`
-                - С категориями: `{"name": "my_stickers", "categoryKeys": ["animals", "cute"]}`
-                """, required = true)
-            @Valid @RequestBody CreateStickerSetDto createDto) {
+            @Parameter(description = "Параметры создания стикерсета (передаются в query). Обязателен только name.", required = true)
+            @Valid @ModelAttribute CreateStickerSetDto createDto,
+            HttpServletRequest request) {
+        String language = getLanguageFromHeaderOrUser(request);
         try {
             LOGGER.info("➕ Создание нового стикерсета: {}", createDto.getName());
-            
-            StickerSet newStickerSet = stickerSetService.createStickerSet(createDto);
+            if (createDto.getIsPublic() == null) {
+                createDto.setIsPublic(true);
+            }
+
+            Long currentUserId = getCurrentUserIdOrNull();
+            if (currentUserId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(java.util.Map.of(
+                                "error", languageResponse(language, "Требуется авторизация", "Unauthorized"),
+                                "message", languageResponse(language, "Пользователь не авторизован", "User is not authenticated")
+                        ));
+            }
+
+            StickerSet newStickerSet = stickerSetService.createStickerSet(createDto, language);
             StickerSetDto createdDto = StickerSetDto.fromEntity(newStickerSet);
             
             LOGGER.info("✅ Стикерсет создан с ID: {} (title: '{}', userId: {})", 
@@ -612,7 +595,7 @@ public class StickerSetController {
             LOGGER.warn("⚠️ Ошибка валидации при создании стикерсета: {}", e.getMessage());
             return ResponseEntity.badRequest()
                 .body(java.util.Map.of(
-                    "error", "Ошибка валидации",
+                    "error", languageResponse(language, "Ошибка валидации", "Validation error"),
                     "message", e.getMessage()
                 ));
         } catch (Exception e) {
@@ -622,85 +605,6 @@ public class StickerSetController {
                     "error", "Внутренняя ошибка сервера",
                     "message", "Произошла непредвиденная ошибка при создании стикерсета"
                 ));
-        }
-    }
-    
-    /**
-     * Обновить существующий стикерсет
-     */
-    @PutMapping("/{id}")
-    @Operation(
-        summary = "Обновить стикерсет",
-        description = "Обновляет существующий стикерсет. Администратор может обновлять любые стикерсеты, обычный пользователь - только свои. Можно изменить title и name. ID и userId не изменяются."
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Стикерсет успешно обновлен",
-            content = @Content(schema = @Schema(implementation = StickerSetDto.class),
-                examples = @ExampleObject(value = """
-                    {
-                        "id": 1,
-                        "userId": 123456789,
-                        "title": "Обновленные стикеры",
-                        "name": "updated_stickers_by_StickerGalleryBot",
-                        "createdAt": "2025-09-15T10:30:00"
-                    }
-                    """))),
-        @ApiResponse(responseCode = "400", description = "Некорректные данные - ошибки валидации"),
-        @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
-        @ApiResponse(responseCode = "403", description = "Доступ запрещен - можно обновлять только свои стикерсеты"),
-        @ApiResponse(responseCode = "404", description = "Стикерсет с указанным ID не найден"),
-        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
-    })
-    public ResponseEntity<StickerSetDto> updateStickerSet(
-            @Parameter(description = "ID стикерсета для обновления", required = true, example = "1")
-            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id,
-            @Parameter(description = "Новые данные стикерсета", required = true)
-            @Valid @RequestBody StickerSetDto stickerSetDto) {
-        try {
-            LOGGER.info("✏️ Обновление стикерсета с ID: {}", id);
-            
-            StickerSet existingStickerSet = stickerSetService.findById(id);
-            if (existingStickerSet == null) {
-                LOGGER.warn("⚠️ Стикерсет с ID {} не найден для обновления", id);
-                return ResponseEntity.notFound().build();
-            }
-            
-            // Проверяем права доступа
-            org.springframework.security.core.Authentication authentication = 
-                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-            
-            if (authentication != null && authentication.isAuthenticated()) {
-                Long currentUserId = Long.valueOf(authentication.getName());
-                
-                // Проверяем: админ или владелец стикерсета
-                boolean isAdmin = authentication.getAuthorities().stream()
-                    .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
-                boolean isOwner = existingStickerSet.getUserId() != null && existingStickerSet.getUserId().equals(currentUserId);
-                
-                if (!isAdmin && !isOwner) {
-                    LOGGER.warn("⚠️ Пользователь {} попытался обновить чужой стикерсет {}", currentUserId, id);
-                    return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
-                }
-                
-                LOGGER.debug("✅ Проверка прав на обновление пройдена: isAdmin={}, isOwner={}", isAdmin, isOwner);
-            }
-            
-            // Обновляем поля
-            if (stickerSetDto.getTitle() != null) {
-                existingStickerSet.setTitle(stickerSetDto.getTitle());
-            }
-            if (stickerSetDto.getName() != null) {
-                existingStickerSet.setName(stickerSetDto.getName());
-            }
-            
-            StickerSet updatedStickerSet = stickerSetService.save(existingStickerSet);
-            StickerSetDto updatedDto = StickerSetDto.fromEntity(updatedStickerSet);
-            
-            LOGGER.info("✅ Стикерсет обновлен: {}", updatedDto.getTitle());
-            return ResponseEntity.ok(updatedDto);
-        } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при обновлении стикерсета с ID: {}", id, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
     
@@ -1507,6 +1411,14 @@ public class StickerSetController {
             throw new IllegalStateException("Пользователь не авторизован");
         }
         return userId;
+    }
+
+    private String languageResponse(String language, String ruMessage, String enMessage) {
+        return "ru".equals(language) ? ruMessage : enMessage;
+    }
+
+    private String languageResponse(HttpServletRequest request, String ruMessage, String enMessage) {
+        return languageResponse(getLanguageFromHeaderOrUser(request), ruMessage, enMessage);
     }
     
     /**

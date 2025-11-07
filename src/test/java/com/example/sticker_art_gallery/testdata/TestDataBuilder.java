@@ -84,6 +84,7 @@ public class TestDataBuilder {
         profile.setUserId(userId);
         profile.setRole(UserProfileEntity.UserRole.USER);
         profile.setArtBalance(0L);
+        profile.setIsBlocked(false);
         return profile;
     }
     

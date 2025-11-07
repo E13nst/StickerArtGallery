@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Component;
@@ -91,6 +92,11 @@ public class TelegramAuthenticationProvider implements AuthenticationProvider {
             LOGGER.debug("✅ Профиль найден/создан: userId={}, role={}, artBalance={}", 
                     profile.getUserId(), profile.getRole(), profile.getArtBalance());
 
+            if (Boolean.TRUE.equals(profile.getIsBlocked())) {
+                LOGGER.warn("❌ Пользователь {} заблокирован. Аутентификация отклонена.", telegramUser.getId());
+                throw new DisabledException("User is blocked");
+            }
+
             // Создаем authorities на основе роли профиля
             LOGGER.debug("🔍 Создаем authorities для роли: {}", profile.getRole());
             var authorities = TelegramAuthenticationToken.createAuthorities(profile.getRole().name());
@@ -108,6 +114,8 @@ public class TelegramAuthenticationProvider implements AuthenticationProvider {
             
             return authenticatedToken;
             
+        } catch (DisabledException e) {
+            throw e;
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка аутентификации пользователя {}: {}", telegramId, e.getMessage(), e);
             return null;

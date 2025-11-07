@@ -31,8 +31,9 @@ public class StickerSetService {
     private final CategoryService categoryService;
     
     @Autowired
-    public StickerSetService(StickerSetRepository stickerSetRepository, 
-                           TelegramBotApiService telegramBotApiService, CategoryService categoryService) {
+    public StickerSetService(StickerSetRepository stickerSetRepository,
+                             TelegramBotApiService telegramBotApiService,
+                             CategoryService categoryService) {
         this.stickerSetRepository = stickerSetRepository;
         this.telegramBotApiService = telegramBotApiService;
         this.categoryService = categoryService;
@@ -45,17 +46,28 @@ public class StickerSetService {
      * - Автоматически заполняет title из Telegram API если не указан
      * - Извлекает userId из initData если не указан
      */
-    public StickerSet createStickerSet(CreateStickerSetDto createDto) {
+    public StickerSet createStickerSet(CreateStickerSetDto createDto, String language) {
         LOGGER.info("➕ Создание стикерсета с валидацией: {}", createDto.getName());
+        String lang = normalizeLanguage(language);
         
         // Нормализуем имя стикерсета
         createDto.normalizeName();
         String stickerSetName = createDto.getName();
+
+        if (createDto.getIsPublic() == null) {
+            createDto.setIsPublic(true);
+        }
         
         // 1. Проверяем, что стикерсет с таким именем или URL уже не существует в базе (игнорируя регистр)
-        Optional<StickerSet> existingByName = stickerSetRepository.findByNameIgnoreCase(stickerSetName);
+        Optional<StickerSet> existingByName = Optional.ofNullable(
+                stickerSetRepository.findByNameIgnoreCase(stickerSetName)
+        ).orElse(Optional.empty());
         if (existingByName.isPresent()) {
-            throw new IllegalArgumentException("Стикерсет с именем '" + stickerSetName + "' уже существует в галерее");
+            throw new IllegalArgumentException(localize(
+                    lang,
+                    "Стикерсет с именем '" + stickerSetName + "' уже существует в галерее",
+                    "A stickerset with the name '" + stickerSetName + "' already exists in the gallery"
+            ));
         }
         
         // 2. Валидируем существование стикерсета в Telegram API
@@ -63,34 +75,44 @@ public class StickerSetService {
         try {
             telegramStickerSetInfo = telegramBotApiService.validateStickerSetExists(stickerSetName);
             if (telegramStickerSetInfo == null) {
-                throw new IllegalArgumentException("Стикерсет '" + stickerSetName + "' не найден в Telegram");
+                throw new IllegalArgumentException(localize(
+                        lang,
+                        "Стикерсет '" + stickerSetName + "' не найден в Telegram",
+                        "Stickerset '" + stickerSetName + "' was not found in Telegram"
+                ));
             }
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при валидации стикерсета в Telegram API: {}", e.getMessage());
-            throw new IllegalArgumentException("Не удалось проверить существование стикерсета в Telegram: " + e.getMessage());
+            throw new IllegalArgumentException(localize(
+                    lang,
+                    "Не удалось проверить существование стикерсета в Telegram: " + e.getMessage(),
+                    "Failed to verify stickerset existence in Telegram: " + e.getMessage()
+            ));
         }
         
         // 3. Извлекаем userId только из аутентификации (initData)
         Long userId = extractUserIdFromAuthentication();
         if (userId == null) {
-            throw new IllegalArgumentException("Не удалось определить ID пользователя. Убедитесь, что вы авторизованы через Telegram Web App");
+            throw new IllegalArgumentException(localize(
+                    lang,
+                    "Не удалось определить ID пользователя. Убедитесь, что вы авторизованы через Telegram Web App",
+                    "Failed to determine user ID. Make sure you are authorized via Telegram Web App"
+            ));
         }
         LOGGER.debug("📱 Извлечен userId из аутентификации: {}", userId);
-        
+
         // 4. Определяем title
         String title = createDto.getTitle();
         if (title == null || title.trim().isEmpty()) {
             title = telegramBotApiService.extractTitleFromStickerSetInfo(telegramStickerSetInfo);
             if (title == null || title.trim().isEmpty()) {
-                throw new IllegalArgumentException("Не удалось получить название стикерсета из Telegram API");
+                throw new IllegalArgumentException(localize(
+                        lang,
+                        "Не удалось получить название стикерсета из Telegram API",
+                        "Failed to retrieve stickerset title from Telegram API"
+                ));
             }
             LOGGER.debug("📝 Получен title из Telegram API: '{}'", title);
-        }
-        
-        // 4.1 Проверяем, что стикерсет с таким title не существует (игнорируя регистр)
-        Optional<StickerSet> existingByTitle = stickerSetRepository.findByTitleIgnoreCase(title);
-        if (existingByTitle.isPresent()) {
-            throw new IllegalArgumentException("Стикерсет с названием '" + title + "' уже существует в галерее");
         }
         
         // 5. Обрабатываем категории
@@ -101,18 +123,22 @@ public class StickerSetService {
                 LOGGER.debug("📁 Найдено категорий: {}", categories.size());
             } catch (IllegalArgumentException e) {
                 LOGGER.warn("⚠️ Ошибка при получении категорий: {}", e.getMessage());
-                throw e;
+                throw new IllegalArgumentException(localize(
+                        lang,
+                        e.getMessage(),
+                        e.getMessage()
+                ));
             }
         }
         
         // 6. Создаем стикерсет
-        return createStickerSetInternal(userId, title, stickerSetName, categories);
+        return createStickerSetInternal(userId, title, stickerSetName, createDto.getIsPublic(), categories);
     }
     
     /**
      * Внутренний метод для создания стикерсета без валидации
      */
-    private StickerSet createStickerSetInternal(Long userId, String title, String name, List<Category> categories) {
+    private StickerSet createStickerSetInternal(Long userId, String title, String name, Boolean isPublic, List<Category> categories) {
         // Профиль пользователя создается автоматически при аутентификации
         LOGGER.debug("Создание стикерсета для пользователя {}", userId);
         
@@ -120,6 +146,7 @@ public class StickerSetService {
         stickerSet.setUserId(userId);
         stickerSet.setTitle(title);
         stickerSet.setName(name);
+        stickerSet.setIsPublic(Boolean.TRUE.equals(isPublic));
         
         // Добавляем категории, если они указаны
         if (categories != null && !categories.isEmpty()) {
@@ -152,6 +179,18 @@ public class StickerSetService {
             LOGGER.warn("⚠️ Ошибка при извлечении userId из аутентификации: {}", e.getMessage());
             return null;
         }
+    }
+
+    private String normalizeLanguage(String language) {
+        if (language == null) {
+            return "en";
+        }
+        String normalized = language.trim().toLowerCase();
+        return ("ru".equals(normalized)) ? "ru" : "en";
+    }
+
+    private String localize(String language, String ruMessage, String enMessage) {
+        return "ru".equals(language) ? ruMessage : enMessage;
     }
 
     public StickerSet findByName(String name) {

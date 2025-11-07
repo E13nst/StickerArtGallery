@@ -216,7 +216,7 @@ void createStickerSet_WithNewStickerSet_ShouldCreateSuccessfully() {
     
     // Настройка моков...
     
-    StickerSet result = stickerSetService.createStickerSet(createDto);
+    StickerSet result = stickerSetService.createStickerSet(createDto, "ru");
     
     assertNotNull(result);
     assertEquals("shaitanchick", result.getName());

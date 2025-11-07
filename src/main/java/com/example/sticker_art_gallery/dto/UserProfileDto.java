@@ -21,6 +21,8 @@ public class UserProfileDto {
     @NotNull(message = "Баланс арт-кредитов не может быть null")
     @Min(value = 0, message = "Баланс арт-кредитов не может быть отрицательным")
     private Long artBalance;
+
+    private Boolean isBlocked;
     
     private UserDto user; // Информация о пользователе из Telegram
     
@@ -30,11 +32,12 @@ public class UserProfileDto {
     // Конструкторы
     public UserProfileDto() {}
     
-    public UserProfileDto(Long id, Long userId, String role, Long artBalance, UserDto user, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+    public UserProfileDto(Long id, Long userId, String role, Long artBalance, Boolean isBlocked, UserDto user, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         this.id = id;
         this.userId = userId;
         this.role = role;
         this.artBalance = artBalance;
+        this.isBlocked = isBlocked;
         this.user = user;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -53,6 +56,7 @@ public class UserProfileDto {
                 entity.getUserId(),
                 entity.getRole().name(),
                 entity.getArtBalance(),
+                entity.getIsBlocked(),
                 null, // user будет установлен отдельно в контроллере
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
@@ -70,6 +74,7 @@ public class UserProfileDto {
             entity.setRole(UserProfileEntity.UserRole.valueOf(this.role));
         }
         entity.setArtBalance(this.artBalance);
+        entity.setIsBlocked(this.isBlocked);
         entity.setCreatedAt(this.createdAt);
         entity.setUpdatedAt(this.updatedAt);
         return entity;
@@ -87,6 +92,9 @@ public class UserProfileDto {
     
     public Long getArtBalance() { return artBalance; }
     public void setArtBalance(Long artBalance) { this.artBalance = artBalance; }
+
+    public Boolean getIsBlocked() { return isBlocked; }
+    public void setIsBlocked(Boolean isBlocked) { this.isBlocked = isBlocked; }
     
     public UserDto getUser() { return user; }
     public void setUser(UserDto user) { this.user = user; }
@@ -104,6 +112,7 @@ public class UserProfileDto {
                 ", userId=" + userId +
                 ", role='" + role + '\'' +
                 ", artBalance=" + artBalance +
+                ", isBlocked=" + isBlocked +
                 '}';
     }
 }

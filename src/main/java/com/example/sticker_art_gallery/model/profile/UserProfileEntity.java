@@ -21,6 +21,9 @@ public class UserProfileEntity {
     @Column(name = "art_balance", nullable = false)
     private Long artBalance = 0L;
 
+    @Column(name = "is_blocked", nullable = false)
+    private Boolean isBlocked = false;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
@@ -62,6 +65,14 @@ public class UserProfileEntity {
 
     public void setArtBalance(Long artBalance) {
         this.artBalance = artBalance;
+    }
+
+    public Boolean getIsBlocked() {
+        return isBlocked;
+    }
+
+    public void setIsBlocked(Boolean isBlocked) {
+        this.isBlocked = isBlocked;
     }
 
     public OffsetDateTime getCreatedAt() {

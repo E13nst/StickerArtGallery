@@ -8,7 +8,6 @@ import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
 import com.example.sticker_art_gallery.model.user.UserEntity;
 import com.example.sticker_art_gallery.model.user.UserRepository;
 import com.example.sticker_art_gallery.util.TelegramInitDataGenerator;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -54,9 +53,6 @@ class StickerSetControllerIntegrationTest {
     @Autowired
     private MockMvc mockMvc;  // Автоматически настроен с @AutoConfigureMockMvc
 
-    @Autowired
-    private ObjectMapper objectMapper;
-    
     @Autowired
     private AppConfig appConfig;
     
@@ -147,6 +143,21 @@ class StickerSetControllerIntegrationTest {
         // в продакшене. Только очищаем стикерсеты.
     }
 
+    private org.springframework.test.web.servlet.ResultActions performCreateStickerSet(CreateStickerSetDto createDto, String initData) throws Exception {
+        var requestBuilder = post("/api/stickersets")
+                .header("X-Telegram-Init-Data", initData);
+        if (createDto.getName() != null) {
+            requestBuilder = requestBuilder.param("name", createDto.getName());
+        }
+        if (createDto.getTitle() != null) {
+            requestBuilder = requestBuilder.param("title", createDto.getTitle());
+        }
+        if (createDto.getIsPublic() != null) {
+            requestBuilder = requestBuilder.param("isPublic", createDto.getIsPublic().toString());
+        }
+        return mockMvc.perform(requestBuilder);
+    }
+
     @Test
     @Story("Создание стикерсета")
     @DisplayName("POST /api/stickersets с валидными данными должен возвращать 201")
@@ -159,10 +170,7 @@ class StickerSetControllerIntegrationTest {
         createDto.setName("https://t.me/addstickers/citati_prosto");
 
         // When & Then
-        mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", validInitData)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createDto)))
+        performCreateStickerSet(createDto, validInitData)
                 .andDo(result -> {
                     System.out.println("🧪 Response Status: " + result.getResponse().getStatus());
                     System.out.println("🧪 Response Body: " + result.getResponse().getContentAsString());
@@ -187,10 +195,7 @@ class StickerSetControllerIntegrationTest {
         createDto.setName("https://t.me/addstickers/shblokun");
 
         // When & Then
-        mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", validInitData)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createDto)))
+        performCreateStickerSet(createDto, validInitData)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.name").value("shblokun"))
@@ -208,10 +213,7 @@ class StickerSetControllerIntegrationTest {
         createDto.setTitle("Custom Title");
 
         // When & Then
-        mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", validInitData)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createDto)))
+        performCreateStickerSet(createDto, validInitData)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.name").value("test_stickers"))
@@ -227,10 +229,7 @@ class StickerSetControllerIntegrationTest {
         createDto.setName("");
 
         // When & Then
-        mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", validInitData)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createDto)))
+        performCreateStickerSet(createDto, validInitData)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").exists())
                 .andExpect(jsonPath("$.message").exists());
@@ -244,10 +243,7 @@ class StickerSetControllerIntegrationTest {
         createDto.setName("invalid-name!");
 
         // When & Then
-        mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", validInitData)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createDto)))
+        performCreateStickerSet(createDto, validInitData)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").exists())
                 .andExpect(jsonPath("$.message").exists());
@@ -261,10 +257,7 @@ class StickerSetControllerIntegrationTest {
         createDto.setName("https://t.me/addstickers/");
 
         // When & Then
-        mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", validInitData)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createDto)))
+        performCreateStickerSet(createDto, validInitData)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").exists())
                 .andExpect(jsonPath("$.message").exists());
@@ -279,10 +272,7 @@ class StickerSetControllerIntegrationTest {
         createDto.setTitle("A".repeat(65)); // Максимум 64 символа
 
         // When & Then
-        mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", validInitData)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createDto)))
+        performCreateStickerSet(createDto, validInitData)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").exists())
                 .andExpect(jsonPath("$.message").exists());
@@ -297,37 +287,34 @@ class StickerSetControllerIntegrationTest {
 
         // When & Then
         mockMvc.perform(post("/api/stickersets")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createDto)))
-                .andExpect(status().isBadRequest());
+                        .param("name", "test_stickers"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("Unauthorized"))
+                .andExpect(jsonPath("$.message").value("User is not authenticated"));
     }
 
     @Test
-    @DisplayName("POST /api/stickersets с некорректным initData должен возвращать 400")
-    void createStickerSet_WithInvalidInitData_ShouldReturn400() throws Exception {
+    @DisplayName("POST /api/stickersets с некорректным initData должен возвращать 401")
+    void createStickerSet_WithInvalidInitData_ShouldReturn401() throws Exception {
         // Given
         CreateStickerSetDto createDto = new CreateStickerSetDto();
         createDto.setName("test_stickers");
 
         // When & Then
-        mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", "invalid_data")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createDto)))
-                .andExpect(status().isBadRequest());
+        performCreateStickerSet(createDto, "invalid_data")
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("Unauthorized"))
+                .andExpect(jsonPath("$.message").value("User is not authenticated"));
     }
 
     @Test
     @DisplayName("POST /api/stickersets с JSON без обязательного поля name должен возвращать 400")
     void createStickerSet_WithoutNameField_ShouldReturn400() throws Exception {
         // Given
-        String jsonWithoutName = "{\"title\":\"Test Title\"}";
+        CreateStickerSetDto createDto = new CreateStickerSetDto();
 
         // When & Then
-        mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", validInitData)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonWithoutName))
+        performCreateStickerSet(createDto, validInitData)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").exists())
                 .andExpect(jsonPath("$.message").exists());
@@ -355,17 +342,11 @@ class StickerSetControllerIntegrationTest {
         createDto.setName("shblokun");
 
         // Сначала создаем стикерсет
-        mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", validInitData)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createDto)))
+        performCreateStickerSet(createDto, validInitData)
                 .andExpect(status().isCreated());
 
         // Затем пытаемся создать еще один с тем же именем
-        mockMvc.perform(post("/api/stickersets")
-                        .header("X-Telegram-Init-Data", validInitData)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createDto)))
+        performCreateStickerSet(createDto, validInitData)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Ошибка валидации"))
                 .andExpect(jsonPath("$.message").value("Стикерсет с именем 'shblokun' уже существует в галерее"));
