@@ -36,7 +36,7 @@ public class TelegramInitDataValidatorTest {
         
         String testInitData = "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A123456789%2C%22first_name%22%3A%22Test%22%2C%22last_name%22%3A%22User%22%2C%22username%22%3A%22testuser%22%2C%22language_code%22%3A%22en%22%7D&auth_date=1640995200&hash=test_hash_for_development_only";
         
-        boolean isValid = validator.validateInitData(testInitData, "StickerGallery");
+        boolean isValid = validator.validateInitData(testInitData);
         
         System.out.println("🔍 Результат валидации: " + isValid);
         

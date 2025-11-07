@@ -73,7 +73,7 @@ class TelegramInitDataGeneratorTest {
         assertTrue(initData.contains("hash="));
         
         // Главная проверка: initData проходит валидацию
-        boolean isValid = validator.validateInitData(initData, "TestBot");
+        boolean isValid = validator.validateInitData(initData);
         assertTrue(isValid, "Сгенерированная initData должна проходить валидацию");
     }
     
@@ -95,7 +95,7 @@ class TelegramInitDataGeneratorTest {
         assertTrue(initData.contains("user="));
         assertTrue(initData.contains("hash="));
         
-        boolean isValid = validator.validateInitData(initData, "TestBot");
+        boolean isValid = validator.validateInitData(initData);
         assertTrue(isValid);
     }
     
@@ -124,7 +124,7 @@ class TelegramInitDataGeneratorTest {
         assertTrue(initData.contains("query_id="));
         assertTrue(initData.contains("chat_type="));
         
-        boolean isValid = validator.validateInitData(initData, "TestBot");
+        boolean isValid = validator.validateInitData(initData);
         assertTrue(isValid);
     }
     
@@ -148,7 +148,7 @@ class TelegramInitDataGeneratorTest {
         assertNotNull(initData);
         assertTrue(initData.contains("auth_date=" + customAuthDate));
         
-        boolean isValid = validator.validateInitData(initData, "TestBot");
+        boolean isValid = validator.validateInitData(initData);
         assertTrue(isValid);
     }
     
@@ -198,7 +198,7 @@ class TelegramInitDataGeneratorTest {
                 .build();
         
         assertNotNull(initData);
-        boolean isValid = validator.validateInitData(initData, "TestBot");
+        boolean isValid = validator.validateInitData(initData);
         assertTrue(isValid);
     }
     
@@ -220,7 +220,7 @@ class TelegramInitDataGeneratorTest {
                 .firstName("Admin")
                 .build();
         
-        assertTrue(validator.validateInitData(adminInitData, "TestBot"));
+        assertTrue(validator.validateInitData(adminInitData));
         
         // Обычный пользователь
         String userInitData = TelegramInitDataGenerator.builder()
@@ -230,7 +230,7 @@ class TelegramInitDataGeneratorTest {
                 .firstName("User")
                 .build();
         
-        assertTrue(validator.validateInitData(userInitData, "TestBot"));
+        assertTrue(validator.validateInitData(userInitData));
         
         // Проверяем, что initData разные
         assertNotEquals(adminInitData, userInitData);

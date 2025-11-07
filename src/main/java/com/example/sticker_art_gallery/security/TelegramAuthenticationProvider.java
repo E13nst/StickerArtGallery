@@ -51,20 +51,19 @@ public class TelegramAuthenticationProvider implements AuthenticationProvider {
         TelegramAuthenticationToken token = (TelegramAuthenticationToken) authentication;
         String initData = token.getInitData();
         Long telegramId = token.getTelegramId();
-        String botName = token.getBotName();
         
-        LOGGER.info("🔐 Аутентификация пользователя с telegram_id: {} для бота: {}", telegramId, botName);
-        LOGGER.debug("🔍 Детали токена: initData length={}, telegramId={}, botName={}", 
-                initData != null ? initData.length() : 0, telegramId, botName);
+        LOGGER.info("🔐 Аутентификация пользователя с telegram_id: {}", telegramId);
+        LOGGER.debug("🔍 Детали токена: initData length={}, telegramId={}", 
+                initData != null ? initData.length() : 0, telegramId);
         
         try {
-            // Валидируем initData для конкретного бота
-            LOGGER.debug("🔍 Начинаем валидацию initData для telegram_id: {} и бота: {}", telegramId, botName);
-            if (!validator.validateInitData(initData, botName)) {
-                LOGGER.warn("❌ Невалидная initData для пользователя: {} и бота: {}", telegramId, botName);
+            // Валидируем initData
+            LOGGER.debug("🔍 Начинаем валидацию initData для telegram_id: {}", telegramId);
+            if (!validator.validateInitData(initData)) {
+                LOGGER.warn("❌ Невалидная initData для пользователя: {}", telegramId);
                 return null;
             }
-            LOGGER.debug("✅ InitData валидна для telegram_id: {} и бота: {}", telegramId, botName);
+            LOGGER.debug("✅ InitData валидна для telegram_id: {}", telegramId);
             
             // Извлекаем данные пользователя из initData
             LOGGER.debug("🔍 Извлекаем данные пользователя из initData");
@@ -100,17 +99,17 @@ public class TelegramAuthenticationProvider implements AuthenticationProvider {
             // Создаем аутентифицированный токен
             TelegramAuthenticationToken authenticatedToken = new TelegramAuthenticationToken(
                     new AuthUserPrincipal(profile.getUserId(), profile.getRole()),
-                    initData, telegramId, botName, authorities
+                    initData, telegramId, authorities
             );
             LOGGER.debug("✅ Создан аутентифицированный токен");
             
-            LOGGER.info("✅ Пользователь успешно аутентифицирован: {} (роль: {}) для бота: {}", 
-                    telegramUser.getUsername(), profile.getRole(), botName);
+            LOGGER.info("✅ Пользователь успешно аутентифицирован: {} (роль: {})", 
+                    telegramUser.getUsername(), profile.getRole());
             
             return authenticatedToken;
             
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка аутентификации пользователя {} для бота {}: {}", telegramId, botName, e.getMessage(), e);
+            LOGGER.error("❌ Ошибка аутентификации пользователя {}: {}", telegramId, e.getMessage(), e);
             return null;
         }
     }

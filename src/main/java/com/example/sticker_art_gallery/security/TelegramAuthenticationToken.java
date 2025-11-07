@@ -13,31 +13,28 @@ public class TelegramAuthenticationToken extends AbstractAuthenticationToken {
     
     private final String initData;
     private final Long telegramId;
-    private final String botName;
     private AuthUserPrincipal principal;
     private boolean authenticated = false;
     
     /**
      * Конструктор для неаутентифицированного токена
      */
-    public TelegramAuthenticationToken(String initData, Long telegramId, String botName) {
+    public TelegramAuthenticationToken(String initData, Long telegramId) {
         super(Collections.emptyList());
         this.initData = initData;
         this.telegramId = telegramId;
-        this.botName = botName;
         this.authenticated = false;
     }
     
     /**
      * Конструктор для аутентифицированного токена
      */
-    public TelegramAuthenticationToken(AuthUserPrincipal principal, String initData, Long telegramId, 
-                                      String botName, Collection<? extends GrantedAuthority> authorities) {
+    public TelegramAuthenticationToken(AuthUserPrincipal principal, String initData, Long telegramId,
+                                      Collection<? extends GrantedAuthority> authorities) {
         super(authorities);
         this.principal = principal;
         this.initData = initData;
         this.telegramId = telegramId;
-        this.botName = botName;
         this.authenticated = true;
     }
     
@@ -71,10 +68,6 @@ public class TelegramAuthenticationToken extends AbstractAuthenticationToken {
     
     public Long getTelegramId() {
         return telegramId;
-    }
-    
-    public String getBotName() {
-        return botName;
     }
     
     public AuthUserPrincipal getAuthUser() { return principal; }

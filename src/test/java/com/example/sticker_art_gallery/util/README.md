@@ -156,7 +156,7 @@ String expiredInitData = TelegramInitDataGenerator.builder()
     .build();
 
 // Эта initData НЕ пройдет валидацию
-assertFalse(validator.validateInitData(expiredInitData, "StickerGallery"));
+assertFalse(validator.validateInitData(expiredInitData));
 ```
 
 ## Как это работает?
@@ -259,7 +259,6 @@ assertEquals(123456789L, telegramId);
 
 1. Убедитесь, что используете тот же `botToken`, что настроен в `application-test.yaml`
 2. Проверьте, что `authDate` не старше 24 часов
-3. Убедитесь, что `botName` в заголовке совпадает с конфигурацией
 
 ### Спецсимволы в имени пользователя
 

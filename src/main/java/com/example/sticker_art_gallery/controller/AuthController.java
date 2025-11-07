@@ -29,7 +29,6 @@ import java.util.Map;
 public class AuthController {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthController.class);
-    private static final String DEFAULT_BOT_NAME = "StickerGallery";
     
     private final TelegramInitDataValidator validator;
     
@@ -103,7 +102,7 @@ public class AuthController {
     @PostMapping("/validate")
     @Operation(
         summary = "Валидация Telegram initData",
-        description = "Проверяет валидность Telegram Web App initData для конкретного бота"
+        description = "Проверяет валидность Telegram Web App initData"
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Валидация выполнена успешно",
@@ -111,9 +110,8 @@ public class AuthController {
                 examples = @ExampleObject(value = """
                     {
                         "valid": true,
-                        "botName": "StickerGallery",
                         "telegramId": 123456789,
-                        "message": "InitData is valid for bot: StickerGallery"
+                        "message": "InitData is valid"
                     }
                     """))),
         @ApiResponse(responseCode = "400", description = "Ошибка валидации",
@@ -121,7 +119,7 @@ public class AuthController {
                 examples = @ExampleObject(value = """
                     {
                         "valid": false,
-                        "error": "Invalid initData for bot: StickerGallery"
+                        "error": "Invalid initData"
                     }
                     """)))
     })
@@ -129,15 +127,11 @@ public class AuthController {
             @Parameter(description = "Данные для валидации", required = true,
                 content = @Content(examples = @ExampleObject(value = """
                     {
-                        "initData": "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A123456789%7D&auth_date=1640995200&hash=abc123...",
-                        "botName": "StickerGallery"
+                        "initData": "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A123456789%7D&auth_date=1640995200&hash=abc123..."
                     }
                     """)))
             @RequestBody Map<String, String> request) {
         String initData = request.get("initData");
-        String botNameRaw = request.get("botName");
-        String botName = resolveBotName(botNameRaw);
-        boolean usingDefaultBot = botNameRaw == null || botNameRaw.trim().isEmpty();
         
         Map<String, Object> response = new HashMap<>();
         
@@ -147,20 +141,15 @@ public class AuthController {
             return ResponseEntity.badRequest().body(response);
         }
         
-        if (usingDefaultBot) {
-            LOGGER.debug("Используется имя бота по умолчанию '{}' для проверки initData", DEFAULT_BOT_NAME);
-        }
-
-        boolean isValid = validator.validateInitData(initData, botName);
+        boolean isValid = validator.validateInitData(initData);
         response.put("valid", isValid);
-        response.put("botName", botName);
         
         if (isValid) {
             Long telegramId = validator.extractTelegramId(initData);
             response.put("telegramId", telegramId);
-            response.put("message", "InitData is valid for bot: " + botName);
+            response.put("message", "InitData is valid");
         } else {
-            response.put("error", "Invalid initData for bot: " + botName);
+            response.put("error", "Invalid initData");
         }
         
         return ResponseEntity.ok(response);
@@ -189,8 +178,7 @@ public class AuthController {
                             "role": "USER",
                             "artBalance": 0
                         },
-                        "botName": "StickerGallery",
-                        "message": "User found for bot: StickerGallery"
+                        "message": "User found"
                     }
                     """))),
         @ApiResponse(responseCode = "400", description = "Ошибка валидации"),
@@ -200,9 +188,6 @@ public class AuthController {
             @Parameter(description = "Данные для поиска пользователя", required = true)
             @RequestBody Map<String, String> request) {
         String initData = request.get("initData");
-        String botNameRaw = request.get("botName");
-        String botName = resolveBotName(botNameRaw);
-        boolean usingDefaultBot = botNameRaw == null || botNameRaw.trim().isEmpty();
         
         Map<String, Object> response = new HashMap<>();
         
@@ -213,13 +198,10 @@ public class AuthController {
         }
         
         try {
-            if (usingDefaultBot) {
-                LOGGER.debug("Используется имя бота по умолчанию '{}' для получения информации о пользователе", DEFAULT_BOT_NAME);
-            }
-            // Валидируем initData для конкретного бота
-            if (!validator.validateInitData(initData, botName)) {
+            // Валидируем initData
+            if (!validator.validateInitData(initData)) {
                 response.put("success", false);
-                response.put("error", "Invalid initData for bot: " + botName);
+                response.put("error", "Invalid initData");
                 return ResponseEntity.badRequest().body(response);
             }
             
@@ -234,11 +216,10 @@ public class AuthController {
             // Возвращаем базовую информацию
             response.put("success", true);
             response.put("telegramId", telegramId);
-            response.put("botName", botName);
-            response.put("message", "User validated for bot: " + botName);
+            response.put("message", "User validated");
             
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка получения информации о пользователе для бота {}: {}", botName, e.getMessage(), e);
+            LOGGER.error("❌ Ошибка получения информации о пользователе: {}", e.getMessage(), e);
             response.put("success", false);
             response.put("error", "Internal server error");
             return ResponseEntity.internalServerError().body(response);
@@ -270,8 +251,7 @@ public class AuthController {
                             "role": "USER",
                             "artBalance": 0
                         },
-                        "botName": "StickerGallery",
-                        "message": "User registered successfully for bot: StickerGallery"
+                        "message": "User registered successfully"
                     }
                     """))),
         @ApiResponse(responseCode = "400", description = "Ошибка валидации"),
@@ -281,9 +261,6 @@ public class AuthController {
             @Parameter(description = "Данные для регистрации пользователя", required = true)
             @RequestBody Map<String, String> request) {
         String initData = request.get("initData");
-        String botNameRaw = request.get("botName");
-        String botName = resolveBotName(botNameRaw);
-        boolean usingDefaultBot = botNameRaw == null || botNameRaw.trim().isEmpty();
         
         Map<String, Object> response = new HashMap<>();
         
@@ -294,13 +271,10 @@ public class AuthController {
         }
         
         try {
-            if (usingDefaultBot) {
-                LOGGER.debug("Используется имя бота по умолчанию '{}' для регистрации пользователя", DEFAULT_BOT_NAME);
-            }
-            // Валидируем initData для конкретного бота
-            if (!validator.validateInitData(initData, botName)) {
+            // Валидируем initData
+            if (!validator.validateInitData(initData)) {
                 response.put("success", false);
-                response.put("error", "Invalid initData for bot: " + botName);
+                response.put("error", "Invalid initData");
                 return ResponseEntity.badRequest().body(response);
             }
             
@@ -315,24 +289,16 @@ public class AuthController {
             // Пользователь будет создан автоматически при аутентификации
             response.put("success", true);
             response.put("telegramId", telegramId);
-            response.put("botName", botName);
-            response.put("message", "User registered automatically on first authentication for bot: " + botName);
+            response.put("message", "User registered automatically on first authentication");
             
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка регистрации пользователя для бота {}: {}", botName, e.getMessage(), e);
+            LOGGER.error("❌ Ошибка регистрации пользователя: {}", e.getMessage(), e);
             response.put("success", false);
             response.put("error", "Internal server error");
             return ResponseEntity.internalServerError().body(response);
         }
         
         return ResponseEntity.ok(response);
-    }
-    
-    private String resolveBotName(String botName) {
-        if (botName == null || botName.trim().isEmpty()) {
-            return DEFAULT_BOT_NAME;
-        }
-        return botName.trim();
     }
     
 }

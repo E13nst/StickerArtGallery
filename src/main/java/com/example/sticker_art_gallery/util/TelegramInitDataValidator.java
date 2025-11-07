@@ -32,24 +32,19 @@ public class TelegramInitDataValidator {
         this.appConfig = appConfig;
     }
 
-    public boolean validateInitData(String initData, String botName) {
-        LOGGER.info("🔍 Начинаем валидацию initData для бота: {}", botName);
+    public boolean validateInitData(String initData) {
+        LOGGER.info("🔍 Начинаем валидацию initData");
         
         if (initData == null || initData.trim().isEmpty()) {
             LOGGER.warn("❌ InitData пустая или null");
             return false;
         }
-        
-        if (botName == null || botName.trim().isEmpty()) {
-            LOGGER.warn("❌ Имя бота не указано");
-            return false;
-        }
-        
+
         try {
             // Получаем токен бота из базы данных
-            String botToken = getBotToken(botName);
+            String botToken = getBotToken();
             if (botToken == null) {
-                LOGGER.warn("❌ Токен для бота '{}' не найден", botName);
+                LOGGER.warn("❌ Токен бота не найден");
                 return false;
             }
             LOGGER.debug("✅ Токен бота получен (длина: {})", botToken.length());
@@ -86,28 +81,28 @@ public class TelegramInitDataValidator {
             if (hash != null) {
                 signatureValid = validateHash(params, hash, botToken);
                 if (!signatureValid) {
-                    LOGGER.warn("❌ Неверная подпись hash для бота '{}'", botName);
+                    LOGGER.warn("❌ Неверная подпись hash");
                 }
             } else if (signature != null) {
                 signatureValid = validateSignature(params, signature, botToken);
                 if (!signatureValid) {
-                    LOGGER.warn("❌ Неверная подпись signature для бота '{}'", botName);
+                    LOGGER.warn("❌ Неверная подпись signature");
                 }
             }
             
             if (signatureValid) {
-                LOGGER.info("✅ InitData валидна для бота '{}'", botName);
+                LOGGER.info("✅ InitData валидна");
             }
             
             return signatureValid;
             
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка валидации initData для бота '{}': {}", botName, e.getMessage(), e);
+            LOGGER.error("❌ Ошибка валидации initData: {}", e.getMessage(), e);
             return false;
         }
     }
 
-    private String getBotToken(String botName) {
+    private String getBotToken() {
         try {
             String botToken = appConfig.getTelegram().getBotToken();
             if (botToken == null || botToken.trim().isEmpty()) {
