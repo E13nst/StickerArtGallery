@@ -416,16 +416,7 @@ public class StickerSetController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
 
-            Set<String> categoryKeySet = null;
-            if (categoryKeys != null && !categoryKeys.trim().isEmpty()) {
-                categoryKeySet = Arrays.stream(categoryKeys.split(","))
-                        .map(String::trim)
-                        .filter(key -> !key.isEmpty())
-                        .collect(Collectors.toCollection(LinkedHashSet::new));
-                if (categoryKeySet.isEmpty()) {
-                    categoryKeySet = null;
-                }
-            }
+            Set<String> categoryKeySet = parseCategoryKeys(categoryKeys);
 
             PageResponse<StickerSetDto> result = stickerSetService.findByUserIdWithPagination(
                     userId,
@@ -444,6 +435,82 @@ public class StickerSetController {
             LOGGER.error("❌ Ошибка при поиске стикерсетов для пользователя: {}", userId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+    
+    /**
+     * Получить авторские стикерсеты
+     */
+    @GetMapping("/author/{authorId}")
+    @Operation(
+        summary = "Получить авторские стикерсеты",
+        description = "Возвращает стикерсеты, у которых указан переданный authorId. " +
+                      "Если запрос выполняет владелец (authorId совпадает с авторизованным пользователем из initData) или администратор, " +
+                      "возвращаются все его стикерсеты (включая приватные). Иначе возвращаются только публичные (isPublic = true)."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Список авторских стикерсетов получен",
+            content = @Content(schema = @Schema(implementation = PageResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Некорректные параметры"),
+        @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера или проблемы с Telegram Bot API")
+    })
+    public ResponseEntity<PageResponse<StickerSetDto>> getStickerSetsByAuthorId(
+            @Parameter(description = "Telegram ID автора", required = true, example = "123456789")
+            @PathVariable @Positive(message = "ID автора должен быть положительным числом") Long authorId,
+            @Parameter(description = "Номер страницы (начиная с 0)", example = "0")
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @Parameter(description = "Количество элементов на странице (1-100)", example = "20")
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            @Parameter(description = "Поле для сортировки", example = "createdAt")
+            @RequestParam(defaultValue = "createdAt") String sort,
+            @Parameter(description = "Направление сортировки", example = "DESC")
+            @RequestParam(defaultValue = "DESC") @Pattern(regexp = "ASC|DESC") String direction,
+            @Parameter(description = "Фильтр по ключам категорий (через запятую)", example = "animals,cute")
+            @RequestParam(required = false) String categoryKeys) {
+        try {
+            LOGGER.info("🔍 Поиск авторских стикерсетов: authorId={}, page={}, size={}, sort={}, direction={}, categoryKeys={}",
+                    authorId, page, size, sort, direction, categoryKeys);
+
+            PageRequest pageRequest = new PageRequest();
+            pageRequest.setPage(page);
+            pageRequest.setSize(size);
+            pageRequest.setSort(sort);
+            pageRequest.setDirection(direction);
+
+            Long currentUserId = getCurrentUserIdOrNull();
+            boolean includePrivate = (currentUserId != null && currentUserId.equals(authorId)) || isAdmin();
+
+            Set<String> categoryKeySet = parseCategoryKeys(categoryKeys);
+
+            PageResponse<StickerSetDto> result = stickerSetService.findByAuthorIdWithPagination(
+                    authorId,
+                    pageRequest,
+                    categoryKeySet,
+                    currentUserId,
+                    includePrivate
+            );
+
+            LOGGER.debug("✅ Найдено {} авторских стикерсетов для authorId {} на странице {} из {}",
+                    result.getContent().size(), authorId, result.getPage() + 1, result.getTotalPages());
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при поиске авторских стикерсетов для автора: {}", authorId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    /**
+     * Разобрать строку ключей категорий в множество (с сохранением порядка)
+     */
+    private Set<String> parseCategoryKeys(String categoryKeys) {
+        if (categoryKeys == null || categoryKeys.trim().isEmpty()) {
+            return null;
+        }
+        Set<String> result = Arrays.stream(categoryKeys.split(","))
+                .map(String::trim)
+                .filter(key -> !key.isEmpty())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        return result.isEmpty() ? null : result;
     }
     
     /**

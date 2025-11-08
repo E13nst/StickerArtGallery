@@ -312,6 +312,32 @@ public class StickerSetService {
     }
     
     /**
+     * Получить авторские стикерсеты с пагинацией и обогащением данных
+     */
+    public PageResponse<StickerSetDto> findByAuthorIdWithPagination(Long authorId,
+                                                                    PageRequest pageRequest,
+                                                                    Set<String> categoryKeys,
+                                                                    Long currentUserId,
+                                                                    boolean includePrivate) {
+        LOGGER.debug("✍️ Получение авторских стикерсетов {} с пагинацией: page={}, size={}, includePrivate={}, categoryKeys={}",
+                authorId, pageRequest.getPage(), pageRequest.getSize(), includePrivate,
+                categoryKeys == null ? "null" : String.join(",", categoryKeys));
+
+        Set<String> normalizedCategoryKeys = (categoryKeys == null || categoryKeys.isEmpty()) ? null : categoryKeys;
+
+        Page<StickerSet> stickerSetsPage = stickerSetRepository.findAuthorStickerSetsFiltered(
+                authorId,
+                includePrivate,
+                normalizedCategoryKeys,
+                pageRequest.toPageable()
+        );
+
+        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), "en", currentUserId);
+
+        return PageResponse.of(stickerSetsPage, enrichedDtos);
+    }
+    
+    /**
      * Получить стикерсеты по ключам категорий с пагинацией и обогащением данных Bot API
      */
     public PageResponse<StickerSetDto> findByCategoryKeys(String[] categoryKeys, PageRequest pageRequest, String language) {

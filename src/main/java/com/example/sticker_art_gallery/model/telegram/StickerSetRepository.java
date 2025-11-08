@@ -152,4 +152,17 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
                                                  @Param("likedOnly") boolean likedOnly,
                                                  @Param("currentUserId") Long currentUserId,
                                                  Pageable pageable);
+
+    /**
+     * Поиск авторских стикерсетов с дополнительными фильтрами
+     */
+    @Query("SELECT DISTINCT ss FROM StickerSet ss " +
+           "LEFT JOIN ss.categories c " +
+           "WHERE ss.authorId = :authorId " +
+           "AND (:includePrivate = true OR ss.isPublic = true) " +
+           "AND (:categoryKeys IS NULL OR c.key IN :categoryKeys)")
+    Page<StickerSet> findAuthorStickerSetsFiltered(@Param("authorId") Long authorId,
+                                                   @Param("includePrivate") boolean includePrivate,
+                                                   @Param("categoryKeys") Set<String> categoryKeys,
+                                                   Pageable pageable);
 } 
