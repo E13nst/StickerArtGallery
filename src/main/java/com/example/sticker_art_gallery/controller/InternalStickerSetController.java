@@ -7,10 +7,9 @@ import com.example.sticker_art_gallery.service.telegram.StickerSetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,17 +23,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.Arrays;
-import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Межсервисный контроллер для создания стикерсетов от имени пользователей.
@@ -75,13 +66,6 @@ public class InternalStickerSetController {
                 in = ParameterIn.QUERY,
                 description = "Язык сообщений об ошибках (`ru` или `en`). По умолчанию `en`.",
                 example = "en"
-            ),
-            @Parameter(
-                name = "categoryKeys",
-                in = ParameterIn.QUERY,
-                description = "Список ключей категорий через запятую. Можно передавать несколько раз.",
-                array = @ArraySchema(schema = @Schema(type = "string")),
-                example = "animals,cute"
             )
         }
     )
@@ -93,19 +77,24 @@ public class InternalStickerSetController {
         @ApiResponse(responseCode = "403", description = "Нет прав для выполнения операции"),
         @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
     })
-    @RequestBody(required = false, content = @Content(schema = @Schema(hidden = true)))
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        required = true,
+        content = @Content(
+            schema = @Schema(implementation = CreateStickerSetDto.class),
+            examples = @ExampleObject(value = """
+                {
+                  "name": "https://t.me/addstickers/my_pack_by_bot",
+                  "title": "Мои стикеры",
+                  "categoryKeys": ["animals", "cute"],
+                  "isPublic": true
+                }
+                """)
+        )
+    )
     public ResponseEntity<?> createStickerSetForUser(
-            @Valid @ModelAttribute CreateStickerSetDto createDto,
+            @Valid @RequestBody CreateStickerSetDto createDto,
             @RequestParam @NotNull @Positive Long userId,
-            @RequestParam(required = false) String language,
-            @RequestParam(required = false) String categoryKeys) {
-
-        if ((createDto.getCategoryKeys() == null || createDto.getCategoryKeys().isEmpty()) && categoryKeys != null) {
-            Set<String> parsedKeys = parseCategoryKeys(categoryKeys);
-            if (parsedKeys != null) {
-                createDto.setCategoryKeys(parsedKeys);
-            }
-        }
+            @RequestParam(required = false) String language) {
 
         if (createDto.getIsPublic() == null) {
             createDto.setIsPublic(true);
@@ -114,7 +103,11 @@ public class InternalStickerSetController {
         try {
             LOGGER.info("🤝 Межсервисное создание стикерсета для userId {}: {}", userId, createDto.getName());
             StickerSet stickerSet = stickerSetService.createStickerSetForUser(createDto, userId, language);
-            StickerSetDto responseDto = StickerSetDto.fromEntity(stickerSet);
+            String responseLanguage = (language == null || language.isBlank()) ? "en" : language;
+            StickerSetDto responseDto = stickerSetService.findByIdWithBotApiData(stickerSet.getId(), responseLanguage, userId);
+            if (responseDto == null) {
+                responseDto = StickerSetDto.fromEntity(stickerSet, responseLanguage, userId);
+            }
             return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
         } catch (IllegalArgumentException ex) {
             LOGGER.warn("⚠️ Ошибка валидации при межсервисном создании стикерсета: {}", ex.getMessage());
@@ -131,17 +124,6 @@ public class InternalStickerSetController {
                             "message", "Unexpected error while creating stickerset"
                     ));
         }
-    }
-
-    private Set<String> parseCategoryKeys(String categoryKeys) {
-        if (categoryKeys == null || categoryKeys.trim().isEmpty()) {
-            return null;
-        }
-        Set<String> parsed = Arrays.stream(categoryKeys.split(","))
-                .map(String::trim)
-                .filter(value -> !value.isEmpty())
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-        return parsed.isEmpty() ? null : parsed;
     }
 }
 

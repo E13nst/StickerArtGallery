@@ -119,20 +119,10 @@ public class StickerSetTestSteps {
     
     @Step("Создать стикерсет через API")
     public ResultActions createStickerSet(CreateStickerSetDto createDto, String initData) throws Exception {
-        var requestBuilder = post("/api/stickersets")
-                .header("X-Telegram-Init-Data", initData);
-
-        if (createDto.getName() != null) {
-            requestBuilder = requestBuilder.param("name", createDto.getName());
-        }
-        if (createDto.getTitle() != null) {
-            requestBuilder = requestBuilder.param("title", createDto.getTitle());
-        }
-        if (createDto.getIsPublic() != null) {
-            requestBuilder = requestBuilder.param("isPublic", createDto.getIsPublic().toString());
-        }
-
-        return mockMvc.perform(requestBuilder);
+        return mockMvc.perform(post("/api/stickersets")
+                .header("X-Telegram-Init-Data", initData)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(createDto)));
     }
     
     @Step("Получить все стикерсеты через API")

@@ -6,7 +6,8 @@ import com.example.sticker_art_gallery.model.category.CategoryRepository;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.service.telegram.StickerSetService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
@@ -24,9 +25,9 @@ import java.util.stream.Collectors;
  * Сервис для автоматической категоризации стикерсетов с помощью AI
  */
 @Service
-@Slf4j
 public class AutoCategorizationService {
 
+    private static final Logger log = LoggerFactory.getLogger(AutoCategorizationService.class);
     private static final Pattern CATEGORY_KEY_PATTERN = Pattern.compile("^[a-z_]+$");
     private static final String SYSTEM_PROMPT_PATH = "ai/prompts/auto_category.system.txt";
     private static final String USER_PROMPT_PATH = "ai/prompts/auto_category.user.txt";

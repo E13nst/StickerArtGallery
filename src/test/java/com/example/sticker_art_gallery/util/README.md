@@ -75,9 +75,13 @@ void testCreateStickerSet() throws Exception {
         .userId(123456789L)
         .build();
     
+    CreateStickerSetDto request = new CreateStickerSetDto();
+    request.setName("test_stickers");
+    
     mockMvc.perform(post("/api/stickersets")
             .header("X-Telegram-Init-Data", initData)
-            .param("name", "test_stickers"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
         .andExpect(status().isCreated());
 }
 ```

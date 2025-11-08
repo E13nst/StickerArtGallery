@@ -25,13 +25,9 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Pattern;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.Parameters;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -567,36 +563,25 @@ public class StickerSetController {
         description = """
             Регистрирует в галерее уже существующий набор стикеров Telegram.
             
-            **Запрос**
-            - Метод: `POST /api/stickersets`
-            - Тело: отсутствует (используются только query-параметры)
+            **Формат запроса**
+            ```
+            POST /api/stickersets
+            Content-Type: application/json
+            Headers: X-Telegram-Init-Data: <initData>
             
-            **Обязательные query-параметры**
-            - `name` — имя стикерсета в Telegram (например, `my_pack_by_bot`) или полный URL `https://t.me/addstickers/<name>`.
-              Значение нормализуется: обрезаются пробелы, из URL извлекается имя, затем оно приводится к нижнему регистру.
+            {
+              "name": "https://t.me/addstickers/my_pack_by_bot",
+              "title": "Мои стикеры",
+              "categoryKeys": ["animals", "cute"],
+              "isPublic": true
+            }
+            ```
             
-            **Опциональные query-параметры**
-            - `title` — человекочитаемое название (до 64 символов). Если не указано, подтягивается из Telegram Bot API.
-            - `categoryKeys` — список ключей категорий (указывайте несколько параметров `categoryKeys=animals&categoryKeys=cute`).
-            - `isPublic` — публиковать ли набор в галерее (по умолчанию `true`).
+            Поле `name` обязательно. Остальные поля опциональны: `title` подтягивается из Telegram Bot API, если не указано;
+            `isPublic` по умолчанию `true`. Пользователь определяется по заголовку `X-Telegram-Init-Data`.
             
-            **Автоматически определяемые значения**
-            - `userId` — берется из заголовка `X-Telegram-Init-Data` после успешной аутентификации Telegram Web App.
-            - `title` — извлекается из Telegram Bot API, если не передан явно.
-            
-            **Алгоритм работы**
-            1. Валидируется заголовок `X-Telegram-Init-Data`; заблокированные пользователи получают 403 до выполнения бизнес-логики.
-            2. Имя стикерсета нормализуется и проверяется на уникальность в локальной базе.
-            3. Выполняется запрос к Telegram Bot API, чтобы убедиться, что набор существует, и получить его метаданные.
-            4. По ключам `categoryKeys` подтягиваются существующие категории (если указаны).
-            5. Создается запись `StickerSet` с заполнением всех служебных полей (`userId`, `title`, `isPublic`, `likesCount`, `createdAt` и т.д.).
-            
-            **Ответ (`StickerSetDto`)**
-            - `id`, `userId`, `name`, `title`, `createdAt`, `likesCount`, `isPublic`, `isBlocked`, `blockReason`, `isOfficial`,
-              `authorId`, `categories`, `telegramStickerSetInfo`, `isLikedByCurrentUser`.
-            
-            **Необходимые заголовки**
-            - `X-Telegram-Init-Data` — подписанные данные Telegram Web App, содержащие пользователя и подпись.
+            **Результат**
+            Возвращает полный `StickerSetDto`, идентичный ответу `GET /api/stickersets/{id}` (включая категории, счётчики и данные Telegram Bot API).
             """
     )
     @ApiResponses(value = {
@@ -682,38 +667,22 @@ public class StickerSetController {
                 }
                 """)))
     })
-    @Parameters({
-        @Parameter(
-            name = "name",
-            in = ParameterIn.QUERY,
-            required = true,
-            description = "Имя стикерсета в Telegram или полный URL `https://t.me/addstickers/<name>`. Значение нормализуется: из URL извлекается имя и приводится к нижнему регистру.",
-            example = "my_pack_by_bot"
-        ),
-        @Parameter(
-            name = "title",
-            in = ParameterIn.QUERY,
-            description = "Произвольное название до 64 символов. Если не указано, берётся из Telegram Bot API.",
-            example = ""
-        ),
-        @Parameter(
-            name = "categoryKeys",
-            in = ParameterIn.QUERY,
-            description = "Повторяющийся параметр для привязки категорий. Укажите несколько раз: `categoryKeys=animals&categoryKeys=cute`.",
-            array = @ArraySchema(schema = @Schema(type = "string")),
-            example = "animals"
-        ),
-        @Parameter(
-            name = "isPublic",
-            in = ParameterIn.QUERY,
-            description = "Публиковать ли набор в галерее. По умолчанию `true`.",
-            schema = @Schema(type = "boolean", defaultValue = "true"),
-            example = "true"
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        required = true,
+        content = @Content(
+            schema = @Schema(implementation = CreateStickerSetDto.class),
+            examples = @ExampleObject(value = """
+                {
+                  "name": "https://t.me/addstickers/my_pack_by_bot",
+                  "title": "Мои стикеры",
+                  "categoryKeys": ["animals", "cute"],
+                  "isPublic": true
+                }
+                """)
         )
-    })
-    @RequestBody(required = false, content = @Content(schema = @Schema(hidden = true)))
+    )
     public ResponseEntity<?> createStickerSet(
-            @Valid @ModelAttribute CreateStickerSetDto createDto,
+            @Valid @RequestBody CreateStickerSetDto createDto,
             HttpServletRequest request) {
         String language = getLanguageFromHeaderOrUser(request);
         try {
@@ -732,10 +701,14 @@ public class StickerSetController {
             }
 
             StickerSet newStickerSet = stickerSetService.createStickerSet(createDto, language);
-            StickerSetDto createdDto = StickerSetDto.fromEntity(newStickerSet);
+            String responseLanguage = (language == null || language.isBlank()) ? "en" : language;
+            StickerSetDto createdDto = stickerSetService.findByIdWithBotApiData(newStickerSet.getId(), responseLanguage, currentUserId);
+            if (createdDto == null) {
+                createdDto = StickerSetDto.fromEntity(newStickerSet, responseLanguage, currentUserId);
+            }
             
-            LOGGER.info("✅ Стикерсет создан с ID: {} (title: '{}', userId: {})", 
-                       createdDto.getId(), createdDto.getTitle(), createdDto.getUserId());
+            LOGGER.info("✅ Стикерсет создан с ID: {} (title: '{}', userId: {})",
+                       newStickerSet.getId(), createdDto.getTitle(), createdDto.getUserId());
             return ResponseEntity.status(HttpStatus.CREATED).body(createdDto);
             
         } catch (IllegalArgumentException e) {
@@ -1561,11 +1534,7 @@ public class StickerSetController {
     }
 
     private String languageResponse(String language, String ruMessage, String enMessage) {
-        return "ru".equals(language) ? ruMessage : enMessage;
-    }
-
-    private String languageResponse(HttpServletRequest request, String ruMessage, String enMessage) {
-        return languageResponse(getLanguageFromHeaderOrUser(request), ruMessage, enMessage);
+        return "ru".equalsIgnoreCase(language) ? ruMessage : enMessage;
     }
     
     /**

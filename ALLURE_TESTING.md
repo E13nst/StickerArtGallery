@@ -155,9 +155,9 @@ class StickerSetControllerTest {
     @DisplayName("POST /api/stickersets с валидными данными возвращает 201")
     @Description("""
         Проверяет регистрацию существующего стикерсета Telegram в галерее:
-        1. Формируем запрос `POST /api/stickersets?name=...` без тела.
+        1. Формируем запрос `POST /api/stickersets` с JSON-телом.
         2. Передаём заголовок `X-Telegram-Init-Data` с валидной подписью.
-        3. Ожидаем HTTP 201 Created и проверяем структуру ответа.
+        3. Ожидаем HTTP 201 Created и полный `StickerSetDto` в ответе.
         4. Убеждаемся, что имя нормализовано и заполнены поля из Bot API.
         """)
     @Severity(SeverityLevel.BLOCKER)
@@ -167,18 +167,12 @@ class StickerSetControllerTest {
         request.setName("test_stickers");
         
         // When
-        URI uri = UriComponentsBuilder.fromPath("/api/stickersets")
-                .queryParam("name", request.getName())
-                .build()
-                .toUri();
-        
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Telegram-Init-Data", validInitData);
-        
-        ResponseEntity<StickerSetDto> response = restTemplate.exchange(
-            uri,
-            HttpMethod.POST,
-            new HttpEntity<>(headers),
+
+        ResponseEntity<StickerSetDto> response = restTemplate.postForEntity(
+            "/api/stickersets",
+            new HttpEntity<>(request, headers),
             StickerSetDto.class
         );
         

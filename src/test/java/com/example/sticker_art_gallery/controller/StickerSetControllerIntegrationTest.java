@@ -7,6 +7,7 @@ import com.example.sticker_art_gallery.model.profile.UserProfileRepository;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
 import com.example.sticker_art_gallery.model.user.UserEntity;
 import com.example.sticker_art_gallery.model.user.UserRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.sticker_art_gallery.util.TelegramInitDataGenerator;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.DisplayName;
@@ -53,6 +54,9 @@ class StickerSetControllerIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;  // Автоматически настроен с @AutoConfigureMockMvc
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Autowired
     private AppConfig appConfig;
@@ -145,18 +149,10 @@ class StickerSetControllerIntegrationTest {
     }
 
     private org.springframework.test.web.servlet.ResultActions performCreateStickerSet(CreateStickerSetDto createDto, String initData) throws Exception {
-        var requestBuilder = post("/api/stickersets")
-                .header("X-Telegram-Init-Data", initData);
-        if (createDto.getName() != null) {
-            requestBuilder = requestBuilder.param("name", createDto.getName());
-        }
-        if (createDto.getTitle() != null) {
-            requestBuilder = requestBuilder.param("title", createDto.getTitle());
-        }
-        if (createDto.getIsPublic() != null) {
-            requestBuilder = requestBuilder.param("isPublic", createDto.getIsPublic().toString());
-        }
-        return mockMvc.perform(requestBuilder);
+        return mockMvc.perform(post("/api/stickersets")
+                .header("X-Telegram-Init-Data", initData)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(createDto)));
     }
 
     private org.springframework.test.web.servlet.ResultActions performInternalCreateStickerSet(String serviceToken,
@@ -168,19 +164,12 @@ class StickerSetControllerIntegrationTest {
         if (language != null) {
             requestBuilder = requestBuilder.param("language", language);
         }
-        if (createDto.getName() != null) {
-            requestBuilder = requestBuilder.param("name", createDto.getName());
-        }
-        if (createDto.getTitle() != null) {
-            requestBuilder = requestBuilder.param("title", createDto.getTitle());
-        }
-        if (createDto.getIsPublic() != null) {
-            requestBuilder = requestBuilder.param("isPublic", createDto.getIsPublic().toString());
-        }
         if (serviceToken != null) {
             requestBuilder = requestBuilder.header("X-Service-Token", serviceToken);
         }
-        return mockMvc.perform(requestBuilder);
+        return mockMvc.perform(requestBuilder
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(createDto)));
     }
 
     @Test
@@ -312,7 +301,8 @@ class StickerSetControllerIntegrationTest {
 
         // When & Then
         mockMvc.perform(post("/api/stickersets")
-                        .param("name", "test_stickers"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createDto)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("Unauthorized"))
                 .andExpect(jsonPath("$.message").value("User is not authenticated"));

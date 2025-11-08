@@ -404,14 +404,7 @@ public class StickerSetService {
      * Если Bot API недоступен, возвращает стикерсет без обогащения
      */
     public StickerSetDto findByIdWithBotApiData(Long id) {
-        LOGGER.debug("🔍 Получение стикерсета по ID {} с данными Bot API", id);
-        
-        StickerSet stickerSet = stickerSetRepository.findById(id).orElse(null);
-        if (stickerSet == null) {
-            return null;
-        }
-        
-        return enrichSingleStickerSetSafely(stickerSet);
+        return findByIdWithBotApiData(id, null, null);
     }
     
     /**
@@ -422,14 +415,22 @@ public class StickerSetService {
      * @return StickerSetDto с полем isLikedByCurrentUser
      */
     public StickerSetDto findByIdWithBotApiData(Long id, Long currentUserId) {
-        LOGGER.debug("🔍 Получение стикерсета по ID {} с данными Bot API и информацией о лайке пользователя {}", id, currentUserId);
+        return findByIdWithBotApiData(id, null, currentUserId);
+    }
+    
+    /**
+     * Получить стикерсет по ID с учётом языка и лайков пользователя
+     */
+    public StickerSetDto findByIdWithBotApiData(Long id, String language, Long currentUserId) {
+        LOGGER.debug("🔍 Получение стикерсета по ID {} с данными Bot API (language={}, currentUserId={})", id, language, currentUserId);
         
         StickerSet stickerSet = stickerSetRepository.findById(id).orElse(null);
         if (stickerSet == null) {
             return null;
         }
         
-        return enrichSingleStickerSetSafelyWithCategories(stickerSet, "en", currentUserId);
+        String lang = normalizeLanguage(language);
+        return enrichSingleStickerSetSafelyWithCategories(stickerSet, lang, currentUserId);
     }
     
     /**
@@ -598,10 +599,6 @@ public class StickerSetService {
     /**
      * Обогащает список стикерсетов данными из Bot API и категориями (последовательно для Hibernate)
      */
-    private List<StickerSetDto> enrichWithBotApiDataAndCategories(List<StickerSet> stickerSets, String language) {
-        return enrichWithBotApiDataAndCategories(stickerSets, language, null);
-    }
-    
     /**
      * Обогащает список стикерсетов данными из Bot API и категориями (последовательно для Hibernate)
      */
@@ -619,13 +616,6 @@ public class StickerSetService {
         
         LOGGER.debug("✅ Обогащение завершено для {} стикерсетов", result.size());
         return result;
-    }
-    
-    /**
-     * Обогащает список стикерсетов данными из Bot API (параллельно)
-     */
-    private List<StickerSetDto> enrichWithBotApiData(List<StickerSet> stickerSets) {
-        return enrichWithBotApiDataAndCategories(stickerSets, "en");
     }
     
     /**
