@@ -25,6 +25,9 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Pattern;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -573,8 +576,36 @@ public class StickerSetController {
                 }
                 """)))
     })
+    @Parameters({
+        @Parameter(
+            name = "name",
+            in = ParameterIn.QUERY,
+            required = true,
+            description = "Имя стикерсета в Telegram или полный URL `https://t.me/addstickers/<name>`. Значение нормализуется: из URL извлекается имя и приводится к нижнему регистру.",
+            example = "my_pack_by_bot"
+        ),
+        @Parameter(
+            name = "title",
+            in = ParameterIn.QUERY,
+            description = "Произвольное название до 64 символов. Если не указано, берётся из Telegram Bot API.",
+            example = "Мои любимые стикеры"
+        ),
+        @Parameter(
+            name = "categoryKeys",
+            in = ParameterIn.QUERY,
+            description = "Повторяющийся параметр для привязки категорий. Укажите несколько раз: `categoryKeys=animals&categoryKeys=cute`.",
+            array = @ArraySchema(schema = @Schema(type = "string")),
+            example = "animals"
+        ),
+        @Parameter(
+            name = "isPublic",
+            in = ParameterIn.QUERY,
+            description = "Публиковать ли набор в галерее. По умолчанию `true`.",
+            schema = @Schema(type = "boolean", defaultValue = "true"),
+            example = "false"
+        )
+    })
     public ResponseEntity<?> createStickerSet(
-            @Parameter(description = "Параметры создания стикерсета (передаются в query). Обязателен только name.", required = true)
             @Valid @ModelAttribute CreateStickerSetDto createDto,
             HttpServletRequest request) {
         String language = getLanguageFromHeaderOrUser(request);
