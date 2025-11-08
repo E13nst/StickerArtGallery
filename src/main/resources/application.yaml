@@ -5,6 +5,9 @@ app:
     url: ${MINI_APP_URL:${app.url}/mini-app/}
   telegram:
     bot-token: ${TELEGRAM_BOT_TOKEN}
+  internal:
+    service-tokens:
+      sticker-bot: ${STICKERBOT_SERVICE_TOKEN:}
   sticker-cache:
     enabled: ${STICKER_CACHE_ENABLED:true}        # Включить/выключить кеширование стикеров
     ttl-days: ${STICKER_CACHE_TTL_DAYS:7}         # Время жизни кеша в днях
