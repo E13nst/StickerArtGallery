@@ -10,6 +10,7 @@ public class AppConfig {
     private String url;
     private MiniApp miniApp = new MiniApp();
     private Telegram telegram = new Telegram();
+    private Internal internal = new Internal();
     
     public String getUrl() {
         return url;
@@ -34,6 +35,14 @@ public class AppConfig {
     public void setTelegram(Telegram telegram) {
         this.telegram = telegram;
     }
+
+    public Internal getInternal() {
+        return internal;
+    }
+
+    public void setInternal(Internal internal) {
+        this.internal = internal;
+    }
     
     public static class MiniApp {
         private String url;
@@ -56,6 +65,30 @@ public class AppConfig {
         
         public void setBotToken(String botToken) {
             this.botToken = botToken;
+        }
+    }
+
+    public static class Internal {
+        private ServiceTokens serviceTokens = new ServiceTokens();
+
+        public ServiceTokens getServiceTokens() {
+            return serviceTokens;
+        }
+
+        public void setServiceTokens(ServiceTokens serviceTokens) {
+            this.serviceTokens = serviceTokens;
+        }
+    }
+
+    public static class ServiceTokens {
+        private String stickerBot;
+
+        public String getStickerBot() {
+            return stickerBot;
+        }
+
+        public void setStickerBot(String stickerBot) {
+            this.stickerBot = stickerBot;
         }
     }
 }

@@ -1,0 +1,147 @@
+package com.example.sticker_art_gallery.controller;
+
+import com.example.sticker_art_gallery.dto.CreateStickerSetDto;
+import com.example.sticker_art_gallery.dto.StickerSetDto;
+import com.example.sticker_art_gallery.model.telegram.StickerSet;
+import com.example.sticker_art_gallery.service.telegram.StickerSetService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * Межсервисный контроллер для создания стикерсетов от имени пользователей.
+ */
+@RestController
+@RequestMapping("/internal/stickersets")
+@Tag(name = "Internal Sticker Sets", description = "Эндпоинты для межсервисного создания стикерсетов в галерее")
+@SecurityRequirement(name = "ServiceToken")
+@Validated
+public class InternalStickerSetController {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(InternalStickerSetController.class);
+
+    private final StickerSetService stickerSetService;
+
+    public InternalStickerSetController(StickerSetService stickerSetService) {
+        this.stickerSetService = stickerSetService;
+    }
+
+    @PostMapping
+    @PreAuthorize("hasRole('INTERNAL')")
+    @Operation(
+        summary = "Создать стикерсет от имени пользователя",
+        description = """
+            Межсервисный эндпоинт для регистрации стикерсета Telegram в галерее.
+            Токен сервиса должен быть передан в заголовке `X-Service-Token`.
+            """,
+        parameters = {
+            @Parameter(
+                name = "userId",
+                in = ParameterIn.QUERY,
+                required = true,
+                description = "Telegram ID пользователя, от имени которого создаётся стикерсет",
+                example = "123456789"
+            ),
+            @Parameter(
+                name = "language",
+                in = ParameterIn.QUERY,
+                description = "Язык сообщений об ошибках (`ru` или `en`). По умолчанию `en`.",
+                example = "en"
+            ),
+            @Parameter(
+                name = "categoryKeys",
+                in = ParameterIn.QUERY,
+                description = "Список ключей категорий через запятую. Можно передавать несколько раз.",
+                array = @ArraySchema(schema = @Schema(type = "string")),
+                example = "animals,cute"
+            )
+        }
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Стикерсет успешно создан",
+            content = @Content(schema = @Schema(implementation = StickerSetDto.class))),
+        @ApiResponse(responseCode = "400", description = "Ошибка валидации входных данных"),
+        @ApiResponse(responseCode = "401", description = "Межсервисная авторизация не пройдена"),
+        @ApiResponse(responseCode = "403", description = "Нет прав для выполнения операции"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    @RequestBody(required = false, content = @Content(schema = @Schema(hidden = true)))
+    public ResponseEntity<?> createStickerSetForUser(
+            @Valid @ModelAttribute CreateStickerSetDto createDto,
+            @RequestParam @NotNull @Positive Long userId,
+            @RequestParam(required = false) String language,
+            @RequestParam(required = false) String categoryKeys) {
+
+        if ((createDto.getCategoryKeys() == null || createDto.getCategoryKeys().isEmpty()) && categoryKeys != null) {
+            Set<String> parsedKeys = parseCategoryKeys(categoryKeys);
+            if (parsedKeys != null) {
+                createDto.setCategoryKeys(parsedKeys);
+            }
+        }
+
+        if (createDto.getIsPublic() == null) {
+            createDto.setIsPublic(true);
+        }
+
+        try {
+            LOGGER.info("🤝 Межсервисное создание стикерсета для userId {}: {}", userId, createDto.getName());
+            StickerSet stickerSet = stickerSetService.createStickerSetForUser(createDto, userId, language);
+            StickerSetDto responseDto = StickerSetDto.fromEntity(stickerSet);
+            return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
+        } catch (IllegalArgumentException ex) {
+            LOGGER.warn("⚠️ Ошибка валидации при межсервисном создании стикерсета: {}", ex.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(Map.of(
+                            "error", "Validation error",
+                            "message", ex.getMessage()
+                    ));
+        } catch (Exception ex) {
+            LOGGER.error("❌ Внутренняя ошибка при межсервисном создании стикерсета", ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "error", "Internal error",
+                            "message", "Unexpected error while creating stickerset"
+                    ));
+        }
+    }
+
+    private Set<String> parseCategoryKeys(String categoryKeys) {
+        if (categoryKeys == null || categoryKeys.trim().isEmpty()) {
+            return null;
+        }
+        Set<String> parsed = Arrays.stream(categoryKeys.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        return parsed.isEmpty() ? null : parsed;
+    }
+}
+

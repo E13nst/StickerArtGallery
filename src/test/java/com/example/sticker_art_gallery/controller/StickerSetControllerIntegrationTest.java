@@ -27,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
+@org.springframework.test.context.TestPropertySource(properties = "app.internal.service-tokens.sticker-bot=test-internal-token")
 @Epic("API для стикерсетов")
 @Feature("Создание и управление стикерсетами")
 @DisplayName("Интеграционные тесты StickerSetController")
@@ -154,6 +155,30 @@ class StickerSetControllerIntegrationTest {
         }
         if (createDto.getIsPublic() != null) {
             requestBuilder = requestBuilder.param("isPublic", createDto.getIsPublic().toString());
+        }
+        return mockMvc.perform(requestBuilder);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions performInternalCreateStickerSet(String serviceToken,
+                                                                                               CreateStickerSetDto createDto,
+                                                                                               Long userId,
+                                                                                               String language) throws Exception {
+        var requestBuilder = post("/internal/stickersets")
+                .param("userId", String.valueOf(userId));
+        if (language != null) {
+            requestBuilder = requestBuilder.param("language", language);
+        }
+        if (createDto.getName() != null) {
+            requestBuilder = requestBuilder.param("name", createDto.getName());
+        }
+        if (createDto.getTitle() != null) {
+            requestBuilder = requestBuilder.param("title", createDto.getTitle());
+        }
+        if (createDto.getIsPublic() != null) {
+            requestBuilder = requestBuilder.param("isPublic", createDto.getIsPublic().toString());
+        }
+        if (serviceToken != null) {
+            requestBuilder = requestBuilder.header("X-Service-Token", serviceToken);
         }
         return mockMvc.perform(requestBuilder);
     }
@@ -305,6 +330,37 @@ class StickerSetControllerIntegrationTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("Unauthorized"))
                 .andExpect(jsonPath("$.message").value("User is not authenticated"));
+    }
+
+    @Test
+    @DisplayName("POST /internal/stickersets с валидным токеном должен возвращать 201")
+    void createStickerSet_InternalEndpoint_WithValidToken_ShouldReturn201() throws Exception {
+        // Given
+        CreateStickerSetDto createDto = new CreateStickerSetDto();
+        createDto.setName("https://t.me/addstickers/shblokun");
+        createDto.setIsPublic(false);
+
+        // When & Then
+        performInternalCreateStickerSet("test-internal-token", createDto, TEST_USER_ID, "ru")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.userId").value(TEST_USER_ID))
+                .andExpect(jsonPath("$.name").value("shblokun"))
+                .andExpect(jsonPath("$.isPublic").value(false));
+    }
+
+    @Test
+    @DisplayName("POST /internal/stickersets без токена должен возвращать 401")
+    void createStickerSet_InternalEndpoint_WithoutToken_ShouldReturn401() throws Exception {
+        // Given
+        CreateStickerSetDto createDto = new CreateStickerSetDto();
+        createDto.setName("https://t.me/addstickers/citati_prosto");
+
+        // When & Then
+        performInternalCreateStickerSet(null, createDto, TEST_USER_ID, null)
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("Unauthorized"))
+                .andExpect(jsonPath("$.message").value("Missing service token"));
     }
 
     @Test

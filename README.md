@@ -40,6 +40,9 @@ OPENAI_API_KEY=your_openai_api_key_here
 
 # Sticker Processor
 STICKER_PROCESSOR_URL=https://sticker-processor-e13nst.amvera.io
+
+# Internal service access
+STICKERBOT_SERVICE_TOKEN=your_generated_service_token
 ```
 
 3. **Запустите приложение через Makefile:**
@@ -91,6 +94,7 @@ make docker-logs-app
 | `APP_URL` | ✅ | Базовый URL приложения |
 | `MINI_APP_URL` | ❌ | URL мини-приложения (по умолчанию: `${APP_URL}/mini-app/`) |
 | `STICKER_PROCESSOR_URL` | ✅ | URL сервиса обработки стикеров |
+| `STICKERBOT_SERVICE_TOKEN` | ❌ | Межсервисный токен StickerBot для доступа к `/internal/**` |
 | `OPENAI_API_KEY` | ❌ | API ключ OpenAI (опционально) |
 
 ### Профили

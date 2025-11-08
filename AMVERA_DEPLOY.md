@@ -9,6 +9,7 @@
 - `TELEGRAM_API_TOKEN` - токен вашего Telegram бота
 - `OPENAI_API_KEY` - ключ API OpenAI
 - `BOT_WEBHOOK_URL` - URL вашего приложения на Amvera (например: `https://your-app-name.amvera.io`)
+- `STICKERBOT_SERVICE_TOKEN` - межсервисный токен для доступа к внутренним эндпоинтам галереи
 
 ### 2. Настройка Telegram Webhook
 

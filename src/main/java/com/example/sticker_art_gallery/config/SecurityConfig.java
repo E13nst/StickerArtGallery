@@ -1,5 +1,6 @@
 package com.example.sticker_art_gallery.config;
 
+import com.example.sticker_art_gallery.security.ServiceTokenAuthenticationFilter;
 import com.example.sticker_art_gallery.security.TelegramAuthenticationFilter;
 import com.example.sticker_art_gallery.security.TelegramAuthenticationProvider;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,12 +24,15 @@ import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
 public class SecurityConfig {
     
     private final TelegramAuthenticationFilter telegramAuthenticationFilter;
+    private final ServiceTokenAuthenticationFilter serviceTokenAuthenticationFilter;
     private final TelegramAuthenticationProvider telegramAuthenticationProvider;
     
     @Autowired
     public SecurityConfig(TelegramAuthenticationFilter telegramAuthenticationFilter,
+                         ServiceTokenAuthenticationFilter serviceTokenAuthenticationFilter,
                          TelegramAuthenticationProvider telegramAuthenticationProvider) {
         this.telegramAuthenticationFilter = telegramAuthenticationFilter;
+        this.serviceTokenAuthenticationFilter = serviceTokenAuthenticationFilter;
         this.telegramAuthenticationProvider = telegramAuthenticationProvider;
     }
     
@@ -58,8 +62,9 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             
-            // Добавляем наш кастомный фильтр
-            .addFilterBefore(telegramAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            // Добавляем наши кастомные фильтры
+            .addFilterBefore(serviceTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(telegramAuthenticationFilter, ServiceTokenAuthenticationFilter.class)
             
             // Настройка провайдера аутентификации
             .authenticationProvider(telegramAuthenticationProvider)
@@ -107,6 +112,9 @@ public class SecurityConfig {
                 // API для авторизованных пользователей (USER или ADMIN)
                 .requestMatchers(mvc.pattern("/api/users/**")).hasAnyRole("USER", "ADMIN")
                 .requestMatchers(mvc.pattern("/api/profiles/**")).hasAnyRole("USER", "ADMIN")
+                
+                // Межсервисные эндпоинты
+                .requestMatchers(mvc.pattern("/internal/**")).hasRole("INTERNAL")
                 
                 // API только для ADMIN
                 .requestMatchers(mvc.pattern("/api/bots/**")).hasRole("ADMIN")

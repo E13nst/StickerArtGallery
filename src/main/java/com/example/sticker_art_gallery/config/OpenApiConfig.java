@@ -19,6 +19,7 @@ public class OpenApiConfig {
     @Bean
     public OpenAPI customOpenAPI() {
         final String securitySchemeName = "TelegramInitData";
+        final String internalSecuritySchemeName = "ServiceToken";
         
         return new OpenAPI()
                 .info(new Info()
@@ -69,6 +70,13 @@ public class OpenApiConfig {
                                         ```
                                         
                                         Для тестирования в dev профиле можно использовать тестовый initData из конфигурации.
+                                        """))
+                        .addSecuritySchemes(internalSecuritySchemeName, new SecurityScheme()
+                                .name("X-Service-Token")
+                                .type(SecurityScheme.Type.APIKEY)
+                                .in(SecurityScheme.In.HEADER)
+                                .description("""
+                                        Межсервисный токен (API key) для доступа к внутренним эндпоинтам.
                                         """)));
     }
 }

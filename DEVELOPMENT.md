@@ -119,6 +119,9 @@ DB_PASSWORD=password
 
 # Telegram Bot Token
 TELEGRAM_BOT_TOKEN=your_bot_token_here
+
+# Internal service token for StickerBot integration
+STICKERBOT_SERVICE_TOKEN=service_token_here
 ```
 
 ## 🐛 Отладка
