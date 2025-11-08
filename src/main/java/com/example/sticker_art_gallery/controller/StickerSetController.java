@@ -456,30 +456,38 @@ public class StickerSetController {
     @Operation(
         summary = "Создать новый стикерсет",
         description = """
-            Создает новый стикерсет для пользователя с расширенной валидацией и автоматическим заполнением данных.
+            Регистрирует в галерее уже существующий набор стикеров Telegram.
             
-            **Обязательные query-параметры:**
-            - `name` — уникальное имя стикерсета для Telegram API или URL вида `https://t.me/addstickers/<name>`
+            **Запрос**
+            - Метод: `POST /api/stickersets`
+            - Тело: отсутствует (используются только query-параметры)
             
-            **Опциональные query-параметры:**
-            - `title` — текстовое название до 64 символов (если не указано, подтягивается из Telegram Bot API)
-            - `isPublic` — флаг доступности в галерее (по умолчанию `true`)
+            **Обязательные query-параметры**
+            - `name` — имя стикерсета в Telegram (например, `my_pack_by_bot`) или полный URL `https://t.me/addstickers/<name>`.
+              Значение нормализуется: обрезаются пробелы, из URL извлекается имя, затем оно приводится к нижнему регистру.
             
-            **Что определяется автоматически:**
-            - `userId` — из заголовка `X-Telegram-Init-Data`
-            - `title` — если не передан, подтягивается из Telegram Bot API
+            **Опциональные query-параметры**
+            - `title` — человекочитаемое название (до 64 символов). Если не указано, подтягивается из Telegram Bot API.
+            - `categoryKeys` — список ключей категорий (указывайте несколько параметров `categoryKeys=animals&categoryKeys=cute`).
+            - `isPublic` — публиковать ли набор в галерее (по умолчанию `true`).
             
-            **Правила обработки:**
-            1. Нормализация имени (`name`) и проверка уникальности в базе
-            2. Подтверждение существования стикерсета через Telegram Bot API
-            3. Проверка, что пользователь авторизован и не заблокирован
-            4. Автозаполнение отсутствующих данных и создание записи в базе данных
+            **Автоматически определяемые значения**
+            - `userId` — берется из заголовка `X-Telegram-Init-Data` после успешной аутентификации Telegram Web App.
+            - `title` — извлекается из Telegram Bot API, если не передан явно.
             
-            **Поля ответа (`StickerSetDto`):**
-            - `id`, `userId`, `title`, `name`, `createdAt`, `likesCount`, `isPublic`, `isBlocked`, `isOfficial`, `authorId`, `categories`, `telegramStickerSetInfo`, `isLikedByCurrentUser`
+            **Алгоритм работы**
+            1. Валидируется заголовок `X-Telegram-Init-Data`; заблокированные пользователи получают 403 до выполнения бизнес-логики.
+            2. Имя стикерсета нормализуется и проверяется на уникальность в локальной базе.
+            3. Выполняется запрос к Telegram Bot API, чтобы убедиться, что набор существует, и получить его метаданные.
+            4. По ключам `categoryKeys` подтягиваются существующие категории (если указаны).
+            5. Создается запись `StickerSet` с заполнением всех служебных полей (`userId`, `title`, `isPublic`, `likesCount`, `createdAt` и т.д.).
             
-            **Необходимые заголовки:**
-            - `X-Telegram-Init-Data` — подписанные данные Telegram Web App (используются для идентификации пользователя)
+            **Ответ (`StickerSetDto`)**
+            - `id`, `userId`, `name`, `title`, `createdAt`, `likesCount`, `isPublic`, `isBlocked`, `blockReason`, `isOfficial`,
+              `authorId`, `categories`, `telegramStickerSetInfo`, `isLikedByCurrentUser`.
+            
+            **Необходимые заголовки**
+            - `X-Telegram-Init-Data` — подписанные данные Telegram Web App, содержащие пользователя и подпись.
             """
     )
     @ApiResponses(value = {
@@ -529,12 +537,6 @@ public class StickerSetController {
                         "message": "Некорректное имя стикерсета или URL. Ожидается имя стикерсета или URL вида https://t.me/addstickers/имя_стикерсета"
                     }
                     """),
-                @ExampleObject(name = "Нет авторизации", value = """
-                    {
-                        "error": "Ошибка валидации",
-                        "message": "Не удалось определить ID пользователя. Убедитесь, что вы авторизованы через Telegram Web App"
-                    }
-                    """),
                 @ExampleObject(name = "Несуществующие категории", value = """
                     {
                         "error": "Ошибка валидации",
@@ -547,6 +549,13 @@ public class StickerSetController {
                 {
                     "error": "Unauthorized",
                     "message": "Требуется авторизация через Telegram Web App"
+                }
+                """))),
+        @ApiResponse(responseCode = "403", description = "Пользователь заблокирован",
+            content = @Content(examples = @ExampleObject(value = """
+                {
+                    "error": "Forbidden",
+                    "message": "User is blocked"
                 }
                 """))),
         @ApiResponse(responseCode = "404", description = "Стикерсет не найден в Telegram",

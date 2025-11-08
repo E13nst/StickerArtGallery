@@ -51,10 +51,20 @@ CreateStickerSetDto dto = TestDataBuilder.createBasicStickerSetDto();
 ```java
 @Step("Создать стикерсет через API")
 public ResultActions createStickerSet(CreateStickerSetDto createDto, String initData) throws Exception {
-    return mockMvc.perform(post("/api/stickersets")
-                    .header("X-Telegram-Init-Data", initData)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(createDto)));
+    var request = post("/api/stickersets")
+            .header("X-Telegram-Init-Data", initData);
+
+    if (createDto.getName() != null) {
+        request = request.param("name", createDto.getName());
+    }
+    if (createDto.getTitle() != null) {
+        request = request.param("title", createDto.getTitle());
+    }
+    if (createDto.getIsPublic() != null) {
+        request = request.param("isPublic", String.valueOf(createDto.getIsPublic()));
+    }
+
+    return mockMvc.perform(request);
 }
 ```
 
@@ -98,10 +108,26 @@ public class StickerSetApiPage {
     }
     
     public ResultActions createStickerSet(CreateStickerSetDto dto, String initData) throws Exception {
-        return mockMvc.perform(post("/api/stickersets")
-                .header("X-Telegram-Init-Data", initData)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(dto)));
+        var request = post("/api/stickersets")
+                .header("X-Telegram-Init-Data", initData);
+
+        if (dto.getName() != null) {
+            request = request.param("name", dto.getName());
+        }
+        if (dto.getTitle() != null) {
+            request = request.param("title", dto.getTitle());
+        }
+        if (dto.getIsPublic() != null) {
+            request = request.param("isPublic", dto.getIsPublic().toString());
+        }
+
+        if (dto.getCategoryKeys() != null) {
+            for (String key : dto.getCategoryKeys()) {
+                request = request.param("categoryKeys", key);
+            }
+        }
+
+        return mockMvc.perform(request);
     }
     
     public ResultActions getAllStickerSets(String initData) throws Exception {

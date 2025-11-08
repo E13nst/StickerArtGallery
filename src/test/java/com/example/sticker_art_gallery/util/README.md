@@ -77,9 +77,8 @@ void testCreateStickerSet() throws Exception {
     
     mockMvc.perform(post("/api/stickersets")
             .header("X-Telegram-Init-Data", initData)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("{\"name\":\"test_stickers\"}"))
-        .andExpect(status().isOk());
+            .param("name", "test_stickers"))
+        .andExpect(status().isCreated());
 }
 ```
 
