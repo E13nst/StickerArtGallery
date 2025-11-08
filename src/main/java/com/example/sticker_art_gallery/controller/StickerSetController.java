@@ -31,6 +31,7 @@ import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -588,7 +589,7 @@ public class StickerSetController {
             name = "title",
             in = ParameterIn.QUERY,
             description = "Произвольное название до 64 символов. Если не указано, берётся из Telegram Bot API.",
-            example = "Мои любимые стикеры"
+            example = ""
         ),
         @Parameter(
             name = "categoryKeys",
@@ -602,9 +603,10 @@ public class StickerSetController {
             in = ParameterIn.QUERY,
             description = "Публиковать ли набор в галерее. По умолчанию `true`.",
             schema = @Schema(type = "boolean", defaultValue = "true"),
-            example = "false"
+            example = "true"
         )
     })
+    @RequestBody(required = false, content = @Content(schema = @Schema(hidden = true)))
     public ResponseEntity<?> createStickerSet(
             @Valid @ModelAttribute CreateStickerSetDto createDto,
             HttpServletRequest request) {
