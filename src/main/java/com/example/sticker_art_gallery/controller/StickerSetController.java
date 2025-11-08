@@ -37,6 +37,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -345,7 +348,10 @@ public class StickerSetController {
     @GetMapping("/user/{userId}")
     @Operation(
         summary = "Получить стикерсеты пользователя с пагинацией",
-        description = "Возвращает все стикерсеты, созданные конкретным пользователем, с пагинацией и обогащением данных из Telegram Bot API."
+        description = "Возвращает стикерсеты, созданные конкретным пользователем, с пагинацией и обогащением данных из Telegram Bot API. " +
+                      "Поддерживает фильтры по категориям, наличию автора и лайкам текущего пользователя. " +
+                      "Если запрос выполняет владелец (userId совпадает с авторизованным пользователем из initData) или администратор, " +
+                      "возвращаются все его стикерсеты. Для остальных пользователей возвращаются только публичные (isPublic = true)."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Список стикерсетов пользователя получен",
@@ -386,18 +392,50 @@ public class StickerSetController {
             @Parameter(description = "Поле для сортировки", example = "createdAt")
             @RequestParam(defaultValue = "createdAt") String sort,
             @Parameter(description = "Направление сортировки", example = "DESC")
-            @RequestParam(defaultValue = "DESC") @Pattern(regexp = "ASC|DESC") String direction) {
+            @RequestParam(defaultValue = "DESC") @Pattern(regexp = "ASC|DESC") String direction,
+            @Parameter(description = "Фильтр по ключам категорий (через запятую)", example = "animals,cute")
+            @RequestParam(required = false) String categoryKeys,
+            @Parameter(description = "Показывать только авторские стикерсеты (authorId IS NOT NULL)", example = "false")
+            @RequestParam(defaultValue = "false") boolean hasAuthorOnly,
+            @Parameter(description = "Показать только лайкнутые текущим пользователем стикерсеты", example = "false")
+            @RequestParam(defaultValue = "false") boolean likedOnly) {
         try {
-            LOGGER.info("🔍 Поиск стикерсетов для пользователя: {} с пагинацией: page={}, size={}, sort={}, direction={}", 
-                    userId, page, size, sort, direction);
+            LOGGER.info("🔍 Поиск стикерсетов для пользователя: {} с пагинацией: page={}, size={}, sort={}, direction={}, categoryKeys={}, hasAuthorOnly={}, likedOnly={}", 
+                    userId, page, size, sort, direction, categoryKeys, hasAuthorOnly, likedOnly);
             
             PageRequest pageRequest = new PageRequest();
             pageRequest.setPage(page);
             pageRequest.setSize(size);
             pageRequest.setSort(sort);
             pageRequest.setDirection(direction);
-            
-            PageResponse<StickerSetDto> result = stickerSetService.findByUserIdWithPagination(userId, pageRequest);
+
+            Long currentUserId = getCurrentUserIdOrNull();
+            boolean includePrivate = (currentUserId != null && currentUserId.equals(userId)) || isAdmin();
+            if (likedOnly && currentUserId == null) {
+                LOGGER.warn("⚠️ Запрос likedOnly=true для стикерсетов пользователя {} от неавторизованного клиента", userId);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+
+            Set<String> categoryKeySet = null;
+            if (categoryKeys != null && !categoryKeys.trim().isEmpty()) {
+                categoryKeySet = Arrays.stream(categoryKeys.split(","))
+                        .map(String::trim)
+                        .filter(key -> !key.isEmpty())
+                        .collect(Collectors.toCollection(LinkedHashSet::new));
+                if (categoryKeySet.isEmpty()) {
+                    categoryKeySet = null;
+                }
+            }
+
+            PageResponse<StickerSetDto> result = stickerSetService.findByUserIdWithPagination(
+                    userId,
+                    pageRequest,
+                    categoryKeySet,
+                    hasAuthorOnly,
+                    likedOnly,
+                    currentUserId,
+                    includePrivate
+            );
             
             LOGGER.debug("✅ Найдено {} стикерсетов для пользователя {} на странице {} из {}", 
                     result.getContent().size(), userId, result.getPage() + 1, result.getTotalPages());

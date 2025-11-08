@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
@@ -131,4 +132,24 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
            "), 0) " +
            "WHERE s.id = :id", nativeQuery = true)
     int recalculateLikesCount(@Param("id") Long id);
+
+    /**
+     * Поиск стикерсетов пользователя с дополнительными фильтрами
+     */
+    @Query("SELECT DISTINCT ss FROM StickerSet ss " +
+           "LEFT JOIN ss.categories c " +
+           "WHERE ss.userId = :userId " +
+           "AND (:includePrivate = true OR ss.isPublic = true) " +
+           "AND (:hasAuthorOnly = false OR ss.authorId IS NOT NULL) " +
+           "AND (:categoryKeys IS NULL OR c.key IN :categoryKeys) " +
+           "AND (:likedOnly = false OR EXISTS (" +
+           "   SELECT 1 FROM Like l WHERE l.userId = :currentUserId AND l.stickerSet = ss" +
+           "))")
+    Page<StickerSet> findUserStickerSetsFiltered(@Param("userId") Long userId,
+                                                 @Param("includePrivate") boolean includePrivate,
+                                                 @Param("hasAuthorOnly") boolean hasAuthorOnly,
+                                                 @Param("categoryKeys") Set<String> categoryKeys,
+                                                 @Param("likedOnly") boolean likedOnly,
+                                                 @Param("currentUserId") Long currentUserId,
+                                                 Pageable pageable);
 } 

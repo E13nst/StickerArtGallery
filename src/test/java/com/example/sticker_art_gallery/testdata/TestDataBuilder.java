@@ -12,11 +12,7 @@ import com.example.sticker_art_gallery.util.TelegramInitDataGenerator;
 public class TestDataBuilder {
     
     // Тестовые константы
-    public static final Long TEST_USER_ID = 141614461L;
-    public static final String TEST_USERNAME = "test_integration_user";
-    public static final String TEST_FIRST_NAME = "Test";
-    public static final String TEST_LAST_NAME = "User";
-    public static final String TEST_LANGUAGE_CODE = "ru";
+    public static final Long TEST_USER_ID = TestUsers.ADMIN.id();
     
     // Тестовые стикерсеты
     public static final String[] TEST_STICKER_SETS = {
@@ -67,25 +63,16 @@ public class TestDataBuilder {
      * Создает UserEntity для тестов
      */
     public static UserEntity createTestUser(Long userId) {
-        UserEntity user = new UserEntity();
-        user.setId(userId);
-        user.setFirstName(TEST_FIRST_NAME);
-        user.setLastName(TEST_LAST_NAME);
-        user.setUsername(TEST_USERNAME);
-        user.setLanguageCode(TEST_LANGUAGE_CODE);
-        return user;
+        TestUsers.TestUser testUser = TestUsers.forId(userId);
+        return TestUsers.buildUser(testUser);
     }
     
     /**
      * Создает UserProfileEntity для тестов
      */
     public static UserProfileEntity createTestUserProfile(Long userId) {
-        UserProfileEntity profile = new UserProfileEntity();
-        profile.setUserId(userId);
-        profile.setRole(UserProfileEntity.UserRole.USER);
-        profile.setArtBalance(0L);
-        profile.setIsBlocked(false);
-        return profile;
+        TestUsers.TestUser testUser = TestUsers.forId(userId);
+        return TestUsers.buildProfile(testUser);
     }
     
     /**
@@ -93,13 +80,14 @@ public class TestDataBuilder {
      */
     public static String createValidInitData(String botToken, Long userId) {
         try {
+            TestUsers.TestUser testUser = TestUsers.forId(userId);
             return TelegramInitDataGenerator.builder()
                     .botToken(botToken)
-                    .userId(userId)
-                    .username("E13nst")
-                    .firstName("Andrey")
-                    .lastName("Mitroshin")
-                    .languageCode("ru")
+                    .userId(testUser.id())
+                    .username(testUser.username())
+                    .firstName(testUser.firstName())
+                    .lastName(testUser.lastName())
+                    .languageCode(testUser.languageCode())
                     .build();
         } catch (Exception e) {
             throw new RuntimeException("Failed to create valid initData", e);

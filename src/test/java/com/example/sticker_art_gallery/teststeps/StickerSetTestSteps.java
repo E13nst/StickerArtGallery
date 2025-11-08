@@ -147,6 +147,22 @@ public class StickerSetTestSteps {
                         .param("likedOnly", "true")
                         .header("X-Telegram-Init-Data", initData));
     }
+
+    @Step("Получить стикерсеты конкретного пользователя через API")
+    public ResultActions getStickerSetsByUser(Long userId, String initData, java.util.Map<String, String> queryParams) throws Exception {
+        var requestBuilder = get("/api/stickersets/user/" + userId)
+                .header("X-Telegram-Init-Data", initData);
+        if (queryParams != null) {
+            for (java.util.Map.Entry<String, String> entry : queryParams.entrySet()) {
+                requestBuilder = requestBuilder.param(entry.getKey(), entry.getValue());
+            }
+        }
+        return mockMvc.perform(requestBuilder);
+    }
+
+    public ResultActions getStickerSetsByUser(Long userId, String initData) throws Exception {
+        return getStickerSetsByUser(userId, initData, null);
+    }
     
     @Step("Получить стикерсет по ID через API")
     public ResultActions getStickerSetById(Long id, String initData) throws Exception {

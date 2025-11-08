@@ -275,14 +275,39 @@ public class StickerSetService {
     
     /**
      * Получить стикерсеты пользователя с пагинацией и обогащением данных Bot API
+     * @param userId ID пользователя, чьи стикерсеты запрашиваются
+     * @param pageRequest параметры пагинации/сортировки
+     * @param categoryKeys фильтр по категориям (может быть null или пустым)
+     * @param hasAuthorOnly показать только стикерсеты с указанным автором
+     * @param likedOnly показать только стикерсеты, лайкнутые текущим пользователем
+     * @param currentUserId ID текущего авторизованного пользователя (может быть null)
+     * @param includePrivate показывать ли приватные стикерсеты (true для владельца или администратора)
      */
-    public PageResponse<StickerSetDto> findByUserIdWithPagination(Long userId, PageRequest pageRequest) {
-        LOGGER.debug("👤 Получение стикерсетов пользователя {} с пагинацией: page={}, size={}", 
-                userId, pageRequest.getPage(), pageRequest.getSize());
-        
-        Page<StickerSet> stickerSetsPage = stickerSetRepository.findByUserId(userId, pageRequest.toPageable());
-        List<StickerSetDto> enrichedDtos = enrichWithBotApiData(stickerSetsPage.getContent());
-        
+    public PageResponse<StickerSetDto> findByUserIdWithPagination(Long userId,
+                                                                  PageRequest pageRequest,
+                                                                  Set<String> categoryKeys,
+                                                                  boolean hasAuthorOnly,
+                                                                  boolean likedOnly,
+                                                                  Long currentUserId,
+                                                                  boolean includePrivate) {
+        LOGGER.debug("👤 Получение стикерсетов пользователя {} с пагинацией: page={}, size={}, hasAuthorOnly={}, likedOnly={}, includePrivate={}, categoryKeys={}",
+                userId, pageRequest.getPage(), pageRequest.getSize(), hasAuthorOnly, likedOnly, includePrivate,
+                categoryKeys == null ? "null" : String.join(",", categoryKeys));
+
+        Set<String> normalizedCategoryKeys = (categoryKeys == null || categoryKeys.isEmpty()) ? null : categoryKeys;
+
+        Page<StickerSet> stickerSetsPage = stickerSetRepository.findUserStickerSetsFiltered(
+                userId,
+                includePrivate,
+                hasAuthorOnly,
+                normalizedCategoryKeys,
+                likedOnly,
+                currentUserId,
+                pageRequest.toPageable()
+        );
+
+        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), "en", currentUserId);
+
         return PageResponse.of(stickerSetsPage, enrichedDtos);
     }
     
