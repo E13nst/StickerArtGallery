@@ -8,6 +8,7 @@ import com.example.sticker_art_gallery.model.category.Category;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
 import com.example.sticker_art_gallery.service.category.CategoryService;
+import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.slf4j.Logger;
@@ -29,14 +30,17 @@ public class StickerSetService {
     private final StickerSetRepository stickerSetRepository;
     private final TelegramBotApiService telegramBotApiService;
     private final CategoryService categoryService;
+    private final ArtRewardService artRewardService;
     
     @Autowired
     public StickerSetService(StickerSetRepository stickerSetRepository,
                              TelegramBotApiService telegramBotApiService,
-                             CategoryService categoryService) {
+                             CategoryService categoryService,
+                             ArtRewardService artRewardService) {
         this.stickerSetRepository = stickerSetRepository;
         this.telegramBotApiService = telegramBotApiService;
         this.categoryService = categoryService;
+        this.artRewardService = artRewardService;
     }
     
     /**
@@ -176,6 +180,23 @@ public class StickerSetService {
         LOGGER.info("📦 Создан стикерпак: ID={}, Title='{}', Name='{}', UserId={}, Categories={}", 
                 savedSet.getId(), title, name, userId, 
                 savedSet.getCategories() != null ? savedSet.getCategories().size() : 0);
+
+        try {
+            String metadata = String.format("{\"stickerSetId\":%d}", savedSet.getId());
+            String externalId = String.format("sticker-upload:%d:%d", userId, savedSet.getId());
+            artRewardService.award(
+                    userId,
+                    ArtRewardService.RULE_UPLOAD_STICKERSET,
+                    null,
+                    metadata,
+                    externalId,
+                    userId
+            );
+            LOGGER.info("💎 Начислены ART за создание стикерсета: userId={}, stickerSetId={}", userId, savedSet.getId());
+        } catch (Exception e) {
+            LOGGER.error("❌ Не удалось начислить ART пользователю {} за стикерсет {}: {}",
+                    userId, savedSet.getId(), e.getMessage(), e);
+        }
 
         return savedSet;
     }

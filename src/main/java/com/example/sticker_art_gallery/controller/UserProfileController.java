@@ -1,9 +1,13 @@
 package com.example.sticker_art_gallery.controller;
 
-import com.example.sticker_art_gallery.dto.UserProfileDto;
+import com.example.sticker_art_gallery.dto.ArtTransactionDto;
+import com.example.sticker_art_gallery.dto.PageRequest;
+import com.example.sticker_art_gallery.dto.PageResponse;
 import com.example.sticker_art_gallery.dto.UserDto;
+import com.example.sticker_art_gallery.dto.UserProfileDto;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.model.user.UserEntity;
+import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
 import com.example.sticker_art_gallery.service.user.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,14 +22,18 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Min;
 
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -42,11 +50,15 @@ public class UserProfileController {
     
     private final UserProfileService userProfileService;
     private final UserService userService;
+    private final ArtRewardService artRewardService;
     
     @Autowired
-    public UserProfileController(UserProfileService userProfileService, UserService userService) {
+    public UserProfileController(UserProfileService userProfileService,
+                                 UserService userService,
+                                 ArtRewardService artRewardService) {
         this.userProfileService = userProfileService;
         this.userService = userService;
+        this.artRewardService = artRewardService;
     }
     
     /**
@@ -110,6 +122,123 @@ public class UserProfileController {
             LOGGER.error("❌ Ошибка при поиске профиля пользователя с ID {}: {}", userId, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    /**
+     * Получить мои транзакции ART
+     */
+    @GetMapping("/me/transactions")
+    @Operation(
+        summary = "Получить мои транзакции ART",
+        description = "Возвращает историю начислений и списаний ART текущего пользователя"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Список транзакций получен",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = PageResponse.class),
+                examples = @ExampleObject(
+                    name = "Пример списка транзакций",
+                    value = """
+                        {
+                          "content": [
+                            {
+                              "id": 42,
+                              "userId": 123456789,
+                              "ruleCode": "UPLOAD_STICKERSET",
+                              "direction": "CREDIT",
+                              "delta": 10,
+                              "balanceAfter": 120,
+                              "metadata": "{\\"stickerSetId\\":987}",
+                              "externalId": "sticker-upload:123456789:987",
+                              "performedBy": 123456789,
+                              "createdAt": "2025-01-15T12:00:00Z"
+                            }
+                          ],
+                          "page": 0,
+                          "size": 20,
+                          "totalElements": 1,
+                          "totalPages": 1,
+                          "first": true,
+                          "last": true,
+                          "hasNext": false,
+                          "hasPrevious": false
+                        }
+                        """
+                )
+            )
+        ),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<PageResponse<ArtTransactionDto>> getMyTransactions(
+            @ParameterObject @Valid PageRequest pageRequest) {
+        Long currentUserId = getCurrentUserId();
+        if (currentUserId == null) {
+            LOGGER.warn("⚠️ Попытка получить транзакции без авторизации");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return buildTransactionsResponse(currentUserId, currentUserId, pageRequest);
+    }
+
+    /**
+     * Получить транзакции ART пользователя по ID
+     */
+    @GetMapping("/{userId}/transactions")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+        summary = "Получить транзакции ART пользователя",
+        description = "Возвращает историю начислений и списаний ART для указанного пользователя (только для ADMIN)"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Список транзакций получен",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = PageResponse.class),
+                examples = @ExampleObject(
+                    name = "Пример списка транзакций пользователя",
+                    value = """
+                        {
+                          "content": [
+                            {
+                              "id": 51,
+                              "userId": 123456789,
+                              "ruleCode": "ADMIN_DEBIT",
+                              "direction": "DEBIT",
+                              "delta": -20,
+                              "balanceAfter": 80,
+                              "metadata": "{\\"reason\\":\\"manual_adjustment\\"}",
+                              "externalId": null,
+                              "performedBy": 987654321,
+                              "createdAt": "2025-01-16T09:30:00Z"
+                            }
+                          ],
+                          "page": 0,
+                          "size": 20,
+                          "totalElements": 1,
+                          "totalPages": 1,
+                          "first": true,
+                          "last": true,
+                          "hasNext": false,
+                          "hasPrevious": false
+                        }
+                        """
+                )
+            )
+        ),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен"),
+        @ApiResponse(responseCode = "404", description = "Пользователь не найден"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<PageResponse<ArtTransactionDto>> getUserTransactions(
+            @Parameter(description = "Telegram ID пользователя", required = true, example = "123456789")
+            @PathVariable Long userId,
+            @ParameterObject @Valid PageRequest pageRequest) {
+        return buildTransactionsResponse(userId, getCurrentUserId(), pageRequest);
     }
     
     /**
@@ -251,6 +380,46 @@ public class UserProfileController {
             return Long.valueOf(authentication.getName());
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    private boolean isCurrentUserAdmin() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null) {
+                return authentication.getAuthorities().stream()
+                        .anyMatch(auth -> "ROLE_ADMIN".equals(auth.getAuthority()));
+            }
+        } catch (Exception e) {
+            LOGGER.warn("⚠️ Ошибка при проверке прав администратора: {}", e.getMessage());
+        }
+        return false;
+    }
+
+    private ResponseEntity<PageResponse<ArtTransactionDto>> buildTransactionsResponse(Long targetUserId,
+                                                                                      Long requesterId,
+                                                                                      PageRequest pageRequest) {
+        try {
+            if (targetUserId == null) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            if (!Objects.equals(targetUserId, requesterId) && !isCurrentUserAdmin()) {
+                LOGGER.warn("⚠️ Попытка доступа к транзакциям пользователя {} без прав. Текущий пользователь: {}", targetUserId, requesterId);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            var page = artRewardService.findTransactions(targetUserId, pageRequest.toPageable());
+            List<ArtTransactionDto> dtos = page.getContent().stream()
+                    .map(ArtTransactionDto::fromEntity)
+                    .toList();
+
+            PageResponse<ArtTransactionDto> response = PageResponse.of(page, dtos);
+            LOGGER.info("🔍 Найдено {} транзакций ART для пользователя {}", response.getContent().size(), targetUserId);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при получении транзакций ART для пользователя {}: {}", targetUserId, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
         }
     }
 }

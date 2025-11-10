@@ -40,18 +40,29 @@ public class UserProfileService {
         });
     }
 
+    public UserProfileEntity getOrCreateDefaultForUpdate(Long userId) {
+        return repository.findByUserIdForUpdate(userId).orElseGet(() -> {
+            UserProfileEntity profile = new UserProfileEntity();
+            profile.setUserId(userId);
+            profile.setRole(UserProfileEntity.UserRole.USER);
+            profile.setArtBalance(0L);
+            profile.setIsBlocked(false);
+            return repository.save(profile);
+        });
+    }
+
     public UserProfileEntity save(UserProfileEntity profile) {
         return repository.save(profile);
     }
 
     public UserProfileEntity updateArtBalance(Long userId, Long newBalance) {
-        UserProfileEntity profile = getOrCreateDefault(userId);
+        UserProfileEntity profile = getOrCreateDefaultForUpdate(userId);
         profile.setArtBalance(newBalance);
         return repository.save(profile);
     }
 
     public UserProfileEntity addToArtBalance(Long userId, Long amount) {
-        UserProfileEntity profile = getOrCreateDefault(userId);
+        UserProfileEntity profile = getOrCreateDefaultForUpdate(userId);
         profile.setArtBalance(profile.getArtBalance() + amount);
         return repository.save(profile);
     }
