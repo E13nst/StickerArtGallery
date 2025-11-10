@@ -3,6 +3,7 @@ package com.example.sticker_art_gallery.model.user;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.OffsetDateTime;
 import java.util.Optional;
 
 /**
@@ -20,5 +21,7 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
      * Проверить существование пользователя по username
      */
     boolean existsByUsername(String username);
+
+    long countByCreatedAtAfter(OffsetDateTime createdAfter);
 }
 

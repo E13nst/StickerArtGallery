@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -165,4 +166,9 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
                                                    @Param("includePrivate") boolean includePrivate,
                                                    @Param("categoryKeys") Set<String> categoryKeys,
                                                    Pageable pageable);
+
+    long countByCreatedAtAfter(LocalDateTime createdAfter);
+
+    @Query("SELECT DISTINCT ss.userId FROM StickerSet ss WHERE ss.createdAt >= :since")
+    List<Long> findDistinctUserIdsByCreatedAtAfter(@Param("since") LocalDateTime since);
 } 
