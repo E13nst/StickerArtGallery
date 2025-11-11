@@ -265,7 +265,11 @@ public class StickerSetService {
      * Получить все стикерсеты с пагинацией и обогащением данных Bot API
      */
     public PageResponse<StickerSetDto> findAllWithPagination(PageRequest pageRequest, String language) {
-        return findAllWithPagination(pageRequest, language, null);
+        return findAllWithPagination(pageRequest, language, null, false, null, false, false);
+    }
+    
+    public PageResponse<StickerSetDto> findAllWithPagination(PageRequest pageRequest, String language, boolean shortInfo) {
+        return findAllWithPagination(pageRequest, language, null, false, null, false, shortInfo);
     }
     
     /**
@@ -273,27 +277,18 @@ public class StickerSetService {
      * Возвращает только публичные и не заблокированные стикерсеты для галереи
      */
     public PageResponse<StickerSetDto> findAllWithPagination(PageRequest pageRequest, String language, Long currentUserId) {
-        LOGGER.debug("📋 Получение публичных и не заблокированных стикерсетов с пагинацией: page={}, size={}, language={}", 
-                pageRequest.getPage(), pageRequest.getSize(), language);
-        
-        // Получаем только публичные и не заблокированные стикерсеты для галереи
-        Page<StickerSet> stickerSetsPage = stickerSetRepository.findPublicAndNotBlocked(pageRequest.toPageable());
-        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language, currentUserId);
-        
-        return PageResponse.of(stickerSetsPage, enrichedDtos);
+        return findAllWithPagination(pageRequest, language, currentUserId, false, null, false, false);
     }
     
     /**
      * Получить все стикерсеты с опциональной фильтрацией по официальным
      */
     public PageResponse<StickerSetDto> findAllWithPagination(PageRequest pageRequest, String language, Long currentUserId, boolean officialOnly) {
-        LOGGER.debug("📋 Получение {} стикерсетов с пагинацией: page={}, size={}, language={}", 
-                officialOnly ? "официальных" : "публичных", pageRequest.getPage(), pageRequest.getSize(), language);
-        Page<StickerSet> stickerSetsPage = officialOnly
-                ? stickerSetRepository.findPublicNotBlockedAndOfficial(pageRequest.toPageable())
-                : stickerSetRepository.findPublicAndNotBlocked(pageRequest.toPageable());
-        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language, currentUserId);
-        return PageResponse.of(stickerSetsPage, enrichedDtos);
+        return findAllWithPagination(pageRequest, language, currentUserId, officialOnly, null, false, false);
+    }
+    
+    public PageResponse<StickerSetDto> findAllWithPagination(PageRequest pageRequest, String language, Long currentUserId, boolean officialOnly, boolean shortInfo) {
+        return findAllWithPagination(pageRequest, language, currentUserId, officialOnly, null, false, shortInfo);
     }
     
     /**
@@ -301,12 +296,17 @@ public class StickerSetService {
      */
     public PageResponse<StickerSetDto> findAllWithPagination(PageRequest pageRequest, String language, Long currentUserId,
                                                              boolean officialOnly, Long authorId, boolean hasAuthorOnly) {
-        LOGGER.debug("📋 Получение {} стикерсетов{} с пагинацией: page={}, size={}, language={}",
+        return findAllWithPagination(pageRequest, language, currentUserId, officialOnly, authorId, hasAuthorOnly, false);
+    }
+    
+    public PageResponse<StickerSetDto> findAllWithPagination(PageRequest pageRequest, String language, Long currentUserId,
+                                                             boolean officialOnly, Long authorId, boolean hasAuthorOnly, boolean shortInfo) {
+        LOGGER.debug("📋 Получение {} стикерсетов{} с пагинацией: page={}, size={}, language={}, shortInfo={}",
                 officialOnly ? "официальных" : "публичных",
                 authorId != null ? (" автора=" + authorId) : (hasAuthorOnly ? " (только с автором)" : ""),
-                pageRequest.getPage(), pageRequest.getSize(), language);
+                pageRequest.getPage(), pageRequest.getSize(), language, shortInfo);
         Page<StickerSet> stickerSetsPage = stickerSetRepository.findPublicNotBlockedFiltered(officialOnly, authorId, hasAuthorOnly, pageRequest.toPageable());
-        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language, currentUserId);
+        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language, currentUserId, shortInfo);
         return PageResponse.of(stickerSetsPage, enrichedDtos);
     }
     
@@ -327,8 +327,19 @@ public class StickerSetService {
                                                                   boolean likedOnly,
                                                                   Long currentUserId,
                                                                   boolean includePrivate) {
-        LOGGER.debug("👤 Получение стикерсетов пользователя {} с пагинацией: page={}, size={}, hasAuthorOnly={}, likedOnly={}, includePrivate={}, categoryKeys={}",
-                userId, pageRequest.getPage(), pageRequest.getSize(), hasAuthorOnly, likedOnly, includePrivate,
+        return findByUserIdWithPagination(userId, pageRequest, categoryKeys, hasAuthorOnly, likedOnly, currentUserId, includePrivate, false);
+    }
+    
+    public PageResponse<StickerSetDto> findByUserIdWithPagination(Long userId,
+                                                                  PageRequest pageRequest,
+                                                                  Set<String> categoryKeys,
+                                                                  boolean hasAuthorOnly,
+                                                                  boolean likedOnly,
+                                                                  Long currentUserId,
+                                                                  boolean includePrivate,
+                                                                  boolean shortInfo) {
+        LOGGER.debug("👤 Получение стикерсетов пользователя {} с пагинацией: page={}, size={}, hasAuthorOnly={}, likedOnly={}, includePrivate={}, shortInfo={}, categoryKeys={}",
+                userId, pageRequest.getPage(), pageRequest.getSize(), hasAuthorOnly, likedOnly, includePrivate, shortInfo,
                 categoryKeys == null ? "null" : String.join(",", categoryKeys));
 
         Set<String> normalizedCategoryKeys = (categoryKeys == null || categoryKeys.isEmpty()) ? null : categoryKeys;
@@ -343,7 +354,7 @@ public class StickerSetService {
                 pageRequest.toPageable()
         );
 
-        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), "en", currentUserId);
+        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), "en", currentUserId, shortInfo);
 
         return PageResponse.of(stickerSetsPage, enrichedDtos);
     }
@@ -356,8 +367,17 @@ public class StickerSetService {
                                                                     Set<String> categoryKeys,
                                                                     Long currentUserId,
                                                                     boolean includePrivate) {
-        LOGGER.debug("✍️ Получение авторских стикерсетов {} с пагинацией: page={}, size={}, includePrivate={}, categoryKeys={}",
-                authorId, pageRequest.getPage(), pageRequest.getSize(), includePrivate,
+        return findByAuthorIdWithPagination(authorId, pageRequest, categoryKeys, currentUserId, includePrivate, false);
+    }
+    
+    public PageResponse<StickerSetDto> findByAuthorIdWithPagination(Long authorId,
+                                                                    PageRequest pageRequest,
+                                                                    Set<String> categoryKeys,
+                                                                    Long currentUserId,
+                                                                    boolean includePrivate,
+                                                                    boolean shortInfo) {
+        LOGGER.debug("✍️ Получение авторских стикерсетов {} с пагинацией: page={}, size={}, includePrivate={}, shortInfo={}, categoryKeys={}",
+                authorId, pageRequest.getPage(), pageRequest.getSize(), includePrivate, shortInfo,
                 categoryKeys == null ? "null" : String.join(",", categoryKeys));
 
         Set<String> normalizedCategoryKeys = (categoryKeys == null || categoryKeys.isEmpty()) ? null : categoryKeys;
@@ -369,7 +389,7 @@ public class StickerSetService {
                 pageRequest.toPageable()
         );
 
-        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), "en", currentUserId);
+        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), "en", currentUserId, shortInfo);
 
         return PageResponse.of(stickerSetsPage, enrichedDtos);
     }
@@ -378,30 +398,31 @@ public class StickerSetService {
      * Получить стикерсеты по ключам категорий с пагинацией и обогащением данных Bot API
      */
     public PageResponse<StickerSetDto> findByCategoryKeys(String[] categoryKeys, PageRequest pageRequest, String language) {
-        return findByCategoryKeys(categoryKeys, pageRequest, language, null);
+        return findByCategoryKeys(categoryKeys, pageRequest, language, null, false);
+    }
+    
+    public PageResponse<StickerSetDto> findByCategoryKeys(String[] categoryKeys, PageRequest pageRequest, String language, boolean shortInfo) {
+        return findByCategoryKeys(categoryKeys, pageRequest, language, null, shortInfo);
     }
     
     public PageResponse<StickerSetDto> findByCategoryKeys(String[] categoryKeys, PageRequest pageRequest, String language, Long currentUserId) {
-        LOGGER.debug("🏷️ Получение публичных и не заблокированных стикерсетов по категориям {} с пагинацией: page={}, size={}", 
-                String.join(",", categoryKeys), pageRequest.getPage(), pageRequest.getSize());
-        
-        // Получаем только публичные и не заблокированные стикерсеты для галереи
-        Page<StickerSet> stickerSetsPage = stickerSetRepository.findByCategoryKeysPublicAndNotBlocked(categoryKeys, pageRequest.toPageable());
-        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language, currentUserId);
-        
-        return PageResponse.of(stickerSetsPage, enrichedDtos);
+        return findByCategoryKeys(categoryKeys, pageRequest, language, currentUserId, false);
     }
     
     /**
      * Получить стикерсеты по ключам категорий с опциональной фильтрацией по официальным
      */
     public PageResponse<StickerSetDto> findByCategoryKeys(String[] categoryKeys, PageRequest pageRequest, String language, Long currentUserId, boolean officialOnly) {
-        LOGGER.debug("🏷️ Получение {} стикерсетов по категориям {} с пагинацией: page={}, size={}", 
-                officialOnly ? "официальных" : "публичных", String.join(",", categoryKeys), pageRequest.getPage(), pageRequest.getSize());
+        return findByCategoryKeys(categoryKeys, pageRequest, language, currentUserId, officialOnly, false);
+    }
+    
+    public PageResponse<StickerSetDto> findByCategoryKeys(String[] categoryKeys, PageRequest pageRequest, String language, Long currentUserId, boolean officialOnly, boolean shortInfo) {
+        LOGGER.debug("🏷️ Получение {} стикерсетов по категориям {} с пагинацией: page={}, size={}, shortInfo={}", 
+                officialOnly ? "официальных" : "публичных", String.join(",", categoryKeys), pageRequest.getPage(), pageRequest.getSize(), shortInfo);
         Page<StickerSet> stickerSetsPage = officialOnly
                 ? stickerSetRepository.findByCategoryKeysPublicNotBlockedAndOfficial(categoryKeys, pageRequest.toPageable())
                 : stickerSetRepository.findByCategoryKeysPublicAndNotBlocked(categoryKeys, pageRequest.toPageable());
-        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language, currentUserId);
+        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language, currentUserId, shortInfo);
         return PageResponse.of(stickerSetsPage, enrichedDtos);
     }
     
@@ -410,13 +431,18 @@ public class StickerSetService {
      */
     public PageResponse<StickerSetDto> findByCategoryKeys(String[] categoryKeys, PageRequest pageRequest, String language, Long currentUserId,
                                                           boolean officialOnly, Long authorId, boolean hasAuthorOnly) {
-        LOGGER.debug("🏷️ Получение {} стикерсетов по категориям {}{} с пагинацией: page={}, size={}",
+        return findByCategoryKeys(categoryKeys, pageRequest, language, currentUserId, officialOnly, authorId, hasAuthorOnly, false);
+    }
+    
+    public PageResponse<StickerSetDto> findByCategoryKeys(String[] categoryKeys, PageRequest pageRequest, String language, Long currentUserId,
+                                                          boolean officialOnly, Long authorId, boolean hasAuthorOnly, boolean shortInfo) {
+        LOGGER.debug("🏷️ Получение {} стикерсетов по категориям {}{} с пагинацией: page={}, size={}, shortInfo={}",
                 officialOnly ? "официальных" : "публичных",
                 String.join(",", categoryKeys),
                 authorId != null ? (" автора=" + authorId) : (hasAuthorOnly ? " (только с автором)" : ""),
-                pageRequest.getPage(), pageRequest.getSize());
+                pageRequest.getPage(), pageRequest.getSize(), shortInfo);
         Page<StickerSet> stickerSetsPage = stickerSetRepository.findByCategoryKeysPublicNotBlockedFiltered(categoryKeys, officialOnly, authorId, hasAuthorOnly, pageRequest.toPageable());
-        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language, currentUserId);
+        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language, currentUserId, shortInfo);
         return PageResponse.of(stickerSetsPage, enrichedDtos);
     }
     
@@ -425,7 +451,7 @@ public class StickerSetService {
      * Если Bot API недоступен, возвращает стикерсет без обогащения
      */
     public StickerSetDto findByIdWithBotApiData(Long id) {
-        return findByIdWithBotApiData(id, null, null);
+        return findByIdWithBotApiData(id, null, null, false);
     }
     
     /**
@@ -436,14 +462,18 @@ public class StickerSetService {
      * @return StickerSetDto с полем isLikedByCurrentUser
      */
     public StickerSetDto findByIdWithBotApiData(Long id, Long currentUserId) {
-        return findByIdWithBotApiData(id, null, currentUserId);
+        return findByIdWithBotApiData(id, null, currentUserId, false);
     }
     
     /**
      * Получить стикерсет по ID с учётом языка и лайков пользователя
      */
     public StickerSetDto findByIdWithBotApiData(Long id, String language, Long currentUserId) {
-        LOGGER.debug("🔍 Получение стикерсета по ID {} с данными Bot API (language={}, currentUserId={})", id, language, currentUserId);
+        return findByIdWithBotApiData(id, language, currentUserId, false);
+    }
+    
+    public StickerSetDto findByIdWithBotApiData(Long id, String language, Long currentUserId, boolean shortInfo) {
+        LOGGER.debug("🔍 Получение стикерсета по ID {} с данными Bot API (language={}, currentUserId={}, shortInfo={})", id, language, currentUserId, shortInfo);
         
         StickerSet stickerSet = stickerSetRepository.findById(id).orElse(null);
         if (stickerSet == null) {
@@ -451,7 +481,7 @@ public class StickerSetService {
         }
         
         String lang = normalizeLanguage(language);
-        return enrichSingleStickerSetSafelyWithCategories(stickerSet, lang, currentUserId);
+        return enrichSingleStickerSetSafelyWithCategories(stickerSet, lang, currentUserId, shortInfo);
     }
     
     /**
@@ -459,14 +489,18 @@ public class StickerSetService {
      * Если Bot API недоступен, возвращает стикерсет без обогащения
      */
     public StickerSetDto findByNameWithBotApiData(String name) {
-        LOGGER.debug("🔍 Получение стикерсета по имени '{}' с данными Bot API", name);
+        return findByNameWithBotApiData(name, false);
+    }
+    
+    public StickerSetDto findByNameWithBotApiData(String name, boolean shortInfo) {
+        LOGGER.debug("🔍 Получение стикерсета по имени '{}' с данными Bot API (shortInfo={})", name, shortInfo);
         
         StickerSet stickerSet = stickerSetRepository.findByName(name).orElse(null);
         if (stickerSet == null) {
             return null;
         }
         
-        return enrichSingleStickerSetSafely(stickerSet);
+        return enrichSingleStickerSetSafely(stickerSet, shortInfo);
     }
     
     /**
@@ -624,15 +658,19 @@ public class StickerSetService {
      * Обогащает список стикерсетов данными из Bot API и категориями (последовательно для Hibernate)
      */
     private List<StickerSetDto> enrichWithBotApiDataAndCategories(List<StickerSet> stickerSets, String language, Long currentUserId) {
+        return enrichWithBotApiDataAndCategories(stickerSets, language, currentUserId, false);
+    }
+    
+    private List<StickerSetDto> enrichWithBotApiDataAndCategories(List<StickerSet> stickerSets, String language, Long currentUserId, boolean shortInfo) {
         if (stickerSets.isEmpty()) {
             return List.of();
         }
         
-        LOGGER.debug("🚀 Обогащение {} стикерсетов данными Bot API и категориями (последовательно)", stickerSets.size());
+        LOGGER.debug("🚀 Обогащение {} стикерсетов данными Bot API и категориями (последовательно, shortInfo={})", stickerSets.size(), shortInfo);
         
         // Обрабатываем последовательно, чтобы избежать проблем с Hibernate Session
         List<StickerSetDto> result = stickerSets.stream()
-                .map(stickerSet -> enrichSingleStickerSetSafelyWithCategories(stickerSet, language, currentUserId))
+                .map(stickerSet -> enrichSingleStickerSetSafelyWithCategories(stickerSet, language, currentUserId, shortInfo))
                 .collect(Collectors.toList());
         
         LOGGER.debug("✅ Обогащение завершено для {} стикерсетов", result.size());
@@ -643,14 +681,26 @@ public class StickerSetService {
      * Обогащает один стикерсет данными из Bot API и категориями (безопасно)
      */
     private StickerSetDto enrichSingleStickerSetSafelyWithCategories(StickerSet stickerSet, String language) {
-        return enrichSingleStickerSetSafelyWithCategories(stickerSet, language, null);
+        return enrichSingleStickerSetSafelyWithCategories(stickerSet, language, null, false);
     }
     
     /**
      * Обогащает один стикерсет данными из Bot API и категориями (безопасно)
      */
     private StickerSetDto enrichSingleStickerSetSafelyWithCategories(StickerSet stickerSet, String language, Long currentUserId) {
+        return enrichSingleStickerSetSafelyWithCategories(stickerSet, language, currentUserId, false);
+    }
+    
+    /**
+     * Обогащает один стикерсет данными из Bot API и категориями (безопасно)
+     */
+    private StickerSetDto enrichSingleStickerSetSafelyWithCategories(StickerSet stickerSet, String language, Long currentUserId, boolean shortInfo) {
         StickerSetDto dto = StickerSetDto.fromEntity(stickerSet, language, currentUserId);
+        
+        if (shortInfo) {
+            dto.setTelegramStickerSetInfo(null);
+            return dto;
+        }
         
         try {
             Object botApiData = telegramBotApiService.getStickerSetInfo(stickerSet.getName());
@@ -671,6 +721,10 @@ public class StickerSetService {
      * Если данные Bot API недоступны, возвращает DTO без обогащения, но не выбрасывает исключение
      */
     private StickerSetDto enrichSingleStickerSetSafely(StickerSet stickerSet) {
-        return enrichSingleStickerSetSafelyWithCategories(stickerSet, "en");
+        return enrichSingleStickerSetSafely(stickerSet, false);
+    }
+    
+    private StickerSetDto enrichSingleStickerSetSafely(StickerSet stickerSet, boolean shortInfo) {
+        return enrichSingleStickerSetSafelyWithCategories(stickerSet, "en", null, shortInfo);
     }
 } 

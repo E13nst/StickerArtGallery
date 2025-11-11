@@ -94,7 +94,9 @@ public class InternalStickerSetController {
     public ResponseEntity<?> createStickerSetForUser(
             @Valid @RequestBody CreateStickerSetDto createDto,
             @RequestParam @NotNull @Positive Long userId,
-            @RequestParam(required = false) String language) {
+            @RequestParam(required = false) String language,
+            @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
+            @RequestParam(defaultValue = "false") boolean shortInfo) {
 
         if (createDto.getIsPublic() == null) {
             createDto.setIsPublic(true);
@@ -104,7 +106,7 @@ public class InternalStickerSetController {
             LOGGER.info("🤝 Межсервисное создание стикерсета для userId {}: {}", userId, createDto.getName());
             StickerSet stickerSet = stickerSetService.createStickerSetForUser(createDto, userId, language);
             String responseLanguage = (language == null || language.isBlank()) ? "en" : language;
-            StickerSetDto responseDto = stickerSetService.findByIdWithBotApiData(stickerSet.getId(), responseLanguage, userId);
+            StickerSetDto responseDto = stickerSetService.findByIdWithBotApiData(stickerSet.getId(), responseLanguage, userId, shortInfo);
             if (responseDto == null) {
                 responseDto = StickerSetDto.fromEntity(stickerSet, responseLanguage, userId);
             }

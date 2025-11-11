@@ -223,10 +223,12 @@ public class StickerSetController {
             @RequestParam(defaultValue = "false") boolean hasAuthorOnly,
             @Parameter(description = "Показать только лайкнутые пользователем стикерсеты", example = "false")
             @RequestParam(defaultValue = "false") boolean likedOnly,
+            @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
+            @RequestParam(defaultValue = "false") boolean shortInfo,
             HttpServletRequest request) {
         try {
-            LOGGER.info("📋 Получение всех стикерсетов с пагинацией: page={}, size={}, sort={}, direction={}, categoryKeys={}, officialOnly={}, authorId={}, hasAuthorOnly={}, likedOnly={}", 
-                    page, size, sort, direction, categoryKeys, officialOnly, authorId, hasAuthorOnly, likedOnly);
+            LOGGER.info("📋 Получение всех стикерсетов с пагинацией: page={}, size={}, sort={}, direction={}, categoryKeys={}, officialOnly={}, authorId={}, hasAuthorOnly={}, likedOnly={}, shortInfo={}", 
+                    page, size, sort, direction, categoryKeys, officialOnly, authorId, hasAuthorOnly, likedOnly, shortInfo);
             
             PageRequest pageRequest = new PageRequest();
             pageRequest.setPage(page);
@@ -257,10 +259,10 @@ public class StickerSetController {
             } else if (categoryKeys != null && !categoryKeys.trim().isEmpty()) {
                 // Фильтрация только по категориям (без лайков)
                 String[] categoryKeyArray = categoryKeys.split(",");
-                result = stickerSetService.findByCategoryKeys(categoryKeyArray, pageRequest, language, currentUserId, officialOnly, authorId, hasAuthorOnly);
+                result = stickerSetService.findByCategoryKeys(categoryKeyArray, pageRequest, language, currentUserId, officialOnly, authorId, hasAuthorOnly, shortInfo);
             } else {
                 // Без фильтрации
-                result = stickerSetService.findAllWithPagination(pageRequest, language, currentUserId, officialOnly, authorId, hasAuthorOnly);
+                result = stickerSetService.findAllWithPagination(pageRequest, language, currentUserId, officialOnly, authorId, hasAuthorOnly, shortInfo);
             }
             
             LOGGER.debug("✅ Найдено {} стикерсетов на странице {} из {}", 
@@ -318,12 +320,14 @@ public class StickerSetController {
     })
     public ResponseEntity<StickerSetDto> getStickerSetById(
             @Parameter(description = "Уникальный идентификатор стикерсета", required = true, example = "1")
-            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id) {
+            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id,
+            @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
+            @RequestParam(defaultValue = "false") boolean shortInfo) {
         try {
-            LOGGER.info("🔍 Поиск стикерсета по ID: {} с данными Bot API", id);
+            LOGGER.info("🔍 Поиск стикерсета по ID: {} с данными Bot API (shortInfo={})", id, shortInfo);
             
             Long currentUserId = getCurrentUserIdOrNull();
-            StickerSetDto dto = stickerSetService.findByIdWithBotApiData(id, currentUserId);
+            StickerSetDto dto = stickerSetService.findByIdWithBotApiData(id, null, currentUserId, shortInfo);
             
             if (dto == null) {
                 LOGGER.warn("⚠️ Стикерсет с ID {} не найден", id);
@@ -394,10 +398,12 @@ public class StickerSetController {
             @Parameter(description = "Показывать только авторские стикерсеты (authorId IS NOT NULL)", example = "false")
             @RequestParam(defaultValue = "false") boolean hasAuthorOnly,
             @Parameter(description = "Показать только лайкнутые текущим пользователем стикерсеты", example = "false")
-            @RequestParam(defaultValue = "false") boolean likedOnly) {
+            @RequestParam(defaultValue = "false") boolean likedOnly,
+            @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
+            @RequestParam(defaultValue = "false") boolean shortInfo) {
         try {
-            LOGGER.info("🔍 Поиск стикерсетов для пользователя: {} с пагинацией: page={}, size={}, sort={}, direction={}, categoryKeys={}, hasAuthorOnly={}, likedOnly={}", 
-                    userId, page, size, sort, direction, categoryKeys, hasAuthorOnly, likedOnly);
+            LOGGER.info("🔍 Поиск стикерсетов для пользователя: {} с пагинацией: page={}, size={}, sort={}, direction={}, categoryKeys={}, hasAuthorOnly={}, likedOnly={}, shortInfo={}", 
+                    userId, page, size, sort, direction, categoryKeys, hasAuthorOnly, likedOnly, shortInfo);
             
             PageRequest pageRequest = new PageRequest();
             pageRequest.setPage(page);
@@ -421,7 +427,8 @@ public class StickerSetController {
                     hasAuthorOnly,
                     likedOnly,
                     currentUserId,
-                    includePrivate
+                    includePrivate,
+                    shortInfo
             );
             
             LOGGER.debug("✅ Найдено {} стикерсетов для пользователя {} на странице {} из {}", 
@@ -462,10 +469,12 @@ public class StickerSetController {
             @Parameter(description = "Направление сортировки", example = "DESC")
             @RequestParam(defaultValue = "DESC") @Pattern(regexp = "ASC|DESC") String direction,
             @Parameter(description = "Фильтр по ключам категорий (через запятую)", example = "animals,cute")
-            @RequestParam(required = false) String categoryKeys) {
+            @RequestParam(required = false) String categoryKeys,
+            @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
+            @RequestParam(defaultValue = "false") boolean shortInfo) {
         try {
-            LOGGER.info("🔍 Поиск авторских стикерсетов: authorId={}, page={}, size={}, sort={}, direction={}, categoryKeys={}",
-                    authorId, page, size, sort, direction, categoryKeys);
+            LOGGER.info("🔍 Поиск авторских стикерсетов: authorId={}, page={}, size={}, sort={}, direction={}, categoryKeys={}, shortInfo={}",
+                    authorId, page, size, sort, direction, categoryKeys, shortInfo);
 
             PageRequest pageRequest = new PageRequest();
             pageRequest.setPage(page);
@@ -483,7 +492,8 @@ public class StickerSetController {
                     pageRequest,
                     categoryKeySet,
                     currentUserId,
-                    includePrivate
+                    includePrivate,
+                    shortInfo
             );
 
             LOGGER.debug("✅ Найдено {} авторских стикерсетов для authorId {} на странице {} из {}",
@@ -536,10 +546,12 @@ public class StickerSetController {
     })
     public ResponseEntity<StickerSetDto> getStickerSetByName(
             @Parameter(description = "Уникальное имя стикерсета для Telegram API", required = true, example = "my_stickers_by_StickerGalleryBot")
-            @RequestParam @NotBlank(message = "Название не может быть пустым") String name) {
+            @RequestParam @NotBlank(message = "Название не может быть пустым") String name,
+            @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
+            @RequestParam(defaultValue = "false") boolean shortInfo) {
         try {
-            LOGGER.info("🔍 Поиск стикерсета по названию: {} с данными Bot API", name);
-            StickerSetDto dto = stickerSetService.findByNameWithBotApiData(name);
+            LOGGER.info("🔍 Поиск стикерсета по названию: {} с данными Bot API (shortInfo={})", name, shortInfo);
+            StickerSetDto dto = stickerSetService.findByNameWithBotApiData(name, shortInfo);
             
             if (dto == null) {
                 LOGGER.warn("⚠️ Стикерсет с названием '{}' не найден", name);
@@ -683,10 +695,12 @@ public class StickerSetController {
     )
     public ResponseEntity<?> createStickerSet(
             @Valid @RequestBody CreateStickerSetDto createDto,
+            @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
+            @RequestParam(defaultValue = "false") boolean shortInfo,
             HttpServletRequest request) {
         String language = getLanguageFromHeaderOrUser(request);
         try {
-            LOGGER.info("➕ Создание нового стикерсета: {}", createDto.getName());
+            LOGGER.info("➕ Создание нового стикерсета: {} (shortInfo={})", createDto.getName(), shortInfo);
             if (createDto.getIsPublic() == null) {
                 createDto.setIsPublic(true);
             }
@@ -702,7 +716,7 @@ public class StickerSetController {
 
             StickerSet newStickerSet = stickerSetService.createStickerSet(createDto, language);
             String responseLanguage = (language == null || language.isBlank()) ? "en" : language;
-            StickerSetDto createdDto = stickerSetService.findByIdWithBotApiData(newStickerSet.getId(), responseLanguage, currentUserId);
+            StickerSetDto createdDto = stickerSetService.findByIdWithBotApiData(newStickerSet.getId(), responseLanguage, currentUserId, shortInfo);
             if (createdDto == null) {
                 createdDto = StickerSetDto.fromEntity(newStickerSet, responseLanguage, currentUserId);
             }
