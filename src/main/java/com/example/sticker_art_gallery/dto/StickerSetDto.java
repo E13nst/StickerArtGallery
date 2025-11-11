@@ -24,6 +24,9 @@ public class StickerSetDto {
     @Size(min = 1, max = 64, message = "Имя стикерсета должно быть от 1 до 64 символов")
     @Pattern(regexp = "^[a-zA-Z0-9_]+$", message = "Имя стикерсета может содержать только латинские буквы, цифры и подчеркивания")
     private String name;
+
+    @Schema(description = "Полный URL для добавления стикерсета в Telegram", example = "https://t.me/addstickers/my_pack_by_bot")
+    private String url;
     
     private LocalDateTime createdAt;
     
@@ -63,7 +66,7 @@ public class StickerSetDto {
         this.id = id;
         this.userId = userId;
         this.title = title;
-        this.name = name;
+        this.setName(name);
         this.createdAt = createdAt;
     }
     
@@ -98,6 +101,15 @@ public class StickerSetDto {
     
     public void setName(String name) {
         this.name = name;
+        this.url = buildUrl(name);
+    }
+
+    public String getUrl() {
+        return url;
+    }
+
+    public void setUrl(String url) {
+        this.url = url;
     }
     
     public LocalDateTime getCreatedAt() {
@@ -278,7 +290,15 @@ public class StickerSetDto {
                 ", userId=" + userId +
                 ", title='" + title + '\'' +
                 ", name='" + name + '\'' +
+                ", url='" + url + '\'' +
                 ", createdAt=" + createdAt +
                 '}';
+    }
+
+    private String buildUrl(String name) {
+        if (name == null || name.isBlank()) {
+            return null;
+        }
+        return "https://t.me/addstickers/" + name;
     }
 } 
