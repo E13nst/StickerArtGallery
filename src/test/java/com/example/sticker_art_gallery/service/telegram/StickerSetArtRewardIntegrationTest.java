@@ -101,7 +101,7 @@ class StickerSetArtRewardIntegrationTest {
         dto.setName(STICKERSET_NAME);
 
         // when
-        StickerSet created = stickerSetService.createStickerSetForUser(dto, USER_ID, "ru");
+        StickerSet created = stickerSetService.createStickerSetForUser(dto, USER_ID, "ru", null);
 
         entityManager.flush();
         entityManager.clear();

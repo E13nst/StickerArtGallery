@@ -1,9 +1,12 @@
 package com.example.sticker_art_gallery.controller;
 
 import com.example.sticker_art_gallery.dto.CreateStickerSetDto;
+import com.example.sticker_art_gallery.dto.PageRequest;
+import com.example.sticker_art_gallery.dto.PageResponse;
 import com.example.sticker_art_gallery.dto.StickerSetDto;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.service.telegram.StickerSetService;
+import jakarta.servlet.http.HttpServletRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -15,7 +18,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +31,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Межсервисный контроллер для создания стикерсетов от имени пользователей.
@@ -60,12 +69,6 @@ public class InternalStickerSetController {
                 required = true,
                 description = "Telegram ID пользователя, от имени которого создаётся стикерсет",
                 example = "123456789"
-            ),
-            @Parameter(
-                name = "language",
-                in = ParameterIn.QUERY,
-                description = "Язык сообщений об ошибках (`ru` или `en`). По умолчанию `en`.",
-                example = "en"
             )
         }
     )
@@ -94,21 +97,29 @@ public class InternalStickerSetController {
     public ResponseEntity<?> createStickerSetForUser(
             @Valid @RequestBody CreateStickerSetDto createDto,
             @RequestParam @NotNull @Positive Long userId,
-            @RequestParam(required = false) String language,
+            @Parameter(
+                name = "authorId",
+                in = ParameterIn.QUERY,
+                description = "Telegram ID автора стикерсета (опционально). Если задан, будет сохранён в authorId.",
+                example = "123456789"
+            )
+            @RequestParam(required = false) @Positive Long authorId,
             @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
-            @RequestParam(defaultValue = "false") boolean shortInfo) {
+            @RequestParam(defaultValue = "false") boolean shortInfo,
+            HttpServletRequest request) {
 
         if (createDto.getIsPublic() == null) {
             createDto.setIsPublic(true);
         }
 
         try {
-            LOGGER.info("🤝 Межсервисное создание стикерсета для userId {}: {}", userId, createDto.getName());
-            StickerSet stickerSet = stickerSetService.createStickerSetForUser(createDto, userId, language);
-            String responseLanguage = (language == null || language.isBlank()) ? "en" : language;
-            StickerSetDto responseDto = stickerSetService.findByIdWithBotApiData(stickerSet.getId(), responseLanguage, userId, shortInfo);
+            String language = resolveLanguage(request);
+            LOGGER.info("🤝 Межсервисное создание стикерсета для userId {}: {} (language={}, shortInfo={}, authorId={})",
+                    userId, createDto.getName(), language, shortInfo, authorId);
+            StickerSet stickerSet = stickerSetService.createStickerSetForUser(createDto, userId, language, authorId);
+            StickerSetDto responseDto = stickerSetService.findByIdWithBotApiData(stickerSet.getId(), language, userId, shortInfo);
             if (responseDto == null) {
-                responseDto = StickerSetDto.fromEntity(stickerSet, responseLanguage, userId);
+                responseDto = StickerSetDto.fromEntity(stickerSet, language, userId);
             }
             return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
         } catch (IllegalArgumentException ex) {
@@ -126,6 +137,105 @@ public class InternalStickerSetController {
                             "message", "Unexpected error while creating stickerset"
                     ));
         }
+    }
+
+    @GetMapping("/author/{authorId}")
+    @PreAuthorize("hasRole('INTERNAL')")
+    @Operation(
+        summary = "Получить авторские стикерсеты (межсервисный вызов)",
+        description = """
+            Межсервисный эндпоинт для получения авторских стикерсетов.
+            Использует сервисный токен, аналогично POST /internal/stickersets.
+            Возвращает все стикерсеты автора (включая приватные), без фильтрации прав текущего пользователя.
+            """
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Список авторских стикерсетов получен",
+            content = @Content(schema = @Schema(implementation = PageResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Некорректные параметры"),
+        @ApiResponse(responseCode = "401", description = "Межсервисная авторизация не пройдена"),
+        @ApiResponse(responseCode = "403", description = "Нет прав для выполнения операции"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<PageResponse<StickerSetDto>> getStickerSetsByAuthorIdInternal(
+            @Parameter(description = "Telegram ID автора", required = true, example = "123456789")
+            @PathVariable @Positive(message = "ID автора должен быть положительным числом") Long authorId,
+            @Parameter(description = "Номер страницы (начиная с 0)", example = "0")
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @Parameter(description = "Количество элементов на странице (1-100)", example = "20")
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            @Parameter(description = "Поле для сортировки", example = "createdAt")
+            @RequestParam(defaultValue = "createdAt") String sort,
+            @Parameter(description = "Направление сортировки", example = "DESC")
+            @RequestParam(defaultValue = "DESC") @Pattern(regexp = "ASC|DESC") String direction,
+            @Parameter(description = "Фильтр по ключам категорий (через запятую)", example = "animals,cute")
+            @RequestParam(required = false) String categoryKeys,
+            @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
+            @RequestParam(defaultValue = "false") boolean shortInfo,
+            HttpServletRequest request) {
+        try {
+            String language = resolveLanguage(request);
+            LOGGER.info("🔍 [internal] Поиск авторских стикерсетов: authorId={}, page={}, size={}, sort={}, direction={}, categoryKeys={}, shortInfo={}, language={}",
+                    authorId, page, size, sort, direction, categoryKeys, shortInfo, language);
+
+            PageRequest pageRequest = new PageRequest();
+            pageRequest.setPage(page);
+            pageRequest.setSize(size);
+            pageRequest.setSort(sort);
+            pageRequest.setDirection(direction);
+
+            Set<String> categoryKeySet = parseCategoryKeys(categoryKeys);
+            boolean includePrivate = true; // доверенный межсервисный вызов
+
+            PageResponse<StickerSetDto> result = stickerSetService.findByAuthorIdWithPagination(
+                    authorId,
+                    pageRequest,
+                    categoryKeySet,
+                    null,
+                    includePrivate,
+                    shortInfo,
+                    normalizeLanguage(language)
+            );
+
+            LOGGER.debug("✅ [internal] Найдено {} авторских стикерсетов для authorId {} на странице {} из {}",
+                    result.getContent().size(), authorId, result.getPage() + 1, result.getTotalPages());
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("⚠️ Некорректные параметры для внутреннего запроса авторских стикерсетов {}: {}", authorId, e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            LOGGER.error("❌ Внутренняя ошибка при получении авторских стикерсетов {}: {}", authorId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    private Set<String> parseCategoryKeys(String categoryKeys) {
+        if (categoryKeys == null || categoryKeys.trim().isEmpty()) {
+            return null;
+        }
+        Set<String> result = java.util.Arrays.stream(categoryKeys.split(","))
+                .map(String::trim)
+                .filter(key -> !key.isEmpty())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        return result.isEmpty() ? null : result;
+    }
+
+    private String resolveLanguage(HttpServletRequest request) {
+        if (request != null) {
+            String header = request.getHeader("X-Language");
+            if (header != null && !header.isBlank()) {
+                return normalizeLanguage(header);
+            }
+        }
+        return "en";
+    }
+
+    private String normalizeLanguage(String language) {
+        if (language == null || language.isBlank()) {
+            return "en";
+        }
+        String normalized = language.trim().toLowerCase();
+        return ("ru".equals(normalized)) ? "ru" : "en";
     }
 }
 

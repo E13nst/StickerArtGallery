@@ -61,13 +61,13 @@ public class StickerSetService {
             ));
         }
         LOGGER.debug("📱 Извлечен userId из аутентификации: {}", userId);
-        return createStickerSetForUser(createDto, userId, lang);
+        return createStickerSetForUser(createDto, userId, lang, null);
     }
 
     /**
      * Создает стикерсет от имени конкретного пользователя (используется межсервисным API).
      */
-    public StickerSet createStickerSetForUser(CreateStickerSetDto createDto, Long userId, String language) {
+    public StickerSet createStickerSetForUser(CreateStickerSetDto createDto, Long userId, String language, Long authorId) {
         String lang = normalizeLanguage(language);
         if (userId == null) {
             throw new IllegalArgumentException(localize(
@@ -76,11 +76,11 @@ public class StickerSetService {
                     "User ID is required to create a stickerset"
             ));
         }
-        LOGGER.info("➕ Создание стикерсета для пользователя {}: {}", userId, createDto.getName());
-        return createStickerSetValidated(createDto, userId, lang);
+        LOGGER.info("➕ Создание стикерсета для пользователя {} (authorId={}): {}", userId, authorId, createDto.getName());
+        return createStickerSetValidated(createDto, userId, lang, authorId);
     }
 
-    private StickerSet createStickerSetValidated(CreateStickerSetDto createDto, Long userId, String lang) {
+    private StickerSet createStickerSetValidated(CreateStickerSetDto createDto, Long userId, String lang, Long authorId) {
         // Нормализуем имя стикерсета
         createDto.normalizeName();
         String stickerSetName = createDto.getName();
@@ -152,13 +152,18 @@ public class StickerSetService {
         }
 
         // 5. Создаем стикерсет
-        return createStickerSetInternal(userId, title, stickerSetName, createDto.getIsPublic(), categories);
+        return createStickerSetInternal(userId, title, stickerSetName, createDto.getIsPublic(), categories, authorId);
     }
     
     /**
      * Внутренний метод для создания стикерсета без валидации
      */
-    private StickerSet createStickerSetInternal(Long userId, String title, String name, Boolean isPublic, List<Category> categories) {
+    private StickerSet createStickerSetInternal(Long userId,
+                                               String title,
+                                               String name,
+                                               Boolean isPublic,
+                                               List<Category> categories,
+                                               Long authorId) {
         // Профиль пользователя создается автоматически при аутентификации
         LOGGER.debug("Создание стикерсета для пользователя {}", userId);
         
@@ -167,6 +172,9 @@ public class StickerSetService {
         stickerSet.setTitle(title);
         stickerSet.setName(name);
         stickerSet.setIsPublic(Boolean.TRUE.equals(isPublic));
+        if (authorId != null) {
+            stickerSet.setAuthorId(authorId);
+        }
         
         // Добавляем категории, если они указаны
         if (categories != null && !categories.isEmpty()) {
@@ -376,9 +384,20 @@ public class StickerSetService {
                                                                     Long currentUserId,
                                                                     boolean includePrivate,
                                                                     boolean shortInfo) {
-        LOGGER.debug("✍️ Получение авторских стикерсетов {} с пагинацией: page={}, size={}, includePrivate={}, shortInfo={}, categoryKeys={}",
+        return findByAuthorIdWithPagination(authorId, pageRequest, categoryKeys, currentUserId, includePrivate, shortInfo, "en");
+    }
+
+    public PageResponse<StickerSetDto> findByAuthorIdWithPagination(Long authorId,
+                                                                    PageRequest pageRequest,
+                                                                    Set<String> categoryKeys,
+                                                                    Long currentUserId,
+                                                                    boolean includePrivate,
+                                                                    boolean shortInfo,
+                                                                    String language) {
+        String lang = normalizeLanguage(language);
+        LOGGER.debug("✍️ Получение авторских стикерсетов {} с пагинацией: page={}, size={}, includePrivate={}, shortInfo={}, categoryKeys={}, language={}",
                 authorId, pageRequest.getPage(), pageRequest.getSize(), includePrivate, shortInfo,
-                categoryKeys == null ? "null" : String.join(",", categoryKeys));
+                categoryKeys == null ? "null" : String.join(",", categoryKeys), lang);
 
         Set<String> normalizedCategoryKeys = (categoryKeys == null || categoryKeys.isEmpty()) ? null : categoryKeys;
 
@@ -389,7 +408,7 @@ public class StickerSetService {
                 pageRequest.toPageable()
         );
 
-        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), "en", currentUserId, shortInfo);
+        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), lang, currentUserId, shortInfo);
 
         return PageResponse.of(stickerSetsPage, enrichedDtos);
     }
