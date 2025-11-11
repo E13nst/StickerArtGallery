@@ -183,6 +183,91 @@ public class InternalStickerSetController {
         }
     }
 
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('INTERNAL')")
+    @Operation(
+        summary = "Удалить стикерсет (межсервисный вызов)",
+        description = "Полная версия публичного DELETE /api/stickersets/{id} с авторизацией по сервисному токену."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Стикерсет успешно удален"),
+        @ApiResponse(responseCode = "400", description = "Некорректный ID"),
+        @ApiResponse(responseCode = "401", description = "Межсервисная авторизация не пройдена"),
+        @ApiResponse(responseCode = "403", description = "Нет прав для выполнения операции"),
+        @ApiResponse(responseCode = "404", description = "Стикерсет не найден"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<Void> deleteStickerSetInternal(
+            @Parameter(description = "ID стикерсета для удаления", required = true, example = "1")
+            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id) {
+        try {
+            LOGGER.info("🗑️ [internal] Удаление стикерсета {}", id);
+            StickerSet existingStickerSet = stickerSetService.findById(id);
+            if (existingStickerSet == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            stickerSetService.deleteById(id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("⚠️ Некорректный ID для удаления: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при внутреннем удалении стикерсета {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/{id}/publish")
+    @PreAuthorize("hasRole('INTERNAL')")
+    @Operation(
+        summary = "Опубликовать стикерсет (межсервисный вызов)",
+        description = "Межсервисный аналог POST /api/stickersets/{id}/publish."
+    )
+    public ResponseEntity<?> publishStickerSetInternal(
+            @Parameter(description = "ID стикерсета", required = true, example = "1")
+            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id) {
+        return updateVisibilityInternal(id, true, "опубликован");
+    }
+
+    @PostMapping("/{id}/unpublish")
+    @PreAuthorize("hasRole('INTERNAL')")
+    @Operation(
+        summary = "Сделать стикерсет приватным (межсервисный вызов)",
+        description = "Межсервисный аналог POST /api/stickersets/{id}/unpublish."
+    )
+    public ResponseEntity<?> unpublishStickerSetInternal(
+            @Parameter(description = "ID стикерсета", required = true, example = "1")
+            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id) {
+        return updateVisibilityInternal(id, false, "скрыт");
+    }
+
+    private ResponseEntity<?> updateVisibilityInternal(Long id, boolean isPublic, String action) {
+        try {
+            LOGGER.info("👁️ [internal] Изменение видимости стикерсета {} на {}", id, isPublic ? "публичный" : "приватный");
+            StickerSet stickerSet = stickerSetService.findById(id);
+            if (stickerSet == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            StickerSet updated = stickerSetService.updateVisibility(id, isPublic);
+            StickerSetDto dto = StickerSetDto.fromEntity(updated);
+            dto.setUrl("https://t.me/addstickers/" + updated.getName());
+
+            return ResponseEntity.ok(dto);
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("⚠️ Ошибка при изменении видимости стикерсета {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(Map.of(
+                            "error", "Ошибка валидации",
+                            "message", e.getMessage()
+                    ));
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при изменении видимости стикерсета {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     @GetMapping("/author/{authorId}")
     @PreAuthorize("hasRole('INTERNAL')")
     @Operation(
