@@ -54,6 +54,50 @@ public class InternalStickerSetController {
         this.stickerSetService = stickerSetService;
     }
 
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('INTERNAL')")
+    @Operation(
+        summary = "Получить стикерсет по ID (межсервисный вызов)",
+        description = """
+            Межсервисный эндпоинт, повторяющий логику публичного GET /api/stickersets/{id}, но с авторизацией по сервисному токену.
+            Возвращает информацию о стикерсете, включая связанные данные, с возможностью отключить Telegram Bot API через параметр shortInfo.
+            """
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Стикерсет найден",
+            content = @Content(schema = @Schema(implementation = StickerSetDto.class))),
+        @ApiResponse(responseCode = "400", description = "Некорректный ID"),
+        @ApiResponse(responseCode = "401", description = "Межсервисная авторизация не пройдена"),
+        @ApiResponse(responseCode = "403", description = "Нет прав для выполнения операции"),
+        @ApiResponse(responseCode = "404", description = "Стикерсет не найден"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<StickerSetDto> getStickerSetByIdInternal(
+            @Parameter(description = "ID стикерсета", required = true, example = "1")
+            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id,
+            @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
+            @RequestParam(defaultValue = "false") boolean shortInfo,
+            HttpServletRequest request) {
+        try {
+            String language = resolveLanguage(request);
+            LOGGER.info("🔍 [internal] Получение стикерсета по ID {} (shortInfo={}, language={})", id, shortInfo, language);
+
+            StickerSetDto dto = stickerSetService.findByIdWithBotApiData(id, language, null, shortInfo);
+            if (dto == null) {
+                LOGGER.warn("⚠️ [internal] Стикерсет с ID {} не найден", id);
+                return ResponseEntity.notFound().build();
+            }
+
+            return ResponseEntity.ok(dto);
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("⚠️ Некорректный ID для внутреннего запроса стикерсета: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при внутреннем получении стикерсета {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @PostMapping
     @PreAuthorize("hasRole('INTERNAL')")
     @Operation(
