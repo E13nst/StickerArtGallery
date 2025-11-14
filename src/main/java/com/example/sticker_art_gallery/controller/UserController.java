@@ -92,6 +92,7 @@ public class UserController {
      * Получить фото профиля пользователя
      */
     @GetMapping("/{id}/photo")
+    @PreAuthorize("permitAll()")
     @Operation(
         summary = "Получить фото профиля пользователя",
         description = "Возвращает информацию о фото профиля пользователя из Telegram Bot API с file_id для скачивания"

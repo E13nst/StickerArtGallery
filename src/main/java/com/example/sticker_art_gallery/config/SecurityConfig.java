@@ -110,6 +110,9 @@ public class SecurityConfig {
                 // API стикерсетов - публичный доступ для тестирования
                 .requestMatchers(mvc.pattern("/api/stickersets/**")).permitAll()
                 
+                // Публичный доступ к фото профиля пользователя
+                .requestMatchers(mvc.pattern("/api/users/*/photo")).permitAll()
+                
                 // API для авторизованных пользователей (USER или ADMIN)
                 .requestMatchers(mvc.pattern("/api/users/**")).hasAnyRole("USER", "ADMIN")
                 .requestMatchers(mvc.pattern("/api/profiles/**")).hasAnyRole("USER", "ADMIN")
