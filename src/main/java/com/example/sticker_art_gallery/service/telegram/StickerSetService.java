@@ -309,11 +309,16 @@ public class StickerSetService {
     
     public PageResponse<StickerSetDto> findAllWithPagination(PageRequest pageRequest, String language, Long currentUserId,
                                                              boolean officialOnly, Long authorId, boolean hasAuthorOnly, boolean shortInfo) {
-        LOGGER.debug("📋 Получение {} стикерсетов{} с пагинацией: page={}, size={}, language={}, shortInfo={}",
+        return findAllWithPagination(pageRequest, language, currentUserId, officialOnly, authorId, hasAuthorOnly, null, shortInfo);
+    }
+    
+    public PageResponse<StickerSetDto> findAllWithPagination(PageRequest pageRequest, String language, Long currentUserId,
+                                                             boolean officialOnly, Long authorId, boolean hasAuthorOnly, Long userId, boolean shortInfo) {
+        LOGGER.debug("📋 Получение {} стикерсетов{} с пагинацией: page={}, size={}, language={}, shortInfo={}, userId={}",
                 officialOnly ? "официальных" : "публичных",
                 authorId != null ? (" автора=" + authorId) : (hasAuthorOnly ? " (только с автором)" : ""),
-                pageRequest.getPage(), pageRequest.getSize(), language, shortInfo);
-        Page<StickerSet> stickerSetsPage = stickerSetRepository.findPublicNotBlockedFiltered(officialOnly, authorId, hasAuthorOnly, pageRequest.toPageable());
+                pageRequest.getPage(), pageRequest.getSize(), language, shortInfo, userId);
+        Page<StickerSet> stickerSetsPage = stickerSetRepository.findPublicNotBlockedFiltered(officialOnly, authorId, hasAuthorOnly, userId, pageRequest.toPageable());
         List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language, currentUserId, shortInfo);
         return PageResponse.of(stickerSetsPage, enrichedDtos);
     }
@@ -455,12 +460,17 @@ public class StickerSetService {
     
     public PageResponse<StickerSetDto> findByCategoryKeys(String[] categoryKeys, PageRequest pageRequest, String language, Long currentUserId,
                                                           boolean officialOnly, Long authorId, boolean hasAuthorOnly, boolean shortInfo) {
-        LOGGER.debug("🏷️ Получение {} стикерсетов по категориям {}{} с пагинацией: page={}, size={}, shortInfo={}",
+        return findByCategoryKeys(categoryKeys, pageRequest, language, currentUserId, officialOnly, authorId, hasAuthorOnly, null, shortInfo);
+    }
+    
+    public PageResponse<StickerSetDto> findByCategoryKeys(String[] categoryKeys, PageRequest pageRequest, String language, Long currentUserId,
+                                                          boolean officialOnly, Long authorId, boolean hasAuthorOnly, Long userId, boolean shortInfo) {
+        LOGGER.debug("🏷️ Получение {} стикерсетов по категориям {}{} с пагинацией: page={}, size={}, shortInfo={}, userId={}",
                 officialOnly ? "официальных" : "публичных",
                 String.join(",", categoryKeys),
                 authorId != null ? (" автора=" + authorId) : (hasAuthorOnly ? " (только с автором)" : ""),
-                pageRequest.getPage(), pageRequest.getSize(), shortInfo);
-        Page<StickerSet> stickerSetsPage = stickerSetRepository.findByCategoryKeysPublicNotBlockedFiltered(categoryKeys, officialOnly, authorId, hasAuthorOnly, pageRequest.toPageable());
+                pageRequest.getPage(), pageRequest.getSize(), shortInfo, userId);
+        Page<StickerSet> stickerSetsPage = stickerSetRepository.findByCategoryKeysPublicNotBlockedFiltered(categoryKeys, officialOnly, authorId, hasAuthorOnly, userId, pageRequest.toPageable());
         List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language, currentUserId, shortInfo);
         return PageResponse.of(stickerSetsPage, enrichedDtos);
     }

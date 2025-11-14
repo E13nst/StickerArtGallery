@@ -33,13 +33,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
-import java.util.Arrays;
-import java.util.LinkedHashSet;
-import java.util.Set;
-import java.util.stream.Collectors;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-
 @RestController
 @RequestMapping("/api/stickersets")
 @CrossOrigin(origins = "*") // Разрешаем CORS для фронтенда
@@ -71,6 +64,7 @@ public class StickerSetController {
         description = "Возвращает список всех стикерсетов в системе с пагинацией, фильтрацией по категориям и обогащением данных из Telegram Bot API. " +
                      "Поддерживает локализацию названий категорий через заголовок X-Language (ru/en) или автоматически из initData пользователя. " +
                      "Можно фильтровать по категориям через параметр categoryKeys. " +
+                     "Можно фильтровать по пользователю через параметр userId. " +
                      "Можно показать только лайкнутые пользователем стикерсеты через параметр likedOnly=true. " +
                      "Требует авторизации через Telegram Web App."
     )
@@ -173,6 +167,30 @@ public class StickerSetController {
                             "hasPrevious": false
                         }
                         """),
+                    @ExampleObject(name = "Фильтр по пользователю (userId=123456789)", value = """
+                        {
+                            "content": [
+                                {
+                                    "id": 11,
+                                    "userId": 123456789,
+                                    "title": "Стикерсет пользователя",
+                                    "name": "user_pack_by_StickerGalleryBot",
+                                    "createdAt": "2025-05-15T10:30:00",
+                                    "likesCount": 12,
+                                    "isLikedByCurrentUser": false,
+                                    "categories": []
+                                }
+                            ],
+                            "page": 0,
+                            "size": 20,
+                            "totalElements": 1,
+                            "totalPages": 1,
+                            "first": true,
+                            "last": true,
+                            "hasNext": false,
+                            "hasPrevious": false
+                        }
+                        """),
                     @ExampleObject(name = "Только авторские (hasAuthorOnly=true) и официальные (officialOnly=true)", value = """
                         {
                             "content": [
@@ -221,14 +239,16 @@ public class StickerSetController {
             @RequestParam(required = false) Long authorId,
             @Parameter(description = "Показывать только авторские стикерсеты (authorId IS NOT NULL)", example = "false")
             @RequestParam(defaultValue = "false") boolean hasAuthorOnly,
+            @Parameter(description = "Фильтр по пользователю (Telegram ID)", example = "123456789")
+            @RequestParam(required = false) Long userId,
             @Parameter(description = "Показать только лайкнутые пользователем стикерсеты", example = "false")
             @RequestParam(defaultValue = "false") boolean likedOnly,
             @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
             @RequestParam(defaultValue = "false") boolean shortInfo,
             HttpServletRequest request) {
         try {
-            LOGGER.info("📋 Получение всех стикерсетов с пагинацией: page={}, size={}, sort={}, direction={}, categoryKeys={}, officialOnly={}, authorId={}, hasAuthorOnly={}, likedOnly={}, shortInfo={}", 
-                    page, size, sort, direction, categoryKeys, officialOnly, authorId, hasAuthorOnly, likedOnly, shortInfo);
+            LOGGER.info("📋 Получение всех стикерсетов с пагинацией: page={}, size={}, sort={}, direction={}, categoryKeys={}, officialOnly={}, authorId={}, hasAuthorOnly={}, userId={}, likedOnly={}, shortInfo={}", 
+                    page, size, sort, direction, categoryKeys, officialOnly, authorId, hasAuthorOnly, userId, likedOnly, shortInfo);
             
             PageRequest pageRequest = new PageRequest();
             pageRequest.setPage(page);
@@ -259,10 +279,10 @@ public class StickerSetController {
             } else if (categoryKeys != null && !categoryKeys.trim().isEmpty()) {
                 // Фильтрация только по категориям (без лайков)
                 String[] categoryKeyArray = categoryKeys.split(",");
-                result = stickerSetService.findByCategoryKeys(categoryKeyArray, pageRequest, language, currentUserId, officialOnly, authorId, hasAuthorOnly, shortInfo);
+                result = stickerSetService.findByCategoryKeys(categoryKeyArray, pageRequest, language, currentUserId, officialOnly, authorId, hasAuthorOnly, userId, shortInfo);
             } else {
                 // Без фильтрации
-                result = stickerSetService.findAllWithPagination(pageRequest, language, currentUserId, officialOnly, authorId, hasAuthorOnly, shortInfo);
+                result = stickerSetService.findAllWithPagination(pageRequest, language, currentUserId, officialOnly, authorId, hasAuthorOnly, userId, shortInfo);
             }
             
             LOGGER.debug("✅ Найдено {} стикерсетов на странице {} из {}", 
@@ -340,183 +360,6 @@ public class StickerSetController {
             LOGGER.error("❌ Ошибка при поиске стикерсета с ID: {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
-    }
-    
-    /**
-     * Получить стикерсеты пользователя с пагинацией
-     */
-    @GetMapping("/user/{userId}")
-    @Operation(
-        summary = "Получить стикерсеты пользователя с пагинацией",
-        description = "Возвращает стикерсеты, созданные конкретным пользователем, с пагинацией и обогащением данных из Telegram Bot API. " +
-                      "Поддерживает фильтры по категориям, наличию автора и лайкам текущего пользователя. " +
-                      "Если запрос выполняет владелец (userId совпадает с авторизованным пользователем из initData) или администратор, " +
-                      "возвращаются все его стикерсеты. Для остальных пользователей возвращаются только публичные (isPublic = true)."
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Список стикерсетов пользователя получен",
-            content = @Content(schema = @Schema(implementation = PageResponse.class),
-                examples = @ExampleObject(value = """
-                    {
-                        "content": [
-                            {
-                                "id": 1,
-                                "userId": 123456789,
-                                "title": "Мои стикеры",
-                                "name": "my_stickers_by_StickerGalleryBot",
-                                "createdAt": "2025-09-15T10:30:00",
-                                "telegramStickerSetInfo": "{\\"name\\":\\"my_stickers_by_StickerGalleryBot\\",\\"title\\":\\"Мои стикеры\\",\\"sticker_type\\":\\"regular\\",\\"is_animated\\":false,\\"stickers\\":[...]}"
-                            }
-                        ],
-                        "page": 0,
-                        "size": 20,
-                        "totalElements": 5,
-                        "totalPages": 1,
-                        "first": true,
-                        "last": true,
-                        "hasNext": false,
-                        "hasPrevious": false
-                    }
-                    """))),
-        @ApiResponse(responseCode = "400", description = "Некорректные параметры"),
-        @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
-        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера или проблемы с Telegram Bot API")
-    })
-    public ResponseEntity<PageResponse<StickerSetDto>> getStickerSetsByUserId(
-            @Parameter(description = "Telegram ID пользователя", required = true, example = "123456789")
-            @PathVariable @Positive(message = "ID пользователя должен быть положительным числом") Long userId,
-            @Parameter(description = "Номер страницы (начиная с 0)", example = "0")
-            @RequestParam(defaultValue = "0") @Min(0) int page,
-            @Parameter(description = "Количество элементов на странице (1-100)", example = "20")
-            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
-            @Parameter(description = "Поле для сортировки", example = "createdAt")
-            @RequestParam(defaultValue = "createdAt") String sort,
-            @Parameter(description = "Направление сортировки", example = "DESC")
-            @RequestParam(defaultValue = "DESC") @Pattern(regexp = "ASC|DESC") String direction,
-            @Parameter(description = "Фильтр по ключам категорий (через запятую)", example = "animals,cute")
-            @RequestParam(required = false) String categoryKeys,
-            @Parameter(description = "Показывать только авторские стикерсеты (authorId IS NOT NULL)", example = "false")
-            @RequestParam(defaultValue = "false") boolean hasAuthorOnly,
-            @Parameter(description = "Показать только лайкнутые текущим пользователем стикерсеты", example = "false")
-            @RequestParam(defaultValue = "false") boolean likedOnly,
-            @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
-            @RequestParam(defaultValue = "false") boolean shortInfo) {
-        try {
-            LOGGER.info("🔍 Поиск стикерсетов для пользователя: {} с пагинацией: page={}, size={}, sort={}, direction={}, categoryKeys={}, hasAuthorOnly={}, likedOnly={}, shortInfo={}", 
-                    userId, page, size, sort, direction, categoryKeys, hasAuthorOnly, likedOnly, shortInfo);
-            
-            PageRequest pageRequest = new PageRequest();
-            pageRequest.setPage(page);
-            pageRequest.setSize(size);
-            pageRequest.setSort(sort);
-            pageRequest.setDirection(direction);
-
-            Long currentUserId = getCurrentUserIdOrNull();
-            boolean includePrivate = (currentUserId != null && currentUserId.equals(userId)) || isAdmin();
-            if (likedOnly && currentUserId == null) {
-                LOGGER.warn("⚠️ Запрос likedOnly=true для стикерсетов пользователя {} от неавторизованного клиента", userId);
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-            }
-
-            Set<String> categoryKeySet = parseCategoryKeys(categoryKeys);
-
-            PageResponse<StickerSetDto> result = stickerSetService.findByUserIdWithPagination(
-                    userId,
-                    pageRequest,
-                    categoryKeySet,
-                    hasAuthorOnly,
-                    likedOnly,
-                    currentUserId,
-                    includePrivate,
-                    shortInfo
-            );
-            
-            LOGGER.debug("✅ Найдено {} стикерсетов для пользователя {} на странице {} из {}", 
-                    result.getContent().size(), userId, result.getPage() + 1, result.getTotalPages());
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при поиске стикерсетов для пользователя: {}", userId, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-    
-    /**
-     * Получить авторские стикерсеты
-     */
-    @GetMapping("/author/{authorId}")
-    @Operation(
-        summary = "Получить авторские стикерсеты",
-        description = "Возвращает стикерсеты, у которых указан переданный authorId. " +
-                      "Если запрос выполняет владелец (authorId совпадает с авторизованным пользователем из initData) или администратор, " +
-                      "возвращаются все его стикерсеты (включая приватные). Иначе возвращаются только публичные (isPublic = true)."
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Список авторских стикерсетов получен",
-            content = @Content(schema = @Schema(implementation = PageResponse.class))),
-        @ApiResponse(responseCode = "400", description = "Некорректные параметры"),
-        @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
-        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера или проблемы с Telegram Bot API")
-    })
-    public ResponseEntity<PageResponse<StickerSetDto>> getStickerSetsByAuthorId(
-            @Parameter(description = "Telegram ID автора", required = true, example = "123456789")
-            @PathVariable @Positive(message = "ID автора должен быть положительным числом") Long authorId,
-            @Parameter(description = "Номер страницы (начиная с 0)", example = "0")
-            @RequestParam(defaultValue = "0") @Min(0) int page,
-            @Parameter(description = "Количество элементов на странице (1-100)", example = "20")
-            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
-            @Parameter(description = "Поле для сортировки", example = "createdAt")
-            @RequestParam(defaultValue = "createdAt") String sort,
-            @Parameter(description = "Направление сортировки", example = "DESC")
-            @RequestParam(defaultValue = "DESC") @Pattern(regexp = "ASC|DESC") String direction,
-            @Parameter(description = "Фильтр по ключам категорий (через запятую)", example = "animals,cute")
-            @RequestParam(required = false) String categoryKeys,
-            @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
-            @RequestParam(defaultValue = "false") boolean shortInfo) {
-        try {
-            LOGGER.info("🔍 Поиск авторских стикерсетов: authorId={}, page={}, size={}, sort={}, direction={}, categoryKeys={}, shortInfo={}",
-                    authorId, page, size, sort, direction, categoryKeys, shortInfo);
-
-            PageRequest pageRequest = new PageRequest();
-            pageRequest.setPage(page);
-            pageRequest.setSize(size);
-            pageRequest.setSort(sort);
-            pageRequest.setDirection(direction);
-
-            Long currentUserId = getCurrentUserIdOrNull();
-            boolean includePrivate = (currentUserId != null && currentUserId.equals(authorId)) || isAdmin();
-
-            Set<String> categoryKeySet = parseCategoryKeys(categoryKeys);
-
-            PageResponse<StickerSetDto> result = stickerSetService.findByAuthorIdWithPagination(
-                    authorId,
-                    pageRequest,
-                    categoryKeySet,
-                    currentUserId,
-                    includePrivate,
-                    shortInfo
-            );
-
-            LOGGER.debug("✅ Найдено {} авторских стикерсетов для authorId {} на странице {} из {}",
-                    result.getContent().size(), authorId, result.getPage() + 1, result.getTotalPages());
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при поиске авторских стикерсетов для автора: {}", authorId, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-    
-    /**
-     * Разобрать строку ключей категорий в множество (с сохранением порядка)
-     */
-    private Set<String> parseCategoryKeys(String categoryKeys) {
-        if (categoryKeys == null || categoryKeys.trim().isEmpty()) {
-            return null;
-        }
-        Set<String> result = Arrays.stream(categoryKeys.split(","))
-                .map(String::trim)
-                .filter(key -> !key.isEmpty())
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-        return result.isEmpty() ? null : result;
     }
     
     /**
@@ -1365,162 +1208,6 @@ public class StickerSetController {
     }
     
     /**
-     * Получить топ стикерсетов по лайкам
-     */
-    @GetMapping("/top-bylikes")
-    @Operation(
-        summary = "Получить топ стикерсетов по лайкам",
-        description = "Возвращает список стикерсетов, отсортированных по количеству лайков (по убыванию). " +
-                     "Поддерживает локализацию названий категорий через заголовок X-Language (ru/en) или автоматически из initData пользователя. " +
-                     "Включает информацию о том, лайкнул ли текущий пользователь каждый стикерсет."
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Топ стикерсетов по лайкам успешно получен",
-            content = @Content(schema = @Schema(implementation = PageResponse.class),
-                examples = {
-                    @ExampleObject(name = "Обычный топ", value = """
-                    {
-                        "content": [
-                            {
-                                "id": 5,
-                                "userId": 123456789,
-                                "title": "Популярные стикеры",
-                                "name": "popular_stickers_by_StickerGalleryBot",
-                                "createdAt": "2025-01-15T10:30:00",
-                                "likesCount": 42,
-                                "isLikedByCurrentUser": true,
-                                "categories": []
-                            }
-                        ],
-                        "totalElements": 1,
-                        "totalPages": 1,
-                        "size": 20,
-                        "number": 0,
-                        "first": true,
-                        "last": true,
-                        "numberOfElements": 1
-                    }
-                    """),
-                    @ExampleObject(name = "Топ официальных (officialOnly=true)", value = """
-                    {
-                        "content": [
-                            {
-                                "id": 6,
-                                "userId": 333333333,
-                                "title": "Оф топ",
-                                "name": "official_top_by_StickerGalleryBot",
-                                "isOfficial": true,
-                                "likesCount": 99,
-                                "categories": []
-                            }
-                        ],
-                        "totalElements": 1,
-                        "totalPages": 1,
-                        "size": 20,
-                        "number": 0,
-                        "first": true,
-                        "last": true,
-                        "numberOfElements": 1
-                    }
-                    """),
-                    @ExampleObject(name = "Топ по автору (authorId=123456789)", value = """
-                    {
-                        "content": [
-                            {
-                                "id": 7,
-                                "userId": 444444444,
-                                "title": "Авторский топ",
-                                "name": "author_top_by_StickerGalleryBot",
-                                "authorId": 123456789,
-                                "likesCount": 50,
-                                "categories": []
-                            }
-                        ],
-                        "totalElements": 1,
-                        "totalPages": 1,
-                        "size": 20,
-                        "number": 0,
-                        "first": true,
-                        "last": true,
-                        "numberOfElements": 1
-                    }
-                    """),
-                    @ExampleObject(name = "Топ только авторских (hasAuthorOnly=true)", value = """
-                    {
-                        "content": [
-                            {
-                                "id": 8,
-                                "userId": 555555555,
-                                "title": "Авторские",
-                                "name": "authored_top_by_StickerGalleryBot",
-                                "authorId": 999999999,
-                                "likesCount": 25,
-                                "categories": []
-                            }
-                        ],
-                        "totalElements": 1,
-                        "totalPages": 1,
-                        "size": 20,
-                        "number": 0,
-                        "first": true,
-                        "last": true,
-                        "numberOfElements": 1
-                    }
-                    """)
-                })),
-        @ApiResponse(responseCode = "400", description = "Некорректные параметры пагинации"),
-        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
-    })
-    public ResponseEntity<PageResponse<StickerSetDto>> getTopStickerSetsByLikes(
-            @Parameter(description = "Номер страницы (начиная с 0)", example = "0")
-            @RequestParam(defaultValue = "0") @Min(0) int page,
-            @Parameter(description = "Количество элементов на странице (1-100)", example = "20")
-            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
-            @Parameter(description = "Показывать только официальные стикерсеты", example = "false")
-            @RequestParam(defaultValue = "false") boolean officialOnly,
-            @Parameter(description = "Фильтр по автору (Telegram ID)", example = "123456789")
-            @RequestParam(required = false) Long authorId,
-            @Parameter(description = "Показывать только авторские стикерсеты (authorId IS NOT NULL)", example = "false")
-            @RequestParam(defaultValue = "false") boolean hasAuthorOnly,
-            HttpServletRequest request) {
-        try {
-            LOGGER.info("🏆 Получение топ стикерсетов по лайкам с пагинацией: page={}, size={}, officialOnly={}, authorId={}, hasAuthorOnly={}", page, size, officialOnly, authorId, hasAuthorOnly);
-            
-            PageRequest pageRequest = new PageRequest();
-            pageRequest.setPage(page);
-            pageRequest.setSize(size);
-            pageRequest.setSort("likesCount");
-            pageRequest.setDirection("DESC");
-            
-            String language = getLanguageFromHeaderOrUser(request);
-            Long currentUserId = getCurrentUserIdOrNull();
-            PageResponse<StickerSetWithLikesDto> result = likeService.getTopStickerSetsByLikes(pageRequest, language, currentUserId, officialOnly, authorId, hasAuthorOnly);
-            
-            // Конвертируем StickerSetWithLikesDto в StickerSetDto для совместимости
-            // Создаем временную Page для использования с PageResponse.of
-            Page<StickerSetWithLikesDto> tempPage = new PageImpl<>(
-                result.getContent(),
-                org.springframework.data.domain.PageRequest.of(result.getPage(), result.getSize()),
-                result.getTotalElements()
-            );
-            
-            PageResponse<StickerSetDto> convertedResult = PageResponse.of(
-                tempPage,
-                result.getContent().stream()
-                    .map(StickerSetWithLikesDto::getStickerSet)
-                    .collect(Collectors.toList())
-            );
-            
-            LOGGER.debug("✅ Найдено {} топ стикерсетов на странице {} из {}", 
-                    convertedResult.getContent().size(), convertedResult.getPage() + 1, convertedResult.getTotalPages());
-            return ResponseEntity.ok(convertedResult);
-        } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при получении топа стикерсетов по лайкам: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-    
-    /**
      * Извлечь ID текущего пользователя из SecurityContext (может вернуть null)
      */
     private Long getCurrentUserIdOrNull() {
@@ -1575,22 +1262,6 @@ public class StickerSetController {
             LOGGER.warn("⚠️ Ошибка при проверке прав администратора: {}", e.getMessage());
         }
         
-        return false;
-    }
-    
-    /**
-     * Проверка, является ли пользователь админом
-     */
-    private boolean isAdmin() {
-        try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            if (authentication != null) {
-                return authentication.getAuthorities().stream()
-                        .anyMatch(auth -> "ROLE_ADMIN".equals(auth.getAuthority()));
-            }
-        } catch (Exception e) {
-            LOGGER.warn("⚠️ Ошибка при проверке прав администратора: {}", e.getMessage());
-        }
         return false;
     }
     

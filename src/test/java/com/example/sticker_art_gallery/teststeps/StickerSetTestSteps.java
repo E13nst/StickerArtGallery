@@ -140,8 +140,9 @@ public class StickerSetTestSteps {
 
     @Step("Получить стикерсеты конкретного пользователя через API")
     public ResultActions getStickerSetsByUser(Long userId, String initData, java.util.Map<String, String> queryParams) throws Exception {
-        var requestBuilder = get("/api/stickersets/user/" + userId)
-                .header("X-Telegram-Init-Data", initData);
+        var requestBuilder = get("/api/stickersets")
+                .header("X-Telegram-Init-Data", initData)
+                .param("userId", String.valueOf(userId));
         if (queryParams != null) {
             for (java.util.Map.Entry<String, String> entry : queryParams.entrySet()) {
                 requestBuilder = requestBuilder.param(entry.getKey(), entry.getValue());
@@ -156,8 +157,9 @@ public class StickerSetTestSteps {
 
     @Step("Получить стикерсеты по автору через API")
     public ResultActions getStickerSetsByAuthor(Long authorId, String initData, java.util.Map<String, String> queryParams) throws Exception {
-        var requestBuilder = get("/api/stickersets/author/" + authorId)
-                .header("X-Telegram-Init-Data", initData);
+        var requestBuilder = get("/api/stickersets")
+                .header("X-Telegram-Init-Data", initData)
+                .param("authorId", String.valueOf(authorId));
         if (queryParams != null) {
             for (java.util.Map.Entry<String, String> entry : queryParams.entrySet()) {
                 requestBuilder = requestBuilder.param(entry.getKey(), entry.getValue());
@@ -195,8 +197,10 @@ public class StickerSetTestSteps {
 
     @Step("Получить топ по лайкам с фильтрами officialOnly/authorId/hasAuthorOnly")
     public ResultActions getTopByLikesWithFilters(Boolean officialOnly, Long authorId, Boolean hasAuthorOnly, String initData) throws Exception {
-        var req = get("/api/stickersets/top-bylikes")
-                .header("X-Telegram-Init-Data", initData);
+        var req = get("/api/stickersets")
+                .header("X-Telegram-Init-Data", initData)
+                .param("sort", "likesCount")
+                .param("direction", "DESC");
         if (officialOnly != null) req = req.param("officialOnly", officialOnly.toString());
         if (authorId != null) req = req.param("authorId", authorId.toString());
         if (hasAuthorOnly != null) req = req.param("hasAuthorOnly", hasAuthorOnly.toString());
