@@ -1,6 +1,7 @@
 package com.example.sticker_art_gallery.service;
 
 import com.example.sticker_art_gallery.dto.LikeDto;
+import com.example.sticker_art_gallery.dto.LikeResponseDto;
 import com.example.sticker_art_gallery.dto.LikeToggleResult;
 import com.example.sticker_art_gallery.dto.PageRequest;
 import com.example.sticker_art_gallery.dto.PageResponse;
@@ -18,6 +19,7 @@ import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -43,7 +45,7 @@ public class LikeService {
     /**
      * Поставить лайк стикерсету
      */
-    public LikeDto likeStickerSet(Long userId, Long stickerSetId) {
+    public LikeResponseDto likeStickerSet(Long userId, Long stickerSetId) {
         LOGGER.info("❤️ Пользователь {} лайкает стикерсет {}", userId, stickerSetId);
         
         // Проверяем существование стикерсета
@@ -67,19 +69,32 @@ public class LikeService {
         stickerSetRepository.recalculateLikesCount(stickerSetId);
         // Инвалидируем кэши, зависящие от данных стикерсета
         evictStickerSetCaches(stickerSet);
-        LOGGER.info("✅ Лайк успешно поставлен: {}", savedLike.getId());
+        long totalLikes = getLikesCount(stickerSetId);
+        LOGGER.info("✅ Лайк успешно поставлен: {}, всего лайков: {}", savedLike.getId(), totalLikes);
         
-        return LikeDto.fromEntity(savedLike);
+        LikeResponseDto response = new LikeResponseDto();
+        response.setId(savedLike.getId());
+        response.setUserId(savedLike.getUserId());
+        response.setStickerSetId(stickerSetId);
+        response.setCreatedAt(savedLike.getCreatedAt());
+        response.setLiked(true);
+        response.setTotalLikes(totalLikes);
+        
+        return response;
     }
     
     /**
      * Убрать лайк со стикерсета
      */
-    public void unlikeStickerSet(Long userId, Long stickerSetId) {
+    public LikeResponseDto unlikeStickerSet(Long userId, Long stickerSetId) {
         LOGGER.info("💔 Пользователь {} убирает лайк со стикерсета {}", userId, stickerSetId);
         
         Like like = likeRepository.findByUserIdAndStickerSetId(userId, stickerSetId)
             .orElseThrow(() -> new IllegalArgumentException("Лайк не найден"));
+        
+        // Сохраняем информацию о лайке перед удалением
+        Long likeId = like.getId();
+        LocalDateTime createdAt = like.getCreatedAt();
         
         likeRepository.delete(like);
         // Денормализованный счётчик - сначала декремент для быстродействия
@@ -88,7 +103,18 @@ public class LikeService {
         stickerSetRepository.recalculateLikesCount(stickerSetId);
         // Инвалидируем кэши, зависящие от данных стикерсета
         stickerSetRepository.findById(stickerSetId).ifPresent(this::evictStickerSetCaches);
-        LOGGER.info("✅ Лайк успешно удален");
+        long totalLikes = getLikesCount(stickerSetId);
+        LOGGER.info("✅ Лайк успешно удален, всего лайков: {}", totalLikes);
+        
+        LikeResponseDto response = new LikeResponseDto();
+        response.setId(likeId);
+        response.setUserId(userId);
+        response.setStickerSetId(stickerSetId);
+        response.setCreatedAt(createdAt);
+        response.setLiked(false);
+        response.setTotalLikes(totalLikes);
+        
+        return response;
     }
 
     private void evictStickerSetCaches(StickerSet stickerSet) {
@@ -112,15 +138,13 @@ public class LikeService {
         boolean exists = likeRepository.existsByUserIdAndStickerSetId(userId, stickerSetId);
         
         if (exists) {
-            unlikeStickerSet(userId, stickerSetId);
-            long totalLikes = getLikesCount(stickerSetId);
-            LOGGER.info("✅ Лайк убран, всего лайков: {}", totalLikes);
-            return new LikeToggleResult(false, totalLikes);
+            LikeResponseDto result = unlikeStickerSet(userId, stickerSetId);
+            LOGGER.info("✅ Лайк убран, всего лайков: {}", result.getTotalLikes());
+            return new LikeToggleResult(result.isLiked(), result.getTotalLikes());
         } else {
-            likeStickerSet(userId, stickerSetId);
-            long totalLikes = getLikesCount(stickerSetId);
-            LOGGER.info("✅ Лайк поставлен, всего лайков: {}", totalLikes);
-            return new LikeToggleResult(true, totalLikes);
+            LikeResponseDto result = likeStickerSet(userId, stickerSetId);
+            LOGGER.info("✅ Лайк поставлен, всего лайков: {}", result.getTotalLikes());
+            return new LikeToggleResult(result.isLiked(), result.getTotalLikes());
         }
     }
     
@@ -132,6 +156,14 @@ public class LikeService {
         return stickerSetRepository.findById(stickerSetId)
                 .map(ss -> ss.getLikesCount() == null ? 0 : ss.getLikesCount().longValue())
                 .orElse(0L);
+    }
+    
+    /**
+     * Проверить существование стикерсета
+     */
+    @Transactional(readOnly = true)
+    public boolean stickerSetExists(Long stickerSetId) {
+        return stickerSetRepository.existsById(stickerSetId);
     }
     
     /**

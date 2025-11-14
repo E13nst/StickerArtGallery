@@ -1,5 +1,6 @@
 package com.example.sticker_art_gallery.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
@@ -9,6 +10,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public class LikeToggleResult {
     
     @Schema(description = "Статус лайка после переключения", example = "true")
+    @JsonProperty("liked")
     private boolean isLiked;
     
     @Schema(description = "Общее количество лайков стикерсета", example = "42")

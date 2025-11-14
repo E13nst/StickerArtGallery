@@ -1,6 +1,7 @@
 package com.example.sticker_art_gallery.controller;
 
 import com.example.sticker_art_gallery.dto.LikeDto;
+import com.example.sticker_art_gallery.dto.LikeResponseDto;
 import com.example.sticker_art_gallery.dto.LikeToggleResult;
 import com.example.sticker_art_gallery.dto.PageRequest;
 import com.example.sticker_art_gallery.dto.PageResponse;
@@ -26,10 +27,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
-
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Arrays;
 
 /**
  * Контроллер для управления лайками стикерсетов
@@ -60,13 +57,15 @@ public class LikeController {
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Лайк успешно поставлен",
-            content = @Content(schema = @Schema(implementation = LikeDto.class),
+            content = @Content(schema = @Schema(implementation = LikeResponseDto.class),
                 examples = @ExampleObject(value = """
                     {
                         "id": 1,
                         "userId": 123456789,
                         "stickerSetId": 5,
-                        "createdAt": "2025-01-15T10:30:00"
+                        "createdAt": "2025-01-15T10:30:00",
+                        "liked": true,
+                        "totalLikes": 1
                     }
                     """))),
         @ApiResponse(responseCode = "400", description = "Некорректные данные или стикерсет уже лайкнут"),
@@ -74,15 +73,15 @@ public class LikeController {
         @ApiResponse(responseCode = "404", description = "Стикерсет не найден"),
         @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
     })
-    public ResponseEntity<LikeDto> likeStickerSet(
+    public ResponseEntity<LikeResponseDto> likeStickerSet(
             @Parameter(description = "Уникальный ID стикерсета", example = "5")
             @PathVariable @Positive(message = "ID стикерсета должен быть положительным числом") Long stickerSetId) {
         try {
             Long userId = getCurrentUserId();
             LOGGER.info("❤️ Пользователь {} ставит лайк стикерсету {}", userId, stickerSetId);
             
-            LikeDto like = likeService.likeStickerSet(userId, stickerSetId);
-            return ResponseEntity.ok(like);
+            LikeResponseDto result = likeService.likeStickerSet(userId, stickerSetId);
+            return ResponseEntity.ok(result);
         } catch (IllegalStateException e) {
             LOGGER.warn("⚠️ Пользователь не авторизован: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -105,20 +104,31 @@ public class LikeController {
                      "Если лайк не найден, возвращается ошибка."
     )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Лайк успешно убран"),
+        @ApiResponse(responseCode = "200", description = "Лайк успешно убран",
+            content = @Content(schema = @Schema(implementation = LikeResponseDto.class),
+                examples = @ExampleObject(value = """
+                    {
+                        "id": 1,
+                        "userId": 123456789,
+                        "stickerSetId": 5,
+                        "createdAt": "2025-01-15T10:30:00",
+                        "liked": false,
+                        "totalLikes": 0
+                    }
+                    """))),
         @ApiResponse(responseCode = "400", description = "Лайк не найден"),
         @ApiResponse(responseCode = "401", description = "Не авторизован"),
         @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
     })
-    public ResponseEntity<Void> unlikeStickerSet(
+    public ResponseEntity<LikeResponseDto> unlikeStickerSet(
             @Parameter(description = "Уникальный ID стикерсета", example = "5")
             @PathVariable @Positive(message = "ID стикерсета должен быть положительным числом") Long stickerSetId) {
         try {
             Long userId = getCurrentUserId();
             LOGGER.info("💔 Пользователь {} убирает лайк со стикерсета {}", userId, stickerSetId);
             
-            likeService.unlikeStickerSet(userId, stickerSetId);
-            return ResponseEntity.ok().build();
+            LikeResponseDto result = likeService.unlikeStickerSet(userId, stickerSetId);
+            return ResponseEntity.ok(result);
         } catch (IllegalStateException e) {
             LOGGER.warn("⚠️ Пользователь не авторизован: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -145,7 +155,7 @@ public class LikeController {
             content = @Content(schema = @Schema(implementation = LikeToggleResult.class),
                 examples = @ExampleObject(value = """
                     {
-                        "isLiked": true,
+                        "liked": true,
                         "totalLikes": 42
                     }
                     """))),
@@ -300,27 +310,53 @@ public class LikeController {
     }
     
     /**
-     * Тестовый endpoint для проверки системы лайков (без аутентификации)
+     * Получить количество лайков для стикерсета по ID (без авторизации)
      */
-    @GetMapping("/test-system")
+    @GetMapping("/stickersets/{stickerSetId}")
     @Operation(
-        summary = "Тест системы лайков",
-        description = "Возвращает информацию о системе лайков для тестирования"
+        summary = "Получить количество лайков для стикерсета",
+        description = "Возвращает количество лайков для указанного стикерсета. " +
+                     "Доступен без авторизации. Если пользователь не авторизован, возвращает 'liked': false."
     )
-    @ApiResponse(responseCode = "200", description = "Информация о системе лайков")
-    public ResponseEntity<Map<String, Object>> testLikeSystem() {
-        Map<String, Object> result = new HashMap<>();
-        result.put("message", "Система лайков работает корректно");
-        result.put("endpoints", Arrays.asList(
-            "POST /api/likes/stickersets/{id} - поставить лайк",
-            "DELETE /api/likes/stickersets/{id} - убрать лайк", 
-            "PUT /api/likes/stickersets/{id}/toggle - переключить лайк",
-            "GET /api/likes/stickersets - получить лайкнутые стикерсеты",
-            "GET /api/likes/top-stickersets - топ стикерсетов по лайкам"
-        ));
-        result.put("authentication", "Все endpoints (кроме этого) требуют валидный Telegram initData");
-        result.put("timestamp", java.time.Instant.now());
-        return ResponseEntity.ok(result);
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Информация о лайках успешно получена",
+            content = @Content(schema = @Schema(implementation = LikeToggleResult.class),
+                examples = @ExampleObject(value = """
+                    {
+                        "liked": false,
+                        "totalLikes": 5
+                    }
+                    """))),
+        @ApiResponse(responseCode = "404", description = "Стикерсет не найден"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<LikeToggleResult> getLikesCount(
+            @Parameter(description = "Уникальный ID стикерсета", example = "5")
+            @PathVariable @Positive(message = "ID стикерсета должен быть положительным числом") Long stickerSetId) {
+        try {
+            LOGGER.info("📊 Получение количества лайков для стикерсета {}", stickerSetId);
+            
+            // Проверяем существование стикерсета
+            if (!likeService.stickerSetExists(stickerSetId)) {
+                LOGGER.warn("⚠️ Стикерсет с ID {} не найден", stickerSetId);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+            
+            long totalLikes = likeService.getLikesCount(stickerSetId);
+            
+            // Проверяем, авторизован ли пользователь
+            Long userId = getCurrentUserIdOrNull();
+            boolean liked = false;
+            if (userId != null) {
+                liked = likeService.isLikedByUser(userId, stickerSetId);
+            }
+            
+            LikeToggleResult result = new LikeToggleResult(liked, totalLikes);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            LOGGER.error("❌ Непредвиденная ошибка при получении количества лайков: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
     
     /**
