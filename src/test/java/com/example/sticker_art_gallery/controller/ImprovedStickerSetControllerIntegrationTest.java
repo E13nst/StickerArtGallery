@@ -21,6 +21,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import com.jayway.jsonpath.JsonPath;
 import java.util.UUID;
 
 @SpringBootTest
@@ -286,16 +287,16 @@ class ImprovedStickerSetControllerIntegrationTest {
         CreateStickerSetDto createDto = TestDataBuilder.createBasicStickerSetDto();
         ResultActions createResult = testSteps.createStickerSet(createDto, validInitData);
         
-        // Извлекаем ID созданного стикерсета
+        // Извлекаем ID созданного стикерсета из JSON ответа
         String responseContent = createResult.andReturn().getResponse().getContentAsString();
-        // В реальном тесте здесь бы был парсинг JSON для получения ID
+        Long createdStickerSetId = ((Number) JsonPath.read(responseContent, "$.id")).longValue();
         
-        // When
-        ResultActions result = testSteps.getStickerSetById(1L, validInitData); // Используем фиксированный ID для примера
+        // When - получаем созданный стикерсет по его реальному ID
+        ResultActions result = testSteps.getStickerSetById(createdStickerSetId, validInitData);
         
         // Then
         result.andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.id").value(createdStickerSetId))
                 .andExpect(jsonPath("$.name").exists())
                 .andExpect(jsonPath("$.isLikedByCurrentUser").exists()); // Новое поле!
     }

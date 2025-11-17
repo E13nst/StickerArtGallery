@@ -78,6 +78,10 @@ class ArtRewardServiceTest {
     @Test
     @Story("Начисление ART по правилу UPLOAD_STICKERSET")
     void awardUploadStickerSet_shouldIncreaseBalanceAndPersistTransaction() {
+        // Получаем начальный баланс
+        UserProfileEntity initialProfile = userProfileRepository.findByUserId(USER_ID).orElseThrow();
+        long initialBalance = initialProfile.getArtBalance();
+
         ArtTransactionEntity transaction = artRewardService.award(
                 USER_ID,
                 ArtRewardService.RULE_UPLOAD_STICKERSET,
@@ -97,13 +101,18 @@ class ArtRewardServiceTest {
         assertThat(savedTx.get().getRuleCode()).isEqualTo(ArtRewardService.RULE_UPLOAD_STICKERSET);
         assertThat(savedTx.get().getDelta()).isEqualTo(10L);
         assertThat(savedTx.get().getBalanceAfter()).isEqualTo(profile.getArtBalance());
-        assertThat(profile.getArtBalance()).isEqualTo(10L);
+        // Проверяем относительное изменение баланса
+        assertThat(profile.getArtBalance()).isEqualTo(initialBalance + 10L);
         assertThat(transaction.getMetadata()).isEqualTo(TEST_METADATA);
     }
 
     @Test
     @Story("Идемпотентность начисления по externalId")
     void award_withSameExternalId_shouldReturnExistingTransaction() {
+        // Получаем начальный баланс
+        UserProfileEntity initialProfile = userProfileRepository.findByUserId(USER_ID).orElseThrow();
+        long initialBalance = initialProfile.getArtBalance();
+
         ArtTransactionEntity first = artRewardService.award(
                 USER_ID,
                 ArtRewardService.RULE_UPLOAD_STICKERSET,
@@ -112,6 +121,12 @@ class ArtRewardServiceTest {
                 TEST_EXTERNAL_ID,
                 USER_ID
         );
+
+        // Получаем баланс после первого начисления
+        entityManager.flush();
+        entityManager.clear();
+        UserProfileEntity afterFirst = userProfileRepository.findByUserId(USER_ID).orElseThrow();
+        long balanceAfterFirst = afterFirst.getArtBalance();
 
         ArtTransactionEntity second = artRewardService.award(
                 USER_ID,
@@ -125,20 +140,34 @@ class ArtRewardServiceTest {
         entityManager.flush();
         entityManager.clear();
 
-        long txCount = artTransactionRepository.count();
+        // Проверяем, что транзакция с нашим externalId существует и единственная
+        Optional<ArtTransactionEntity> txByExternalId = artTransactionRepository.findByExternalId(TEST_EXTERNAL_ID);
         UserProfileEntity profile = userProfileRepository.findByUserId(USER_ID).orElseThrow();
 
         assertThat(second.getId()).isEqualTo(first.getId());
-        assertThat(txCount).isEqualTo(1L);
-        assertThat(profile.getArtBalance()).isEqualTo(10L);
+        assertThat(txByExternalId).isPresent();
+        assertThat(txByExternalId.get().getId()).isEqualTo(first.getId());
+        // Проверяем, что баланс увеличился только один раз (после первого вызова)
+        assertThat(balanceAfterFirst).isEqualTo(initialBalance + 10L);
+        assertThat(profile.getArtBalance()).isEqualTo(balanceAfterFirst); // Баланс не изменился после второго вызова
     }
 
     @Test
     @Story("Списание ART по правилу DEBIT")
     void award_debitRule_shouldDecreaseBalance() {
+        // Получаем начальный баланс
+        UserProfileEntity initialProfile = userProfileRepository.findByUserId(USER_ID).orElseThrow();
+        long initialBalance = initialProfile.getArtBalance();
+
         // Подготавливаем баланс: +20 ART
         ArtRuleEntity creditRule = artRuleRepository.findByCode(ArtRewardService.RULE_UPLOAD_STICKERSET).orElseThrow();
         artRewardService.award(USER_ID, creditRule.getCode(), 20L, null, "it:art:credit:bootstrap", USER_ID);
+
+        // Получаем баланс после начисления
+        entityManager.flush();
+        entityManager.clear();
+        UserProfileEntity afterCredit = userProfileRepository.findByUserId(USER_ID).orElseThrow();
+        long balanceAfterCredit = afterCredit.getArtBalance();
 
         ArtRuleEntity debitRule = artRuleRepository.findByCode("TEST_DEBIT")
                 .orElseGet(() -> {
@@ -164,7 +193,9 @@ class ArtRewardServiceTest {
         entityManager.clear();
 
         UserProfileEntity profile = userProfileRepository.findByUserId(USER_ID).orElseThrow();
-        assertThat(profile.getArtBalance()).isEqualTo(15L);
+        // Проверяем относительное изменение: начальный + 20 - 5 = начальный + 15
+        assertThat(balanceAfterCredit).isEqualTo(initialBalance + 20L);
+        assertThat(profile.getArtBalance()).isEqualTo(initialBalance + 15L);
         assertThat(debitTx.getDirection()).isEqualTo(ArtTransactionDirection.DEBIT);
         assertThat(debitTx.getDelta()).isEqualTo(-5L);
         assertThat(debitTx.getPerformedBy()).isEqualTo(999L);

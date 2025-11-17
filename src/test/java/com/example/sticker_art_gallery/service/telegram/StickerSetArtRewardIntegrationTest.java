@@ -28,7 +28,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest
@@ -94,6 +93,10 @@ class StickerSetArtRewardIntegrationTest {
     @Story("Начисление ART при успешном добавлении стикерсета")
     @Severity(SeverityLevel.CRITICAL)
     void createStickerSetForUser_shouldAwardArtPoints() {
+        // Получаем начальный баланс
+        UserProfileEntity initialProfile = userProfileRepository.findByUserId(USER_ID).orElseThrow();
+        long initialBalance = initialProfile.getArtBalance();
+
         // given
         Object telegramInfo = new Object();
         when(telegramBotApiService.validateStickerSetExists(NORMALIZED_NAME)).thenReturn(telegramInfo);
@@ -110,9 +113,10 @@ class StickerSetArtRewardIntegrationTest {
 
         // then
         UserProfileEntity profile = userProfileRepository.findByUserId(USER_ID).orElseThrow();
+        // Проверяем относительное изменение баланса
         assertThat(profile.getArtBalance())
                 .as("Баланс пользователя после создания стикерсета")
-                .isEqualTo(10L);
+                .isEqualTo(initialBalance + 10L);
 
         String expectedExternalId = String.format("sticker-upload:%d:%d", USER_ID, created.getId());
         Optional<ArtTransactionEntity> transactionOpt = artTransactionRepository.findByExternalId(expectedExternalId);
@@ -123,8 +127,12 @@ class StickerSetArtRewardIntegrationTest {
         ArtTransactionEntity transaction = transactionOpt.get();
         assertThat(transaction.getRuleCode()).isEqualTo(ArtRewardService.RULE_UPLOAD_STICKERSET);
         assertThat(transaction.getDelta()).isEqualTo(10L);
-        assertThat(transaction.getBalanceAfter()).isEqualTo(10L);
-        assertThat(transaction.getMetadata()).contains("\"stickerSetId\":" + created.getId());
+        assertThat(transaction.getBalanceAfter()).isEqualTo(profile.getArtBalance());
+        // Проверяем метаданные более гибко (игнорируя пробелы в JSON)
+        assertThat(transaction.getMetadata())
+                .as("Метаданные должны содержать stickerSetId")
+                .contains("stickerSetId")
+                .contains(String.valueOf(created.getId()));
 
         // убеждаемся, что кеш правил использовался без ошибок
         var txPage = artTransactionRepository.findByUserIdOrderByCreatedAtDesc(USER_ID, PageRequest.of(0, 5));
