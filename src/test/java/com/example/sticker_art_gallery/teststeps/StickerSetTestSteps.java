@@ -172,6 +172,38 @@ public class StickerSetTestSteps {
         return getStickerSetsByAuthor(authorId, initData, null);
     }
     
+    @Step("Получить стикерсеты пользователя через новый эндпоинт /api/stickersets/user/{userId}")
+    public ResultActions getUserStickerSets(Long userId, String initData, java.util.Map<String, String> queryParams) throws Exception {
+        var requestBuilder = get("/api/stickersets/user/" + userId)
+                .header("X-Telegram-Init-Data", initData);
+        if (queryParams != null) {
+            for (java.util.Map.Entry<String, String> entry : queryParams.entrySet()) {
+                requestBuilder = requestBuilder.param(entry.getKey(), entry.getValue());
+            }
+        }
+        return mockMvc.perform(requestBuilder);
+    }
+    
+    public ResultActions getUserStickerSets(Long userId, String initData) throws Exception {
+        return getUserStickerSets(userId, initData, null);
+    }
+    
+    @Step("Получить стикерсеты автора через новый эндпоинт /api/stickersets/author/{authorId}")
+    public ResultActions getAuthorStickerSets(Long authorId, String initData, java.util.Map<String, String> queryParams) throws Exception {
+        var requestBuilder = get("/api/stickersets/author/" + authorId)
+                .header("X-Telegram-Init-Data", initData);
+        if (queryParams != null) {
+            for (java.util.Map.Entry<String, String> entry : queryParams.entrySet()) {
+                requestBuilder = requestBuilder.param(entry.getKey(), entry.getValue());
+            }
+        }
+        return mockMvc.perform(requestBuilder);
+    }
+    
+    public ResultActions getAuthorStickerSets(Long authorId, String initData) throws Exception {
+        return getAuthorStickerSets(authorId, initData, null);
+    }
+    
     @Step("Получить стикерсет по ID через API")
     public ResultActions getStickerSetById(Long id, String initData) throws Exception {
         return mockMvc.perform(get("/api/stickersets/" + id)

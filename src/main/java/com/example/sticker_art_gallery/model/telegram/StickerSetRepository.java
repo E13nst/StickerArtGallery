@@ -144,14 +144,16 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
     @Query("SELECT DISTINCT ss FROM StickerSet ss " +
            "LEFT JOIN ss.categories c " +
            "WHERE ss.userId = :userId " +
-           "AND (:includePrivate = true OR ss.isPublic = true) " +
+           "AND (:visibilityFilter = 'ALL' OR " +
+           "     (:visibilityFilter = 'PUBLIC' AND ss.isPublic = true) OR " +
+           "     (:visibilityFilter = 'PRIVATE' AND ss.isPublic = false)) " +
            "AND (:hasAuthorOnly = false OR ss.authorId IS NOT NULL) " +
            "AND (:categoryKeys IS NULL OR c.key IN :categoryKeys) " +
            "AND (:likedOnly = false OR EXISTS (" +
            "   SELECT 1 FROM Like l WHERE l.userId = :currentUserId AND l.stickerSet = ss" +
            "))")
     Page<StickerSet> findUserStickerSetsFiltered(@Param("userId") Long userId,
-                                                 @Param("includePrivate") boolean includePrivate,
+                                                 @Param("visibilityFilter") String visibilityFilter,
                                                  @Param("hasAuthorOnly") boolean hasAuthorOnly,
                                                  @Param("categoryKeys") Set<String> categoryKeys,
                                                  @Param("likedOnly") boolean likedOnly,
@@ -164,10 +166,12 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
     @Query("SELECT DISTINCT ss FROM StickerSet ss " +
            "LEFT JOIN ss.categories c " +
            "WHERE ss.authorId = :authorId " +
-           "AND (:includePrivate = true OR ss.isPublic = true) " +
+           "AND (:visibilityFilter = 'ALL' OR " +
+           "     (:visibilityFilter = 'PUBLIC' AND ss.isPublic = true) OR " +
+           "     (:visibilityFilter = 'PRIVATE' AND ss.isPublic = false)) " +
            "AND (:categoryKeys IS NULL OR c.key IN :categoryKeys)")
     Page<StickerSet> findAuthorStickerSetsFiltered(@Param("authorId") Long authorId,
-                                                   @Param("includePrivate") boolean includePrivate,
+                                                   @Param("visibilityFilter") String visibilityFilter,
                                                    @Param("categoryKeys") Set<String> categoryKeys,
                                                    Pageable pageable);
 

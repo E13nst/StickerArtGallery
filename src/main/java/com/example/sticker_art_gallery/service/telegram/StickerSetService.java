@@ -331,7 +331,9 @@ public class StickerSetService {
      * @param hasAuthorOnly показать только стикерсеты с указанным автором
      * @param likedOnly показать только стикерсеты, лайкнутые текущим пользователем
      * @param currentUserId ID текущего авторизованного пользователя (может быть null)
-     * @param includePrivate показывать ли приватные стикерсеты (true для владельца или администратора)
+     * @param visibilityFilter фильтр видимости (ALL/PUBLIC/PRIVATE)
+     * @param shortInfo возвращать только краткую информацию без telegramStickerSetInfo
+     * @param language язык для локализации категорий
      */
     public PageResponse<StickerSetDto> findByUserIdWithPagination(Long userId,
                                                                   PageRequest pageRequest,
@@ -339,27 +341,19 @@ public class StickerSetService {
                                                                   boolean hasAuthorOnly,
                                                                   boolean likedOnly,
                                                                   Long currentUserId,
-                                                                  boolean includePrivate) {
-        return findByUserIdWithPagination(userId, pageRequest, categoryKeys, hasAuthorOnly, likedOnly, currentUserId, includePrivate, false);
-    }
-    
-    public PageResponse<StickerSetDto> findByUserIdWithPagination(Long userId,
-                                                                  PageRequest pageRequest,
-                                                                  Set<String> categoryKeys,
-                                                                  boolean hasAuthorOnly,
-                                                                  boolean likedOnly,
-                                                                  Long currentUserId,
-                                                                  boolean includePrivate,
-                                                                  boolean shortInfo) {
-        LOGGER.debug("👤 Получение стикерсетов пользователя {} с пагинацией: page={}, size={}, hasAuthorOnly={}, likedOnly={}, includePrivate={}, shortInfo={}, categoryKeys={}",
-                userId, pageRequest.getPage(), pageRequest.getSize(), hasAuthorOnly, likedOnly, includePrivate, shortInfo,
+                                                                  com.example.sticker_art_gallery.dto.VisibilityFilter visibilityFilter,
+                                                                  boolean shortInfo,
+                                                                  String language) {
+        String lang = normalizeLanguage(language);
+        LOGGER.debug("👤 Получение стикерсетов пользователя {} с пагинацией: page={}, size={}, hasAuthorOnly={}, likedOnly={}, visibilityFilter={}, shortInfo={}, language={}, categoryKeys={}",
+                userId, pageRequest.getPage(), pageRequest.getSize(), hasAuthorOnly, likedOnly, visibilityFilter, shortInfo, lang,
                 categoryKeys == null ? "null" : String.join(",", categoryKeys));
 
         Set<String> normalizedCategoryKeys = (categoryKeys == null || categoryKeys.isEmpty()) ? null : categoryKeys;
 
         Page<StickerSet> stickerSetsPage = stickerSetRepository.findUserStickerSetsFiltered(
                 userId,
-                includePrivate,
+                visibilityFilter.name(),
                 hasAuthorOnly,
                 normalizedCategoryKeys,
                 likedOnly,
@@ -367,48 +361,38 @@ public class StickerSetService {
                 pageRequest.toPageable()
         );
 
-        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), "en", currentUserId, shortInfo);
+        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), lang, currentUserId, shortInfo);
 
         return PageResponse.of(stickerSetsPage, enrichedDtos);
     }
     
     /**
      * Получить авторские стикерсеты с пагинацией и обогащением данных
+     * @param authorId ID автора
+     * @param pageRequest параметры пагинации/сортировки
+     * @param categoryKeys фильтр по категориям (может быть null или пустым)
+     * @param currentUserId ID текущего авторизованного пользователя (может быть null)
+     * @param visibilityFilter фильтр видимости (ALL/PUBLIC/PRIVATE)
+     * @param shortInfo возвращать только краткую информацию без telegramStickerSetInfo
+     * @param language язык для локализации категорий
      */
     public PageResponse<StickerSetDto> findByAuthorIdWithPagination(Long authorId,
                                                                     PageRequest pageRequest,
                                                                     Set<String> categoryKeys,
                                                                     Long currentUserId,
-                                                                    boolean includePrivate) {
-        return findByAuthorIdWithPagination(authorId, pageRequest, categoryKeys, currentUserId, includePrivate, false);
-    }
-    
-    public PageResponse<StickerSetDto> findByAuthorIdWithPagination(Long authorId,
-                                                                    PageRequest pageRequest,
-                                                                    Set<String> categoryKeys,
-                                                                    Long currentUserId,
-                                                                    boolean includePrivate,
-                                                                    boolean shortInfo) {
-        return findByAuthorIdWithPagination(authorId, pageRequest, categoryKeys, currentUserId, includePrivate, shortInfo, "en");
-    }
-
-    public PageResponse<StickerSetDto> findByAuthorIdWithPagination(Long authorId,
-                                                                    PageRequest pageRequest,
-                                                                    Set<String> categoryKeys,
-                                                                    Long currentUserId,
-                                                                    boolean includePrivate,
+                                                                    com.example.sticker_art_gallery.dto.VisibilityFilter visibilityFilter,
                                                                     boolean shortInfo,
                                                                     String language) {
         String lang = normalizeLanguage(language);
-        LOGGER.debug("✍️ Получение авторских стикерсетов {} с пагинацией: page={}, size={}, includePrivate={}, shortInfo={}, categoryKeys={}, language={}",
-                authorId, pageRequest.getPage(), pageRequest.getSize(), includePrivate, shortInfo,
+        LOGGER.debug("✍️ Получение авторских стикерсетов {} с пагинацией: page={}, size={}, visibilityFilter={}, shortInfo={}, categoryKeys={}, language={}",
+                authorId, pageRequest.getPage(), pageRequest.getSize(), visibilityFilter, shortInfo,
                 categoryKeys == null ? "null" : String.join(",", categoryKeys), lang);
 
         Set<String> normalizedCategoryKeys = (categoryKeys == null || categoryKeys.isEmpty()) ? null : categoryKeys;
 
         Page<StickerSet> stickerSetsPage = stickerSetRepository.findAuthorStickerSetsFiltered(
                 authorId,
-                includePrivate,
+                visibilityFilter.name(),
                 normalizedCategoryKeys,
                 pageRequest.toPageable()
         );

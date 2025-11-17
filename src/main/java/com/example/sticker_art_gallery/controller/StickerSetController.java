@@ -34,6 +34,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+import java.util.Set;
+
 @RestController
 @RequestMapping("/api/stickersets")
 @CrossOrigin(origins = "*") // Разрешаем CORS для фронтенда
@@ -269,6 +271,208 @@ public class StickerSetController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при получении стикерсетов: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    /**
+     * Получить стикерсеты конкретного пользователя с фильтрацией
+     */
+    @GetMapping("/user/{userId}")
+    @Operation(
+        summary = "Получить стикерсеты пользователя",
+        description = "Возвращает список стикерсетов конкретного пользователя с пагинацией и фильтрацией. " +
+                     "Требует авторизации. " +
+                     "По умолчанию показывает все стикерсеты пользователя (публичные и приватные), если текущий пользователь " +
+                     "является владельцем или администратором. Для других пользователей показываются только публичные стикерсеты. " +
+                     "Параметр visibility позволяет дополнительно фильтровать по видимости: " +
+                     "ALL (все), PUBLIC (только публичные), PRIVATE (только приватные). " +
+                     "Приватные стикерсеты доступны только владельцу и администратору."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Список стикерсетов успешно получен",
+            content = @Content(schema = @Schema(implementation = PageResponse.class))),
+        @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<PageResponse<StickerSetDto>> getStickerSetsByUser(
+            @Parameter(description = "ID пользователя (Telegram User ID)", required = true, example = "123456789")
+            @PathVariable @Positive Long userId,
+            @Parameter(description = "Номер страницы (начиная с 0)", example = "0")
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @Parameter(description = "Количество элементов на странице (1-100)", example = "20")
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            @Parameter(description = "Поле для сортировки", example = "createdAt")
+            @RequestParam(defaultValue = "createdAt") String sort,
+            @Parameter(description = "Направление сортировки", example = "DESC")
+            @RequestParam(defaultValue = "DESC") @Pattern(regexp = "ASC|DESC") String direction,
+            @Parameter(description = "Фильтр по ключам категорий (через запятую)", example = "animals,memes")
+            @RequestParam(required = false) String categoryKeys,
+            @Parameter(description = "Показывать только авторские стикерсеты (authorId IS NOT NULL)", example = "false")
+            @RequestParam(defaultValue = "false") boolean hasAuthorOnly,
+            @Parameter(description = "Показать только лайкнутые пользователем стикерсеты", example = "false")
+            @RequestParam(defaultValue = "false") boolean likedOnly,
+            @Parameter(description = "Фильтр видимости: ALL (все), PUBLIC (только публичные), PRIVATE (только приватные)", example = "ALL")
+            @RequestParam(defaultValue = "ALL") com.example.sticker_art_gallery.dto.VisibilityFilter visibility,
+            @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
+            @RequestParam(defaultValue = "false") boolean shortInfo,
+            HttpServletRequest request) {
+        try {
+            // Проверка авторизации
+            Long currentUserId = getCurrentUserIdOrNull();
+            if (currentUserId == null) {
+                LOGGER.warn("⚠️ Попытка доступа к стикерсетам пользователя без авторизации");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            
+            // Определяем итоговый фильтр видимости
+            com.example.sticker_art_gallery.dto.VisibilityFilter effectiveVisibility = visibility;
+            
+            // Если пользователь не владелец и не админ, принудительно ограничиваем видимость
+            if (!isOwnerOrAdmin(userId, currentUserId)) {
+                // Для чужих стикерсетов можем показывать только публичные
+                if (visibility == com.example.sticker_art_gallery.dto.VisibilityFilter.ALL || 
+                    visibility == com.example.sticker_art_gallery.dto.VisibilityFilter.PRIVATE) {
+                    effectiveVisibility = com.example.sticker_art_gallery.dto.VisibilityFilter.PUBLIC;
+                    LOGGER.debug("🔒 Пользователь {} не владелец/админ для userId {}, фильтр изменен на PUBLIC", 
+                        currentUserId, userId);
+                }
+            }
+            
+            LOGGER.info("👤 Получение стикерсетов пользователя {}: visibility={}, effectiveVisibility={}", 
+                userId, visibility, effectiveVisibility);
+            
+            // Построение параметров запроса
+            PageRequest pageRequest = new PageRequest();
+            pageRequest.setPage(page);
+            pageRequest.setSize(size);
+            pageRequest.setSort(sort);
+            pageRequest.setDirection(direction);
+            
+            Set<String> categoryKeysSet = null;
+            if (categoryKeys != null && !categoryKeys.trim().isEmpty()) {
+                categoryKeysSet = java.util.Set.of(categoryKeys.split(","));
+            }
+            
+            String language = getLanguageFromHeaderOrUser(request);
+            
+            // Вызов сервиса
+            PageResponse<StickerSetDto> result = stickerSetService.findByUserIdWithPagination(
+                userId,
+                pageRequest,
+                categoryKeysSet,
+                hasAuthorOnly,
+                likedOnly,
+                currentUserId,
+                effectiveVisibility,
+                shortInfo,
+                language
+            );
+            
+            LOGGER.debug("✅ Найдено {} стикерсетов пользователя {} на странице {} из {}", 
+                result.getContent().size(), userId, result.getPage() + 1, result.getTotalPages());
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при получении стикерсетов пользователя {}: {}", userId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    /**
+     * Получить стикерсеты конкретного автора с фильтрацией
+     */
+    @GetMapping("/author/{authorId}")
+    @Operation(
+        summary = "Получить стикерсеты автора",
+        description = "Возвращает список стикерсетов конкретного автора с пагинацией и фильтрацией. " +
+                     "Требует авторизации. " +
+                     "По умолчанию показывает все стикерсеты автора (публичные и приватные), если текущий пользователь " +
+                     "является автором или администратором. Для других пользователей показываются только публичные стикерсеты. " +
+                     "Параметр visibility позволяет дополнительно фильтровать по видимости: " +
+                     "ALL (все), PUBLIC (только публичные), PRIVATE (только приватные). " +
+                     "Приватные стикерсеты доступны только автору и администратору."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Список стикерсетов успешно получен",
+            content = @Content(schema = @Schema(implementation = PageResponse.class))),
+        @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<PageResponse<StickerSetDto>> getStickerSetsByAuthor(
+            @Parameter(description = "ID автора (Telegram User ID)", required = true, example = "123456789")
+            @PathVariable @Positive Long authorId,
+            @Parameter(description = "Номер страницы (начиная с 0)", example = "0")
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @Parameter(description = "Количество элементов на странице (1-100)", example = "20")
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            @Parameter(description = "Поле для сортировки", example = "createdAt")
+            @RequestParam(defaultValue = "createdAt") String sort,
+            @Parameter(description = "Направление сортировки", example = "DESC")
+            @RequestParam(defaultValue = "DESC") @Pattern(regexp = "ASC|DESC") String direction,
+            @Parameter(description = "Фильтр по ключам категорий (через запятую)", example = "animals,memes")
+            @RequestParam(required = false) String categoryKeys,
+            @Parameter(description = "Фильтр видимости: ALL (все), PUBLIC (только публичные), PRIVATE (только приватные)", example = "ALL")
+            @RequestParam(defaultValue = "ALL") com.example.sticker_art_gallery.dto.VisibilityFilter visibility,
+            @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
+            @RequestParam(defaultValue = "false") boolean shortInfo,
+            HttpServletRequest request) {
+        try {
+            // Проверка авторизации
+            Long currentUserId = getCurrentUserIdOrNull();
+            if (currentUserId == null) {
+                LOGGER.warn("⚠️ Попытка доступа к стикерсетам автора без авторизации");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            
+            // Определяем итоговый фильтр видимости
+            com.example.sticker_art_gallery.dto.VisibilityFilter effectiveVisibility = visibility;
+            
+            // Если пользователь не автор и не админ, принудительно ограничиваем видимость
+            if (!isOwnerOrAdmin(authorId, currentUserId)) {
+                // Для чужих стикерсетов можем показывать только публичные
+                if (visibility == com.example.sticker_art_gallery.dto.VisibilityFilter.ALL || 
+                    visibility == com.example.sticker_art_gallery.dto.VisibilityFilter.PRIVATE) {
+                    effectiveVisibility = com.example.sticker_art_gallery.dto.VisibilityFilter.PUBLIC;
+                    LOGGER.debug("🔒 Пользователь {} не автор/админ для authorId {}, фильтр изменен на PUBLIC", 
+                        currentUserId, authorId);
+                }
+            }
+            
+            LOGGER.info("✍️ Получение стикерсетов автора {}: visibility={}, effectiveVisibility={}", 
+                authorId, visibility, effectiveVisibility);
+            
+            // Построение параметров запроса
+            PageRequest pageRequest = new PageRequest();
+            pageRequest.setPage(page);
+            pageRequest.setSize(size);
+            pageRequest.setSort(sort);
+            pageRequest.setDirection(direction);
+            
+            Set<String> categoryKeysSet = null;
+            if (categoryKeys != null && !categoryKeys.trim().isEmpty()) {
+                categoryKeysSet = java.util.Set.of(categoryKeys.split(","));
+            }
+            
+            String language = getLanguageFromHeaderOrUser(request);
+            
+            // Вызов сервиса
+            PageResponse<StickerSetDto> result = stickerSetService.findByAuthorIdWithPagination(
+                authorId,
+                pageRequest,
+                categoryKeysSet,
+                currentUserId,
+                effectiveVisibility,
+                shortInfo,
+                language
+            );
+            
+            LOGGER.debug("✅ Найдено {} стикерсетов автора {} на странице {} из {}", 
+                result.getContent().size(), authorId, result.getPage() + 1, result.getTotalPages());
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при получении стикерсетов автора {}: {}", authorId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

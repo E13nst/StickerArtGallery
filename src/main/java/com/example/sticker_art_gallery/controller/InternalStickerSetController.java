@@ -314,14 +314,16 @@ public class InternalStickerSetController {
             pageRequest.setDirection(direction);
 
             Set<String> categoryKeySet = parseCategoryKeys(categoryKeys);
-            boolean includePrivate = true; // доверенный межсервисный вызов
+            // Доверенный межсервисный вызов - показываем все стикерсеты (публичные + приватные)
+            com.example.sticker_art_gallery.dto.VisibilityFilter visibilityFilter = 
+                com.example.sticker_art_gallery.dto.VisibilityFilter.ALL;
 
             PageResponse<StickerSetDto> result = stickerSetService.findByAuthorIdWithPagination(
                     authorId,
                     pageRequest,
                     categoryKeySet,
-                    null,
-                    includePrivate,
+                    null,  // currentUserId - для межсервисных вызовов не требуется
+                    visibilityFilter,
                     shortInfo,
                     normalizeLanguage(language)
             );
