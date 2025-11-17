@@ -3,9 +3,10 @@ package com.example.sticker_art_gallery.controller;
 import com.example.sticker_art_gallery.dto.*;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.service.telegram.StickerSetService;
-import com.example.sticker_art_gallery.service.LikeService;
 import com.example.sticker_art_gallery.service.user.UserService;
 import com.example.sticker_art_gallery.service.ai.AutoCategorizationService;
+import com.example.sticker_art_gallery.service.StickerSetQueryService;
+import com.example.sticker_art_gallery.exception.UnauthorizedException;
 import com.example.sticker_art_gallery.model.user.UserEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,17 +43,18 @@ public class StickerSetController {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(StickerSetController.class);
     private final StickerSetService stickerSetService;
-    private final LikeService likeService;
     private final UserService userService;
     private final AutoCategorizationService autoCategorizationService;
+    private final StickerSetQueryService stickerSetQueryService;
     
     @Autowired
-    public StickerSetController(StickerSetService stickerSetService, LikeService likeService, 
-                               UserService userService, AutoCategorizationService autoCategorizationService) {
+    public StickerSetController(StickerSetService stickerSetService,
+                               UserService userService, AutoCategorizationService autoCategorizationService,
+                               StickerSetQueryService stickerSetQueryService) {
         this.stickerSetService = stickerSetService;
-        this.likeService = likeService;
         this.userService = userService;
         this.autoCategorizationService = autoCategorizationService;
+        this.stickerSetQueryService = stickerSetQueryService;
     }
     
     /**
@@ -247,49 +249,26 @@ public class StickerSetController {
             @RequestParam(defaultValue = "false") boolean shortInfo,
             HttpServletRequest request) {
         try {
-            LOGGER.info("📋 Получение всех стикерсетов с пагинацией: page={}, size={}, sort={}, direction={}, categoryKeys={}, officialOnly={}, authorId={}, hasAuthorOnly={}, userId={}, likedOnly={}, shortInfo={}", 
-                    page, size, sort, direction, categoryKeys, officialOnly, authorId, hasAuthorOnly, userId, likedOnly, shortInfo);
+            // Построение фильтра
+            StickerSetFilterRequest filter = buildFilter(
+                page, size, sort, direction, categoryKeys, officialOnly,
+                authorId, hasAuthorOnly, userId, likedOnly, shortInfo, request
+            );
             
-            PageRequest pageRequest = new PageRequest();
-            pageRequest.setPage(page);
-            pageRequest.setSize(size);
-            pageRequest.setSort(sort);
-            pageRequest.setDirection(direction);
+            LOGGER.info("📋 Получение стикерсетов: {}", filter);
             
-            String language = getLanguageFromHeaderOrUser(request);
-            PageResponse<StickerSetDto> result;
-            Long currentUserId = getCurrentUserIdOrNull();
-            
-            if (likedOnly) {
-                // Фильтрация по лайкнутым стикерсетам
-                if (currentUserId == null) {
-                    LOGGER.warn("⚠️ Запрос лайкнутых стикерсетов от неавторизованного пользователя");
-                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-                }
-                
-                // Проверяем, есть ли дополнительная фильтрация по категориям
-                if (categoryKeys != null && !categoryKeys.trim().isEmpty()) {
-                    // Комбинированная фильтрация: лайкнутые + категории
-                    String[] categoryKeyArray = categoryKeys.split(",");
-                    result = likeService.getLikedStickerSetsByCategories(currentUserId, categoryKeyArray, pageRequest, language);
-                } else {
-                    // Только лайкнутые стикерсеты
-                    result = likeService.getLikedStickerSets(currentUserId, pageRequest, language);
-                }
-            } else if (categoryKeys != null && !categoryKeys.trim().isEmpty()) {
-                // Фильтрация только по категориям (без лайков)
-                String[] categoryKeyArray = categoryKeys.split(",");
-                result = stickerSetService.findByCategoryKeys(categoryKeyArray, pageRequest, language, currentUserId, officialOnly, authorId, hasAuthorOnly, userId, shortInfo);
-            } else {
-                // Без фильтрации
-                result = stickerSetService.findAllWithPagination(pageRequest, language, currentUserId, officialOnly, authorId, hasAuthorOnly, userId, shortInfo);
-            }
+            // Выполнение запроса через единый сервис
+            PageResponse<StickerSetDto> result = stickerSetQueryService.findStickerSets(filter);
             
             LOGGER.debug("✅ Найдено {} стикерсетов на странице {} из {}", 
                     result.getContent().size(), result.getPage() + 1, result.getTotalPages());
             return ResponseEntity.ok(result);
+            
+        } catch (UnauthorizedException e) {
+            LOGGER.warn("⚠️ {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при получении всех стикерсетов: {}", e.getMessage(), e);
+            LOGGER.error("❌ Ошибка при получении стикерсетов: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -1304,5 +1283,42 @@ public class StickerSetController {
         // По умолчанию возвращаем английский
         LOGGER.debug("🌐 Используется язык по умолчанию: en");
         return "en";
+    }
+    
+    /**
+     * Построение объекта фильтра из параметров HTTP запроса
+     */
+    private StickerSetFilterRequest buildFilter(
+            int page, int size, String sort, String direction,
+            String categoryKeys, boolean officialOnly, Long authorId,
+            boolean hasAuthorOnly, Long userId, boolean likedOnly,
+            boolean shortInfo, HttpServletRequest request) {
+        
+        StickerSetFilterRequest filter = new StickerSetFilterRequest();
+        
+        // PageRequest
+        PageRequest pageRequest = new PageRequest();
+        pageRequest.setPage(page);
+        pageRequest.setSize(size);
+        pageRequest.setSort(sort);
+        pageRequest.setDirection(direction);
+        filter.setPageRequest(pageRequest);
+        
+        // Контекст
+        filter.setLanguage(getLanguageFromHeaderOrUser(request));
+        filter.setCurrentUserId(getCurrentUserIdOrNull());
+        
+        // Фильтры
+        if (categoryKeys != null && !categoryKeys.trim().isEmpty()) {
+            filter.setCategoryKeys(java.util.Set.of(categoryKeys.split(",")));
+        }
+        filter.setOfficialOnly(officialOnly);
+        filter.setAuthorId(authorId);
+        filter.setHasAuthorOnly(hasAuthorOnly);
+        filter.setUserId(userId);
+        filter.setLikedOnly(likedOnly);
+        filter.setShortInfo(shortInfo);
+        
+        return filter;
     }
 } 

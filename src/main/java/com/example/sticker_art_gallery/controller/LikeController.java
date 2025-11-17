@@ -226,10 +226,12 @@ public class LikeController {
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Размер страницы", example = "20")
             @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
+            @RequestParam(defaultValue = "false") boolean shortInfo,
             HttpServletRequest request) {
         try {
             Long userId = getCurrentUserId();
-            LOGGER.info("📋 Получение лайкнутых стикерсетов пользователя {}", userId);
+            LOGGER.info("📋 Получение лайкнутых стикерсетов пользователя {} (shortInfo={})", userId, shortInfo);
             
             PageRequest pageRequest = new PageRequest();
             pageRequest.setPage(page);
@@ -237,7 +239,7 @@ public class LikeController {
             pageRequest.setSort("createdAt");
             pageRequest.setDirection("DESC");
             String language = getLanguageFromHeaderOrUser(request);
-            PageResponse<StickerSetDto> result = likeService.getLikedStickerSets(userId, pageRequest, language);
+            PageResponse<StickerSetDto> result = likeService.getLikedStickerSets(userId, pageRequest, language, shortInfo);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             LOGGER.error("❌ Непредвиденная ошибка при получении лайкнутых стикерсетов: {}", e.getMessage(), e);

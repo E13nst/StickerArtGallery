@@ -690,7 +690,7 @@ public class StickerSetService {
         return enrichWithBotApiDataAndCategories(stickerSets, language, currentUserId, false);
     }
     
-    private List<StickerSetDto> enrichWithBotApiDataAndCategories(List<StickerSet> stickerSets, String language, Long currentUserId, boolean shortInfo) {
+    public List<StickerSetDto> enrichWithBotApiDataAndCategories(List<StickerSet> stickerSets, String language, Long currentUserId, boolean shortInfo) {
         if (stickerSets.isEmpty()) {
             return List.of();
         }

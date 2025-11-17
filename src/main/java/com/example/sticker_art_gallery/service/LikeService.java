@@ -11,6 +11,7 @@ import com.example.sticker_art_gallery.model.Like;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.repository.LikeRepository;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
+import com.example.sticker_art_gallery.service.telegram.StickerSetService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -35,11 +36,13 @@ public class LikeService {
     private final LikeRepository likeRepository;
     private final StickerSetRepository stickerSetRepository;
     private final CacheManager cacheManager;
+    private final StickerSetService stickerSetService;
     
-    public LikeService(LikeRepository likeRepository, StickerSetRepository stickerSetRepository, CacheManager cacheManager) {
+    public LikeService(LikeRepository likeRepository, StickerSetRepository stickerSetRepository, CacheManager cacheManager, StickerSetService stickerSetService) {
         this.likeRepository = likeRepository;
         this.stickerSetRepository = stickerSetRepository;
         this.cacheManager = cacheManager;
+        this.stickerSetService = stickerSetService;
     }
     
     /**
@@ -178,15 +181,15 @@ public class LikeService {
      * Получить лайкнутые стикерсеты пользователя
      */
     @Transactional(readOnly = true)
-    public PageResponse<StickerSetDto> getLikedStickerSets(Long userId, PageRequest pageRequest, String language) {
-        LOGGER.debug("📋 Получение лайкнутых стикерсетов пользователя {} с пагинацией: page={}, size={}", 
-                userId, pageRequest.getPage(), pageRequest.getSize());
+    public PageResponse<StickerSetDto> getLikedStickerSets(Long userId, PageRequest pageRequest, String language, boolean shortInfo) {
+        LOGGER.debug("📋 Получение лайкнутых стикерсетов пользователя {} с пагинацией: page={}, size={}, shortInfo={}", 
+                userId, pageRequest.getPage(), pageRequest.getSize(), shortInfo);
         
         Page<StickerSet> likedStickerSets = likeRepository.findLikedStickerSetsByUserId(userId, pageRequest.toPageable());
         
-        List<StickerSetDto> dtos = likedStickerSets.getContent().stream()
-            .map(stickerSet -> StickerSetDto.fromEntity(stickerSet, language))
-            .collect(Collectors.toList());
+        // Обогащаем данными из Telegram Bot API с учетом shortInfo
+        List<StickerSetDto> dtos = stickerSetService.enrichWithBotApiDataAndCategories(
+            likedStickerSets.getContent(), language, userId, shortInfo);
         
         return PageResponse.of(likedStickerSets, dtos);
     }
@@ -196,17 +199,17 @@ public class LikeService {
      */
     @Transactional(readOnly = true)
     public PageResponse<StickerSetDto> getLikedStickerSetsByCategories(Long userId, String[] categoryKeys, 
-                                                                        PageRequest pageRequest, String language) {
-        LOGGER.debug("📋 Получение лайкнутых стикерсетов пользователя {} по категориям {} с пагинацией: page={}, size={}", 
-                userId, categoryKeys, pageRequest.getPage(), pageRequest.getSize());
+                                                                        PageRequest pageRequest, String language, boolean shortInfo) {
+        LOGGER.debug("📋 Получение лайкнутых стикерсетов пользователя {} по категориям {} с пагинацией: page={}, size={}, shortInfo={}", 
+                userId, categoryKeys, pageRequest.getPage(), pageRequest.getSize(), shortInfo);
         
         List<String> categoryKeyList = java.util.Arrays.asList(categoryKeys);
         Page<StickerSet> likedStickerSets = likeRepository.findLikedStickerSetsByUserIdAndCategoryKeys(
                 userId, categoryKeyList, pageRequest.toPageable());
         
-        List<StickerSetDto> dtos = likedStickerSets.getContent().stream()
-            .map(stickerSet -> StickerSetDto.fromEntity(stickerSet, language))
-            .collect(Collectors.toList());
+        // Обогащаем данными из Telegram Bot API с учетом shortInfo
+        List<StickerSetDto> dtos = stickerSetService.enrichWithBotApiDataAndCategories(
+            likedStickerSets.getContent(), language, userId, shortInfo);
         
         return PageResponse.of(likedStickerSets, dtos);
     }

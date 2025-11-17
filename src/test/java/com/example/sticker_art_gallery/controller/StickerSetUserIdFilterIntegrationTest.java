@@ -35,9 +35,10 @@ class StickerSetUserIdFilterIntegrationTest {
     private MockMvc mockMvc;
 
     private String initData;
-    private final Long userId1 = TestDataBuilder.TEST_USER_ID;
-    private final Long userId2 = 999888777L;
-    private final Long userId3 = 888777666L;
+    // Используем уникальные ID для тестов, чтобы избежать конфликтов с существующими данными
+    private final Long userId1 = 9_000_000_001L;
+    private final Long userId2 = 9_000_000_002L;
+    private final Long userId3 = 9_000_000_003L;
 
     @BeforeEach
     void setUp() {
@@ -120,7 +121,7 @@ class StickerSetUserIdFilterIntegrationTest {
                         .param("userId", String.valueOf(userId1)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()", org.hamcrest.Matchers.is(2)))
-                .andExpect(jsonPath("$.content[*].userId").value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is(userId1.intValue()))));
+                .andExpect(jsonPath("$.content[*].userId").value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is(userId1))));
     }
 
     @Test
@@ -146,7 +147,7 @@ class StickerSetUserIdFilterIntegrationTest {
                         .param("userId", String.valueOf(userId2)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()", org.hamcrest.Matchers.is(1)))
-                .andExpect(jsonPath("$.content[0].userId").value(userId2.intValue()))
+                .andExpect(jsonPath("$.content[0].userId").value(userId2))
                 .andExpect(jsonPath("$.content[0].title").value("StickerSet User 2"));
 
         // Проверяем userId3
@@ -155,7 +156,7 @@ class StickerSetUserIdFilterIntegrationTest {
                         .param("userId", String.valueOf(userId3)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()", org.hamcrest.Matchers.is(1)))
-                .andExpect(jsonPath("$.content[0].userId").value(userId3.intValue()))
+                .andExpect(jsonPath("$.content[0].userId").value(userId3))
                 .andExpect(jsonPath("$.content[0].title").value("StickerSet User 3"));
     }
 
@@ -170,7 +171,7 @@ class StickerSetUserIdFilterIntegrationTest {
                         .param("officialOnly", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()", org.hamcrest.Matchers.is(1)))
-                .andExpect(jsonPath("$.content[0].userId").value(userId1.intValue()))
+                .andExpect(jsonPath("$.content[0].userId").value(userId1))
                 .andExpect(jsonPath("$.content[0].isOfficial").value(true));
     }
 
@@ -185,7 +186,7 @@ class StickerSetUserIdFilterIntegrationTest {
                         .param("authorId", "111"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()", org.hamcrest.Matchers.is(1)))
-                .andExpect(jsonPath("$.content[0].userId").value(userId1.intValue()))
+                .andExpect(jsonPath("$.content[0].userId").value(userId1))
                 .andExpect(jsonPath("$.content[0].authorId").value(111L));
     }
 
@@ -200,7 +201,7 @@ class StickerSetUserIdFilterIntegrationTest {
                         .param("hasAuthorOnly", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()", org.hamcrest.Matchers.is(1)))
-                .andExpect(jsonPath("$.content[0].userId").value(userId1.intValue()))
+                .andExpect(jsonPath("$.content[0].userId").value(userId1))
                 .andExpect(jsonPath("$.content[0].authorId").value(org.hamcrest.Matchers.notNullValue()));
     }
 
