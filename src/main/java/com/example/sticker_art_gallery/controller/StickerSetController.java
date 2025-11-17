@@ -1118,7 +1118,8 @@ public class StickerSetController {
     @Operation(
         summary = "Заблокировать стикерсет",
         description = "Блокирует стикерсет (доступно только админу). " +
-                     "Заблокированные стикерсеты не отображаются в галерее и в профилях пользователей."
+                     "Заблокированные стикерсеты не отображаются в галерее и в профилях пользователей. " +
+                     "Параметр reason (причина блокировки) опционален и по умолчанию пустой."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Стикерсет успешно заблокирован",
@@ -1131,7 +1132,7 @@ public class StickerSetController {
                         "name": "my_stickers_by_StickerGalleryBot",
                         "isPublic": true,
                         "isBlocked": true,
-                        "blockReason": "Нарушение правил сообщества",
+                        "blockReason": null,
                         "createdAt": "2025-09-15T10:30:00"
                     }
                     """))),
@@ -1144,14 +1145,14 @@ public class StickerSetController {
     public ResponseEntity<?> blockStickerSet(
             @Parameter(description = "ID стикерсета для блокировки", required = true, example = "1")
             @PathVariable @Positive(message = "ID должен быть положительным числом") Long id,
-            @Parameter(description = "Причина блокировки", required = false)
+            @Parameter(description = "Причина блокировки (опционально, по умолчанию пустая)", required = false)
             @RequestBody(required = false) java.util.Map<String, String> request) {
         try {
             LOGGER.info("🚫 Блокировка стикерсета с ID: {}", id);
             
             String reason = request != null ? request.get("reason") : null;
-            if (reason == null || reason.trim().isEmpty()) {
-                reason = "Нарушение правил сообщества";
+            if (reason != null && reason.trim().isEmpty()) {
+                reason = null;
             }
             
             StickerSet blockedStickerSet = stickerSetService.blockStickerSet(id, reason);
