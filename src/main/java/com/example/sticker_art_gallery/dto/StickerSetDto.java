@@ -61,8 +61,8 @@ public class StickerSetDto {
     private Long authorId;
     
     @Schema(description = "Список доступных действий для текущего пользователя", 
-            example = "[\"DELETE\", \"MAKE_PRIVATE\"]",
-            allowableValues = {"DELETE", "BLOCK", "UNBLOCK", "MAKE_PUBLIC", "MAKE_PRIVATE"})
+            example = "[\"DELETE\", \"UNPUBLISH\"]",
+            allowableValues = {"DELETE", "BLOCK", "UNBLOCK", "PUBLISH", "UNPUBLISH"})
     private List<StickerSetAction> availableActions;
     
     // Конструкторы
@@ -243,12 +243,12 @@ public class StickerSetDto {
             }
         }
         
-        // MAKE_PUBLIC/MAKE_PRIVATE - только для владельца, показывается только одно из двух в зависимости от состояния
+        // PUBLISH/UNPUBLISH - только для владельца, показывается только одно из двух в зависимости от состояния
         if (isOwner) {
             if (Boolean.TRUE.equals(isPublic)) {
-                actions.add(StickerSetAction.MAKE_PRIVATE);
+                actions.add(StickerSetAction.UNPUBLISH);
             } else {
-                actions.add(StickerSetAction.MAKE_PUBLIC);
+                actions.add(StickerSetAction.PUBLISH);
             }
         }
         

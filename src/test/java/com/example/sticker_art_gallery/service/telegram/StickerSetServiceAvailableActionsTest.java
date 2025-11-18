@@ -84,7 +84,7 @@ class StickerSetServiceAvailableActionsTest {
         assertNotNull(dto.getAvailableActions());
         assertEquals(2, dto.getAvailableActions().size());
         assertTrue(dto.getAvailableActions().contains(StickerSetAction.DELETE));
-        assertTrue(dto.getAvailableActions().contains(StickerSetAction.MAKE_PRIVATE));
+        assertTrue(dto.getAvailableActions().contains(StickerSetAction.UNPUBLISH));
     }
 
     @Test
@@ -131,7 +131,7 @@ class StickerSetServiceAvailableActionsTest {
         assertNotNull(dto.getAvailableActions());
         assertEquals(3, dto.getAvailableActions().size());
         assertTrue(dto.getAvailableActions().contains(StickerSetAction.DELETE));
-        assertTrue(dto.getAvailableActions().contains(StickerSetAction.MAKE_PRIVATE));
+        assertTrue(dto.getAvailableActions().contains(StickerSetAction.UNPUBLISH));
         assertTrue(dto.getAvailableActions().contains(StickerSetAction.BLOCK));
     }
 
@@ -183,10 +183,10 @@ class StickerSetServiceAvailableActionsTest {
 
     @Test
     @Story("Методы обогащения")
-    @DisplayName("findByIdWithBotApiData для приватного стикерсета должен показывать MAKE_PUBLIC для владельца")
-    @Description("Проверяет, что для приватного стикерсета владелец видит MAKE_PUBLIC вместо MAKE_PRIVATE")
+    @DisplayName("findByIdWithBotApiData для приватного стикерсета должен показывать PUBLISH для владельца")
+    @Description("Проверяет, что для приватного стикерсета владелец видит PUBLISH вместо UNPUBLISH")
     @Severity(SeverityLevel.CRITICAL)
-    void findByIdWithBotApiData_ForPrivateStickerSet_ShouldShowMakePublicForOwner() {
+    void findByIdWithBotApiData_ForPrivateStickerSet_ShouldShowPublishForOwner() {
         // Given
         StickerSet entity = createStickerSet(OWNER_USER_ID, false, false);
         when(stickerSetRepository.findById(1L)).thenReturn(java.util.Optional.of(entity));
@@ -202,8 +202,8 @@ class StickerSetServiceAvailableActionsTest {
         assertNotNull(dto.getAvailableActions());
         assertEquals(2, dto.getAvailableActions().size());
         assertTrue(dto.getAvailableActions().contains(StickerSetAction.DELETE));
-        assertTrue(dto.getAvailableActions().contains(StickerSetAction.MAKE_PUBLIC));
-        assertFalse(dto.getAvailableActions().contains(StickerSetAction.MAKE_PRIVATE));
+        assertTrue(dto.getAvailableActions().contains(StickerSetAction.PUBLISH));
+        assertFalse(dto.getAvailableActions().contains(StickerSetAction.UNPUBLISH));
     }
 
     @Test

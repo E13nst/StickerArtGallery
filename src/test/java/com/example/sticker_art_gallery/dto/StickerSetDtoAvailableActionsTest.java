@@ -21,10 +21,10 @@ class StickerSetDtoAvailableActionsTest {
 
     @Test
     @Story("Расчет доступных действий")
-    @DisplayName("Владелец публичного стикерсета должен видеть DELETE и MAKE_PRIVATE")
-    @Description("Проверяет, что владелец публичного не заблокированного стикерсета может удалить его и сделать приватным")
+    @DisplayName("Владелец публичного стикерсета должен видеть DELETE и UNPUBLISH")
+    @Description("Проверяет, что владелец публичного не заблокированного стикерсета может удалить его и скрыть из галереи")
     @Severity(SeverityLevel.CRITICAL)
-    void calculateAvailableActions_OwnerPublicStickerSet_ShouldReturnDeleteAndMakePrivate() {
+    void calculateAvailableActions_OwnerPublicStickerSet_ShouldReturnDeleteAndUnpublish() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
                 OWNER_USER_ID, false, OWNER_USER_ID, true, false
@@ -33,18 +33,18 @@ class StickerSetDtoAvailableActionsTest {
         // Then
         assertEquals(2, actions.size());
         assertTrue(actions.contains(StickerSetAction.DELETE));
-        assertTrue(actions.contains(StickerSetAction.MAKE_PRIVATE));
-        assertFalse(actions.contains(StickerSetAction.MAKE_PUBLIC));
+        assertTrue(actions.contains(StickerSetAction.UNPUBLISH));
+        assertFalse(actions.contains(StickerSetAction.PUBLISH));
         assertFalse(actions.contains(StickerSetAction.BLOCK));
         assertFalse(actions.contains(StickerSetAction.UNBLOCK));
     }
 
     @Test
     @Story("Расчет доступных действий")
-    @DisplayName("Владелец приватного стикерсета должен видеть DELETE и MAKE_PUBLIC")
-    @Description("Проверяет, что владелец приватного не заблокированного стикерсета может удалить его и сделать публичным")
+    @DisplayName("Владелец приватного стикерсета должен видеть DELETE и PUBLISH")
+    @Description("Проверяет, что владелец приватного не заблокированного стикерсета может удалить его и опубликовать")
     @Severity(SeverityLevel.CRITICAL)
-    void calculateAvailableActions_OwnerPrivateStickerSet_ShouldReturnDeleteAndMakePublic() {
+    void calculateAvailableActions_OwnerPrivateStickerSet_ShouldReturnDeleteAndPublish() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
                 OWNER_USER_ID, false, OWNER_USER_ID, false, false
@@ -53,8 +53,8 @@ class StickerSetDtoAvailableActionsTest {
         // Then
         assertEquals(2, actions.size());
         assertTrue(actions.contains(StickerSetAction.DELETE));
-        assertTrue(actions.contains(StickerSetAction.MAKE_PUBLIC));
-        assertFalse(actions.contains(StickerSetAction.MAKE_PRIVATE));
+        assertTrue(actions.contains(StickerSetAction.PUBLISH));
+        assertFalse(actions.contains(StickerSetAction.UNPUBLISH));
         assertFalse(actions.contains(StickerSetAction.BLOCK));
         assertFalse(actions.contains(StickerSetAction.UNBLOCK));
     }
@@ -75,8 +75,8 @@ class StickerSetDtoAvailableActionsTest {
         assertTrue(actions.contains(StickerSetAction.BLOCK));
         assertFalse(actions.contains(StickerSetAction.UNBLOCK));
         assertFalse(actions.contains(StickerSetAction.DELETE));
-        assertFalse(actions.contains(StickerSetAction.MAKE_PUBLIC));
-        assertFalse(actions.contains(StickerSetAction.MAKE_PRIVATE));
+        assertFalse(actions.contains(StickerSetAction.PUBLISH));
+        assertFalse(actions.contains(StickerSetAction.UNPUBLISH));
     }
 
     @Test
@@ -95,16 +95,16 @@ class StickerSetDtoAvailableActionsTest {
         assertTrue(actions.contains(StickerSetAction.UNBLOCK));
         assertFalse(actions.contains(StickerSetAction.BLOCK));
         assertFalse(actions.contains(StickerSetAction.DELETE));
-        assertFalse(actions.contains(StickerSetAction.MAKE_PUBLIC));
-        assertFalse(actions.contains(StickerSetAction.MAKE_PRIVATE));
+        assertFalse(actions.contains(StickerSetAction.PUBLISH));
+        assertFalse(actions.contains(StickerSetAction.UNPUBLISH));
     }
 
     @Test
     @Story("Расчет доступных действий")
-    @DisplayName("Админ-владелец публичного стикерсета должен видеть DELETE, MAKE_PRIVATE и BLOCK")
+    @DisplayName("Админ-владелец публичного стикерсета должен видеть DELETE, UNPUBLISH и BLOCK")
     @Description("Проверяет, что администратор, который является владельцем публичного стикерсета, видит все доступные ему действия")
     @Severity(SeverityLevel.CRITICAL)
-    void calculateAvailableActions_AdminOwnerPublicStickerSet_ShouldReturnDeleteMakePrivateAndBlock() {
+    void calculateAvailableActions_AdminOwnerPublicStickerSet_ShouldReturnDeleteUnpublishAndBlock() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
                 ADMIN_USER_ID, true, ADMIN_USER_ID, true, false
@@ -113,18 +113,18 @@ class StickerSetDtoAvailableActionsTest {
         // Then
         assertEquals(3, actions.size());
         assertTrue(actions.contains(StickerSetAction.DELETE));
-        assertTrue(actions.contains(StickerSetAction.MAKE_PRIVATE));
+        assertTrue(actions.contains(StickerSetAction.UNPUBLISH));
         assertTrue(actions.contains(StickerSetAction.BLOCK));
-        assertFalse(actions.contains(StickerSetAction.MAKE_PUBLIC));
+        assertFalse(actions.contains(StickerSetAction.PUBLISH));
         assertFalse(actions.contains(StickerSetAction.UNBLOCK));
     }
 
     @Test
     @Story("Расчет доступных действий")
-    @DisplayName("Админ-владелец заблокированного стикерсета должен видеть DELETE, MAKE_PRIVATE и UNBLOCK")
+    @DisplayName("Админ-владелец заблокированного стикерсета должен видеть DELETE, UNPUBLISH и UNBLOCK")
     @Description("Проверяет, что администратор, который является владельцем заблокированного стикерсета, видит все доступные ему действия")
     @Severity(SeverityLevel.CRITICAL)
-    void calculateAvailableActions_AdminOwnerBlockedStickerSet_ShouldReturnDeleteMakePrivateAndUnblock() {
+    void calculateAvailableActions_AdminOwnerBlockedStickerSet_ShouldReturnDeleteUnpublishAndUnblock() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
                 ADMIN_USER_ID, true, ADMIN_USER_ID, true, true
@@ -133,9 +133,9 @@ class StickerSetDtoAvailableActionsTest {
         // Then
         assertEquals(3, actions.size());
         assertTrue(actions.contains(StickerSetAction.DELETE));
-        assertTrue(actions.contains(StickerSetAction.MAKE_PRIVATE));
+        assertTrue(actions.contains(StickerSetAction.UNPUBLISH));
         assertTrue(actions.contains(StickerSetAction.UNBLOCK));
-        assertFalse(actions.contains(StickerSetAction.MAKE_PUBLIC));
+        assertFalse(actions.contains(StickerSetAction.PUBLISH));
         assertFalse(actions.contains(StickerSetAction.BLOCK));
     }
 
@@ -217,7 +217,7 @@ class StickerSetDtoAvailableActionsTest {
         assertNotNull(dto.getAvailableActions());
         assertEquals(2, dto.getAvailableActions().size());
         assertTrue(dto.getAvailableActions().contains(StickerSetAction.DELETE));
-        assertTrue(dto.getAvailableActions().contains(StickerSetAction.MAKE_PRIVATE));
+        assertTrue(dto.getAvailableActions().contains(StickerSetAction.UNPUBLISH));
     }
 
     @Test
@@ -254,7 +254,7 @@ class StickerSetDtoAvailableActionsTest {
         assertNotNull(dto.getAvailableActions());
         assertEquals(3, dto.getAvailableActions().size());
         assertTrue(dto.getAvailableActions().contains(StickerSetAction.DELETE));
-        assertTrue(dto.getAvailableActions().contains(StickerSetAction.MAKE_PRIVATE));
+        assertTrue(dto.getAvailableActions().contains(StickerSetAction.UNPUBLISH));
         assertTrue(dto.getAvailableActions().contains(StickerSetAction.BLOCK));
     }
 
@@ -279,10 +279,10 @@ class StickerSetDtoAvailableActionsTest {
 
     @Test
     @Story("Методы fromEntity")
-    @DisplayName("fromEntity с приватным стикерсетом должен показывать MAKE_PUBLIC для владельца")
-    @Description("Проверяет, что для приватного стикерсета владелец видит MAKE_PUBLIC вместо MAKE_PRIVATE")
+    @DisplayName("fromEntity с приватным стикерсетом должен показывать PUBLISH для владельца")
+    @Description("Проверяет, что для приватного стикерсета владелец видит PUBLISH вместо UNPUBLISH")
     @Severity(SeverityLevel.CRITICAL)
-    void fromEntity_WithPrivateStickerSet_ShouldShowMakePublicForOwner() {
+    void fromEntity_WithPrivateStickerSet_ShouldShowPublishForOwner() {
         // Given
         StickerSet entity = createStickerSet(OWNER_USER_ID, false, false);
 
@@ -293,8 +293,8 @@ class StickerSetDtoAvailableActionsTest {
         assertNotNull(dto.getAvailableActions());
         assertEquals(2, dto.getAvailableActions().size());
         assertTrue(dto.getAvailableActions().contains(StickerSetAction.DELETE));
-        assertTrue(dto.getAvailableActions().contains(StickerSetAction.MAKE_PUBLIC));
-        assertFalse(dto.getAvailableActions().contains(StickerSetAction.MAKE_PRIVATE));
+        assertTrue(dto.getAvailableActions().contains(StickerSetAction.PUBLISH));
+        assertFalse(dto.getAvailableActions().contains(StickerSetAction.UNPUBLISH));
     }
 
     @Test
