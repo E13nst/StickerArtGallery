@@ -225,6 +225,23 @@ public class StickerSetService {
             return null;
         }
     }
+    
+    /**
+     * Проверяет, является ли текущий пользователь администратором
+     */
+    private boolean isCurrentUserAdmin() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.isAuthenticated()) {
+                return authentication.getAuthorities().stream()
+                        .anyMatch(auth -> "ROLE_ADMIN".equals(auth.getAuthority()));
+            }
+            return false;
+        } catch (Exception e) {
+            LOGGER.warn("⚠️ Ошибка при проверке роли администратора: {}", e.getMessage());
+            return false;
+        }
+    }
 
     private String normalizeLanguage(String language) {
         if (language == null) {
@@ -708,7 +725,8 @@ public class StickerSetService {
      * Обогащает один стикерсет данными из Bot API и категориями (безопасно)
      */
     private StickerSetDto enrichSingleStickerSetSafelyWithCategories(StickerSet stickerSet, String language, Long currentUserId, boolean shortInfo) {
-        StickerSetDto dto = StickerSetDto.fromEntity(stickerSet, language, currentUserId);
+        boolean isAdmin = isCurrentUserAdmin();
+        StickerSetDto dto = StickerSetDto.fromEntity(stickerSet, language, currentUserId, isAdmin);
         
         if (shortInfo) {
             dto.setTelegramStickerSetInfo(null);

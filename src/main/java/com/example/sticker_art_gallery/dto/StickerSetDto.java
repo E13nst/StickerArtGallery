@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -58,6 +59,11 @@ public class StickerSetDto {
 
     @Schema(description = "Telegram ID автора стикерсета (только отображение)", example = "123456789", nullable = true)
     private Long authorId;
+    
+    @Schema(description = "Список доступных действий для текущего пользователя", 
+            example = "[\"DELETE\", \"MAKE_PRIVATE\"]",
+            allowableValues = {"DELETE", "BLOCK", "UNBLOCK", "MAKE_PUBLIC", "MAKE_PRIVATE"})
+    private List<StickerSetAction> availableActions;
     
     // Конструкторы
     public StickerSetDto() {}
@@ -193,6 +199,62 @@ public class StickerSetDto {
         this.authorId = authorId;
     }
     
+    public List<StickerSetAction> getAvailableActions() {
+        return availableActions;
+    }
+    
+    public void setAvailableActions(List<StickerSetAction> availableActions) {
+        this.availableActions = availableActions;
+    }
+    
+    /**
+     * Вычисляет доступные действия для стикерсета на основе текущего пользователя, его роли и состояния стикерсета
+     * 
+     * @param currentUserId ID текущего пользователя (может быть null)
+     * @param isAdmin является ли текущий пользователь админом
+     * @param stickerSetUserId ID владельца стикерсета
+     * @param isPublic публичный ли стикерсет
+     * @param isBlocked заблокирован ли стикерсет
+     * @return список доступных действий
+     */
+    public static List<StickerSetAction> calculateAvailableActions(
+            Long currentUserId, 
+            boolean isAdmin, 
+            Long stickerSetUserId,
+            Boolean isPublic, 
+            Boolean isBlocked) {
+        
+        List<StickerSetAction> actions = new ArrayList<>();
+        
+        // Проверяем, является ли текущий пользователь владельцем
+        boolean isOwner = currentUserId != null && currentUserId.equals(stickerSetUserId);
+        
+        // DELETE - только для владельца
+        if (isOwner) {
+            actions.add(StickerSetAction.DELETE);
+        }
+        
+        // BLOCK/UNBLOCK - только для админа, показывается только одно из двух в зависимости от состояния
+        if (isAdmin) {
+            if (Boolean.TRUE.equals(isBlocked)) {
+                actions.add(StickerSetAction.UNBLOCK);
+            } else {
+                actions.add(StickerSetAction.BLOCK);
+            }
+        }
+        
+        // MAKE_PUBLIC/MAKE_PRIVATE - только для владельца, показывается только одно из двух в зависимости от состояния
+        if (isOwner) {
+            if (Boolean.TRUE.equals(isPublic)) {
+                actions.add(StickerSetAction.MAKE_PRIVATE);
+            } else {
+                actions.add(StickerSetAction.MAKE_PUBLIC);
+            }
+        }
+        
+        return actions;
+    }
+    
     // Конструктор для создания DTO из Entity
     public static StickerSetDto fromEntity(com.example.sticker_art_gallery.model.telegram.StickerSet entity) {
         if (entity == null) {
@@ -217,6 +279,9 @@ public class StickerSetDto {
         } else {
             dto.setLikesCount(0L);
         }
+        
+        // Устанавливаем пустой список действий, если не передан currentUserId
+        dto.setAvailableActions(new ArrayList<>());
         
         return dto;
     }
@@ -269,15 +334,34 @@ public class StickerSetDto {
         // Устанавливаем isLikedByCurrentUser по умолчанию в false (будет переопределено, если передан currentUserId)
         dto.setLikedByCurrentUser(false);
         
+        // Устанавливаем пустой список действий, если не передан currentUserId и isAdmin
+        dto.setAvailableActions(new ArrayList<>());
+        
         return dto;
     }
     
     // Конструктор для создания DTO из Entity с категориями и информацией о лайках пользователя
     public static StickerSetDto fromEntity(com.example.sticker_art_gallery.model.telegram.StickerSet entity, String language, Long currentUserId) {
+        return fromEntity(entity, language, currentUserId, false);
+    }
+    
+    // Конструктор для создания DTO из Entity с категориями, информацией о лайках и доступных действиях
+    public static StickerSetDto fromEntity(com.example.sticker_art_gallery.model.telegram.StickerSet entity, String language, Long currentUserId, boolean isAdmin) {
         StickerSetDto dto = fromEntity(entity, language);
         
         if (dto != null && currentUserId != null) {
             dto.setLikedByCurrentUser(entity.isLikedByUser(currentUserId));
+        }
+        
+        // Вычисляем доступные действия
+        if (dto != null) {
+            dto.setAvailableActions(calculateAvailableActions(
+                currentUserId,
+                isAdmin,
+                entity.getUserId(),
+                entity.getIsPublic(),
+                entity.getIsBlocked()
+            ));
         }
         
         return dto;

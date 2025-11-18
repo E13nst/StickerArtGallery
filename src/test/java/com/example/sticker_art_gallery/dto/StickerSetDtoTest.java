@@ -6,8 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("StickerSetDto URL generation")
 class StickerSetDtoTest {
@@ -60,6 +59,28 @@ class StickerSetDtoTest {
         StickerSetDto dto = StickerSetDto.fromEntity(entity);
 
         assertEquals("https://t.me/addstickers/entity_pack", dto.getUrl());
+    }
+
+    @Test
+    @DisplayName("fromEntity устанавливает пустой список действий, если не передан currentUserId")
+    void fromEntity_WithoutCurrentUserId_ShouldSetEmptyActions() {
+        // Given
+        StickerSet entity = new StickerSet();
+        entity.setId(10L);
+        entity.setUserId(20L);
+        entity.setTitle("Some title");
+        entity.setName("entity_pack");
+        entity.setIsPublic(true);
+        entity.setIsBlocked(false);
+        entity.setIsOfficial(false);
+        entity.setLikesCount(0);
+
+        // When
+        StickerSetDto dto = StickerSetDto.fromEntity(entity);
+
+        // Then
+        assertNotNull(dto.getAvailableActions());
+        assertTrue(dto.getAvailableActions().isEmpty());
     }
 }
 
