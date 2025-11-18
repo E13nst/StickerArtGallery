@@ -213,6 +213,7 @@ public class StickerSetDto {
      * @param currentUserId ID текущего пользователя (может быть null)
      * @param isAdmin является ли текущий пользователь админом
      * @param stickerSetUserId ID владельца стикерсета
+     * @param stickerSetAuthorId ID автора стикерсета (может быть null)
      * @param isPublic публичный ли стикерсет
      * @param isBlocked заблокирован ли стикерсет
      * @return список доступных действий
@@ -221,6 +222,7 @@ public class StickerSetDto {
             Long currentUserId, 
             boolean isAdmin, 
             Long stickerSetUserId,
+            Long stickerSetAuthorId,
             Boolean isPublic, 
             Boolean isBlocked) {
         
@@ -228,6 +230,9 @@ public class StickerSetDto {
         
         // Проверяем, является ли текущий пользователь владельцем
         boolean isOwner = currentUserId != null && currentUserId.equals(stickerSetUserId);
+        
+        // Проверяем, является ли текущий пользователь автором
+        boolean isAuthor = currentUserId != null && stickerSetAuthorId != null && currentUserId.equals(stickerSetAuthorId);
         
         // DELETE - только для владельца
         if (isOwner) {
@@ -243,8 +248,8 @@ public class StickerSetDto {
             }
         }
         
-        // PUBLISH/UNPUBLISH - только для владельца, показывается только одно из двух в зависимости от состояния
-        if (isOwner) {
+        // PUBLISH/UNPUBLISH - только для автора, показывается только одно из двух в зависимости от состояния
+        if (isAuthor) {
             if (Boolean.TRUE.equals(isPublic)) {
                 actions.add(StickerSetAction.UNPUBLISH);
             } else {
@@ -359,6 +364,7 @@ public class StickerSetDto {
                 currentUserId,
                 isAdmin,
                 entity.getUserId(),
+                entity.getAuthorId(),
                 entity.getIsPublic(),
                 entity.getIsBlocked()
             ));

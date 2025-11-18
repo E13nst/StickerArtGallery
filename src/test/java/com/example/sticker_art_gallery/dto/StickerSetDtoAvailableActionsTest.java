@@ -16,18 +16,19 @@ import static org.junit.jupiter.api.Assertions.*;
 class StickerSetDtoAvailableActionsTest {
 
     private static final Long OWNER_USER_ID = 123L;
+    private static final Long AUTHOR_USER_ID = 124L;
     private static final Long OTHER_USER_ID = 456L;
     private static final Long ADMIN_USER_ID = 999L;
 
     @Test
     @Story("Расчет доступных действий")
-    @DisplayName("Владелец публичного стикерсета должен видеть DELETE и UNPUBLISH")
-    @Description("Проверяет, что владелец публичного не заблокированного стикерсета может удалить его и скрыть из галереи")
+    @DisplayName("Владелец-автор публичного стикерсета должен видеть DELETE и UNPUBLISH")
+    @Description("Проверяет, что владелец, который также является автором, публичного не заблокированного стикерсета может удалить его и скрыть из галереи")
     @Severity(SeverityLevel.CRITICAL)
-    void calculateAvailableActions_OwnerPublicStickerSet_ShouldReturnDeleteAndUnpublish() {
+    void calculateAvailableActions_OwnerAuthorPublicStickerSet_ShouldReturnDeleteAndUnpublish() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                OWNER_USER_ID, false, OWNER_USER_ID, true, false
+                OWNER_USER_ID, false, OWNER_USER_ID, OWNER_USER_ID, true, false
         );
 
         // Then
@@ -41,13 +42,13 @@ class StickerSetDtoAvailableActionsTest {
 
     @Test
     @Story("Расчет доступных действий")
-    @DisplayName("Владелец приватного стикерсета должен видеть DELETE и PUBLISH")
-    @Description("Проверяет, что владелец приватного не заблокированного стикерсета может удалить его и опубликовать")
+    @DisplayName("Владелец-автор приватного стикерсета должен видеть DELETE и PUBLISH")
+    @Description("Проверяет, что владелец, который также является автором, приватного не заблокированного стикерсета может удалить его и опубликовать")
     @Severity(SeverityLevel.CRITICAL)
-    void calculateAvailableActions_OwnerPrivateStickerSet_ShouldReturnDeleteAndPublish() {
+    void calculateAvailableActions_OwnerAuthorPrivateStickerSet_ShouldReturnDeleteAndPublish() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                OWNER_USER_ID, false, OWNER_USER_ID, false, false
+                OWNER_USER_ID, false, OWNER_USER_ID, OWNER_USER_ID, false, false
         );
 
         // Then
@@ -67,7 +68,7 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_AdminNotBlockedStickerSet_ShouldReturnBlock() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                ADMIN_USER_ID, true, OWNER_USER_ID, true, false
+                ADMIN_USER_ID, true, OWNER_USER_ID, AUTHOR_USER_ID, true, false
         );
 
         // Then
@@ -87,7 +88,7 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_AdminBlockedStickerSet_ShouldReturnUnblock() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                ADMIN_USER_ID, true, OWNER_USER_ID, true, true
+                ADMIN_USER_ID, true, OWNER_USER_ID, AUTHOR_USER_ID, true, true
         );
 
         // Then
@@ -101,13 +102,13 @@ class StickerSetDtoAvailableActionsTest {
 
     @Test
     @Story("Расчет доступных действий")
-    @DisplayName("Админ-владелец публичного стикерсета должен видеть DELETE, UNPUBLISH и BLOCK")
-    @Description("Проверяет, что администратор, который является владельцем публичного стикерсета, видит все доступные ему действия")
+    @DisplayName("Админ-владелец-автор публичного стикерсета должен видеть DELETE, UNPUBLISH и BLOCK")
+    @Description("Проверяет, что администратор, который является владельцем и автором публичного стикерсета, видит все доступные ему действия")
     @Severity(SeverityLevel.CRITICAL)
-    void calculateAvailableActions_AdminOwnerPublicStickerSet_ShouldReturnDeleteUnpublishAndBlock() {
+    void calculateAvailableActions_AdminOwnerAuthorPublicStickerSet_ShouldReturnDeleteUnpublishAndBlock() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                ADMIN_USER_ID, true, ADMIN_USER_ID, true, false
+                ADMIN_USER_ID, true, ADMIN_USER_ID, ADMIN_USER_ID, true, false
         );
 
         // Then
@@ -121,13 +122,13 @@ class StickerSetDtoAvailableActionsTest {
 
     @Test
     @Story("Расчет доступных действий")
-    @DisplayName("Админ-владелец заблокированного стикерсета должен видеть DELETE, UNPUBLISH и UNBLOCK")
-    @Description("Проверяет, что администратор, который является владельцем заблокированного стикерсета, видит все доступные ему действия")
+    @DisplayName("Админ-владелец-автор заблокированного стикерсета должен видеть DELETE, UNPUBLISH и UNBLOCK")
+    @Description("Проверяет, что администратор, который является владельцем и автором заблокированного стикерсета, видит все доступные ему действия")
     @Severity(SeverityLevel.CRITICAL)
-    void calculateAvailableActions_AdminOwnerBlockedStickerSet_ShouldReturnDeleteUnpublishAndUnblock() {
+    void calculateAvailableActions_AdminOwnerAuthorBlockedStickerSet_ShouldReturnDeleteUnpublishAndUnblock() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                ADMIN_USER_ID, true, ADMIN_USER_ID, true, true
+                ADMIN_USER_ID, true, ADMIN_USER_ID, ADMIN_USER_ID, true, true
         );
 
         // Then
@@ -147,7 +148,7 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_OtherUser_ShouldReturnEmpty() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                OTHER_USER_ID, false, OWNER_USER_ID, true, false
+                OTHER_USER_ID, false, OWNER_USER_ID, AUTHOR_USER_ID, true, false
         );
 
         // Then
@@ -162,7 +163,7 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_UnauthorizedUser_ShouldReturnEmpty() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                null, false, OWNER_USER_ID, true, false
+                null, false, OWNER_USER_ID, AUTHOR_USER_ID, true, false
         );
 
         // Then
@@ -177,11 +178,47 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_AdminUserIdButNotAdminRole_ShouldNotReturnBlockActions() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                ADMIN_USER_ID, false, OWNER_USER_ID, true, false
+                ADMIN_USER_ID, false, OWNER_USER_ID, AUTHOR_USER_ID, true, false
         );
 
         // Then
         assertTrue(actions.isEmpty());
+    }
+
+    @Test
+    @Story("Расчет доступных действий")
+    @DisplayName("Владелец (не автор) публичного стикерсета должен видеть только DELETE")
+    @Description("Проверяет, что владелец, который не является автором, может только удалить стикерсет, но не может публиковать/скрывать")
+    @Severity(SeverityLevel.CRITICAL)
+    void calculateAvailableActions_OwnerNotAuthor_ShouldReturnOnlyDelete() {
+        // When
+        List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
+                OWNER_USER_ID, false, OWNER_USER_ID, AUTHOR_USER_ID, true, false
+        );
+
+        // Then
+        assertEquals(1, actions.size());
+        assertTrue(actions.contains(StickerSetAction.DELETE));
+        assertFalse(actions.contains(StickerSetAction.PUBLISH));
+        assertFalse(actions.contains(StickerSetAction.UNPUBLISH));
+    }
+
+    @Test
+    @Story("Расчет доступных действий")
+    @DisplayName("Автор (не владелец) публичного стикерсета должен видеть только UNPUBLISH")
+    @Description("Проверяет, что автор, который не является владельцем, может только публиковать/скрывать стикерсет, но не может удалить")
+    @Severity(SeverityLevel.CRITICAL)
+    void calculateAvailableActions_AuthorNotOwner_ShouldReturnOnlyUnpublish() {
+        // When
+        List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
+                AUTHOR_USER_ID, false, OWNER_USER_ID, AUTHOR_USER_ID, true, false
+        );
+
+        // Then
+        assertEquals(1, actions.size());
+        assertTrue(actions.contains(StickerSetAction.UNPUBLISH));
+        assertFalse(actions.contains(StickerSetAction.DELETE));
+        assertFalse(actions.contains(StickerSetAction.PUBLISH));
     }
 
     @Test
@@ -191,7 +228,7 @@ class StickerSetDtoAvailableActionsTest {
     @Severity(SeverityLevel.CRITICAL)
     void fromEntity_WithoutCurrentUserId_ShouldHaveEmptyActions() {
         // Given
-        StickerSet entity = createStickerSet(OWNER_USER_ID, true, false);
+        StickerSet entity = createStickerSet(OWNER_USER_ID, AUTHOR_USER_ID, true, false);
 
         // When
         StickerSetDto dto = StickerSetDto.fromEntity(entity);
@@ -203,15 +240,15 @@ class StickerSetDtoAvailableActionsTest {
 
     @Test
     @Story("Методы fromEntity")
-    @DisplayName("fromEntity с currentUserId владельца должен рассчитывать действия владельца")
-    @Description("Проверяет, что при создании DTO с currentUserId владельца рассчитываются правильные действия")
+    @DisplayName("fromEntity с currentUserId владельца-автора должен рассчитывать действия владельца-автора")
+    @Description("Проверяет, что при создании DTO с currentUserId владельца, который также является автором, рассчитываются правильные действия")
     @Severity(SeverityLevel.CRITICAL)
-    void fromEntity_WithOwnerCurrentUserId_ShouldCalculateOwnerActions() {
+    void fromEntity_WithOwnerAuthorCurrentUserId_ShouldCalculateOwnerAuthorActions() {
         // Given
-        StickerSet entity = createStickerSet(OWNER_USER_ID, true, false);
+        StickerSet entity = createStickerSet(OWNER_USER_ID, OWNER_USER_ID, true, false);
 
         // When
-        StickerSetDto dto = StickerSetDto.fromEntity(entity, "en", OWNER_USER_ID);
+        StickerSetDto dto = StickerSetDto.fromEntity(entity, "en", OWNER_USER_ID, false);
 
         // Then
         assertNotNull(dto.getAvailableActions());
@@ -227,7 +264,7 @@ class StickerSetDtoAvailableActionsTest {
     @Severity(SeverityLevel.CRITICAL)
     void fromEntity_WithAdmin_ShouldCalculateAdminActions() {
         // Given
-        StickerSet entity = createStickerSet(OWNER_USER_ID, true, false);
+        StickerSet entity = createStickerSet(OWNER_USER_ID, AUTHOR_USER_ID, true, false);
 
         // When
         StickerSetDto dto = StickerSetDto.fromEntity(entity, "en", ADMIN_USER_ID, true);
@@ -240,12 +277,12 @@ class StickerSetDtoAvailableActionsTest {
 
     @Test
     @Story("Методы fromEntity")
-    @DisplayName("fromEntity с админом-владельцем должен рассчитывать все действия")
-    @Description("Проверяет, что при создании DTO с админом, который является владельцем, рассчитываются все доступные действия")
+    @DisplayName("fromEntity с админом-владельцем-автором должен рассчитывать все действия")
+    @Description("Проверяет, что при создании DTO с админом, который является владельцем и автором, рассчитываются все доступные действия")
     @Severity(SeverityLevel.CRITICAL)
-    void fromEntity_WithAdminOwner_ShouldCalculateAllActions() {
+    void fromEntity_WithAdminOwnerAuthor_ShouldCalculateAllActions() {
         // Given
-        StickerSet entity = createStickerSet(ADMIN_USER_ID, true, false);
+        StickerSet entity = createStickerSet(ADMIN_USER_ID, ADMIN_USER_ID, true, false);
 
         // When
         StickerSetDto dto = StickerSetDto.fromEntity(entity, "en", ADMIN_USER_ID, true);
@@ -265,7 +302,7 @@ class StickerSetDtoAvailableActionsTest {
     @Severity(SeverityLevel.CRITICAL)
     void fromEntity_WithBlockedStickerSet_ShouldShowUnblockForAdmin() {
         // Given
-        StickerSet entity = createStickerSet(OWNER_USER_ID, true, true);
+        StickerSet entity = createStickerSet(OWNER_USER_ID, AUTHOR_USER_ID, true, true);
 
         // When
         StickerSetDto dto = StickerSetDto.fromEntity(entity, "en", ADMIN_USER_ID, true);
@@ -279,12 +316,12 @@ class StickerSetDtoAvailableActionsTest {
 
     @Test
     @Story("Методы fromEntity")
-    @DisplayName("fromEntity с приватным стикерсетом должен показывать PUBLISH для владельца")
-    @Description("Проверяет, что для приватного стикерсета владелец видит PUBLISH вместо UNPUBLISH")
+    @DisplayName("fromEntity с приватным стикерсетом должен показывать PUBLISH для автора")
+    @Description("Проверяет, что для приватного стикерсета автор видит PUBLISH вместо UNPUBLISH")
     @Severity(SeverityLevel.CRITICAL)
-    void fromEntity_WithPrivateStickerSet_ShouldShowPublishForOwner() {
+    void fromEntity_WithPrivateStickerSet_ShouldShowPublishForAuthor() {
         // Given
-        StickerSet entity = createStickerSet(OWNER_USER_ID, false, false);
+        StickerSet entity = createStickerSet(OWNER_USER_ID, OWNER_USER_ID, false, false);
 
         // When
         StickerSetDto dto = StickerSetDto.fromEntity(entity, "en", OWNER_USER_ID, false);
@@ -304,7 +341,7 @@ class StickerSetDtoAvailableActionsTest {
     @Severity(SeverityLevel.CRITICAL)
     void fromEntity_WithOtherUser_ShouldHaveEmptyActions() {
         // Given
-        StickerSet entity = createStickerSet(OWNER_USER_ID, true, false);
+        StickerSet entity = createStickerSet(OWNER_USER_ID, AUTHOR_USER_ID, true, false);
 
         // When
         StickerSetDto dto = StickerSetDto.fromEntity(entity, "en", OTHER_USER_ID, false);
@@ -317,10 +354,11 @@ class StickerSetDtoAvailableActionsTest {
     /**
      * Вспомогательный метод для создания StickerSet для тестов
      */
-    private StickerSet createStickerSet(Long userId, Boolean isPublic, Boolean isBlocked) {
+    private StickerSet createStickerSet(Long userId, Long authorId, Boolean isPublic, Boolean isBlocked) {
         StickerSet entity = new StickerSet();
         entity.setId(1L);
         entity.setUserId(userId);
+        entity.setAuthorId(authorId);
         entity.setTitle("Test StickerSet");
         entity.setName("test_stickers_by_bot");
         entity.setIsPublic(isPublic);
