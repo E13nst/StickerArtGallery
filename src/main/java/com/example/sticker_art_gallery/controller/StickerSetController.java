@@ -530,6 +530,17 @@ public class StickerSetController {
             LOGGER.info("🔍 Поиск стикерсета по ID: {} с данными Bot API (shortInfo={})", id, shortInfo);
             
             Long currentUserId = getCurrentUserIdOrNull();
+            LOGGER.debug("🔍 getCurrentUserIdOrNull() вернул: {}", currentUserId);
+            
+            // Проверяем SecurityContext для отладки
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null) {
+                LOGGER.debug("🔍 SecurityContext: authenticated={}, name={}, authorities={}", 
+                        auth.isAuthenticated(), auth.getName(), auth.getAuthorities());
+            } else {
+                LOGGER.debug("🔍 SecurityContext: authentication is null");
+            }
+            
             StickerSetDto dto = stickerSetService.findByIdWithBotApiData(id, null, currentUserId, shortInfo);
             
             if (dto == null) {
@@ -1397,12 +1408,35 @@ public class StickerSetController {
     private Long getCurrentUserIdOrNull() {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            if (authentication == null || !authentication.isAuthenticated() || 
-                "anonymousUser".equals(authentication.getPrincipal())) {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                LOGGER.debug("🔍 getCurrentUserIdOrNull: authentication is null or not authenticated");
                 return null;
             }
-            return Long.valueOf(authentication.getName());
+            
+            Object principal = authentication.getPrincipal();
+            if (principal != null && "anonymousUser".equals(principal.toString())) {
+                LOGGER.debug("🔍 getCurrentUserIdOrNull: principal is anonymousUser");
+                return null;
+            }
+            
+            String name = authentication.getName();
+            LOGGER.debug("🔍 getCurrentUserIdOrNull: authentication.getName() = {}", name);
+            
+            if (name != null && !name.isEmpty()) {
+                try {
+                    Long userId = Long.valueOf(name);
+                    LOGGER.debug("🔍 getCurrentUserIdOrNull: успешно извлечен userId = {}", userId);
+                    return userId;
+                } catch (NumberFormatException e) {
+                    LOGGER.warn("⚠️ getCurrentUserIdOrNull: не удалось преобразовать '{}' в Long: {}", name, e.getMessage());
+                    return null;
+                }
+            }
+            
+            LOGGER.debug("🔍 getCurrentUserIdOrNull: authentication.getName() is null or empty");
+            return null;
         } catch (Exception e) {
+            LOGGER.warn("⚠️ getCurrentUserIdOrNull: ошибка при извлечении userId: {}", e.getMessage(), e);
             return null;
         }
     }

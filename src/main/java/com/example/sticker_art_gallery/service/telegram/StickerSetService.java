@@ -511,7 +511,13 @@ public class StickerSetService {
         }
         
         String lang = normalizeLanguage(language);
-        return enrichSingleStickerSetSafelyWithCategories(stickerSet, lang, currentUserId, shortInfo);
+        StickerSetDto dto = enrichSingleStickerSetSafelyWithCategories(stickerSet, lang, currentUserId, shortInfo);
+        
+        LOGGER.debug("🔍 Стикерсет ID {}: userId={}, currentUserId={}, isPublic={}, isBlocked={}, availableActions={}", 
+                id, stickerSet.getUserId(), currentUserId, stickerSet.getIsPublic(), stickerSet.getIsBlocked(), 
+                dto != null ? dto.getAvailableActions() : "null");
+        
+        return dto;
     }
     
     /**
@@ -726,7 +732,17 @@ public class StickerSetService {
      */
     private StickerSetDto enrichSingleStickerSetSafelyWithCategories(StickerSet stickerSet, String language, Long currentUserId, boolean shortInfo) {
         boolean isAdmin = isCurrentUserAdmin();
+        LOGGER.debug("🔍 Обогащение стикерсета {}: currentUserId={}, stickerSetUserId={}, isAdmin={}", 
+                stickerSet.getId(), currentUserId, stickerSet.getUserId(), isAdmin);
         StickerSetDto dto = StickerSetDto.fromEntity(stickerSet, language, currentUserId, isAdmin);
+        
+        if (dto == null) {
+            LOGGER.warn("⚠️ Не удалось создать DTO для стикерсета {}", stickerSet.getId());
+            return null;
+        }
+        
+        LOGGER.debug("🔍 Результат обогащения стикерсета {}: availableActions={}", 
+                stickerSet.getId(), dto.getAvailableActions());
         
         if (shortInfo) {
             dto.setTelegramStickerSetInfo(null);
