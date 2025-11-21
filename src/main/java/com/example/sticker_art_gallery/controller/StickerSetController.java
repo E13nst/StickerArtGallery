@@ -1077,12 +1077,14 @@ public class StickerSetController {
             
             // Проверяем права доступа
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            Long currentUserId = null;
+            boolean isAdmin = false;
             
             if (authentication != null && authentication.isAuthenticated()) {
-                Long currentUserId = Long.valueOf(authentication.getName());
+                currentUserId = Long.valueOf(authentication.getName());
                 
                 // Проверяем: админ или владелец стикерсета
-                boolean isAdmin = authentication.getAuthorities().stream()
+                isAdmin = authentication.getAuthorities().stream()
                     .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
                 boolean isOwner = existingStickerSet.getUserId() != null && existingStickerSet.getUserId().equals(currentUserId);
                 
@@ -1100,6 +1102,16 @@ public class StickerSetController {
             
             StickerSet updatedStickerSet = stickerSetService.updateVisibility(id, isPublic);
             StickerSetDto updatedDto = StickerSetDto.fromEntity(updatedStickerSet);
+            
+            // Устанавливаем availableActions
+            updatedDto.setAvailableActions(StickerSetDto.calculateAvailableActions(
+                currentUserId,
+                isAdmin,
+                updatedStickerSet.getUserId(),
+                updatedStickerSet.getAuthorId(),
+                updatedStickerSet.getIsPublic(),
+                updatedStickerSet.getIsBlocked()
+            ));
             
             LOGGER.info("✅ Стикерсет {} {}", id, action);
             return ResponseEntity.ok(updatedDto);
@@ -1166,8 +1178,22 @@ public class StickerSetController {
                 reason = null;
             }
             
+            // Получаем currentUserId и isAdmin (эндпоинт доступен только админам)
+            Long currentUserId = getCurrentUserIdOrNull();
+            boolean isAdmin = true; // Эндпоинт доступен только админам через @PreAuthorize
+            
             StickerSet blockedStickerSet = stickerSetService.blockStickerSet(id, reason);
             StickerSetDto blockedDto = StickerSetDto.fromEntity(blockedStickerSet);
+            
+            // Устанавливаем availableActions
+            blockedDto.setAvailableActions(StickerSetDto.calculateAvailableActions(
+                currentUserId,
+                isAdmin,
+                blockedStickerSet.getUserId(),
+                blockedStickerSet.getAuthorId(),
+                blockedStickerSet.getIsPublic(),
+                blockedStickerSet.getIsBlocked()
+            ));
             
             LOGGER.info("✅ Стикерсет {} заблокирован по причине: {}", id, reason);
             return ResponseEntity.ok(blockedDto);
@@ -1226,8 +1252,22 @@ public class StickerSetController {
         try {
             LOGGER.info("✅ Разблокировка стикерсета с ID: {}", id);
             
+            // Получаем currentUserId и isAdmin (эндпоинт доступен только админам)
+            Long currentUserId = getCurrentUserIdOrNull();
+            boolean isAdmin = true; // Эндпоинт доступен только админам через @PreAuthorize
+            
             StickerSet unblockedStickerSet = stickerSetService.unblockStickerSet(id);
             StickerSetDto unblockedDto = StickerSetDto.fromEntity(unblockedStickerSet);
+            
+            // Устанавливаем availableActions
+            unblockedDto.setAvailableActions(StickerSetDto.calculateAvailableActions(
+                currentUserId,
+                isAdmin,
+                unblockedStickerSet.getUserId(),
+                unblockedStickerSet.getAuthorId(),
+                unblockedStickerSet.getIsPublic(),
+                unblockedStickerSet.getIsBlocked()
+            ));
             
             LOGGER.info("✅ Стикерсет {} разблокирован", id);
             return ResponseEntity.ok(unblockedDto);
