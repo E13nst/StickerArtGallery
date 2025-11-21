@@ -1,6 +1,9 @@
 package com.example.sticker_art_gallery.dto;
 
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
+import com.example.sticker_art_gallery.model.telegram.StickerSetState;
+import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
+import com.example.sticker_art_gallery.model.telegram.StickerSetType;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,7 +31,8 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_OwnerAuthorPublicStickerSet_ShouldReturnDeleteAndUnpublish() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                OWNER_USER_ID, false, OWNER_USER_ID, OWNER_USER_ID, true, false
+                OWNER_USER_ID, false, OWNER_USER_ID, OWNER_USER_ID, 
+                StickerSetState.ACTIVE, StickerSetVisibility.PUBLIC
         );
 
         // Then
@@ -48,7 +52,8 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_OwnerAuthorPrivateStickerSet_ShouldReturnDeleteAndPublish() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                OWNER_USER_ID, false, OWNER_USER_ID, OWNER_USER_ID, false, false
+                OWNER_USER_ID, false, OWNER_USER_ID, OWNER_USER_ID, 
+                StickerSetState.ACTIVE, StickerSetVisibility.PRIVATE
         );
 
         // Then
@@ -68,7 +73,8 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_AdminNotBlockedStickerSet_ShouldReturnBlock() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                ADMIN_USER_ID, true, OWNER_USER_ID, AUTHOR_USER_ID, true, false
+                ADMIN_USER_ID, true, OWNER_USER_ID, AUTHOR_USER_ID, 
+                StickerSetState.ACTIVE, StickerSetVisibility.PUBLIC
         );
 
         // Then
@@ -88,7 +94,8 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_AdminBlockedStickerSet_ShouldReturnUnblock() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                ADMIN_USER_ID, true, OWNER_USER_ID, AUTHOR_USER_ID, true, true
+                ADMIN_USER_ID, true, OWNER_USER_ID, AUTHOR_USER_ID, 
+                StickerSetState.BLOCKED, StickerSetVisibility.PUBLIC
         );
 
         // Then
@@ -108,7 +115,8 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_AdminOwnerAuthorPublicStickerSet_ShouldReturnDeleteUnpublishAndBlock() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                ADMIN_USER_ID, true, ADMIN_USER_ID, ADMIN_USER_ID, true, false
+                ADMIN_USER_ID, true, ADMIN_USER_ID, ADMIN_USER_ID, 
+                StickerSetState.ACTIVE, StickerSetVisibility.PUBLIC
         );
 
         // Then
@@ -128,7 +136,8 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_AdminOwnerAuthorBlockedStickerSet_ShouldReturnDeleteUnpublishAndUnblock() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                ADMIN_USER_ID, true, ADMIN_USER_ID, ADMIN_USER_ID, true, true
+                ADMIN_USER_ID, true, ADMIN_USER_ID, ADMIN_USER_ID, 
+                StickerSetState.BLOCKED, StickerSetVisibility.PUBLIC
         );
 
         // Then
@@ -148,7 +157,8 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_OtherUser_ShouldReturnEmpty() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                OTHER_USER_ID, false, OWNER_USER_ID, AUTHOR_USER_ID, true, false
+                OTHER_USER_ID, false, OWNER_USER_ID, AUTHOR_USER_ID, 
+                StickerSetState.ACTIVE, StickerSetVisibility.PUBLIC
         );
 
         // Then
@@ -163,7 +173,8 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_UnauthorizedUser_ShouldReturnEmpty() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                null, false, OWNER_USER_ID, AUTHOR_USER_ID, true, false
+                null, false, OWNER_USER_ID, AUTHOR_USER_ID, 
+                StickerSetState.ACTIVE, StickerSetVisibility.PUBLIC
         );
 
         // Then
@@ -178,7 +189,8 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_AdminUserIdButNotAdminRole_ShouldNotReturnBlockActions() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                ADMIN_USER_ID, false, OWNER_USER_ID, AUTHOR_USER_ID, true, false
+                ADMIN_USER_ID, false, OWNER_USER_ID, AUTHOR_USER_ID, 
+                StickerSetState.ACTIVE, StickerSetVisibility.PUBLIC
         );
 
         // Then
@@ -193,7 +205,8 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_OwnerNotAuthor_ShouldReturnOnlyDelete() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                OWNER_USER_ID, false, OWNER_USER_ID, AUTHOR_USER_ID, true, false
+                OWNER_USER_ID, false, OWNER_USER_ID, AUTHOR_USER_ID, 
+                StickerSetState.ACTIVE, StickerSetVisibility.PUBLIC
         );
 
         // Then
@@ -211,7 +224,8 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_AuthorNotOwner_ShouldReturnOnlyUnpublish() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                AUTHOR_USER_ID, false, OWNER_USER_ID, AUTHOR_USER_ID, true, false
+                AUTHOR_USER_ID, false, OWNER_USER_ID, AUTHOR_USER_ID, 
+                StickerSetState.ACTIVE, StickerSetVisibility.PUBLIC
         );
 
         // Then
@@ -361,9 +375,12 @@ class StickerSetDtoAvailableActionsTest {
         entity.setAuthorId(authorId);
         entity.setTitle("Test StickerSet");
         entity.setName("test_stickers_by_bot");
-        entity.setIsPublic(isPublic);
-        entity.setIsBlocked(isBlocked);
-        entity.setIsOfficial(false);
+        entity.setState(isBlocked ? StickerSetState.BLOCKED : StickerSetState.ACTIVE);
+        entity.setVisibility(isPublic ? StickerSetVisibility.PUBLIC : StickerSetVisibility.PRIVATE);
+        entity.setType(StickerSetType.USER);
+        if (isBlocked) {
+            entity.setBlockReason("Test block reason");
+        }
         entity.setLikesCount(0);
         entity.setCreatedAt(LocalDateTime.now());
         return entity;

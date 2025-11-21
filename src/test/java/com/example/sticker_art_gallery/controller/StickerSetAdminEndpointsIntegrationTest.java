@@ -2,6 +2,9 @@ package com.example.sticker_art_gallery.controller;
 
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
+import com.example.sticker_art_gallery.model.telegram.StickerSetState;
+import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
+import com.example.sticker_art_gallery.model.telegram.StickerSetType;
 import com.example.sticker_art_gallery.testdata.TestDataBuilder;
 import com.example.sticker_art_gallery.teststeps.StickerSetTestSteps;
 import io.qameta.allure.*;
@@ -46,9 +49,9 @@ class StickerSetAdminEndpointsIntegrationTest {
         ss.setUserId(userId);
         ss.setTitle("Test Set");
         ss.setName("test_set_by_StickerGalleryBot");
-        ss.setIsPublic(true);
-        ss.setIsBlocked(false);
-        ss.setIsOfficial(false);
+        ss.setState(StickerSetState.ACTIVE);
+        ss.setVisibility(StickerSetVisibility.PUBLIC);
+        ss.setType(StickerSetType.USER);
         ss.setAuthorId(null);
         testStickerSetId = stickerSetRepository.save(ss).getId();
     }
@@ -73,12 +76,14 @@ class StickerSetAdminEndpointsIntegrationTest {
         // set official
         testSteps.markOfficial(testStickerSetId, adminInitData)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.isOfficial").value(true));
+                .andExpect(jsonPath("$.type").value("OFFICIAL"))
+                .andExpect(jsonPath("$.isOfficial").value(true)); // обратная совместимость
 
         // unset official
         testSteps.markUnofficial(testStickerSetId, adminInitData)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.isOfficial").value(false));
+                .andExpect(jsonPath("$.type").value("USER"))
+                .andExpect(jsonPath("$.isOfficial").value(false)); // обратная совместимость
     }
 
     @Test

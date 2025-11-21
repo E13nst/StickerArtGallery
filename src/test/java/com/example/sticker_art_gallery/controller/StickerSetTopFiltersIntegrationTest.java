@@ -3,6 +3,9 @@ package com.example.sticker_art_gallery.controller;
 import com.example.sticker_art_gallery.model.Like;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
+import com.example.sticker_art_gallery.model.telegram.StickerSetState;
+import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
+import com.example.sticker_art_gallery.model.telegram.StickerSetType;
 import com.example.sticker_art_gallery.repository.LikeRepository;
 import com.example.sticker_art_gallery.testdata.TestDataBuilder;
 import com.example.sticker_art_gallery.teststeps.StickerSetTestSteps;
@@ -94,9 +97,9 @@ class StickerSetTopFiltersIntegrationTest {
         s.setUserId(userId);
         s.setTitle(name);
         s.setName(name);
-        s.setIsPublic(true);
-        s.setIsBlocked(false);
-        s.setIsOfficial(official);
+        s.setState(StickerSetState.ACTIVE);
+        s.setVisibility(StickerSetVisibility.PUBLIC);
+        s.setType(official ? StickerSetType.OFFICIAL : StickerSetType.USER);
         s.setAuthorId(authorId);
         return stickerSetRepository.save(s).getId();
     }

@@ -24,5 +24,15 @@ public interface ArtTransactionRepository extends JpaRepository<ArtTransactionEn
            "WHERE t.direction = :direction AND t.createdAt >= :since")
     Long sumDeltaByDirectionSince(@Param("direction") ArtTransactionDirection direction,
                                   @Param("since") OffsetDateTime since);
+    
+    /**
+     * Проверяет, существует ли транзакция с указанным name стикерсета в metadata
+     * @param name имя стикерсета для поиска
+     * @return true если найдена хотя бы одна транзакция с таким name
+     */
+    @Query(value = "SELECT COUNT(*) > 0 FROM art_transactions " +
+           "WHERE metadata::text LIKE CONCAT('%\"name\":\"', :name, '\"%')", 
+           nativeQuery = true)
+    boolean existsByNameInMetadata(@Param("name") String name);
 }
 

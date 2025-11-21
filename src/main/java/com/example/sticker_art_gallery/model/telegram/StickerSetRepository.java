@@ -46,30 +46,25 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
     Page<StickerSet> findByCategoryKeys(@Param("categoryKeys") String[] categoryKeys, Pageable pageable);
     
     /**
-     * Поиск только публичных стикерсетов с пагинацией
+     * Поиск публичных и активных стикерсетов с пагинацией (для галереи)
      */
-    Page<StickerSet> findByIsPublic(Boolean isPublic, Pageable pageable);
+    @Query("SELECT ss FROM StickerSet ss WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PUBLIC'")
+    Page<StickerSet> findPublicAndActive(Pageable pageable);
     
     /**
-     * Поиск публичных стикерсетов по ключам категорий с пагинацией
+     * Поиск публичных и активных стикерсетов по ключам категорий с пагинацией
      */
     @Query("SELECT DISTINCT ss FROM StickerSet ss " +
            "JOIN ss.categories c " +
-           "WHERE c.key IN :categoryKeys AND ss.isPublic = true")
-    Page<StickerSet> findByCategoryKeysAndIsPublic(@Param("categoryKeys") String[] categoryKeys, Pageable pageable);
+           "WHERE c.key IN :categoryKeys AND ss.state = 'ACTIVE' AND ss.visibility = 'PUBLIC'")
+    Page<StickerSet> findByCategoryKeysPublicAndActive(@Param("categoryKeys") String[] categoryKeys, Pageable pageable);
     
     /**
-     * Поиск публичных и не заблокированных стикерсетов с пагинацией
-     */
-    @Query("SELECT ss FROM StickerSet ss WHERE ss.isPublic = true AND ss.isBlocked = false")
-    Page<StickerSet> findPublicAndNotBlocked(Pageable pageable);
-    
-    /**
-     * Публичные, не заблокированные стикерсеты с гибкой фильтрацией по official/author/userId
+     * Публичные, активные стикерсеты с гибкой фильтрацией по type/author/userId
      */
     @Query("SELECT ss FROM StickerSet ss " +
-           "WHERE ss.isPublic = true AND ss.isBlocked = false " +
-           "AND (:officialOnly = false OR ss.isOfficial = true) " +
+           "WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PUBLIC' " +
+           "AND (:officialOnly = false OR ss.type = 'OFFICIAL') " +
            "AND (:authorId IS NULL OR ss.authorId = :authorId) " +
            "AND (:hasAuthorOnly = false OR ss.authorId IS NOT NULL) " +
            "AND (:userId IS NULL OR ss.userId = :userId)")
@@ -80,26 +75,26 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
                                                    Pageable pageable);
 
     /**
-     * Поиск только официальных, публичных и не заблокированных стикерсетов с пагинацией
+     * Поиск только официальных, публичных и активных стикерсетов с пагинацией
      */
-    @Query("SELECT ss FROM StickerSet ss WHERE ss.isPublic = true AND ss.isBlocked = false AND ss.isOfficial = true")
+    @Query("SELECT ss FROM StickerSet ss WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PUBLIC' AND ss.type = 'OFFICIAL'")
     Page<StickerSet> findPublicNotBlockedAndOfficial(Pageable pageable);
     
     /**
-     * Поиск публичных и не заблокированных стикерсетов по ключам категорий с пагинацией
+     * Поиск публичных и активных стикерсетов по ключам категорий с пагинацией
      */
     @Query("SELECT DISTINCT ss FROM StickerSet ss " +
            "JOIN ss.categories c " +
-           "WHERE c.key IN :categoryKeys AND ss.isPublic = true AND ss.isBlocked = false")
+           "WHERE c.key IN :categoryKeys AND ss.state = 'ACTIVE' AND ss.visibility = 'PUBLIC'")
     Page<StickerSet> findByCategoryKeysPublicAndNotBlocked(@Param("categoryKeys") String[] categoryKeys, Pageable pageable);
     
     /**
-     * Публичные, не заблокированные по категориям с гибкой фильтрацией по official/author/userId
+     * Публичные, активные по категориям с гибкой фильтрацией по type/author/userId
      */
     @Query("SELECT DISTINCT ss FROM StickerSet ss " +
            "JOIN ss.categories c " +
-           "WHERE c.key IN :categoryKeys AND ss.isPublic = true AND ss.isBlocked = false " +
-           "AND (:officialOnly = false OR ss.isOfficial = true) " +
+           "WHERE c.key IN :categoryKeys AND ss.state = 'ACTIVE' AND ss.visibility = 'PUBLIC' " +
+           "AND (:officialOnly = false OR ss.type = 'OFFICIAL') " +
            "AND (:authorId IS NULL OR ss.authorId = :authorId) " +
            "AND (:hasAuthorOnly = false OR ss.authorId IS NOT NULL) " +
            "AND (:userId IS NULL OR ss.userId = :userId)")
@@ -111,11 +106,11 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
                                                                 Pageable pageable);
     
     /**
-     * Поиск официальных, публичных и не заблокированных стикерсетов по ключам категорий с пагинацией
+     * Поиск официальных, публичных и активных стикерсетов по ключам категорий с пагинацией
      */
     @Query("SELECT DISTINCT ss FROM StickerSet ss " +
            "JOIN ss.categories c " +
-           "WHERE c.key IN :categoryKeys AND ss.isPublic = true AND ss.isBlocked = false AND ss.isOfficial = true")
+           "WHERE c.key IN :categoryKeys AND ss.state = 'ACTIVE' AND ss.visibility = 'PUBLIC' AND ss.type = 'OFFICIAL'")
     Page<StickerSet> findByCategoryKeysPublicNotBlockedAndOfficial(@Param("categoryKeys") String[] categoryKeys, Pageable pageable);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
@@ -144,9 +139,10 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
     @Query("SELECT DISTINCT ss FROM StickerSet ss " +
            "LEFT JOIN ss.categories c " +
            "WHERE ss.userId = :userId " +
+           "AND ss.state = 'ACTIVE' " +
            "AND (:visibilityFilter = 'ALL' OR " +
-           "     (:visibilityFilter = 'PUBLIC' AND ss.isPublic = true) OR " +
-           "     (:visibilityFilter = 'PRIVATE' AND ss.isPublic = false)) " +
+           "     (:visibilityFilter = 'PUBLIC' AND ss.visibility = 'PUBLIC') OR " +
+           "     (:visibilityFilter = 'PRIVATE' AND ss.visibility = 'PRIVATE')) " +
            "AND (:hasAuthorOnly = false OR ss.authorId IS NOT NULL) " +
            "AND (:categoryKeys IS NULL OR c.key IN :categoryKeys) " +
            "AND (:likedOnly = false OR EXISTS (" +
@@ -166,9 +162,10 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
     @Query("SELECT DISTINCT ss FROM StickerSet ss " +
            "LEFT JOIN ss.categories c " +
            "WHERE ss.authorId = :authorId " +
+           "AND ss.state = 'ACTIVE' " +
            "AND (:visibilityFilter = 'ALL' OR " +
-           "     (:visibilityFilter = 'PUBLIC' AND ss.isPublic = true) OR " +
-           "     (:visibilityFilter = 'PRIVATE' AND ss.isPublic = false)) " +
+           "     (:visibilityFilter = 'PUBLIC' AND ss.visibility = 'PUBLIC') OR " +
+           "     (:visibilityFilter = 'PRIVATE' AND ss.visibility = 'PRIVATE')) " +
            "AND (:categoryKeys IS NULL OR c.key IN :categoryKeys)")
     Page<StickerSet> findAuthorStickerSetsFiltered(@Param("authorId") Long authorId,
                                                    @Param("visibilityFilter") String visibilityFilter,

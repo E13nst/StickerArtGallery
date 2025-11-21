@@ -17,6 +17,7 @@ public class ArtRewardService {
     private static final Logger LOGGER = LoggerFactory.getLogger(ArtRewardService.class);
 
     public static final String RULE_UPLOAD_STICKERSET = "UPLOAD_STICKERSET";
+    public static final String RULE_PUBLISH_STICKERSET = "PUBLISH_STICKERSET";
 
     private final UserProfileService userProfileService;
     private final ArtRuleService artRuleService;

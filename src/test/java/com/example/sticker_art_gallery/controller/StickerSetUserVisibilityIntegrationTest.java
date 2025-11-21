@@ -2,6 +2,9 @@ package com.example.sticker_art_gallery.controller;
 
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
+import com.example.sticker_art_gallery.model.telegram.StickerSetState;
+import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
+import com.example.sticker_art_gallery.model.telegram.StickerSetType;
 import com.example.sticker_art_gallery.testdata.TestUsers;
 import com.example.sticker_art_gallery.teststeps.StickerSetTestSteps;
 import io.qameta.allure.*;
@@ -102,9 +105,9 @@ class StickerSetUserVisibilityIntegrationTest {
         stickerSet.setUserId(userId);
         stickerSet.setTitle(name + "_title");
         stickerSet.setName(name);
-        stickerSet.setIsPublic(isPublic);
-        stickerSet.setIsBlocked(false);
-        stickerSet.setIsOfficial(false);
+        stickerSet.setState(StickerSetState.ACTIVE);
+        stickerSet.setVisibility(isPublic ? StickerSetVisibility.PUBLIC : StickerSetVisibility.PRIVATE);
+        stickerSet.setType(StickerSetType.USER);
         stickerSet.setLikesCount(0);
         return stickerSet;
     }

@@ -3,6 +3,9 @@ package com.example.sticker_art_gallery.service.telegram;
 import com.example.sticker_art_gallery.dto.CreateStickerSetDto;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
+import com.example.sticker_art_gallery.model.telegram.StickerSetState;
+import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
+import com.example.sticker_art_gallery.model.telegram.StickerSetType;
 import com.example.sticker_art_gallery.model.user.UserEntity;
 import com.example.sticker_art_gallery.service.category.CategoryService;
 import io.qameta.allure.*;
@@ -65,6 +68,9 @@ class StickerSetServiceTest {
         existingStickerSet.setName("existing_sticker_set");
         existingStickerSet.setTitle("Existing Sticker Set");
         existingStickerSet.setUserId(141614461L);
+        existingStickerSet.setState(StickerSetState.ACTIVE);
+        existingStickerSet.setVisibility(StickerSetVisibility.PUBLIC);
+        existingStickerSet.setType(StickerSetType.USER);
     }
 
     @Disabled("Проблемы с моками SecurityContextHolder")
@@ -122,12 +128,13 @@ class StickerSetServiceTest {
     }
 
     @Test
-    @DisplayName("createStickerSet с существующим стикерсетом должен выбросить исключение")
-    void createStickerSet_WithExistingStickerSet_ShouldThrowException() {
+    @DisplayName("createStickerSet с существующим ACTIVE стикерсетом должен выбросить исключение")
+    void createStickerSet_WithExistingActiveStickerSet_ShouldThrowException() {
         // Given
         CreateStickerSetDto createDto = new CreateStickerSetDto();
         createDto.setName("existing_sticker_set");
-
+        
+        existingStickerSet.setState(StickerSetState.ACTIVE);
         when(stickerSetRepository.findByNameIgnoreCase("existing_sticker_set"))
                 .thenReturn(Optional.of(existingStickerSet));
 
@@ -140,6 +147,39 @@ class StickerSetServiceTest {
                 exception.getMessage());
 
         verify(stickerSetRepository).findByNameIgnoreCase("existing_sticker_set");
+        verify(telegramBotApiService, never()).validateStickerSetExists(any());
+        verify(stickerSetRepository, never()).save(any());
+    }
+    
+    @Test
+    @DisplayName("createStickerSet с BLOCKED стикерсетом должен выбросить исключение с причиной")
+    void createStickerSet_WithBlockedStickerSet_ShouldThrowExceptionWithReason() {
+        // Given
+        CreateStickerSetDto createDto = new CreateStickerSetDto();
+        createDto.setName("blocked_sticker_set");
+        
+        StickerSet blockedStickerSet = new StickerSet();
+        blockedStickerSet.setId(2L);
+        blockedStickerSet.setName("blocked_sticker_set");
+        blockedStickerSet.setTitle("Blocked Sticker Set");
+        blockedStickerSet.setUserId(141614461L);
+        blockedStickerSet.setState(StickerSetState.BLOCKED);
+        blockedStickerSet.setVisibility(StickerSetVisibility.PUBLIC);
+        blockedStickerSet.setType(StickerSetType.USER);
+        blockedStickerSet.setBlockReason("Нарушение правил");
+        
+        when(stickerSetRepository.findByNameIgnoreCase("blocked_sticker_set"))
+                .thenReturn(Optional.of(blockedStickerSet));
+
+        // When & Then
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            stickerSetService.createStickerSet(createDto, "ru");
+        });
+
+        assertTrue(exception.getMessage().contains("был заблокирован"));
+        assertTrue(exception.getMessage().contains("Нарушение правил"));
+
+        verify(stickerSetRepository).findByNameIgnoreCase("blocked_sticker_set");
         verify(telegramBotApiService, never()).validateStickerSetExists(any());
         verify(stickerSetRepository, never()).save(any());
     }
@@ -313,6 +353,9 @@ class StickerSetServiceTest {
         stickerSet.setName(name);
         stickerSet.setTitle(title);
         stickerSet.setUserId(userId);
+        stickerSet.setState(StickerSetState.ACTIVE);
+        stickerSet.setVisibility(StickerSetVisibility.PUBLIC);
+        stickerSet.setType(StickerSetType.USER);
         return stickerSet;
     }
 }

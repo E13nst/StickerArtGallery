@@ -7,6 +7,7 @@ import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.model.profile.UserProfileRepository;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
+import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.profile.ArtRuleService;
 import com.example.sticker_art_gallery.testdata.TestDataBuilder;
@@ -104,6 +105,7 @@ class StickerSetArtRewardIntegrationTest {
 
         CreateStickerSetDto dto = new CreateStickerSetDto();
         dto.setName(STICKERSET_NAME);
+        dto.setVisibility(StickerSetVisibility.PUBLIC); // PUBLIC для начисления ART
 
         // when
         StickerSet created = stickerSetService.createStickerSetForUser(dto, USER_ID, "ru", null);
@@ -137,6 +139,44 @@ class StickerSetArtRewardIntegrationTest {
         // убеждаемся, что кеш правил использовался без ошибок
         var txPage = artTransactionRepository.findByUserIdOrderByCreatedAtDesc(USER_ID, PageRequest.of(0, 5));
         assertThat(txPage.getTotalElements()).isEqualTo(1);
+    }
+
+    @Test
+    @Story("Начисление ART при создании приватного стикерсета")
+    @Severity(SeverityLevel.CRITICAL)
+    @DisplayName("createStickerSetForUser с PRIVATE стикерсетом НЕ должен начислять ART")
+    void createStickerSetForUser_WithPrivateStickerSet_ShouldNotAwardArtPoints() {
+        // Получаем начальный баланс
+        UserProfileEntity initialProfile = userProfileRepository.findByUserId(USER_ID).orElseThrow();
+        long initialBalance = initialProfile.getArtBalance();
+
+        // given
+        Object telegramInfo = new Object();
+        when(telegramBotApiService.validateStickerSetExists(NORMALIZED_NAME)).thenReturn(telegramInfo);
+        when(telegramBotApiService.extractTitleFromStickerSetInfo(telegramInfo)).thenReturn("taxiderm");
+
+        CreateStickerSetDto dto = new CreateStickerSetDto();
+        dto.setName(STICKERSET_NAME);
+        dto.setVisibility(StickerSetVisibility.PRIVATE); // PRIVATE - не должно начисляться ART
+
+        // when
+        StickerSet created = stickerSetService.createStickerSetForUser(dto, USER_ID, "ru", null);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // then
+        UserProfileEntity profile = userProfileRepository.findByUserId(USER_ID).orElseThrow();
+        // Баланс не должен измениться
+        assertThat(profile.getArtBalance())
+                .as("Баланс пользователя после создания приватного стикерсета не должен измениться")
+                .isEqualTo(initialBalance);
+
+        // Не должно быть транзакций
+        var txPage = artTransactionRepository.findByUserIdOrderByCreatedAtDesc(USER_ID, PageRequest.of(0, 5));
+        assertThat(txPage.getTotalElements())
+                .as("Не должно быть транзакций для приватного стикерсета")
+                .isEqualTo(0);
     }
 }
 

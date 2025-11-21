@@ -86,8 +86,9 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
      */
     @Query("SELECT c.id as categoryId, COUNT(ss) as cnt " +
            "FROM Category c LEFT JOIN c.stickerSets ss ON " +
-           "(ss.isPublic = true AND ss.isBlocked = false " +
-           "AND (:officialOnly = false OR ss.isOfficial = true) " +
+           "(ss.state = com.example.sticker_art_gallery.model.telegram.StickerSetState.ACTIVE " +
+           "AND ss.visibility = com.example.sticker_art_gallery.model.telegram.StickerSetVisibility.PUBLIC " +
+           "AND (:officialOnly = false OR ss.type = com.example.sticker_art_gallery.model.telegram.StickerSetType.OFFICIAL) " +
            "AND (:authorId IS NULL OR ss.authorId = :authorId) " +
            "AND (:hasAuthorOnly = false OR ss.authorId IS NOT NULL)) " +
            "WHERE c.isActive = true " +

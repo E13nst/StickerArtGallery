@@ -3,6 +3,9 @@ package com.example.sticker_art_gallery.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.*;
 import io.swagger.v3.oas.annotations.media.Schema;
+import com.example.sticker_art_gallery.model.telegram.StickerSetState;
+import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
+import com.example.sticker_art_gallery.model.telegram.StickerSetType;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,16 +48,38 @@ public class StickerSetDto {
     @Schema(description = "Лайкнул ли текущий пользователь этот стикерсет", example = "true")
     private boolean isLikedByCurrentUser;
     
-    @Schema(description = "Публичный стикерсет (виден в галерее) или приватный (виден только владельцу)", example = "true")
-    private Boolean isPublic;
+    @Schema(description = "Состояние стикерсета в жизненном цикле", example = "ACTIVE", 
+            allowableValues = {"ACTIVE", "DELETED", "BLOCKED"})
+    private StickerSetState state;
     
-    @Schema(description = "Заблокирован ли стикерсет админом (не виден никому кроме админа)", example = "false")
-    private Boolean isBlocked;
+    @Schema(description = "Уровень видимости стикерсета", example = "PUBLIC", 
+            allowableValues = {"PRIVATE", "PUBLIC"})
+    private StickerSetVisibility visibility;
     
-    @Schema(description = "Причина блокировки стикерсета", example = "Нарушение правил сообщества", nullable = true)
+    @Schema(description = "Тип источника стикерсета", example = "USER", 
+            allowableValues = {"USER", "OFFICIAL"})
+    private StickerSetType type;
+    
+    @Schema(description = "Дата удаления стикерсета (только для state=DELETED)", nullable = true)
+    private LocalDateTime deletedAt;
+    
+    @Schema(description = "Причина блокировки стикерсета (только для state=BLOCKED)", 
+            example = "Нарушение правил сообщества", nullable = true)
     private String blockReason;
     
-    @Schema(description = "Официальный стикерсет Telegram", example = "true")
+    @Deprecated
+    @Schema(description = "Устаревшее поле. Используйте 'visibility'. Оставлено для обратной совместимости.", 
+            example = "true", hidden = true)
+    private Boolean isPublic;
+    
+    @Deprecated
+    @Schema(description = "Устаревшее поле. Используйте 'state'. Оставлено для обратной совместимости.", 
+            example = "false", hidden = true)
+    private Boolean isBlocked;
+    
+    @Deprecated
+    @Schema(description = "Устаревшее поле. Используйте 'type'. Оставлено для обратной совместимости.", 
+            example = "true", hidden = true)
     private Boolean isOfficial;
 
     @Schema(description = "Telegram ID автора стикерсета (только отображение)", example = "123456789", nullable = true)
@@ -159,20 +184,36 @@ public class StickerSetDto {
         isLikedByCurrentUser = likedByCurrentUser;
     }
     
-    public Boolean getIsPublic() {
-        return isPublic;
+    public StickerSetState getState() {
+        return state;
     }
     
-    public void setIsPublic(Boolean isPublic) {
-        this.isPublic = isPublic;
+    public void setState(StickerSetState state) {
+        this.state = state;
     }
     
-    public Boolean getIsBlocked() {
-        return isBlocked;
+    public StickerSetVisibility getVisibility() {
+        return visibility;
     }
     
-    public void setIsBlocked(Boolean isBlocked) {
-        this.isBlocked = isBlocked;
+    public void setVisibility(StickerSetVisibility visibility) {
+        this.visibility = visibility;
+    }
+    
+    public StickerSetType getType() {
+        return type;
+    }
+    
+    public void setType(StickerSetType type) {
+        this.type = type;
+    }
+    
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+    
+    public void setDeletedAt(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
     
     public String getBlockReason() {
@@ -183,10 +224,32 @@ public class StickerSetDto {
         this.blockReason = blockReason;
     }
     
+    @Deprecated
+    public Boolean getIsPublic() {
+        return isPublic;
+    }
+    
+    @Deprecated
+    public void setIsPublic(Boolean isPublic) {
+        this.isPublic = isPublic;
+    }
+    
+    @Deprecated
+    public Boolean getIsBlocked() {
+        return isBlocked;
+    }
+    
+    @Deprecated
+    public void setIsBlocked(Boolean isBlocked) {
+        this.isBlocked = isBlocked;
+    }
+    
+    @Deprecated
     public Boolean getIsOfficial() {
         return isOfficial;
     }
     
+    @Deprecated
     public void setIsOfficial(Boolean isOfficial) {
         this.isOfficial = isOfficial;
     }
@@ -223,8 +286,8 @@ public class StickerSetDto {
             boolean isAdmin, 
             Long stickerSetUserId,
             Long stickerSetAuthorId,
-            Boolean isPublic, 
-            Boolean isBlocked) {
+            StickerSetState state,
+            StickerSetVisibility visibility) {
         
         List<StickerSetAction> actions = new ArrayList<>();
         
@@ -234,23 +297,23 @@ public class StickerSetDto {
         // Проверяем, является ли текущий пользователь автором
         boolean isAuthor = currentUserId != null && stickerSetAuthorId != null && currentUserId.equals(stickerSetAuthorId);
         
-        // DELETE - только для владельца
-        if (isOwner) {
+        // DELETE - для владельца активных и заблокированных стикерсетов (не для удаленных)
+        if (isOwner && state != StickerSetState.DELETED) {
             actions.add(StickerSetAction.DELETE);
         }
         
         // BLOCK/UNBLOCK - только для админа, показывается только одно из двух в зависимости от состояния
         if (isAdmin) {
-            if (Boolean.TRUE.equals(isBlocked)) {
+            if (state == StickerSetState.BLOCKED) {
                 actions.add(StickerSetAction.UNBLOCK);
-            } else {
+            } else if (state == StickerSetState.ACTIVE) {
                 actions.add(StickerSetAction.BLOCK);
             }
         }
         
-        // PUBLISH/UNPUBLISH - только для автора, показывается только одно из двух в зависимости от состояния
-        if (isAuthor) {
-            if (Boolean.TRUE.equals(isPublic)) {
+        // PUBLISH/UNPUBLISH - для автора активных и заблокированных стикерсетов (не для удаленных)
+        if (isAuthor && state != StickerSetState.DELETED) {
+            if (visibility == StickerSetVisibility.PUBLIC) {
                 actions.add(StickerSetAction.UNPUBLISH);
             } else {
                 actions.add(StickerSetAction.PUBLISH);
@@ -258,6 +321,20 @@ public class StickerSetDto {
         }
         
         return actions;
+    }
+    
+    @Deprecated
+    public static List<StickerSetAction> calculateAvailableActions(
+            Long currentUserId, 
+            boolean isAdmin, 
+            Long stickerSetUserId,
+            Long stickerSetAuthorId,
+            Boolean isPublic, 
+            Boolean isBlocked) {
+        // Маппинг для обратной совместимости
+        StickerSetState state = Boolean.TRUE.equals(isBlocked) ? StickerSetState.BLOCKED : StickerSetState.ACTIVE;
+        StickerSetVisibility visibility = Boolean.TRUE.equals(isPublic) ? StickerSetVisibility.PUBLIC : StickerSetVisibility.PRIVATE;
+        return calculateAvailableActions(currentUserId, isAdmin, stickerSetUserId, stickerSetAuthorId, state, visibility);
     }
     
     // Конструктор для создания DTO из Entity
@@ -274,11 +351,18 @@ public class StickerSetDto {
             entity.getCreatedAt()
         );
         
-        dto.setIsPublic(entity.getIsPublic());
-        dto.setIsBlocked(entity.getIsBlocked());
+        dto.setState(entity.getState());
+        dto.setVisibility(entity.getVisibility());
+        dto.setType(entity.getType());
+        dto.setDeletedAt(entity.getDeletedAt());
         dto.setBlockReason(entity.getBlockReason());
-        dto.setIsOfficial(entity.getIsOfficial());
         dto.setAuthorId(entity.getAuthorId());
+        
+        // Обратная совместимость для deprecated полей
+        dto.setIsPublic(entity.isPublic());
+        dto.setIsBlocked(entity.isBlocked());
+        dto.setIsOfficial(entity.isOfficial());
+        
         if (entity.getLikesCount() != null) {
             dto.setLikesCount(entity.getLikesCount().longValue());
         } else {
@@ -305,18 +389,19 @@ public class StickerSetDto {
             entity.getCreatedAt()
         );
         
-        // Добавляем публичность
-        dto.setIsPublic(entity.getIsPublic());
-        
-        // Добавляем информацию о блокировке
-        dto.setIsBlocked(entity.getIsBlocked());
+        // Добавляем новые поля
+        dto.setState(entity.getState());
+        dto.setVisibility(entity.getVisibility());
+        dto.setType(entity.getType());
+        dto.setDeletedAt(entity.getDeletedAt());
         dto.setBlockReason(entity.getBlockReason());
-        
-        // Добавляем официальность
-        dto.setIsOfficial(entity.getIsOfficial());
-        
-        // Добавляем автора
         dto.setAuthorId(entity.getAuthorId());
+        
+        // Обратная совместимость для deprecated полей
+        dto.setIsPublic(entity.isPublic());
+        dto.setIsBlocked(entity.isBlocked());
+        dto.setIsOfficial(entity.isOfficial());
+        
         // Добавляем количество лайков из денормализованного поля
         if (entity.getLikesCount() != null) {
             dto.setLikesCount(entity.getLikesCount().longValue());
@@ -332,9 +417,6 @@ public class StickerSetDto {
                     .collect(Collectors.toList())
             );
         }
-        
-        // Добавляем информацию о лайках
-        dto.setLikesCount((long) entity.getLikesCount());
         
         // Устанавливаем isLikedByCurrentUser по умолчанию в false (будет переопределено, если передан currentUserId)
         dto.setLikedByCurrentUser(false);
@@ -365,8 +447,8 @@ public class StickerSetDto {
                 isAdmin,
                 entity.getUserId(),
                 entity.getAuthorId(),
-                entity.getIsPublic(),
-                entity.getIsBlocked()
+                entity.getState(),
+                entity.getVisibility()
             ));
         }
         

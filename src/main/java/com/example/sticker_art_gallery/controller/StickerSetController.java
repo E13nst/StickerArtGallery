@@ -738,9 +738,7 @@ public class StickerSetController {
         String language = getLanguageFromHeaderOrUser(request);
         try {
             LOGGER.info("➕ Создание нового стикерсета: {} (shortInfo={})", createDto.getName(), shortInfo);
-            if (createDto.getIsPublic() == null) {
-                createDto.setIsPublic(true);
-            }
+            // Visibility устанавливается в сервисе по умолчанию
 
             Long currentUserId = getCurrentUserIdOrNull();
             if (currentUserId == null) {
@@ -1100,7 +1098,12 @@ public class StickerSetController {
                 LOGGER.debug("✅ Проверка прав на изменение видимости пройдена: isAdmin={}, isOwner={}", isAdmin, isOwner);
             }
             
-            StickerSet updatedStickerSet = stickerSetService.updateVisibility(id, isPublic);
+            StickerSet updatedStickerSet;
+            if (isPublic) {
+                updatedStickerSet = stickerSetService.publishStickerSet(id);
+            } else {
+                updatedStickerSet = stickerSetService.unpublishStickerSet(id);
+            }
             StickerSetDto updatedDto = StickerSetDto.fromEntity(updatedStickerSet);
             
             // Устанавливаем availableActions
@@ -1109,8 +1112,8 @@ public class StickerSetController {
                 isAdmin,
                 updatedStickerSet.getUserId(),
                 updatedStickerSet.getAuthorId(),
-                updatedStickerSet.getIsPublic(),
-                updatedStickerSet.getIsBlocked()
+                updatedStickerSet.getState(),
+                updatedStickerSet.getVisibility()
             ));
             
             LOGGER.info("✅ Стикерсет {} {}", id, action);
@@ -1191,8 +1194,8 @@ public class StickerSetController {
                 isAdmin,
                 blockedStickerSet.getUserId(),
                 blockedStickerSet.getAuthorId(),
-                blockedStickerSet.getIsPublic(),
-                blockedStickerSet.getIsBlocked()
+                blockedStickerSet.getState(),
+                blockedStickerSet.getVisibility()
             ));
             
             LOGGER.info("✅ Стикерсет {} заблокирован по причине: {}", id, reason);
@@ -1265,8 +1268,8 @@ public class StickerSetController {
                 isAdmin,
                 unblockedStickerSet.getUserId(),
                 unblockedStickerSet.getAuthorId(),
-                unblockedStickerSet.getIsPublic(),
-                unblockedStickerSet.getIsBlocked()
+                unblockedStickerSet.getState(),
+                unblockedStickerSet.getVisibility()
             ));
             
             LOGGER.info("✅ Стикерсет {} разблокирован", id);

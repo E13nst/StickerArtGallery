@@ -2,6 +2,9 @@ package com.example.sticker_art_gallery.service;
 
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
+import com.example.sticker_art_gallery.model.telegram.StickerSetState;
+import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
+import com.example.sticker_art_gallery.model.telegram.StickerSetType;
 import com.example.sticker_art_gallery.testdata.TestDataBuilder;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.*;
@@ -41,8 +44,9 @@ class LikeServiceTest {
         ss.setUserId(userId);
         ss.setTitle("Test-sticker");
         ss.setName("test_likes_service");
-        ss.setIsPublic(true);
-        ss.setIsBlocked(false);
+        ss.setState(StickerSetState.ACTIVE);
+        ss.setVisibility(StickerSetVisibility.PUBLIC);
+        ss.setType(StickerSetType.USER);
         StickerSet saved = stickerSetRepository.save(ss);
         stickerSetId = saved.getId();
     }

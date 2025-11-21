@@ -61,7 +61,8 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
      */
     @Query("SELECT s, COUNT(l) as likesCount FROM StickerSet s " +
            "LEFT JOIN s.likes l " +
-           "WHERE s.isPublic = true AND s.isBlocked = false " +
+           "WHERE s.state = com.example.sticker_art_gallery.model.telegram.StickerSetState.ACTIVE " +
+           "AND s.visibility = com.example.sticker_art_gallery.model.telegram.StickerSetVisibility.PUBLIC " +
            "GROUP BY s.id " +
            "ORDER BY likesCount DESC, s.createdAt DESC")
     Page<Object[]> findTopStickerSetsByLikes(Pageable pageable);
@@ -71,7 +72,9 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
      */
     @Query("SELECT s, COUNT(l) as likesCount FROM StickerSet s " +
            "LEFT JOIN s.likes l " +
-           "WHERE s.isPublic = true AND s.isBlocked = false AND s.isOfficial = true " +
+           "WHERE s.state = com.example.sticker_art_gallery.model.telegram.StickerSetState.ACTIVE " +
+           "AND s.visibility = com.example.sticker_art_gallery.model.telegram.StickerSetVisibility.PUBLIC " +
+           "AND s.type = com.example.sticker_art_gallery.model.telegram.StickerSetType.OFFICIAL " +
            "GROUP BY s.id " +
            "ORDER BY likesCount DESC, s.createdAt DESC")
     Page<Object[]> findTopOfficialStickerSetsByLikes(Pageable pageable);
@@ -81,8 +84,9 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
      */
     @Query("SELECT s, COUNT(l) as likesCount FROM StickerSet s " +
            "LEFT JOIN s.likes l " +
-           "WHERE s.isPublic = true AND s.isBlocked = false " +
-           "AND (:officialOnly = false OR s.isOfficial = true) " +
+           "WHERE s.state = com.example.sticker_art_gallery.model.telegram.StickerSetState.ACTIVE " +
+           "AND s.visibility = com.example.sticker_art_gallery.model.telegram.StickerSetVisibility.PUBLIC " +
+           "AND (:officialOnly = false OR s.type = com.example.sticker_art_gallery.model.telegram.StickerSetType.OFFICIAL) " +
            "AND (:authorId IS NULL OR s.authorId = :authorId) " +
            "AND (:hasAuthorOnly = false OR s.authorId IS NOT NULL) " +
            "GROUP BY s.id " +

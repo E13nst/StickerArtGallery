@@ -3,6 +3,7 @@ package com.example.sticker_art_gallery.dto;
 import jakarta.validation.constraints.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 import com.example.sticker_art_gallery.validation.ValidStickerSetName;
+import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
 
 import java.util.Set;
 
@@ -31,8 +32,16 @@ public class CreateStickerSetDto {
             example = "[\"animals\", \"cute\"]")
     private Set<String> categoryKeys;
 
-    @Schema(description = "Флаг публикации в галерее. По умолчанию true.", example = "true")
-    private Boolean isPublic = true;
+    @Schema(description = "Уровень видимости стикерсета. Необязательное поле. " +
+                          "PUBLIC - виден всем в галерее, PRIVATE - виден только владельцу. " +
+                          "По умолчанию зависит от API endpoint.", 
+            example = "PUBLIC", allowableValues = {"PUBLIC", "PRIVATE"})
+    private StickerSetVisibility visibility;
+    
+    @Deprecated
+    @Schema(description = "Устаревшее поле. Используйте 'visibility' вместо этого. Оставлено для обратной совместимости.", 
+            example = "true", hidden = true)
+    private Boolean isPublic;
     
     // Конструкторы
     public CreateStickerSetDto() {}
@@ -72,12 +81,26 @@ public class CreateStickerSetDto {
         this.categoryKeys = categoryKeys;
     }
 
+    public StickerSetVisibility getVisibility() {
+        return visibility;
+    }
+
+    public void setVisibility(StickerSetVisibility visibility) {
+        this.visibility = visibility;
+    }
+    
+    @Deprecated
     public Boolean getIsPublic() {
         return isPublic;
     }
 
+    @Deprecated
     public void setIsPublic(Boolean isPublic) {
         this.isPublic = isPublic;
+        // Автоматически маппим в visibility для обратной совместимости
+        if (isPublic != null) {
+            this.visibility = isPublic ? StickerSetVisibility.PUBLIC : StickerSetVisibility.PRIVATE;
+        }
     }
     
     /**
@@ -196,7 +219,7 @@ public class CreateStickerSetDto {
                 "title='" + title + '\'' +
                 ", name='" + name + '\'' +
                 ", categoryKeys=" + categoryKeys +
-                ", isPublic=" + isPublic +
+                ", visibility=" + visibility +
                 '}';
     }
 }

@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.ToString;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -29,20 +30,35 @@ public class StickerSet {
     @Column(name = "title", length = 64, nullable = false)
     private String title; // Название стикерсета (например, "Мои стикеры") - не уникальное
     
-    @Column(name = "name", nullable = false, unique = true)
+    @Column(name = "name", nullable = false)
     private String name; // Полное имя для Telegram API (например, "my_stickers_by_StickerGalleryBot")
     
-    @Column(name = "is_public", nullable = false)
-    private Boolean isPublic = true; // Публичный стикерсет (виден в галерее) или приватный (виден только владельцу)
+    /**
+     * Состояние стикерсета в жизненном цикле
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "state", nullable = false)
+    private StickerSetState state = StickerSetState.ACTIVE;
     
-    @Column(name = "is_blocked", nullable = false)
-    private Boolean isBlocked = false; // Заблокирован ли стикерсет админом (не виден никому кроме админа)
+    /**
+     * Уровень видимости стикерсета
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "visibility", nullable = false)
+    private StickerSetVisibility visibility = StickerSetVisibility.PRIVATE;
     
-    @Column(name = "is_official", nullable = false)
-    private Boolean isOfficial = false; // Официальный стикерсет Telegram
+    /**
+     * Тип источника стикерсета
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false)
+    private StickerSetType type = StickerSetType.USER;
     
     @Column(name = "block_reason", length = 500)
-    private String blockReason; // Причина блокировки стикерсета
+    private String blockReason; // Причина блокировки стикерсета (для state = BLOCKED)
+    
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt; // Дата удаления (для state = DELETED)
     
     @Column(name = "author_id")
     private Long authorId; // Telegram ID автора стикерсета (nullable)
@@ -133,5 +149,98 @@ public class StickerSet {
     public boolean isLikedByUser(Long userId) {
         return likes.stream()
             .anyMatch(like -> like.getUserId().equals(userId));
+    }
+    
+    // ============ State checks ============
+    
+    /**
+     * Проверить, активен ли стикерсет
+     */
+    public boolean isActive() {
+        return state == StickerSetState.ACTIVE;
+    }
+    
+    /**
+     * Проверить, удален ли стикерсет
+     */
+    public boolean isDeleted() {
+        return state == StickerSetState.DELETED;
+    }
+    
+    /**
+     * Проверить, заблокирован ли стикерсет
+     */
+    public boolean isBlocked() {
+        return state == StickerSetState.BLOCKED;
+    }
+    
+    // ============ Visibility checks ============
+    
+    /**
+     * Проверить, публичный ли стикерсет
+     */
+    public boolean isPublic() {
+        return visibility == StickerSetVisibility.PUBLIC;
+    }
+    
+    /**
+     * Проверить, приватный ли стикерсет
+     */
+    public boolean isPrivate() {
+        return visibility == StickerSetVisibility.PRIVATE;
+    }
+    
+    // ============ Type checks ============
+    
+    /**
+     * Проверить, официальный ли стикерсет
+     */
+    public boolean isOfficial() {
+        return type == StickerSetType.OFFICIAL;
+    }
+    
+    /**
+     * Проверить, создан ли стикерсет пользователем
+     */
+    public boolean isUserCreated() {
+        return type == StickerSetType.USER;
+    }
+    
+    // ============ Business logic ============
+    
+    /**
+     * Проверить, виден ли стикерсет в галерее
+     * (активен И публичный)
+     */
+    public boolean isVisibleInGallery() {
+        return state == StickerSetState.ACTIVE && visibility == StickerSetVisibility.PUBLIC;
+    }
+    
+    // ============ State transitions ============
+    
+    /**
+     * Пометить стикерсет как удаленный
+     */
+    public void markAsDeleted() {
+        this.state = StickerSetState.DELETED;
+        this.deletedAt = LocalDateTime.now();
+    }
+    
+    /**
+     * Пометить стикерсет как заблокированный
+     */
+    public void markAsBlocked(String reason) {
+        this.state = StickerSetState.BLOCKED;
+        this.blockReason = reason;
+    }
+    
+    /**
+     * Восстановить удаленный стикерсет
+     */
+    public void restore() {
+        if (this.state == StickerSetState.DELETED) {
+            this.state = StickerSetState.ACTIVE;
+            this.deletedAt = null;
+        }
     }
 } 

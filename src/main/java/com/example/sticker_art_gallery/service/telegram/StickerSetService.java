@@ -7,6 +7,10 @@ import com.example.sticker_art_gallery.dto.CreateStickerSetDto;
 import com.example.sticker_art_gallery.model.category.Category;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
+import com.example.sticker_art_gallery.model.telegram.StickerSetState;
+import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
+import com.example.sticker_art_gallery.model.telegram.StickerSetType;
+import com.example.sticker_art_gallery.model.profile.ArtTransactionRepository;
 import com.example.sticker_art_gallery.service.category.CategoryService;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import org.springframework.security.core.Authentication;
@@ -31,16 +35,19 @@ public class StickerSetService {
     private final TelegramBotApiService telegramBotApiService;
     private final CategoryService categoryService;
     private final ArtRewardService artRewardService;
+    private final ArtTransactionRepository artTransactionRepository;
     
     @Autowired
     public StickerSetService(StickerSetRepository stickerSetRepository,
                              TelegramBotApiService telegramBotApiService,
                              CategoryService categoryService,
-                             ArtRewardService artRewardService) {
+                             ArtRewardService artRewardService,
+                             ArtTransactionRepository artTransactionRepository) {
         this.stickerSetRepository = stickerSetRepository;
         this.telegramBotApiService = telegramBotApiService;
         this.categoryService = categoryService;
         this.artRewardService = artRewardService;
+        this.artTransactionRepository = artTransactionRepository;
     }
     
     /**
@@ -49,6 +56,7 @@ public class StickerSetService {
      * - Валидирует существование стикерсета в Telegram API
      * - Автоматически заполняет title из Telegram API если не указан
      * - Извлекает userId из initData если не указан
+     * - Устанавливает visibility = PUBLIC по умолчанию для публичного API
      */
     public StickerSet createStickerSet(CreateStickerSetDto createDto, String language) {
         String lang = normalizeLanguage(language);
@@ -61,11 +69,23 @@ public class StickerSetService {
             ));
         }
         LOGGER.debug("📱 Извлечен userId из аутентификации: {}", userId);
+        
+        // Устанавливаем visibility = PUBLIC по умолчанию для публичного API
+        if (createDto.getVisibility() == null) {
+            // Проверяем обратную совместимость через isPublic
+            if (createDto.getIsPublic() != null) {
+                createDto.setVisibility(createDto.getIsPublic() ? StickerSetVisibility.PUBLIC : StickerSetVisibility.PRIVATE);
+            } else {
+                createDto.setVisibility(StickerSetVisibility.PUBLIC);
+            }
+        }
+        
         return createStickerSetForUser(createDto, userId, lang, null);
     }
 
     /**
      * Создает стикерсет от имени конкретного пользователя (используется межсервисным API).
+     * Устанавливает visibility = PRIVATE по умолчанию для internal API.
      */
     public StickerSet createStickerSetForUser(CreateStickerSetDto createDto, Long userId, String language, Long authorId) {
         String lang = normalizeLanguage(language);
@@ -77,6 +97,17 @@ public class StickerSetService {
             ));
         }
         LOGGER.info("➕ Создание стикерсета для пользователя {} (authorId={}): {}", userId, authorId, createDto.getName());
+        
+        // Устанавливаем visibility = PRIVATE по умолчанию для internal API
+        if (createDto.getVisibility() == null) {
+            // Проверяем обратную совместимость через isPublic
+            if (createDto.getIsPublic() != null) {
+                createDto.setVisibility(createDto.getIsPublic() ? StickerSetVisibility.PUBLIC : StickerSetVisibility.PRIVATE);
+            } else {
+                createDto.setVisibility(StickerSetVisibility.PRIVATE);
+            }
+        }
+        
         return createStickerSetValidated(createDto, userId, lang, authorId);
     }
 
@@ -85,20 +116,40 @@ public class StickerSetService {
         createDto.normalizeName();
         String stickerSetName = createDto.getName();
 
-        if (createDto.getIsPublic() == null) {
-            createDto.setIsPublic(true);
-        }
-
-        // 1. Проверяем, что стикерсет с таким именем или URL уже не существует в базе (игнорируя регистр)
+        // 1. Проверяем существующий стикерсет с таким именем (игнорируя регистр)
         Optional<StickerSet> existingByName = Optional.ofNullable(
                 stickerSetRepository.findByNameIgnoreCase(stickerSetName)
         ).orElse(Optional.empty());
+        
         if (existingByName.isPresent()) {
-            throw new IllegalArgumentException(localize(
-                    lang,
-                    "Стикерсет с именем '" + stickerSetName + "' уже существует в галерее",
-                    "A stickerset with the name '" + stickerSetName + "' already exists in the gallery"
-            ));
+            StickerSet existing = existingByName.get();
+            
+            // Если BLOCKED - запрещаем повторную загрузку
+            if (existing.isBlocked()) {
+                String reason = existing.getBlockReason() != null 
+                    ? existing.getBlockReason() 
+                    : localize(lang, "Причина не указана", "Reason not specified");
+                throw new IllegalArgumentException(localize(
+                        lang,
+                        "Стикерсет '" + stickerSetName + "' был заблокирован. Причина: " + reason,
+                        "Stickerset '" + stickerSetName + "' was blocked. Reason: " + reason
+                ));
+            }
+            
+            // Если ACTIVE - уже существует
+            if (existing.isActive()) {
+                throw new IllegalArgumentException(localize(
+                        lang,
+                        "Стикерсет с именем '" + stickerSetName + "' уже существует в галерее",
+                        "A stickerset with the name '" + stickerSetName + "' already exists in the gallery"
+                ));
+            }
+            
+            // Если DELETED - восстанавливаем запись (обновляем старую запись)
+            if (existing.isDeleted()) {
+                LOGGER.info("🔄 Восстановление удаленного стикерсета: ID={}, Name={}", existing.getId(), stickerSetName);
+                return restoreAndUpdateStickerSet(existing, createDto, userId, lang, authorId);
+            }
         }
 
         // 2. Валидируем существование стикерсета в Telegram API
@@ -152,18 +203,84 @@ public class StickerSetService {
         }
 
         // 5. Создаем стикерсет
-        return createStickerSetInternal(userId, title, stickerSetName, createDto.getIsPublic(), categories, authorId);
+        return createStickerSetInternal(userId, title, stickerSetName, createDto.getVisibility(), categories, authorId, false);
+    }
+    
+    /**
+     * Восстановление и обновление удаленного стикерсета
+     */
+    private StickerSet restoreAndUpdateStickerSet(StickerSet existing, CreateStickerSetDto createDto, 
+                                                   Long userId, String lang, Long authorId) {
+        String stickerSetName = createDto.getName();
+        
+        // 1. Валидируем в Telegram API (может быть удален там)
+        Object telegramStickerSetInfo;
+        try {
+            telegramStickerSetInfo = telegramBotApiService.validateStickerSetExists(stickerSetName);
+            if (telegramStickerSetInfo == null) {
+                throw new IllegalArgumentException(localize(
+                        lang,
+                        "Стикерсет не найден в Telegram",
+                        "Stickerset was not found in Telegram"
+                ));
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException(localize(
+                    lang,
+                    "Не удалось проверить существование стикерсета в Telegram: " + e.getMessage(),
+                    "Failed to verify stickerset existence in Telegram: " + e.getMessage()
+            ));
+        }
+        
+        // 2. Восстанавливаем статус
+        existing.restore();
+        
+        // 3. Обновляем данные
+        existing.setUserId(userId);
+        existing.setVisibility(createDto.getVisibility() != null ? createDto.getVisibility() : StickerSetVisibility.PRIVATE);
+        if (authorId != null) {
+            existing.setAuthorId(authorId);
+        }
+        
+        // 4. Обновляем title если указан
+        if (createDto.getTitle() != null && !createDto.getTitle().trim().isEmpty()) {
+            existing.setTitle(createDto.getTitle());
+        } else {
+            String title = telegramBotApiService.extractTitleFromStickerSetInfo(telegramStickerSetInfo);
+            if (title != null && !title.trim().isEmpty()) {
+                existing.setTitle(title);
+            }
+        }
+        
+        // 5. Обновляем категории
+        if (createDto.getCategoryKeys() != null && !createDto.getCategoryKeys().isEmpty()) {
+            List<Category> categories = categoryService.getCategoriesByKeys(createDto.getCategoryKeys());
+            existing.clearCategories();
+            for (Category category : categories) {
+                existing.addCategory(category);
+            }
+        }
+        
+        StickerSet savedSet = stickerSetRepository.save(existing);
+        LOGGER.info("✅ Восстановлен стикерсет: ID={}, Name={}, UserId={}, Visibility={}", 
+                savedSet.getId(), savedSet.getName(), userId, savedSet.getVisibility());
+        
+        // НЕ начисляем ART - это восстановление, не новый стикерсет
+        
+        return savedSet;
     }
     
     /**
      * Внутренний метод для создания стикерсета без валидации
+     * @param isRestored флаг, указывающий что это восстановление (не начислять ART)
      */
     private StickerSet createStickerSetInternal(Long userId,
                                                String title,
                                                String name,
-                                               Boolean isPublic,
+                                               StickerSetVisibility visibility,
                                                List<Category> categories,
-                                               Long authorId) {
+                                               Long authorId,
+                                               boolean isRestored) {
         // Профиль пользователя создается автоматически при аутентификации
         LOGGER.debug("Создание стикерсета для пользователя {}", userId);
         
@@ -171,7 +288,10 @@ public class StickerSetService {
         stickerSet.setUserId(userId);
         stickerSet.setTitle(title);
         stickerSet.setName(name);
-        stickerSet.setIsPublic(Boolean.TRUE.equals(isPublic));
+        stickerSet.setState(StickerSetState.ACTIVE);
+        stickerSet.setVisibility(visibility != null ? visibility : StickerSetVisibility.PRIVATE);
+        stickerSet.setType(StickerSetType.USER);
+        
         if (authorId != null) {
             stickerSet.setAuthorId(authorId);
         }
@@ -185,25 +305,30 @@ public class StickerSetService {
         }
 
         StickerSet savedSet = stickerSetRepository.save(stickerSet);
-        LOGGER.info("📦 Создан стикерпак: ID={}, Title='{}', Name='{}', UserId={}, Categories={}", 
-                savedSet.getId(), title, name, userId, 
+        LOGGER.info("📦 Создан стикерсет: ID={}, Title='{}', Name='{}', UserId={}, Visibility={}, Categories={}", 
+                savedSet.getId(), title, name, userId, savedSet.getVisibility(),
                 savedSet.getCategories() != null ? savedSet.getCategories().size() : 0);
 
-        try {
-            String metadata = String.format("{\"stickerSetId\":%d}", savedSet.getId());
-            String externalId = String.format("sticker-upload:%d:%d", userId, savedSet.getId());
-            artRewardService.award(
-                    userId,
-                    ArtRewardService.RULE_UPLOAD_STICKERSET,
-                    null,
-                    metadata,
-                    externalId,
-                    userId
-            );
-            LOGGER.info("💎 Начислены ART за создание стикерсета: userId={}, stickerSetId={}", userId, savedSet.getId());
-        } catch (Exception e) {
-            LOGGER.error("❌ Не удалось начислить ART пользователю {} за стикерсет {}: {}",
-                    userId, savedSet.getId(), e.getMessage(), e);
+        // Начисляем ART только для НОВЫХ стикерсетов (не восстановленных) И только если PUBLIC
+        if (!isRestored && savedSet.getVisibility() == StickerSetVisibility.PUBLIC) {
+            try {
+                String metadata = String.format("{\"stickerSetId\":%d,\"name\":\"%s\"}", savedSet.getId(), name);
+                String externalId = String.format("sticker-upload:%d:%d", userId, savedSet.getId());
+                artRewardService.award(
+                        userId,
+                        ArtRewardService.RULE_UPLOAD_STICKERSET,
+                        null,
+                        metadata,
+                        externalId,
+                        userId
+                );
+                LOGGER.info("💎 Начислены ART за создание публичного стикерсета: userId={}, stickerSetId={}", userId, savedSet.getId());
+            } catch (Exception e) {
+                LOGGER.error("❌ Не удалось начислить ART пользователю {} за стикерсет {}: {}",
+                        userId, savedSet.getId(), e.getMessage(), e);
+            }
+        } else {
+            LOGGER.debug("♻️ ART не начисляются: isRestored={}, visibility={}", isRestored, savedSet.getVisibility());
         }
 
         return savedSet;
@@ -282,8 +407,17 @@ public class StickerSetService {
         return stickerSetRepository.save(stickerSet);
     }
     
+    /**
+     * Удалить стикерсет (soft delete)
+     */
+    @Transactional
     public void deleteById(Long id) {
-        stickerSetRepository.deleteById(id);
+        StickerSet stickerSet = findById(id);
+        if (stickerSet != null && stickerSet.isActive()) {
+            stickerSet.markAsDeleted(); // state -> DELETED, deletedAt -> now
+            stickerSetRepository.save(stickerSet);
+            LOGGER.info("🗑️ Стикерсет ID={} помечен как DELETED", id);
+        }
     }
     
     /**
@@ -513,8 +647,8 @@ public class StickerSetService {
         String lang = normalizeLanguage(language);
         StickerSetDto dto = enrichSingleStickerSetSafelyWithCategories(stickerSet, lang, currentUserId, shortInfo);
         
-        LOGGER.debug("🔍 Стикерсет ID {}: userId={}, currentUserId={}, isPublic={}, isBlocked={}, availableActions={}", 
-                id, stickerSet.getUserId(), currentUserId, stickerSet.getIsPublic(), stickerSet.getIsBlocked(), 
+        LOGGER.debug("🔍 Стикерсет ID {}: userId={}, currentUserId={}, state={}, visibility={}, availableActions={}", 
+                id, stickerSet.getUserId(), currentUserId, stickerSet.getState(), stickerSet.getVisibility(), 
                 dto != null ? dto.getAvailableActions() : "null");
         
         return dto;
@@ -540,21 +674,93 @@ public class StickerSetService {
     }
     
     /**
-     * Изменить видимость стикерсета (публичный/приватный)
+     * Обновить видимость стикерсета (устаревший метод, используйте publishStickerSet/unpublishStickerSet)
      */
+    @Deprecated
     @Transactional
     public StickerSet updateVisibility(Long stickerSetId, Boolean isPublic) {
-        LOGGER.info("👁️ Изменение видимости стикерсета ID: {} на {}", stickerSetId, isPublic ? "публичный" : "приватный");
+        if (Boolean.TRUE.equals(isPublic)) {
+            return publishStickerSet(stickerSetId);
+        } else {
+            return unpublishStickerSet(stickerSetId);
+        }
+    }
+    
+    /**
+     * Опубликовать стикерсет (PRIVATE -> PUBLIC) с начислением ART за первую публикацию
+     */
+    @Transactional
+    public StickerSet publishStickerSet(Long id) {
+        StickerSet stickerSet = findById(id);
+        if (stickerSet == null) {
+            throw new IllegalArgumentException("Стикерсет не найден");
+        }
         
-        StickerSet stickerSet = stickerSetRepository.findById(stickerSetId)
-            .orElseThrow(() -> new IllegalArgumentException("Стикерсет с ID " + stickerSetId + " не найден"));
+        // Проверяем, не публичный ли уже
+        if (stickerSet.isPublic()) {
+            LOGGER.debug("Стикерсет ID={} уже публичный", id);
+            return stickerSet; // Уже публичный, ничего не делаем
+        }
         
-        stickerSet.setIsPublic(isPublic);
+        // Меняем видимость
+        stickerSet.setVisibility(StickerSetVisibility.PUBLIC);
+        StickerSet saved = stickerSetRepository.save(stickerSet);
         
-        StickerSet savedStickerSet = stickerSetRepository.save(stickerSet);
-        LOGGER.info("✅ Видимость стикерсета {} успешно изменена на {}", stickerSetId, isPublic ? "публичный" : "приватный");
+        // Начисляем ART за ПЕРВУЮ публикацию этого name
+        String stickerName = stickerSet.getName();
+        if (!hasAnyArtTransactionForName(stickerName)) {
+            try {
+                String metadata = String.format("{\"stickerSetId\":%d,\"name\":\"%s\"}", 
+                                              id, stickerName);
+                String externalId = "sticker-publish:" + stickerName; // по name!
+                artRewardService.award(
+                    stickerSet.getUserId(),
+                    ArtRewardService.RULE_PUBLISH_STICKERSET,
+                    null,
+                    metadata,
+                    externalId,
+                    stickerSet.getUserId()
+                );
+                LOGGER.info("💎 Начислено 10 ART за публикацию стикерсета: name={}, userId={}", stickerName, stickerSet.getUserId());
+            } catch (Exception e) {
+                LOGGER.warn("⚠️ Не удалось начислить ART за публикацию: {}", e.getMessage());
+            }
+        } else {
+            LOGGER.info("♻️ ART уже начислялись за стикерсет с name={}, пропускаем", stickerName);
+        }
         
-        return savedStickerSet;
+        return saved;
+    }
+    
+    /**
+     * Сделать стикерсет приватным (PUBLIC -> PRIVATE)
+     */
+    @Transactional
+    public StickerSet unpublishStickerSet(Long id) {
+        StickerSet stickerSet = findById(id);
+        if (stickerSet == null) {
+            throw new IllegalArgumentException("Стикерсет не найден");
+        }
+        
+        // Проверяем, не приватный ли уже
+        if (stickerSet.isPrivate()) {
+            LOGGER.debug("Стикерсет ID={} уже приватный", id);
+            return stickerSet; // Уже приватный, ничего не делаем
+        }
+        
+        // Меняем видимость
+        stickerSet.setVisibility(StickerSetVisibility.PRIVATE);
+        StickerSet saved = stickerSetRepository.save(stickerSet);
+        LOGGER.info("✅ Стикерсет ID={} сделан приватным", id);
+        
+        return saved;
+    }
+    
+    /**
+     * Проверяет, есть ли транзакции ART для стикерсета с указанным name
+     */
+    private boolean hasAnyArtTransactionForName(String name) {
+        return artTransactionRepository.existsByNameInMetadata(name);
     }
     
     /**
@@ -567,8 +773,7 @@ public class StickerSetService {
         StickerSet stickerSet = stickerSetRepository.findById(stickerSetId)
             .orElseThrow(() -> new IllegalArgumentException("Стикерсет с ID " + stickerSetId + " не найден"));
         
-        stickerSet.setIsBlocked(true);
-        stickerSet.setBlockReason(reason);
+        stickerSet.markAsBlocked(reason); // state -> BLOCKED, blockReason -> reason
         
         StickerSet savedStickerSet = stickerSetRepository.save(stickerSet);
         LOGGER.info("✅ Стикерсет {} успешно заблокирован", stickerSetId);
@@ -586,13 +791,17 @@ public class StickerSetService {
         StickerSet stickerSet = stickerSetRepository.findById(stickerSetId)
             .orElseThrow(() -> new IllegalArgumentException("Стикерсет с ID " + stickerSetId + " не найден"));
         
-        stickerSet.setIsBlocked(false);
-        stickerSet.setBlockReason(null);
+        if (stickerSet.isBlocked()) {
+            stickerSet.setState(StickerSetState.ACTIVE);
+            stickerSet.setBlockReason(null);
+            
+            StickerSet savedStickerSet = stickerSetRepository.save(stickerSet);
+            LOGGER.info("✅ Стикерсет {} успешно разблокирован", stickerSetId);
+            
+            return savedStickerSet;
+        }
         
-        StickerSet savedStickerSet = stickerSetRepository.save(stickerSet);
-        LOGGER.info("✅ Стикерсет {} успешно разблокирован", stickerSetId);
-        
-        return savedStickerSet;
+        return stickerSet;
     }
     
     /**
@@ -605,7 +814,7 @@ public class StickerSetService {
         StickerSet stickerSet = stickerSetRepository.findById(stickerSetId)
             .orElseThrow(() -> new IllegalArgumentException("Стикерсет с ID " + stickerSetId + " не найден"));
         
-        stickerSet.setIsOfficial(true);
+        stickerSet.setType(StickerSetType.OFFICIAL);
         StickerSet saved = stickerSetRepository.save(stickerSet);
         LOGGER.info("✅ Стикерсет {} отмечен как официальный", stickerSetId);
         return saved;
@@ -621,7 +830,7 @@ public class StickerSetService {
         StickerSet stickerSet = stickerSetRepository.findById(stickerSetId)
             .orElseThrow(() -> new IllegalArgumentException("Стикерсет с ID " + stickerSetId + " не найден"));
         
-        stickerSet.setIsOfficial(false);
+        stickerSet.setType(StickerSetType.USER);
         StickerSet saved = stickerSetRepository.save(stickerSet);
         LOGGER.info("✅ Стикерсет {} отмечен как неофициальный", stickerSetId);
         return saved;

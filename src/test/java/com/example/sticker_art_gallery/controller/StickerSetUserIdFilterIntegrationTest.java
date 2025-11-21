@@ -2,6 +2,9 @@ package com.example.sticker_art_gallery.controller;
 
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
+import com.example.sticker_art_gallery.model.telegram.StickerSetState;
+import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
+import com.example.sticker_art_gallery.model.telegram.StickerSetType;
 import com.example.sticker_art_gallery.testdata.TestDataBuilder;
 import com.example.sticker_art_gallery.teststeps.StickerSetTestSteps;
 import io.qameta.allure.*;
@@ -59,9 +62,9 @@ class StickerSetUserIdFilterIntegrationTest {
         s1.setUserId(userId1);
         s1.setTitle("StickerSet User 1");
         s1.setName("s1_user1_by_StickerGalleryBot");
-        s1.setIsPublic(true);
-        s1.setIsBlocked(false);
-        s1.setIsOfficial(false);
+        s1.setState(StickerSetState.ACTIVE);
+        s1.setVisibility(StickerSetVisibility.PUBLIC);
+        s1.setType(StickerSetType.USER);
         s1.setAuthorId(null);
         stickerSetRepository.save(s1);
 
@@ -70,9 +73,9 @@ class StickerSetUserIdFilterIntegrationTest {
         s2.setUserId(userId1);
         s2.setTitle("StickerSet User 1 Second");
         s2.setName("s2_user1_by_StickerGalleryBot");
-        s2.setIsPublic(true);
-        s2.setIsBlocked(false);
-        s2.setIsOfficial(true);
+        s2.setState(StickerSetState.ACTIVE);
+        s2.setVisibility(StickerSetVisibility.PUBLIC);
+        s2.setType(StickerSetType.OFFICIAL);
         s2.setAuthorId(111L);
         stickerSetRepository.save(s2);
 
@@ -81,9 +84,9 @@ class StickerSetUserIdFilterIntegrationTest {
         s3.setUserId(userId2);
         s3.setTitle("StickerSet User 2");
         s3.setName("s3_user2_by_StickerGalleryBot");
-        s3.setIsPublic(true);
-        s3.setIsBlocked(false);
-        s3.setIsOfficial(false);
+        s3.setState(StickerSetState.ACTIVE);
+        s3.setVisibility(StickerSetVisibility.PUBLIC);
+        s3.setType(StickerSetType.USER);
         s3.setAuthorId(null);
         stickerSetRepository.save(s3);
 
@@ -92,9 +95,9 @@ class StickerSetUserIdFilterIntegrationTest {
         s4.setUserId(userId3);
         s4.setTitle("StickerSet User 3");
         s4.setName("s4_user3_by_StickerGalleryBot");
-        s4.setIsPublic(true);
-        s4.setIsBlocked(false);
-        s4.setIsOfficial(false);
+        s4.setState(StickerSetState.ACTIVE);
+        s4.setVisibility(StickerSetVisibility.PUBLIC);
+        s4.setType(StickerSetType.USER);
         s4.setAuthorId(222L);
         stickerSetRepository.save(s4);
     }

@@ -1,6 +1,9 @@
 package com.example.sticker_art_gallery.dto;
 
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
+import com.example.sticker_art_gallery.model.telegram.StickerSetState;
+import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
+import com.example.sticker_art_gallery.model.telegram.StickerSetType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -51,9 +54,9 @@ class StickerSetDtoTest {
         entity.setUserId(20L);
         entity.setTitle("Some title");
         entity.setName("entity_pack");
-        entity.setIsPublic(true);
-        entity.setIsBlocked(false);
-        entity.setIsOfficial(false);
+        entity.setState(StickerSetState.ACTIVE);
+        entity.setVisibility(StickerSetVisibility.PUBLIC);
+        entity.setType(StickerSetType.USER);
         entity.setLikesCount(0);
 
         StickerSetDto dto = StickerSetDto.fromEntity(entity);
@@ -70,9 +73,9 @@ class StickerSetDtoTest {
         entity.setUserId(20L);
         entity.setTitle("Some title");
         entity.setName("entity_pack");
-        entity.setIsPublic(true);
-        entity.setIsBlocked(false);
-        entity.setIsOfficial(false);
+        entity.setState(StickerSetState.ACTIVE);
+        entity.setVisibility(StickerSetVisibility.PUBLIC);
+        entity.setType(StickerSetType.USER);
         entity.setLikesCount(0);
 
         // When

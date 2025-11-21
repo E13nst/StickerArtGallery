@@ -152,9 +152,7 @@ public class InternalStickerSetController {
             @RequestParam(defaultValue = "false") boolean shortInfo,
             HttpServletRequest request) {
 
-        if (createDto.getIsPublic() == null) {
-            createDto.setIsPublic(true);
-        }
+        // Visibility устанавливается в сервисе по умолчанию (PRIVATE для internal API)
 
         try {
             String language = resolveLanguage(request);
@@ -222,49 +220,47 @@ public class InternalStickerSetController {
     @PreAuthorize("hasRole('INTERNAL')")
     @Operation(
         summary = "Опубликовать стикерсет (межсервисный вызов)",
-        description = "Межсервисный аналог POST /api/stickersets/{id}/publish."
+        description = "Опубликовать стикерсет (PRIVATE -> PUBLIC) с начислением ART за первую публикацию."
     )
     public ResponseEntity<?> publishStickerSetInternal(
             @Parameter(description = "ID стикерсета", required = true, example = "1")
             @PathVariable @Positive(message = "ID должен быть положительным числом") Long id) {
-        return updateVisibilityInternal(id, true, "опубликован");
+        try {
+            LOGGER.info("👁️ [internal] Публикация стикерсета {}", id);
+            StickerSet stickerSet = stickerSetService.publishStickerSet(id);
+            StickerSetDto dto = StickerSetDto.fromEntity(stickerSet);
+            return ResponseEntity.ok(dto);
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("⚠️ [internal] Ошибка при публикации стикерсета {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            LOGGER.error("❌ [internal] Ошибка при публикации стикерсета {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(java.util.Map.of("error", "Внутренняя ошибка сервера"));
+        }
     }
 
     @PostMapping("/{id}/unpublish")
     @PreAuthorize("hasRole('INTERNAL')")
     @Operation(
         summary = "Сделать стикерсет приватным (межсервисный вызов)",
-        description = "Межсервисный аналог POST /api/stickersets/{id}/unpublish."
+        description = "Сделать стикерсет приватным (PUBLIC -> PRIVATE)."
     )
     public ResponseEntity<?> unpublishStickerSetInternal(
             @Parameter(description = "ID стикерсета", required = true, example = "1")
             @PathVariable @Positive(message = "ID должен быть положительным числом") Long id) {
-        return updateVisibilityInternal(id, false, "скрыт");
-    }
-
-    private ResponseEntity<?> updateVisibilityInternal(Long id, boolean isPublic, String action) {
         try {
-            LOGGER.info("👁️ [internal] Изменение видимости стикерсета {} на {}", id, isPublic ? "публичный" : "приватный");
-            StickerSet stickerSet = stickerSetService.findById(id);
-            if (stickerSet == null) {
-                return ResponseEntity.notFound().build();
-            }
-
-            StickerSet updated = stickerSetService.updateVisibility(id, isPublic);
-            StickerSetDto dto = StickerSetDto.fromEntity(updated);
-            dto.setUrl("https://t.me/addstickers/" + updated.getName());
-
+            LOGGER.info("👁️ [internal] Скрытие стикерсета {}", id);
+            StickerSet stickerSet = stickerSetService.unpublishStickerSet(id);
+            StickerSetDto dto = StickerSetDto.fromEntity(stickerSet);
             return ResponseEntity.ok(dto);
         } catch (IllegalArgumentException e) {
-            LOGGER.warn("⚠️ Ошибка при изменении видимости стикерсета {}: {}", id, e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(Map.of(
-                            "error", "Ошибка валидации",
-                            "message", e.getMessage()
-                    ));
+            LOGGER.warn("⚠️ [internal] Ошибка при скрытии стикерсета {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при изменении видимости стикерсета {}: {}", id, e.getMessage(), e);
-            return ResponseEntity.internalServerError().build();
+            LOGGER.error("❌ [internal] Ошибка при скрытии стикерсета {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(java.util.Map.of("error", "Внутренняя ошибка сервера"));
         }
     }
 

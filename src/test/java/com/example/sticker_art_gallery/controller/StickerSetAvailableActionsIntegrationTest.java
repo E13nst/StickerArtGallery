@@ -3,6 +3,9 @@ package com.example.sticker_art_gallery.controller;
 import com.example.sticker_art_gallery.dto.StickerSetAction;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
+import com.example.sticker_art_gallery.model.telegram.StickerSetState;
+import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
+import com.example.sticker_art_gallery.model.telegram.StickerSetType;
 import com.example.sticker_art_gallery.testdata.TestDataBuilder;
 import com.example.sticker_art_gallery.teststeps.StickerSetTestSteps;
 import io.qameta.allure.*;
@@ -52,8 +55,9 @@ class StickerSetAvailableActionsIntegrationTest {
         privateStickerSet.setUserId(userId);
         privateStickerSet.setTitle("Private Set");
         privateStickerSet.setName("private_set_by_StickerGalleryBot");
-        privateStickerSet.setIsPublic(false);
-        privateStickerSet.setIsBlocked(false);
+        privateStickerSet.setState(StickerSetState.ACTIVE);
+        privateStickerSet.setVisibility(StickerSetVisibility.PRIVATE);
+        privateStickerSet.setType(StickerSetType.USER);
         privateStickerSet.setAuthorId(userId);
         privateStickerSetId = stickerSetRepository.save(privateStickerSet).getId();
 
@@ -62,8 +66,9 @@ class StickerSetAvailableActionsIntegrationTest {
         publicStickerSet.setUserId(userId);
         publicStickerSet.setTitle("Public Set");
         publicStickerSet.setName("public_set_by_StickerGalleryBot");
-        publicStickerSet.setIsPublic(true);
-        publicStickerSet.setIsBlocked(false);
+        publicStickerSet.setState(StickerSetState.ACTIVE);
+        publicStickerSet.setVisibility(StickerSetVisibility.PUBLIC);
+        publicStickerSet.setType(StickerSetType.USER);
         publicStickerSet.setAuthorId(userId);
         publicStickerSetId = stickerSetRepository.save(publicStickerSet).getId();
 
@@ -72,8 +77,10 @@ class StickerSetAvailableActionsIntegrationTest {
         blockedStickerSet.setUserId(userId);
         blockedStickerSet.setTitle("Blocked Set");
         blockedStickerSet.setName("blocked_set_by_StickerGalleryBot");
-        blockedStickerSet.setIsPublic(true);
-        blockedStickerSet.setIsBlocked(true);
+        blockedStickerSet.setState(StickerSetState.BLOCKED);
+        blockedStickerSet.setVisibility(StickerSetVisibility.PUBLIC);
+        blockedStickerSet.setType(StickerSetType.USER);
+        blockedStickerSet.setBlockReason("Test block");
         blockedStickerSet.setAuthorId(userId);
         blockedStickerSetId = stickerSetRepository.save(blockedStickerSet).getId();
     }

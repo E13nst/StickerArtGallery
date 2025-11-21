@@ -4,6 +4,9 @@ import com.example.sticker_art_gallery.dto.StickerSetAction;
 import com.example.sticker_art_gallery.dto.StickerSetDto;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
+import com.example.sticker_art_gallery.model.telegram.StickerSetState;
+import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
+import com.example.sticker_art_gallery.model.telegram.StickerSetType;
 import com.example.sticker_art_gallery.service.category.CategoryService;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import io.qameta.allure.*;
@@ -261,9 +264,12 @@ class StickerSetServiceAvailableActionsTest {
         entity.setAuthorId(authorId);
         entity.setTitle("Test StickerSet");
         entity.setName("test_stickers_by_bot");
-        entity.setIsPublic(isPublic);
-        entity.setIsBlocked(isBlocked);
-        entity.setIsOfficial(false);
+        entity.setState(isBlocked ? StickerSetState.BLOCKED : StickerSetState.ACTIVE);
+        entity.setVisibility(isPublic ? StickerSetVisibility.PUBLIC : StickerSetVisibility.PRIVATE);
+        entity.setType(StickerSetType.USER);
+        if (isBlocked) {
+            entity.setBlockReason("Test block reason");
+        }
         entity.setLikesCount(0);
         entity.setCreatedAt(java.time.LocalDateTime.now());
         return entity;
