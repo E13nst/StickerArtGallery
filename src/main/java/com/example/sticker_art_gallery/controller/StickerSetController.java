@@ -1025,8 +1025,9 @@ public class StickerSetController {
     })
     public ResponseEntity<?> publishStickerSet(
             @Parameter(description = "ID стикерсета для публикации", required = true, example = "1")
-            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id) {
-        return updateStickerSetVisibilityInternal(id, true, "опубликован");
+            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id,
+            HttpServletRequest request) {
+        return updateStickerSetVisibilityInternal(id, true, "опубликован", request);
     }
     
     /**
@@ -1058,14 +1059,15 @@ public class StickerSetController {
     })
     public ResponseEntity<?> unpublishStickerSet(
             @Parameter(description = "ID стикерсета для скрытия", required = true, example = "1")
-            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id) {
-        return updateStickerSetVisibilityInternal(id, false, "скрыт");
+            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id,
+            HttpServletRequest request) {
+        return updateStickerSetVisibilityInternal(id, false, "скрыт", request);
     }
     
     /**
      * Внутренний метод для изменения видимости стикерсета
      */
-    private ResponseEntity<?> updateStickerSetVisibilityInternal(Long id, Boolean isPublic, String action) {
+    private ResponseEntity<?> updateStickerSetVisibilityInternal(Long id, Boolean isPublic, String action, HttpServletRequest request) {
         try {
             LOGGER.info("👁️ Изменение видимости стикерсета с ID: {} на {}", id, isPublic ? "публичный" : "приватный");
             
@@ -1077,9 +1079,10 @@ public class StickerSetController {
             
             // Проверяем права доступа
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            Long currentUserId = null;
             
             if (authentication != null && authentication.isAuthenticated()) {
-                Long currentUserId = Long.valueOf(authentication.getName());
+                currentUserId = Long.valueOf(authentication.getName());
                 
                 // Проверяем: админ или владелец стикерсета
                 boolean isAdmin = authentication.getAuthorities().stream()
@@ -1099,7 +1102,16 @@ public class StickerSetController {
             }
             
             StickerSet updatedStickerSet = stickerSetService.updateVisibility(id, isPublic);
-            StickerSetDto updatedDto = StickerSetDto.fromEntity(updatedStickerSet);
+            
+            // Получаем язык из запроса
+            String language = getLanguageFromHeaderOrUser(request);
+            
+            // Используем findByIdWithBotApiData для правильного заполнения availableActions
+            StickerSetDto updatedDto = stickerSetService.findByIdWithBotApiData(id, language, currentUserId, false);
+            if (updatedDto == null) {
+                // Fallback на случай, если стикерсет не найден (не должно произойти)
+                updatedDto = StickerSetDto.fromEntity(updatedStickerSet, language, currentUserId);
+            }
             
             LOGGER.info("✅ Стикерсет {} {}", id, action);
             return ResponseEntity.ok(updatedDto);
@@ -1157,7 +1169,8 @@ public class StickerSetController {
             @Parameter(description = "ID стикерсета для блокировки", required = true, example = "1")
             @PathVariable @Positive(message = "ID должен быть положительным числом") Long id,
             @Parameter(description = "Причина блокировки (опционально, по умолчанию пустая)", required = false)
-            @RequestBody(required = false) java.util.Map<String, String> request) {
+            @RequestBody(required = false) java.util.Map<String, String> request,
+            HttpServletRequest httpRequest) {
         try {
             LOGGER.info("🚫 Блокировка стикерсета с ID: {}", id);
             
@@ -1167,7 +1180,17 @@ public class StickerSetController {
             }
             
             StickerSet blockedStickerSet = stickerSetService.blockStickerSet(id, reason);
-            StickerSetDto blockedDto = StickerSetDto.fromEntity(blockedStickerSet);
+            
+            // Получаем язык и currentUserId для правильного заполнения availableActions
+            String language = getLanguageFromHeaderOrUser(httpRequest);
+            Long currentUserId = getCurrentUserIdOrNull();
+            
+            // Используем findByIdWithBotApiData для правильного заполнения availableActions
+            StickerSetDto blockedDto = stickerSetService.findByIdWithBotApiData(id, language, currentUserId, false);
+            if (blockedDto == null) {
+                // Fallback на случай, если стикерсет не найден (не должно произойти)
+                blockedDto = StickerSetDto.fromEntity(blockedStickerSet, language, currentUserId);
+            }
             
             LOGGER.info("✅ Стикерсет {} заблокирован по причине: {}", id, reason);
             return ResponseEntity.ok(blockedDto);
@@ -1222,12 +1245,23 @@ public class StickerSetController {
     })
     public ResponseEntity<?> unblockStickerSet(
             @Parameter(description = "ID стикерсета для разблокировки", required = true, example = "1")
-            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id) {
+            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id,
+            HttpServletRequest request) {
         try {
             LOGGER.info("✅ Разблокировка стикерсета с ID: {}", id);
             
             StickerSet unblockedStickerSet = stickerSetService.unblockStickerSet(id);
-            StickerSetDto unblockedDto = StickerSetDto.fromEntity(unblockedStickerSet);
+            
+            // Получаем язык и currentUserId для правильного заполнения availableActions
+            String language = getLanguageFromHeaderOrUser(request);
+            Long currentUserId = getCurrentUserIdOrNull();
+            
+            // Используем findByIdWithBotApiData для правильного заполнения availableActions
+            StickerSetDto unblockedDto = stickerSetService.findByIdWithBotApiData(id, language, currentUserId, false);
+            if (unblockedDto == null) {
+                // Fallback на случай, если стикерсет не найден (не должно произойти)
+                unblockedDto = StickerSetDto.fromEntity(unblockedStickerSet, language, currentUserId);
+            }
             
             LOGGER.info("✅ Стикерсет {} разблокирован", id);
             return ResponseEntity.ok(unblockedDto);
