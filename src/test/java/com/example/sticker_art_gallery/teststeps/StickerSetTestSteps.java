@@ -265,6 +265,42 @@ public class StickerSetTestSteps {
         return mockMvc.perform(delete("/api/stickersets/" + id + "/author")
                 .header("X-Telegram-Init-Data", initData));
     }
+
+    @Step("Опубликовать стикерсет")
+    public ResultActions publishStickerSet(Long id, String initData) throws Exception {
+        return mockMvc.perform(post("/api/stickersets/" + id + "/publish")
+                .header("X-Telegram-Init-Data", initData));
+    }
+
+    @Step("Скрыть стикерсет из галереи")
+    public ResultActions unpublishStickerSet(Long id, String initData) throws Exception {
+        return mockMvc.perform(post("/api/stickersets/" + id + "/unpublish")
+                .header("X-Telegram-Init-Data", initData));
+    }
+
+    @Step("Заблокировать стикерсет (ADMIN)")
+    public ResultActions blockStickerSet(Long id, String initData) throws Exception {
+        return blockStickerSet(id, null, initData);
+    }
+
+    @Step("Заблокировать стикерсет с причиной (ADMIN)")
+    public ResultActions blockStickerSet(Long id, String reason, String initData) throws Exception {
+        java.util.Map<String, String> body = reason != null ? java.util.Map.of("reason", reason) : null;
+        var requestBuilder = put("/api/stickersets/" + id + "/block")
+                .header("X-Telegram-Init-Data", initData);
+        if (body != null) {
+            requestBuilder = requestBuilder
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(body));
+        }
+        return mockMvc.perform(requestBuilder);
+    }
+
+    @Step("Разблокировать стикерсет (ADMIN)")
+    public ResultActions unblockStickerSet(Long id, String initData) throws Exception {
+        return mockMvc.perform(put("/api/stickersets/" + id + "/unblock")
+                .header("X-Telegram-Init-Data", initData));
+    }
     
     @Step("Создать валидную initData")
     public String createValidInitData(Long userId) {
