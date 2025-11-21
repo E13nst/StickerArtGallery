@@ -80,7 +80,16 @@ class StickerSetAvailableActionsIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        stickerSetRepository.deleteAll();
+        // Удаляем только тестовые стикерсеты, созданные в setUp()
+        if (privateStickerSetId != null) {
+            stickerSetRepository.findById(privateStickerSetId).ifPresent(stickerSetRepository::delete);
+        }
+        if (publicStickerSetId != null) {
+            stickerSetRepository.findById(publicStickerSetId).ifPresent(stickerSetRepository::delete);
+        }
+        if (blockedStickerSetId != null) {
+            stickerSetRepository.findById(blockedStickerSetId).ifPresent(stickerSetRepository::delete);
+        }
     }
 
     @Test
