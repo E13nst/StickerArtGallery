@@ -265,6 +265,45 @@ public class StickerSetTestSteps {
         return mockMvc.perform(delete("/api/stickersets/" + id + "/author")
                 .header("X-Telegram-Init-Data", initData));
     }
+
+    @Step("Опубликовать стикерсет (сделать публичным)")
+    public ResultActions publishStickerSet(Long id, String initData) throws Exception {
+        return mockMvc.perform(post("/api/stickersets/" + id + "/publish")
+                .header("X-Telegram-Init-Data", initData));
+    }
+
+    @Step("Скрыть стикерсет (сделать приватным)")
+    public ResultActions unpublishStickerSet(Long id, String initData) throws Exception {
+        return mockMvc.perform(post("/api/stickersets/" + id + "/unpublish")
+                .header("X-Telegram-Init-Data", initData));
+    }
+
+    @Step("Заблокировать стикерсет (ADMIN)")
+    public ResultActions blockStickerSet(Long id, String initData, String reason) throws Exception {
+        var requestBuilder = put("/api/stickersets/" + id + "/block")
+                .header("X-Telegram-Init-Data", initData)
+                .contentType(MediaType.APPLICATION_JSON);
+        
+        if (reason != null) {
+            java.util.Map<String, String> body = java.util.Map.of("reason", reason);
+            requestBuilder = requestBuilder.content(objectMapper.writeValueAsString(body));
+        } else {
+            requestBuilder = requestBuilder.content("{}");
+        }
+        
+        return mockMvc.perform(requestBuilder);
+    }
+
+    @Step("Заблокировать стикерсет без причины (ADMIN)")
+    public ResultActions blockStickerSet(Long id, String initData) throws Exception {
+        return blockStickerSet(id, initData, null);
+    }
+
+    @Step("Разблокировать стикерсет (ADMIN)")
+    public ResultActions unblockStickerSet(Long id, String initData) throws Exception {
+        return mockMvc.perform(put("/api/stickersets/" + id + "/unblock")
+                .header("X-Telegram-Init-Data", initData));
+    }
     
     @Step("Создать валидную initData")
     public String createValidInitData(Long userId) {
