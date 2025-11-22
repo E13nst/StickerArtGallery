@@ -17,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Tag("integration")
 @Epic("Стикерсеты")
 @Feature("Фильтры списка: officialOnly, authorId, hasAuthorOnly")
 class StickerSetFiltersIntegrationTest {
@@ -35,7 +36,11 @@ class StickerSetFiltersIntegrationTest {
 		testSteps.createTestUserAndProfile(userId);
 		initData = testSteps.createValidInitData(userId);
 
-		stickerSetRepository.deleteAll();
+		// Удаляем существующие тестовые стикерсеты
+		stickerSetRepository.findByNameIgnoreCase("s1_by_StickerGalleryBot").ifPresent(stickerSetRepository::delete);
+		stickerSetRepository.findByNameIgnoreCase("s2_by_StickerGalleryBot").ifPresent(stickerSetRepository::delete);
+		stickerSetRepository.findByNameIgnoreCase("s3_by_StickerGalleryBot").ifPresent(stickerSetRepository::delete);
+		stickerSetRepository.findByNameIgnoreCase("blocked_by_StickerGalleryBot").ifPresent(stickerSetRepository::delete);
 
 		// S1: type=USER, authorId=null
 		StickerSet s1 = new StickerSet();
@@ -69,11 +74,27 @@ class StickerSetFiltersIntegrationTest {
 		s3.setType(StickerSetType.USER);
 		s3.setAuthorId(222L);
 		stickerSetRepository.save(s3);
+
+		// S4: Заблокированный стикерсет (не должен отображаться в галерее)
+		StickerSet s4 = new StickerSet();
+		s4.setUserId(userId);
+		s4.setTitle("Blocked StickerSet");
+		s4.setName("blocked_by_StickerGalleryBot");
+		s4.setState(StickerSetState.BLOCKED);
+		s4.setVisibility(StickerSetVisibility.PUBLIC);
+		s4.setType(StickerSetType.USER);
+		s4.setAuthorId(null);
+		s4.setBlockReason("Test block reason");
+		stickerSetRepository.save(s4);
 	}
 
 	@AfterEach
 	void tearDown() {
-		stickerSetRepository.deleteAll();
+		// Удаляем тестовые стикерсеты по именам
+		stickerSetRepository.findByNameIgnoreCase("s1_by_StickerGalleryBot").ifPresent(stickerSetRepository::delete);
+		stickerSetRepository.findByNameIgnoreCase("s2_by_StickerGalleryBot").ifPresent(stickerSetRepository::delete);
+		stickerSetRepository.findByNameIgnoreCase("s3_by_StickerGalleryBot").ifPresent(stickerSetRepository::delete);
+		stickerSetRepository.findByNameIgnoreCase("blocked_by_StickerGalleryBot").ifPresent(stickerSetRepository::delete);
 	}
 
 	@Test
@@ -103,5 +124,19 @@ class StickerSetFiltersIntegrationTest {
 		testSteps.getStickerSetsWithFilters(null, null, true, initData)
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.content[*].authorId").value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.notNullValue())));
+	}
+
+	@Test
+	@Story("Исключение заблокированных стикерсетов")
+	@DisplayName("Заблокированные стикерсеты не отображаются в /api/stickersets")
+	@Description("Заблокированные стикерсеты не должны отображаться в основном списке галереи, " +
+				 "даже если они публичные")
+	@Severity(SeverityLevel.CRITICAL)
+	void blockedStickerSetsShouldNotBeVisibleInGallery() throws Exception {
+		testSteps.getStickerSetsWithFilters(null, null, null, initData)
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.content[*].name", org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem("blocked_by_StickerGalleryBot"))))
+				.andExpect(jsonPath("$.content[*].state", org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem("BLOCKED"))))
+				.andExpect(jsonPath("$.content[*].state").value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is("ACTIVE"))));
 	}
 }
