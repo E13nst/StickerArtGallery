@@ -416,10 +416,10 @@ class StickerSetDtoAvailableActionsTest {
 
     @Test
     @Story("Расчет доступных действий")
-    @DisplayName("EDIT_CATEGORIES должно показываться для автора без совпадения с владельцем")
-    @Description("Проверяет, что автор может редактировать категории даже если он не является владельцем")
+    @DisplayName("EDIT_CATEGORIES не должно показываться для автора без совпадения с владельцем")
+    @Description("Проверяет, что автор, который не является владельцем, не может редактировать категории (только публиковать/скрывать)")
     @Severity(SeverityLevel.CRITICAL)
-    void calculateAvailableActions_AuthorOnly_ShouldShowEditCategories() {
+    void calculateAvailableActions_AuthorOnly_ShouldNotShowEditCategories() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
                 AUTHOR_USER_ID, false, OWNER_USER_ID, AUTHOR_USER_ID, 

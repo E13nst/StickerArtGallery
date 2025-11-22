@@ -136,11 +136,12 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
 
     /**
      * Поиск стикерсетов пользователя с дополнительными фильтрами
+     * Включает заблокированные стикерсеты (state = 'BLOCKED'), чтобы пользователь видел свои заблокированные наборы
      */
     @Query("SELECT DISTINCT ss FROM StickerSet ss " +
            "LEFT JOIN ss.categories c " +
            "WHERE ss.userId = :userId " +
-           "AND ss.state = 'ACTIVE' " +
+           "AND (ss.state = 'ACTIVE' OR ss.state = 'BLOCKED') " +
            "AND (:visibilityFilter = 'ALL' OR " +
            "     (:visibilityFilter = 'PUBLIC' AND ss.visibility = 'PUBLIC') OR " +
            "     (:visibilityFilter = 'PRIVATE' AND ss.visibility = 'PRIVATE')) " +
