@@ -4,6 +4,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -99,6 +103,43 @@ public class ValidationExceptionHandler {
         response.put("message", "Некорректный JSON в запросе");
         response.put("timestamp", java.time.OffsetDateTime.now());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    /**
+     * Обработка ошибок авторизации Spring Security (401/403)
+     */
+    @ExceptionHandler(AuthorizationDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAuthorizationDenied(AuthorizationDeniedException ex) {
+        // Определяем, аутентифицирован ли пользователь
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null 
+                && authentication.isAuthenticated()
+                && !(authentication instanceof AnonymousAuthenticationToken)
+                && !"anonymousUser".equals(authentication.getName());
+        
+        HttpStatus status;
+        String errorMessage;
+        
+        if (!isAuthenticated) {
+            // Пользователь не аутентифицирован - 401 Unauthorized
+            status = HttpStatus.UNAUTHORIZED;
+            errorMessage = "Требуется авторизация. Пожалуйста, обновите данные авторизации Telegram Web App (initData может быть устаревшим)";
+            LOGGER.warn("⚠️ Доступ запрещен: пользователь не аутентифицирован. {}", ex.getMessage());
+        } else {
+            // Пользователь аутентифицирован, но нет прав - 403 Forbidden
+            status = HttpStatus.FORBIDDEN;
+            errorMessage = "Доступ запрещен. У вас нет прав для выполнения этого действия";
+            String username = authentication != null ? authentication.getName() : "unknown";
+            LOGGER.warn("⚠️ Доступ запрещен для пользователя {}: недостаточно прав. {}", 
+                    username, ex.getMessage());
+        }
+        
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", status == HttpStatus.UNAUTHORIZED ? "Unauthorized" : "Forbidden");
+        body.put("message", errorMessage);
+        body.put("timestamp", java.time.OffsetDateTime.now());
+        
+        return ResponseEntity.status(status).body(body);
     }
 
     /**

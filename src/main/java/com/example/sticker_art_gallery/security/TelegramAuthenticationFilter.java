@@ -55,7 +55,7 @@ public class TelegramAuthenticationFilter extends OncePerRequestFilter {
                 // Валидируем initData
                 LOGGER.debug("🔍 Начинаем валидацию initData");
                 if (!validator.validateInitData(initData)) {
-                    LOGGER.warn("❌ InitData невалидна");
+                    LOGGER.warn("⚠️ InitData невалидна (возможно, устарела или повреждена), требуется обновление авторизации");
                     filterChain.doFilter(request, response);
                     return;
                 }

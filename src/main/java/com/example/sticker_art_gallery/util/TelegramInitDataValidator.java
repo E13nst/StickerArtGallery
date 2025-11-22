@@ -72,7 +72,6 @@ public class TelegramInitDataValidator {
             
             // Проверяем время auth_date
             if (!validateAuthDate(authDateStr)) {
-                LOGGER.warn("❌ Auth date слишком старая: {}", authDateStr);
                 return false;
             }
             
@@ -148,8 +147,27 @@ public class TelegramInitDataValidator {
         try {
             long authDate = Long.parseLong(authDateStr);
             long currentTime = Instant.now().getEpochSecond();
-            long age = currentTime - authDate;
-            return age <= MAX_AUTH_AGE_SECONDS;
+            long ageSeconds = currentTime - authDate;
+            
+            if (ageSeconds > MAX_AUTH_AGE_SECONDS) {
+                // Вычисляем возраст в часах и днях для более информативного сообщения
+                long ageHours = ageSeconds / 3600;
+                long ageDays = ageHours / 24;
+                long maxAgeHours = MAX_AUTH_AGE_SECONDS / 3600;
+                
+                String ageDescription;
+                if (ageDays > 0) {
+                    ageDescription = String.format("%d дн. %d ч.", ageDays, ageHours % 24);
+                } else {
+                    ageDescription = String.format("%d ч.", ageHours);
+                }
+                
+                LOGGER.warn("⚠️ Auth date устарела: initData была создана {} назад (максимум {} ч.), требуется обновление", 
+                        ageDescription, maxAgeHours);
+                return false;
+            }
+            
+            return true;
         } catch (NumberFormatException e) {
             LOGGER.error("❌ Некорректный формат auth_date: {}", authDateStr);
             return false;
