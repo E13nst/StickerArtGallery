@@ -313,8 +313,8 @@ public class StickerSetDto {
             actions.add(StickerSetAction.DELETE);
         }
         
-        // EDIT_CATEGORIES - для автора, владельца и админа активных и заблокированных стикерсетов (не для удаленных)
-        if (state != StickerSetState.DELETED && (isOwner || isAuthor || isAdmin)) {
+        // EDIT_CATEGORIES - для владельца и админа активных и заблокированных стикерсетов (не для удаленных)
+        if (state != StickerSetState.DELETED && (isOwner || isAdmin)) {
             actions.add(StickerSetAction.EDIT_CATEGORIES);
         }
         

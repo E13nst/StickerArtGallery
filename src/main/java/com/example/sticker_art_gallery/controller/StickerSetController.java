@@ -954,18 +954,17 @@ public class StickerSetController {
             if (authentication != null && authentication.isAuthenticated()) {
                 Long currentUserId = Long.valueOf(authentication.getName());
                 
-                // Проверяем: админ, владелец стикерсета или автор
+                // Проверяем: админ или владелец стикерсета
                 boolean isAdmin = authentication.getAuthorities().stream()
                     .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
                 boolean isOwner = existingStickerSet.getUserId() != null && existingStickerSet.getUserId().equals(currentUserId);
-                boolean isAuthor = existingStickerSet.getAuthorId() != null && existingStickerSet.getAuthorId().equals(currentUserId);
                 
-                if (!isAdmin && !isOwner && !isAuthor) {
+                if (!isAdmin && !isOwner) {
                     LOGGER.warn("⚠️ Пользователь {} попытался обновить категории чужого стикерсета {}", currentUserId, id);
                     return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
                 }
                 
-                LOGGER.debug("✅ Проверка прав пройдена: isAdmin={}, isOwner={}, isAuthor={}", isAdmin, isOwner, isAuthor);
+                LOGGER.debug("✅ Проверка прав пройдена: isAdmin={}, isOwner={}", isAdmin, isOwner);
             }
             
             StickerSet updatedStickerSet = stickerSetService.updateCategories(id, categoryKeys);
