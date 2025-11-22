@@ -86,8 +86,9 @@ class StickerSetServiceAvailableActionsTest {
         // Then
         assertNotNull(dto);
         assertNotNull(dto.getAvailableActions());
-        assertEquals(2, dto.getAvailableActions().size());
+        assertEquals(3, dto.getAvailableActions().size());
         assertTrue(dto.getAvailableActions().contains(StickerSetAction.DELETE));
+        assertTrue(dto.getAvailableActions().contains(StickerSetAction.EDIT_CATEGORIES));
         assertTrue(dto.getAvailableActions().contains(StickerSetAction.UNPUBLISH));
     }
 
@@ -110,7 +111,8 @@ class StickerSetServiceAvailableActionsTest {
         // Then
         assertNotNull(dto);
         assertNotNull(dto.getAvailableActions());
-        assertEquals(1, dto.getAvailableActions().size());
+        assertEquals(2, dto.getAvailableActions().size());
+        assertTrue(dto.getAvailableActions().contains(StickerSetAction.EDIT_CATEGORIES));
         assertTrue(dto.getAvailableActions().contains(StickerSetAction.BLOCK));
     }
 
@@ -133,8 +135,9 @@ class StickerSetServiceAvailableActionsTest {
         // Then
         assertNotNull(dto);
         assertNotNull(dto.getAvailableActions());
-        assertEquals(3, dto.getAvailableActions().size());
+        assertEquals(4, dto.getAvailableActions().size());
         assertTrue(dto.getAvailableActions().contains(StickerSetAction.DELETE));
+        assertTrue(dto.getAvailableActions().contains(StickerSetAction.EDIT_CATEGORIES));
         assertTrue(dto.getAvailableActions().contains(StickerSetAction.UNPUBLISH));
         assertTrue(dto.getAvailableActions().contains(StickerSetAction.BLOCK));
     }
@@ -180,7 +183,8 @@ class StickerSetServiceAvailableActionsTest {
         // Then
         assertNotNull(dto);
         assertNotNull(dto.getAvailableActions());
-        assertEquals(1, dto.getAvailableActions().size());
+        assertEquals(2, dto.getAvailableActions().size());
+        assertTrue(dto.getAvailableActions().contains(StickerSetAction.EDIT_CATEGORIES));
         assertTrue(dto.getAvailableActions().contains(StickerSetAction.UNBLOCK));
         assertFalse(dto.getAvailableActions().contains(StickerSetAction.BLOCK));
     }
@@ -204,8 +208,9 @@ class StickerSetServiceAvailableActionsTest {
         // Then
         assertNotNull(dto);
         assertNotNull(dto.getAvailableActions());
-        assertEquals(2, dto.getAvailableActions().size());
+        assertEquals(3, dto.getAvailableActions().size());
         assertTrue(dto.getAvailableActions().contains(StickerSetAction.DELETE));
+        assertTrue(dto.getAvailableActions().contains(StickerSetAction.EDIT_CATEGORIES));
         assertTrue(dto.getAvailableActions().contains(StickerSetAction.PUBLISH));
         assertFalse(dto.getAvailableActions().contains(StickerSetAction.UNPUBLISH));
     }

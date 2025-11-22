@@ -102,8 +102,7 @@ test {
     // Используем профиль unit для быстрых тестов
     systemProperty 'spring.profiles.active', 'unit'
     
-    // Включаем только unit тесты (также исключаем по имени для двойной защиты)
-    include '**/*Test.class'
+    // Исключаем интеграционные тесты и бенчмарки по имени файлов
     exclude '**/*IntegrationTest.class'
     exclude '**/benchmark/**'
     
