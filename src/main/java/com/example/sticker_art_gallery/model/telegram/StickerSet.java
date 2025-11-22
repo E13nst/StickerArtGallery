@@ -30,6 +30,9 @@ public class StickerSet {
     @Column(name = "title", length = 64, nullable = false)
     private String title; // Название стикерсета (например, "Мои стикеры") - не уникальное
     
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description; // Описание стикерсета (опционально)
+    
     @Column(name = "name", nullable = false)
     private String name; // Полное имя для Telegram API (например, "my_stickers_by_StickerGalleryBot")
     

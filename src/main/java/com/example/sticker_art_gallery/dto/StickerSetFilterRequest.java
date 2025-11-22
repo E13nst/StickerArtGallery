@@ -1,5 +1,7 @@
 package com.example.sticker_art_gallery.dto;
 
+import com.example.sticker_art_gallery.model.telegram.StickerSetType;
+
 import java.util.Set;
 
 /**
@@ -14,7 +16,7 @@ public class StickerSetFilterRequest {
     
     // Фильтры
     private Set<String> categoryKeys;
-    private boolean officialOnly;
+    private StickerSetType type;
     private Long authorId;
     private boolean hasAuthorOnly;
     private Long userId;
@@ -55,12 +57,12 @@ public class StickerSetFilterRequest {
         this.categoryKeys = categoryKeys;
     }
     
-    public boolean isOfficialOnly() {
-        return officialOnly;
+    public StickerSetType getType() {
+        return type;
     }
     
-    public void setOfficialOnly(boolean officialOnly) {
-        this.officialOnly = officialOnly;
+    public void setType(StickerSetType type) {
+        this.type = type;
     }
     
     public Long getAuthorId() {
@@ -139,7 +141,7 @@ public class StickerSetFilterRequest {
                 "page=" + (pageRequest != null ? pageRequest.getPage() : "null") +
                 ", size=" + (pageRequest != null ? pageRequest.getSize() : "null") +
                 ", categoryKeys=" + categoryKeys +
-                ", officialOnly=" + officialOnly +
+                ", type=" + type +
                 ", authorId=" + authorId +
                 ", hasAuthorOnly=" + hasAuthorOnly +
                 ", userId=" + userId +

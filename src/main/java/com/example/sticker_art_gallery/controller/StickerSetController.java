@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Pattern;
@@ -237,7 +236,9 @@ public class StickerSetController {
             @RequestParam(defaultValue = "DESC") @Pattern(regexp = "ASC|DESC") String direction,
             @Parameter(description = "Фильтр по ключам категорий (через запятую)", example = "animals,memes")
             @RequestParam(required = false) String categoryKeys,
-            @Parameter(description = "Показывать только официальные стикерсеты", example = "false")
+            @Parameter(description = "Фильтр по типу стикерсета (USER, OFFICIAL)", example = "USER")
+            @RequestParam(required = false) com.example.sticker_art_gallery.model.telegram.StickerSetType type,
+            @Parameter(description = "Показывать только официальные стикерсеты (устарело, используйте type=OFFICIAL)", example = "false")
             @RequestParam(defaultValue = "false") boolean officialOnly,
             @Parameter(description = "Фильтр по автору (Telegram ID)", example = "123456789")
             @RequestParam(required = false) Long authorId,
@@ -253,7 +254,7 @@ public class StickerSetController {
         try {
             // Построение фильтра
             StickerSetFilterRequest filter = buildFilter(
-                page, size, sort, direction, categoryKeys, officialOnly,
+                page, size, sort, direction, categoryKeys, type, officialOnly,
                 authorId, hasAuthorOnly, userId, likedOnly, shortInfo, request
             );
             
@@ -308,6 +309,8 @@ public class StickerSetController {
             @RequestParam(defaultValue = "DESC") @Pattern(regexp = "ASC|DESC") String direction,
             @Parameter(description = "Фильтр по ключам категорий (через запятую)", example = "animals,memes")
             @RequestParam(required = false) String categoryKeys,
+            @Parameter(description = "Фильтр по типу стикерсета (USER, OFFICIAL)", example = "USER")
+            @RequestParam(required = false) com.example.sticker_art_gallery.model.telegram.StickerSetType type,
             @Parameter(description = "Показывать только авторские стикерсеты (authorId IS NOT NULL)", example = "false")
             @RequestParam(defaultValue = "false") boolean hasAuthorOnly,
             @Parameter(description = "Показать только лайкнутые пользователем стикерсеты", example = "false")
@@ -365,6 +368,7 @@ public class StickerSetController {
                 likedOnly,
                 currentUserId,
                 effectiveVisibility,
+                type,
                 shortInfo,
                 language
             );
@@ -412,6 +416,8 @@ public class StickerSetController {
             @RequestParam(defaultValue = "DESC") @Pattern(regexp = "ASC|DESC") String direction,
             @Parameter(description = "Фильтр по ключам категорий (через запятую)", example = "animals,memes")
             @RequestParam(required = false) String categoryKeys,
+            @Parameter(description = "Фильтр по типу стикерсета (USER, OFFICIAL)", example = "USER")
+            @RequestParam(required = false) com.example.sticker_art_gallery.model.telegram.StickerSetType type,
             @Parameter(description = "Фильтр видимости: ALL (все), PUBLIC (только публичные), PRIVATE (только приватные)", example = "ALL")
             @RequestParam(defaultValue = "ALL") com.example.sticker_art_gallery.dto.VisibilityFilter visibility,
             @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
@@ -463,6 +469,7 @@ public class StickerSetController {
                 categoryKeysSet,
                 currentUserId,
                 effectiveVisibility,
+                type,
                 shortInfo,
                 language
             );
@@ -557,48 +564,84 @@ public class StickerSetController {
     }
     
     /**
-     * Получить стикерсет по названию
+     * Поиск стикерсетов по title или description
      */
     @GetMapping("/search")
     @Operation(
-        summary = "Поиск стикерсета по названию",
-        description = "Ищет стикерсет по его уникальному имени (name). Имя используется в Telegram API."
+        summary = "Поиск стикерсетов по названию или описанию",
+        description = "Ищет стикерсеты по частичному совпадению в title или description (без учёта регистра). " +
+                     "Поддерживает пагинацию, фильтрацию по категориям, автору, пользователю и типу. " +
+                     "Возвращает только активные и публичные стикерсеты (не заблокированные и не удалённые)."
     )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Стикерсет найден",
-            content = @Content(schema = @Schema(implementation = StickerSetDto.class),
-                examples = @ExampleObject(value = """
-                    {
-                        "id": 1,
-                        "userId": 123456789,
-                        "title": "Мои стикеры",
-                        "name": "my_stickers_by_StickerGalleryBot",
-                        "createdAt": "2025-09-15T10:30:00"
-                    }
-                    """))),
-        @ApiResponse(responseCode = "400", description = "Некорректное название (не может быть пустым)"),
-        @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
-        @ApiResponse(responseCode = "404", description = "Стикерсет с указанным названием не найден"),
+        @ApiResponse(responseCode = "200", description = "Список найденных стикерсетов",
+            content = @Content(schema = @Schema(implementation = PageResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Некорректные параметры запроса"),
         @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
     })
-    public ResponseEntity<StickerSetDto> getStickerSetByName(
-            @Parameter(description = "Уникальное имя стикерсета для Telegram API", required = true, example = "my_stickers_by_StickerGalleryBot")
-            @RequestParam @NotBlank(message = "Название не может быть пустым") String name,
+    public ResponseEntity<PageResponse<StickerSetDto>> searchStickerSets(
+            @Parameter(description = "Поисковый запрос (ищет в title и description)", required = true, example = "cat")
+            @RequestParam String query,
+            @Parameter(description = "Номер страницы (начиная с 0)", example = "0")
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @Parameter(description = "Количество элементов на странице (1-100)", example = "20")
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            @Parameter(description = "Поле для сортировки", example = "createdAt")
+            @RequestParam(defaultValue = "createdAt") String sort,
+            @Parameter(description = "Направление сортировки", example = "DESC")
+            @RequestParam(defaultValue = "DESC") @Pattern(regexp = "ASC|DESC") String direction,
+            @Parameter(description = "Фильтр по ключам категорий (через запятую)", example = "animals,memes")
+            @RequestParam(required = false) String categoryKeys,
+            @Parameter(description = "Фильтр по типу стикерсета", example = "USER")
+            @RequestParam(required = false) com.example.sticker_art_gallery.model.telegram.StickerSetType type,
+            @Parameter(description = "Фильтр по автору (Telegram ID)", example = "123456789")
+            @RequestParam(required = false) Long authorId,
+            @Parameter(description = "Показывать только авторские стикерсеты (authorId IS NOT NULL)", example = "false")
+            @RequestParam(defaultValue = "false") boolean hasAuthorOnly,
+            @Parameter(description = "Фильтр по пользователю (Telegram ID)", example = "123456789")
+            @RequestParam(required = false) Long userId,
             @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
-            @RequestParam(defaultValue = "false") boolean shortInfo) {
+            @RequestParam(defaultValue = "false") boolean shortInfo,
+            HttpServletRequest request) {
         try {
-            LOGGER.info("🔍 Поиск стикерсета по названию: {} с данными Bot API (shortInfo={})", name, shortInfo);
-            StickerSetDto dto = stickerSetService.findByNameWithBotApiData(name, shortInfo);
+            LOGGER.info("🔍 Поиск стикерсетов по запросу: '{}', page={}, size={}", query, page, size);
             
-            if (dto == null) {
-                LOGGER.warn("⚠️ Стикерсет с названием '{}' не найден", name);
-                return ResponseEntity.notFound().build();
+            Long currentUserId = getCurrentUserIdOrNull();
+            
+            // Построение параметров запроса
+            PageRequest pageRequest = new PageRequest();
+            pageRequest.setPage(page);
+            pageRequest.setSize(size);
+            pageRequest.setSort(sort);
+            pageRequest.setDirection(direction);
+            
+            Set<String> categoryKeysSet = null;
+            if (categoryKeys != null && !categoryKeys.trim().isEmpty()) {
+                categoryKeysSet = java.util.Set.of(categoryKeys.split(","));
             }
             
-            LOGGER.info("✅ Стикерсет найден: {}", dto.getTitle());
-            return ResponseEntity.ok(dto);
+            String language = getLanguageFromHeaderOrUser(request);
+            
+            // Поиск среди публичных стикерсетов
+            PageResponse<StickerSetDto> result = stickerSetService.searchStickerSets(
+                query,
+                pageRequest,
+                categoryKeysSet,
+                type,
+                authorId,
+                hasAuthorOnly,
+                userId,
+                currentUserId,
+                language,
+                shortInfo
+            );
+            
+            LOGGER.debug("✅ Найдено {} стикерсетов по запросу '{}' на странице {} из {}", 
+                    result.getContent().size(), query, result.getPage() + 1, result.getTotalPages());
+            return ResponseEntity.ok(result);
+            
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при поиске стикерсета с названием: {}", name, e);
+            LOGGER.error("❌ Ошибка при поиске стикерсетов по запросу '{}': {}", query, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -1572,7 +1615,7 @@ public class StickerSetController {
      */
     private StickerSetFilterRequest buildFilter(
             int page, int size, String sort, String direction,
-            String categoryKeys, boolean officialOnly, Long authorId,
+            String categoryKeys, com.example.sticker_art_gallery.model.telegram.StickerSetType type, boolean officialOnly, Long authorId,
             boolean hasAuthorOnly, Long userId, boolean likedOnly,
             boolean shortInfo, HttpServletRequest request) {
         
@@ -1590,11 +1633,19 @@ public class StickerSetController {
         filter.setLanguage(getLanguageFromHeaderOrUser(request));
         filter.setCurrentUserId(getCurrentUserIdOrNull());
         
+        // Логика совместимости: если type указан явно - используем его
+        // Если type не указан, но officialOnly=true - используем OFFICIAL
+        // Иначе null (любые типы)
+        com.example.sticker_art_gallery.model.telegram.StickerSetType effectiveType = type;
+        if (effectiveType == null && officialOnly) {
+            effectiveType = com.example.sticker_art_gallery.model.telegram.StickerSetType.OFFICIAL;
+        }
+        
         // Фильтры
         if (categoryKeys != null && !categoryKeys.trim().isEmpty()) {
             filter.setCategoryKeys(java.util.Set.of(categoryKeys.split(",")));
         }
-        filter.setOfficialOnly(officialOnly);
+        filter.setType(effectiveType);
         filter.setAuthorId(authorId);
         filter.setHasAuthorOnly(hasAuthorOnly);
         filter.setUserId(userId);

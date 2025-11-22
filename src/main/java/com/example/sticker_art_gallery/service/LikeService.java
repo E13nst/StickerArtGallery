@@ -17,11 +17,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -38,7 +40,7 @@ public class LikeService {
     private final CacheManager cacheManager;
     private final StickerSetService stickerSetService;
     
-    public LikeService(LikeRepository likeRepository, StickerSetRepository stickerSetRepository, CacheManager cacheManager, StickerSetService stickerSetService) {
+    public LikeService(LikeRepository likeRepository, StickerSetRepository stickerSetRepository, CacheManager cacheManager, @Lazy StickerSetService stickerSetService) {
         this.likeRepository = likeRepository;
         this.stickerSetRepository = stickerSetRepository;
         this.cacheManager = cacheManager;
@@ -206,6 +208,27 @@ public class LikeService {
         List<String> categoryKeyList = java.util.Arrays.asList(categoryKeys);
         Page<StickerSet> likedStickerSets = likeRepository.findLikedStickerSetsByUserIdAndCategoryKeys(
                 userId, categoryKeyList, pageRequest.toPageable());
+        
+        // Обогащаем данными из Telegram Bot API с учетом shortInfo
+        List<StickerSetDto> dtos = stickerSetService.enrichWithBotApiDataAndCategories(
+            likedStickerSets.getContent(), language, userId, shortInfo);
+        
+        return PageResponse.of(likedStickerSets, dtos);
+    }
+    
+    /**
+     * Поиск лайкнутых стикерсетов пользователя по query (title или description)
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<StickerSetDto> searchLikedStickerSets(Long userId, String query, 
+                                                               Set<String> categoryKeys,
+                                                               PageRequest pageRequest, 
+                                                               String language, boolean shortInfo) {
+        LOGGER.debug("🔍 Поиск лайкнутых стикерсетов пользователя {} по query='{}' с пагинацией: page={}, size={}, shortInfo={}", 
+                userId, query, pageRequest.getPage(), pageRequest.getSize(), shortInfo);
+        
+        Page<StickerSet> likedStickerSets = likeRepository.searchLikedStickerSets(
+                userId, query, categoryKeys, pageRequest.toPageable());
         
         // Обогащаем данными из Telegram Bot API с учетом shortInfo
         List<StickerSetDto> dtos = stickerSetService.enrichWithBotApiDataAndCategories(

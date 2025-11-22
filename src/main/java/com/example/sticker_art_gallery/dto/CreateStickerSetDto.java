@@ -20,6 +20,9 @@ public class CreateStickerSetDto {
     @Pattern(regexp = "^[\\p{L}\\p{N}\\s\\-_.,!?()]*$", message = "Название может содержать только буквы, цифры, пробелы и символы: -_.,!?()")
     private String title;
     
+    @Schema(description = "Описание стикерсета (опционально)", example = "Коллекция милых котиков", required = false)
+    private String description;
+    
     @Schema(description = "Уникальное имя стикерсета для Telegram API или URL стикерсета. Обязательное поле. " +
                          "Поддерживает два формата: имя стикерсета или URL вида https://t.me/addstickers/имя_стикерсета", 
             example = "my_stickers_by_StickerGalleryBot", required = true, maxLength = 200)
@@ -63,6 +66,14 @@ public class CreateStickerSetDto {
     
     public void setTitle(String title) {
         this.title = title;
+    }
+    
+    public String getDescription() {
+        return description;
+    }
+    
+    public void setDescription(String description) {
+        this.description = description;
     }
     
     public String getName() {

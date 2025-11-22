@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.Set;
 
 @Repository
 public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
@@ -64,11 +65,11 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
      */
     @Query("SELECT ss FROM StickerSet ss " +
            "WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PUBLIC' " +
-           "AND (:officialOnly = false OR ss.type = 'OFFICIAL') " +
+           "AND (:type IS NULL OR ss.type = :type) " +
            "AND (:authorId IS NULL OR ss.authorId = :authorId) " +
            "AND (:hasAuthorOnly = false OR ss.authorId IS NOT NULL) " +
            "AND (:userId IS NULL OR ss.userId = :userId)")
-    Page<StickerSet> findPublicNotBlockedFiltered(@Param("officialOnly") boolean officialOnly,
+    Page<StickerSet> findPublicNotBlockedFiltered(@Param("type") StickerSetType type,
                                                    @Param("authorId") Long authorId,
                                                    @Param("hasAuthorOnly") boolean hasAuthorOnly,
                                                    @Param("userId") Long userId,
@@ -94,12 +95,12 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
     @Query("SELECT DISTINCT ss FROM StickerSet ss " +
            "JOIN ss.categories c " +
            "WHERE c.key IN :categoryKeys AND ss.state = 'ACTIVE' AND ss.visibility = 'PUBLIC' " +
-           "AND (:officialOnly = false OR ss.type = 'OFFICIAL') " +
+           "AND (:type IS NULL OR ss.type = :type) " +
            "AND (:authorId IS NULL OR ss.authorId = :authorId) " +
            "AND (:hasAuthorOnly = false OR ss.authorId IS NOT NULL) " +
            "AND (:userId IS NULL OR ss.userId = :userId)")
     Page<StickerSet> findByCategoryKeysPublicNotBlockedFiltered(@Param("categoryKeys") String[] categoryKeys,
-                                                                @Param("officialOnly") boolean officialOnly,
+                                                                @Param("type") StickerSetType type,
                                                                 @Param("authorId") Long authorId,
                                                                 @Param("hasAuthorOnly") boolean hasAuthorOnly,
                                                                 @Param("userId") Long userId,
@@ -143,6 +144,7 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
            "AND (:visibilityFilter = 'ALL' OR " +
            "     (:visibilityFilter = 'PUBLIC' AND ss.visibility = 'PUBLIC') OR " +
            "     (:visibilityFilter = 'PRIVATE' AND ss.visibility = 'PRIVATE')) " +
+           "AND (:type IS NULL OR ss.type = :type) " +
            "AND (:hasAuthorOnly = false OR ss.authorId IS NOT NULL) " +
            "AND (:categoryKeys IS NULL OR c.key IN :categoryKeys) " +
            "AND (:likedOnly = false OR EXISTS (" +
@@ -150,6 +152,7 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
            "))")
     Page<StickerSet> findUserStickerSetsFiltered(@Param("userId") Long userId,
                                                  @Param("visibilityFilter") String visibilityFilter,
+                                                 @Param("type") StickerSetType type,
                                                  @Param("hasAuthorOnly") boolean hasAuthorOnly,
                                                  @Param("categoryKeys") Set<String> categoryKeys,
                                                  @Param("likedOnly") boolean likedOnly,
@@ -166,9 +169,11 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
            "AND (:visibilityFilter = 'ALL' OR " +
            "     (:visibilityFilter = 'PUBLIC' AND ss.visibility = 'PUBLIC') OR " +
            "     (:visibilityFilter = 'PRIVATE' AND ss.visibility = 'PRIVATE')) " +
+           "AND (:type IS NULL OR ss.type = :type) " +
            "AND (:categoryKeys IS NULL OR c.key IN :categoryKeys)")
     Page<StickerSet> findAuthorStickerSetsFiltered(@Param("authorId") Long authorId,
                                                    @Param("visibilityFilter") String visibilityFilter,
+                                                   @Param("type") StickerSetType type,
                                                    @Param("categoryKeys") Set<String> categoryKeys,
                                                    Pageable pageable);
 
@@ -176,4 +181,26 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
 
     @Query("SELECT DISTINCT ss.userId FROM StickerSet ss WHERE ss.createdAt >= :since")
     List<Long> findDistinctUserIdsByCreatedAtAfter(@Param("since") LocalDateTime since);
+    
+    /**
+     * Поиск публичных активных стикерсетов по title или description с фильтрацией
+     */
+    @Query("SELECT DISTINCT ss FROM StickerSet ss " +
+           "LEFT JOIN ss.categories c " +
+           "WHERE (LOWER(ss.title) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "       OR LOWER(ss.description) LIKE LOWER(CONCAT('%', :query, '%'))) " +
+           "AND ss.state = 'ACTIVE' " +
+           "AND ss.visibility = 'PUBLIC' " +
+           "AND (:categoryKeys IS NULL OR c.key IN :categoryKeys) " +
+           "AND (:type IS NULL OR ss.type = :type) " +
+           "AND (:authorId IS NULL OR ss.authorId = :authorId) " +
+           "AND (:hasAuthorOnly = false OR ss.authorId IS NOT NULL) " +
+           "AND (:userId IS NULL OR ss.userId = :userId)")
+    Page<StickerSet> searchPublicStickerSets(@Param("query") String query,
+                                             @Param("categoryKeys") Set<String> categoryKeys,
+                                             @Param("type") StickerSetType type,
+                                             @Param("authorId") Long authorId,
+                                             @Param("hasAuthorOnly") boolean hasAuthorOnly,
+                                             @Param("userId") Long userId,
+                                             Pageable pageable);
 } 

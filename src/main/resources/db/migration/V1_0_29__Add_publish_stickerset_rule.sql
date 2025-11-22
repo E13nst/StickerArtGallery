@@ -21,3 +21,4 @@ VALUES (
 
 COMMENT ON TABLE art_rules IS 'Справочник правил начисления и списания ART-баллов';
 
+

@@ -24,6 +24,9 @@ public class StickerSetDto {
     @Pattern(regexp = "^[\\p{L}\\p{N}\\s\\-_.,!?()]+$", message = "Название может содержать только буквы, цифры, пробелы и символы: -_.,!?()")
     private String title;
     
+    @Schema(description = "Описание стикерсета (опционально)", example = "Коллекция милых котиков", nullable = true)
+    private String description;
+    
     @NotBlank(message = "Имя стикерсета не может быть пустым")
     @Size(min = 1, max = 64, message = "Имя стикерсета должно быть от 1 до 64 символов")
     @Pattern(regexp = "^[a-zA-Z0-9_]+$", message = "Имя стикерсета может содержать только латинские буквы, цифры и подчеркивания")
@@ -124,6 +127,14 @@ public class StickerSetDto {
     
     public void setTitle(String title) {
         this.title = title;
+    }
+    
+    public String getDescription() {
+        return description;
+    }
+    
+    public void setDescription(String description) {
+        this.description = description;
     }
     
     public String getName() {
@@ -351,6 +362,7 @@ public class StickerSetDto {
             entity.getCreatedAt()
         );
         
+        dto.setDescription(entity.getDescription());
         dto.setState(entity.getState());
         dto.setVisibility(entity.getVisibility());
         dto.setType(entity.getType());
@@ -390,6 +402,7 @@ public class StickerSetDto {
         );
         
         // Добавляем новые поля
+        dto.setDescription(entity.getDescription());
         dto.setState(entity.getState());
         dto.setVisibility(entity.getVisibility());
         dto.setType(entity.getType());

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Repository для работы с лайками стикерсетов
@@ -134,4 +135,21 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
 
     @Query("SELECT DISTINCT l.userId FROM Like l WHERE l.createdAt >= :since")
     List<Long> findDistinctUserIdsByCreatedAtAfter(@Param("since") LocalDateTime since);
+    
+    /**
+     * Поиск лайкнутых стикерсетов пользователя по title или description
+     */
+    @Query("SELECT DISTINCT ss FROM Like l " +
+           "JOIN l.stickerSet ss " +
+           "LEFT JOIN ss.categories c " +
+           "WHERE l.userId = :userId " +
+           "AND (LOWER(ss.title) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "     OR LOWER(ss.description) LIKE LOWER(CONCAT('%', :query, '%'))) " +
+           "AND ss.state = com.example.sticker_art_gallery.model.telegram.StickerSetState.ACTIVE " +
+           "AND ss.visibility = com.example.sticker_art_gallery.model.telegram.StickerSetVisibility.PUBLIC " +
+           "AND (:categoryKeys IS NULL OR c.key IN :categoryKeys)")
+    Page<StickerSet> searchLikedStickerSets(@Param("userId") Long userId,
+                                            @Param("query") String query,
+                                            @Param("categoryKeys") Set<String> categoryKeys,
+                                            Pageable pageable);
 }

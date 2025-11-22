@@ -320,6 +320,7 @@ public class InternalStickerSetController {
                     categoryKeySet,
                     null,  // currentUserId - для межсервисных вызовов не требуется
                     visibilityFilter,
+                    null,  // type - не фильтруем
                     shortInfo,
                     normalizeLanguage(language)
             );

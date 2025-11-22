@@ -65,3 +65,4 @@ COMMENT ON COLUMN stickersets.visibility IS 'Видимость: PRIVATE (тол
 COMMENT ON COLUMN stickersets.type IS 'Источник: USER (пользователь), OFFICIAL (официальный Telegram)';
 COMMENT ON COLUMN stickersets.deleted_at IS 'Дата удаления (только для state=DELETED)';
 
+
