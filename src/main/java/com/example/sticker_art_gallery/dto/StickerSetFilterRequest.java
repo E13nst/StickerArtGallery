@@ -22,6 +22,7 @@ public class StickerSetFilterRequest {
     private Long userId;
     private boolean likedOnly;
     private boolean shortInfo;
+    private boolean preview;
     
     // Getters and Setters
     
@@ -105,6 +106,14 @@ public class StickerSetFilterRequest {
         this.shortInfo = shortInfo;
     }
     
+    public boolean isPreview() {
+        return preview;
+    }
+    
+    public void setPreview(boolean preview) {
+        this.preview = preview;
+    }
+    
     // Методы-помощники
     
     /**
@@ -147,6 +156,7 @@ public class StickerSetFilterRequest {
                 ", userId=" + userId +
                 ", likedOnly=" + likedOnly +
                 ", shortInfo=" + shortInfo +
+                ", preview=" + preview +
                 '}';
     }
 }

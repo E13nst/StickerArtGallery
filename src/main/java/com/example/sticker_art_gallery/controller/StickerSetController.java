@@ -250,12 +250,14 @@ public class StickerSetController {
             @RequestParam(defaultValue = "false") boolean likedOnly,
             @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
             @RequestParam(defaultValue = "false") boolean shortInfo,
+            @Parameter(description = "Режим превью: возвращать только 3 случайных стикера в telegramStickerSetInfo", example = "false")
+            @RequestParam(defaultValue = "false") boolean preview,
             HttpServletRequest request) {
         try {
             // Построение фильтра
             StickerSetFilterRequest filter = buildFilter(
                 page, size, sort, direction, categoryKeys, type, officialOnly,
-                authorId, hasAuthorOnly, userId, likedOnly, shortInfo, request
+                authorId, hasAuthorOnly, userId, likedOnly, shortInfo, preview, request
             );
             
             LOGGER.info("📋 Получение стикерсетов: {}", filter);
@@ -319,6 +321,8 @@ public class StickerSetController {
             @RequestParam(defaultValue = "ALL") com.example.sticker_art_gallery.dto.VisibilityFilter visibility,
             @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
             @RequestParam(defaultValue = "false") boolean shortInfo,
+            @Parameter(description = "Режим превью: возвращать только 3 случайных стикера в telegramStickerSetInfo", example = "false")
+            @RequestParam(defaultValue = "false") boolean preview,
             HttpServletRequest request) {
         try {
             // Проверка авторизации
@@ -370,6 +374,7 @@ public class StickerSetController {
                 effectiveVisibility,
                 type,
                 shortInfo,
+                preview,
                 language
             );
             
@@ -422,6 +427,8 @@ public class StickerSetController {
             @RequestParam(defaultValue = "ALL") com.example.sticker_art_gallery.dto.VisibilityFilter visibility,
             @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
             @RequestParam(defaultValue = "false") boolean shortInfo,
+            @Parameter(description = "Режим превью: возвращать только 3 случайных стикера в telegramStickerSetInfo", example = "false")
+            @RequestParam(defaultValue = "false") boolean preview,
             HttpServletRequest request) {
         try {
             // Проверка авторизации
@@ -471,6 +478,7 @@ public class StickerSetController {
                 effectiveVisibility,
                 type,
                 shortInfo,
+                preview,
                 language
             );
             
@@ -602,6 +610,8 @@ public class StickerSetController {
             @RequestParam(required = false) Long userId,
             @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
             @RequestParam(defaultValue = "false") boolean shortInfo,
+            @Parameter(description = "Режим превью: возвращать только 3 случайных стикера в telegramStickerSetInfo", example = "false")
+            @RequestParam(defaultValue = "false") boolean preview,
             HttpServletRequest request) {
         try {
             LOGGER.info("🔍 Поиск стикерсетов по запросу: '{}', page={}, size={}", query, page, size);
@@ -633,7 +643,8 @@ public class StickerSetController {
                 userId,
                 currentUserId,
                 language,
-                shortInfo
+                shortInfo,
+                preview
             );
             
             LOGGER.debug("✅ Найдено {} стикерсетов по запросу '{}' на странице {} из {}", 
@@ -1617,7 +1628,7 @@ public class StickerSetController {
             int page, int size, String sort, String direction,
             String categoryKeys, com.example.sticker_art_gallery.model.telegram.StickerSetType type, boolean officialOnly, Long authorId,
             boolean hasAuthorOnly, Long userId, boolean likedOnly,
-            boolean shortInfo, HttpServletRequest request) {
+            boolean shortInfo, boolean preview, HttpServletRequest request) {
         
         StickerSetFilterRequest filter = new StickerSetFilterRequest();
         
@@ -1651,6 +1662,7 @@ public class StickerSetController {
         filter.setUserId(userId);
         filter.setLikedOnly(likedOnly);
         filter.setShortInfo(shortInfo);
+        filter.setPreview(preview);
         
         return filter;
     }

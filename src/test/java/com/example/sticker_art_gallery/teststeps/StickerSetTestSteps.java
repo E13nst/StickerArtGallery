@@ -127,8 +127,19 @@ public class StickerSetTestSteps {
     
     @Step("Получить все стикерсеты через API")
     public ResultActions getAllStickerSets(String initData) throws Exception {
-        return mockMvc.perform(get("/api/stickersets")
-                        .header("X-Telegram-Init-Data", initData));
+        return getAllStickerSets(initData, null);
+    }
+    
+    @Step("Получить все стикерсеты через API с параметрами")
+    public ResultActions getAllStickerSets(String initData, java.util.Map<String, String> queryParams) throws Exception {
+        var requestBuilder = get("/api/stickersets")
+                .header("X-Telegram-Init-Data", initData);
+        if (queryParams != null) {
+            for (java.util.Map.Entry<String, String> entry : queryParams.entrySet()) {
+                requestBuilder = requestBuilder.param(entry.getKey(), entry.getValue());
+            }
+        }
+        return mockMvc.perform(requestBuilder);
     }
     
     @Step("Получить только лайкнутые стикерсеты через API")
@@ -219,11 +230,20 @@ public class StickerSetTestSteps {
 
     @Step("Получить стикерсеты с фильтрами officialOnly/authorId/hasAuthorOnly")
     public ResultActions getStickerSetsWithFilters(Boolean officialOnly, Long authorId, Boolean hasAuthorOnly, String initData) throws Exception {
+        return getStickerSetsWithFilters(officialOnly, authorId, hasAuthorOnly, initData, null);
+    }
+    
+    public ResultActions getStickerSetsWithFilters(Boolean officialOnly, Long authorId, Boolean hasAuthorOnly, String initData, java.util.Map<String, String> additionalParams) throws Exception {
         var req = get("/api/stickersets")
                 .header("X-Telegram-Init-Data", initData);
         if (officialOnly != null) req = req.param("officialOnly", officialOnly.toString());
         if (authorId != null) req = req.param("authorId", authorId.toString());
         if (hasAuthorOnly != null) req = req.param("hasAuthorOnly", hasAuthorOnly.toString());
+        if (additionalParams != null) {
+            for (java.util.Map.Entry<String, String> entry : additionalParams.entrySet()) {
+                req = req.param(entry.getKey(), entry.getValue());
+            }
+        }
         return mockMvc.perform(req);
     }
 

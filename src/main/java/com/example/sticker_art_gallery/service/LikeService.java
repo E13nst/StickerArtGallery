@@ -184,14 +184,23 @@ public class LikeService {
      */
     @Transactional(readOnly = true)
     public PageResponse<StickerSetDto> getLikedStickerSets(Long userId, PageRequest pageRequest, String language, boolean shortInfo) {
-        LOGGER.debug("📋 Получение лайкнутых стикерсетов пользователя {} с пагинацией: page={}, size={}, shortInfo={}", 
-                userId, pageRequest.getPage(), pageRequest.getSize(), shortInfo);
+        return getLikedStickerSets(userId, pageRequest, language, shortInfo, false);
+    }
+    
+    /**
+     * Получить лайкнутые стикерсеты пользователя
+     * @param preview возвращать только 3 случайных стикера в telegramStickerSetInfo
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<StickerSetDto> getLikedStickerSets(Long userId, PageRequest pageRequest, String language, boolean shortInfo, boolean preview) {
+        LOGGER.debug("📋 Получение лайкнутых стикерсетов пользователя {} с пагинацией: page={}, size={}, shortInfo={}, preview={}", 
+                userId, pageRequest.getPage(), pageRequest.getSize(), shortInfo, preview);
         
         Page<StickerSet> likedStickerSets = likeRepository.findLikedStickerSetsByUserId(userId, pageRequest.toPageable());
         
-        // Обогащаем данными из Telegram Bot API с учетом shortInfo
+        // Обогащаем данными из Telegram Bot API с учетом shortInfo и preview
         List<StickerSetDto> dtos = stickerSetService.enrichWithBotApiDataAndCategories(
-            likedStickerSets.getContent(), language, userId, shortInfo);
+            likedStickerSets.getContent(), language, userId, shortInfo, preview);
         
         return PageResponse.of(likedStickerSets, dtos);
     }
@@ -202,16 +211,26 @@ public class LikeService {
     @Transactional(readOnly = true)
     public PageResponse<StickerSetDto> getLikedStickerSetsByCategories(Long userId, String[] categoryKeys, 
                                                                         PageRequest pageRequest, String language, boolean shortInfo) {
-        LOGGER.debug("📋 Получение лайкнутых стикерсетов пользователя {} по категориям {} с пагинацией: page={}, size={}, shortInfo={}", 
-                userId, categoryKeys, pageRequest.getPage(), pageRequest.getSize(), shortInfo);
+        return getLikedStickerSetsByCategories(userId, categoryKeys, pageRequest, language, shortInfo, false);
+    }
+    
+    /**
+     * Получить лайкнутые стикерсеты пользователя по категориям
+     * @param preview возвращать только 3 случайных стикера в telegramStickerSetInfo
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<StickerSetDto> getLikedStickerSetsByCategories(Long userId, String[] categoryKeys, 
+                                                                        PageRequest pageRequest, String language, boolean shortInfo, boolean preview) {
+        LOGGER.debug("📋 Получение лайкнутых стикерсетов пользователя {} по категориям {} с пагинацией: page={}, size={}, shortInfo={}, preview={}", 
+                userId, categoryKeys, pageRequest.getPage(), pageRequest.getSize(), shortInfo, preview);
         
         List<String> categoryKeyList = java.util.Arrays.asList(categoryKeys);
         Page<StickerSet> likedStickerSets = likeRepository.findLikedStickerSetsByUserIdAndCategoryKeys(
                 userId, categoryKeyList, pageRequest.toPageable());
         
-        // Обогащаем данными из Telegram Bot API с учетом shortInfo
+        // Обогащаем данными из Telegram Bot API с учетом shortInfo и preview
         List<StickerSetDto> dtos = stickerSetService.enrichWithBotApiDataAndCategories(
-            likedStickerSets.getContent(), language, userId, shortInfo);
+            likedStickerSets.getContent(), language, userId, shortInfo, preview);
         
         return PageResponse.of(likedStickerSets, dtos);
     }
@@ -224,15 +243,27 @@ public class LikeService {
                                                                Set<String> categoryKeys,
                                                                PageRequest pageRequest, 
                                                                String language, boolean shortInfo) {
-        LOGGER.debug("🔍 Поиск лайкнутых стикерсетов пользователя {} по query='{}' с пагинацией: page={}, size={}, shortInfo={}", 
-                userId, query, pageRequest.getPage(), pageRequest.getSize(), shortInfo);
+        return searchLikedStickerSets(userId, query, categoryKeys, pageRequest, language, shortInfo, false);
+    }
+    
+    /**
+     * Поиск лайкнутых стикерсетов пользователя по query (title или description)
+     * @param preview возвращать только 3 случайных стикера в telegramStickerSetInfo
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<StickerSetDto> searchLikedStickerSets(Long userId, String query, 
+                                                               Set<String> categoryKeys,
+                                                               PageRequest pageRequest, 
+                                                               String language, boolean shortInfo, boolean preview) {
+        LOGGER.debug("🔍 Поиск лайкнутых стикерсетов пользователя {} по query='{}' с пагинацией: page={}, size={}, shortInfo={}, preview={}", 
+                userId, query, pageRequest.getPage(), pageRequest.getSize(), shortInfo, preview);
         
         Page<StickerSet> likedStickerSets = likeRepository.searchLikedStickerSets(
                 userId, query, categoryKeys, pageRequest.toPageable());
         
-        // Обогащаем данными из Telegram Bot API с учетом shortInfo
+        // Обогащаем данными из Telegram Bot API с учетом shortInfo и preview
         List<StickerSetDto> dtos = stickerSetService.enrichWithBotApiDataAndCategories(
-            likedStickerSets.getContent(), language, userId, shortInfo);
+            likedStickerSets.getContent(), language, userId, shortInfo, preview);
         
         return PageResponse.of(likedStickerSets, dtos);
     }

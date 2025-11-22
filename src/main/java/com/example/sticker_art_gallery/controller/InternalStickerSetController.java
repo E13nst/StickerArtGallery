@@ -297,11 +297,13 @@ public class InternalStickerSetController {
             @RequestParam(required = false) String categoryKeys,
             @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
             @RequestParam(defaultValue = "false") boolean shortInfo,
+            @Parameter(description = "Режим превью: возвращать только 3 случайных стикера в telegramStickerSetInfo", example = "false")
+            @RequestParam(defaultValue = "false") boolean preview,
             HttpServletRequest request) {
         try {
             String language = resolveLanguage(request);
-            LOGGER.info("🔍 [internal] Поиск авторских стикерсетов: authorId={}, page={}, size={}, sort={}, direction={}, categoryKeys={}, shortInfo={}, language={}",
-                    authorId, page, size, sort, direction, categoryKeys, shortInfo, language);
+            LOGGER.info("🔍 [internal] Поиск авторских стикерсетов: authorId={}, page={}, size={}, sort={}, direction={}, categoryKeys={}, shortInfo={}, preview={}, language={}",
+                    authorId, page, size, sort, direction, categoryKeys, shortInfo, preview, language);
 
             PageRequest pageRequest = new PageRequest();
             pageRequest.setPage(page);
@@ -322,6 +324,7 @@ public class InternalStickerSetController {
                     visibilityFilter,
                     null,  // type - не фильтруем
                     shortInfo,
+                    preview,
                     normalizeLanguage(language)
             );
 

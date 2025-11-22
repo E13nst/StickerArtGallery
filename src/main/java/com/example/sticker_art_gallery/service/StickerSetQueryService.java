@@ -71,7 +71,8 @@ public class StickerSetQueryService {
                 filter.getCategoryKeys().toArray(new String[0]),
                 filter.getPageRequest(),
                 filter.getLanguage(),
-                filter.isShortInfo()
+                filter.isShortInfo(),
+                filter.isPreview()
             );
         } else {
             // Только лайкнутые стикерсеты
@@ -79,7 +80,8 @@ public class StickerSetQueryService {
                 filter.getCurrentUserId(),
                 filter.getPageRequest(),
                 filter.getLanguage(),
-                filter.isShortInfo()
+                filter.isShortInfo(),
+                filter.isPreview()
             );
         }
     }
@@ -102,7 +104,8 @@ public class StickerSetQueryService {
                 filter.getAuthorId(),
                 filter.isHasAuthorOnly(),
                 filter.getUserId(),
-                filter.isShortInfo()
+                filter.isShortInfo(),
+                filter.isPreview()
             );
         } else {
             // Без фильтрации по категориям
@@ -114,7 +117,8 @@ public class StickerSetQueryService {
                 filter.getAuthorId(),
                 filter.isHasAuthorOnly(),
                 filter.getUserId(),
-                filter.isShortInfo()
+                filter.isShortInfo(),
+                filter.isPreview()
             );
         }
     }
