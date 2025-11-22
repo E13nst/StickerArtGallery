@@ -940,6 +940,34 @@ public class StickerSetController {
         try {
             LOGGER.info("🏷️ Обновление категорий стикерсета с ID: {}, категории: {}", id, categoryKeys);
             
+            // Получаем стикерсет для проверки прав доступа
+            StickerSet existingStickerSet = stickerSetService.findById(id);
+            if (existingStickerSet == null) {
+                LOGGER.warn("⚠️ Стикерсет с ID {} не найден для обновления категорий", id);
+                return ResponseEntity.notFound().build();
+            }
+            
+            // Проверяем права доступа
+            org.springframework.security.core.Authentication authentication = 
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            
+            if (authentication != null && authentication.isAuthenticated()) {
+                Long currentUserId = Long.valueOf(authentication.getName());
+                
+                // Проверяем: админ, владелец стикерсета или автор
+                boolean isAdmin = authentication.getAuthorities().stream()
+                    .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+                boolean isOwner = existingStickerSet.getUserId() != null && existingStickerSet.getUserId().equals(currentUserId);
+                boolean isAuthor = existingStickerSet.getAuthorId() != null && existingStickerSet.getAuthorId().equals(currentUserId);
+                
+                if (!isAdmin && !isOwner && !isAuthor) {
+                    LOGGER.warn("⚠️ Пользователь {} попытался обновить категории чужого стикерсета {}", currentUserId, id);
+                    return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
+                }
+                
+                LOGGER.debug("✅ Проверка прав пройдена: isAdmin={}, isOwner={}, isAuthor={}", isAdmin, isOwner, isAuthor);
+            }
+            
             StickerSet updatedStickerSet = stickerSetService.updateCategories(id, categoryKeys);
             
             LOGGER.info("✅ Категории стикерсета {} успешно обновлены", id);

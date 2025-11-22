@@ -313,6 +313,11 @@ public class StickerSetDto {
             actions.add(StickerSetAction.DELETE);
         }
         
+        // EDIT_CATEGORIES - для автора, владельца и админа активных и заблокированных стикерсетов (не для удаленных)
+        if (state != StickerSetState.DELETED && (isOwner || isAuthor || isAdmin)) {
+            actions.add(StickerSetAction.EDIT_CATEGORIES);
+        }
+        
         // BLOCK/UNBLOCK - только для админа, показывается только одно из двух в зависимости от состояния
         if (isAdmin) {
             if (state == StickerSetState.BLOCKED) {
