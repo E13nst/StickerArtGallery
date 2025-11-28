@@ -32,6 +32,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -281,12 +282,22 @@ public class InternalStickerSetController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Проверка выполнена успешно",
             content = @Content(schema = @Schema(implementation = Map.class),
-                examples = @ExampleObject(value = """
-                    {
-                        "exists": true,
-                        "name": "taxiderm"
-                    }
-                    """))),
+                examples = {
+                    @ExampleObject(name = "Стикерсет найден", value = """
+                        {
+                            "exists": true,
+                            "name": "taxiderm",
+                            "id": 123,
+                            "title": "Taxiderm Stickers"
+                        }
+                        """),
+                    @ExampleObject(name = "Стикерсет не найден", value = """
+                        {
+                            "exists": false,
+                            "name": "taxiderm"
+                        }
+                        """)
+                })),
         @ApiResponse(responseCode = "400", description = "Некорректные параметры (не указаны name или url)"),
         @ApiResponse(responseCode = "401", description = "Межсервисная авторизация не пройдена"),
         @ApiResponse(responseCode = "403", description = "Нет прав для выполнения операции"),
@@ -352,14 +363,24 @@ public class InternalStickerSetController {
             LOGGER.info("🔍 [internal] Проверка наличия стикерсета '{}' в галерее", stickerSetName);
 
             // Проверяем наличие в базе данных
-            boolean exists = stickerSetRepository.findByNameIgnoreCase(stickerSetName).isPresent();
+            var stickerSetOpt = stickerSetRepository.findByNameIgnoreCase(stickerSetName);
+            boolean exists = stickerSetOpt.isPresent();
 
-            Map<String, Object> response = Map.of(
-                    "exists", exists,
-                    "name", stickerSetName
-            );
+            Map<String, Object> response = new HashMap<>();
+            response.put("exists", exists);
+            response.put("name", stickerSetName);
+            
+            // Если стикерсет найден, добавляем id и title
+            if (exists) {
+                StickerSet stickerSet = stickerSetOpt.get();
+                response.put("id", stickerSet.getId());
+                response.put("title", stickerSet.getTitle());
+                LOGGER.debug("✅ [internal] Результат проверки стикерсета '{}': exists=true, id={}, title='{}'", 
+                        stickerSetName, stickerSet.getId(), stickerSet.getTitle());
+            } else {
+                LOGGER.debug("✅ [internal] Результат проверки стикерсета '{}': exists=false", stickerSetName);
+            }
 
-            LOGGER.debug("✅ [internal] Результат проверки стикерсета '{}': exists={}", stickerSetName, exists);
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
