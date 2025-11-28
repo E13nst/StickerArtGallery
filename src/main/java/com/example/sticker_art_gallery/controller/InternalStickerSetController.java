@@ -5,6 +5,7 @@ import com.example.sticker_art_gallery.dto.PageRequest;
 import com.example.sticker_art_gallery.dto.PageResponse;
 import com.example.sticker_art_gallery.dto.StickerSetDto;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
+import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
 import com.example.sticker_art_gallery.service.telegram.StickerSetService;
 import jakarta.servlet.http.HttpServletRequest;
 import io.swagger.v3.oas.annotations.Operation;
@@ -49,9 +50,11 @@ public class InternalStickerSetController {
     private static final Logger LOGGER = LoggerFactory.getLogger(InternalStickerSetController.class);
 
     private final StickerSetService stickerSetService;
+    private final StickerSetRepository stickerSetRepository;
 
-    public InternalStickerSetController(StickerSetService stickerSetService) {
+    public InternalStickerSetController(StickerSetService stickerSetService, StickerSetRepository stickerSetRepository) {
         this.stickerSetService = stickerSetService;
+        this.stickerSetRepository = stickerSetRepository;
     }
 
     @GetMapping("/{id}")
@@ -261,6 +264,111 @@ public class InternalStickerSetController {
             LOGGER.error("❌ [internal] Ошибка при скрытии стикерсета {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(java.util.Map.of("error", "Внутренняя ошибка сервера"));
+        }
+    }
+
+    @GetMapping("/check")
+    @PreAuthorize("hasRole('INTERNAL')")
+    @Operation(
+        summary = "Проверить наличие стикерсета в галерее (межсервисный вызов)",
+        description = """
+            Межсервисный эндпоинт для проверки наличия стикерсета в галерее по имени или URL.
+            Принимает либо параметр name (имя стикерсета), либо url (URL вида https://t.me/addstickers/taxiderm).
+            Если передан URL, извлекает имя стикерсета из него.
+            Возвращает информацию о наличии стикерсета в базе данных.
+            """
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Проверка выполнена успешно",
+            content = @Content(schema = @Schema(implementation = Map.class),
+                examples = @ExampleObject(value = """
+                    {
+                        "exists": true,
+                        "name": "taxiderm"
+                    }
+                    """))),
+        @ApiResponse(responseCode = "400", description = "Некорректные параметры (не указаны name или url)"),
+        @ApiResponse(responseCode = "401", description = "Межсервисная авторизация не пройдена"),
+        @ApiResponse(responseCode = "403", description = "Нет прав для выполнения операции"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<Map<String, Object>> checkStickerSetExists(
+            @Parameter(description = "Имя стикерсета", example = "taxiderm")
+            @RequestParam(required = false) String name,
+            @Parameter(description = "URL стикерсета", example = "https://t.me/addstickers/taxiderm")
+            @RequestParam(required = false) String url) {
+        try {
+            // Валидация: хотя бы один параметр должен быть передан
+            if ((name == null || name.trim().isEmpty()) && (url == null || url.trim().isEmpty())) {
+                LOGGER.warn("⚠️ [internal] Запрос проверки стикерсета без параметров name или url");
+                return ResponseEntity.badRequest()
+                        .body(Map.of(
+                                "error", "Validation error",
+                                "message", "Either 'name' or 'url' parameter must be provided"
+                        ));
+            }
+
+            String stickerSetName;
+            
+            // Если передан URL, извлекаем имя из него
+            if (url != null && !url.trim().isEmpty()) {
+                try {
+                    CreateStickerSetDto dto = new CreateStickerSetDto();
+                    stickerSetName = dto.extractStickerSetNameFromUrl(url);
+                    LOGGER.debug("🔍 [internal] Извлечено имя '{}' из URL '{}'", stickerSetName, url);
+                } catch (IllegalArgumentException e) {
+                    LOGGER.warn("⚠️ [internal] Некорректный URL стикерсета: {}", e.getMessage());
+                    return ResponseEntity.badRequest()
+                            .body(Map.of(
+                                    "error", "Validation error",
+                                    "message", "Invalid sticker set URL: " + e.getMessage()
+                            ));
+                }
+            } else {
+                // Используем переданное имя
+                if (name == null || name.trim().isEmpty()) {
+                    LOGGER.warn("⚠️ [internal] Пустое имя стикерсета");
+                    return ResponseEntity.badRequest()
+                            .body(Map.of(
+                                    "error", "Validation error",
+                                    "message", "Sticker set name cannot be empty"
+                            ));
+                }
+                stickerSetName = name.trim();
+            }
+
+            // Нормализуем имя (приводим к нижнему регистру)
+            stickerSetName = stickerSetName.toLowerCase().trim();
+            
+            if (stickerSetName.isEmpty()) {
+                LOGGER.warn("⚠️ [internal] Пустое имя стикерсета после нормализации");
+                return ResponseEntity.badRequest()
+                        .body(Map.of(
+                                "error", "Validation error",
+                                "message", "Sticker set name cannot be empty"
+                        ));
+            }
+
+            LOGGER.info("🔍 [internal] Проверка наличия стикерсета '{}' в галерее", stickerSetName);
+
+            // Проверяем наличие в базе данных
+            boolean exists = stickerSetRepository.findByNameIgnoreCase(stickerSetName).isPresent();
+
+            Map<String, Object> response = Map.of(
+                    "exists", exists,
+                    "name", stickerSetName
+            );
+
+            LOGGER.debug("✅ [internal] Результат проверки стикерсета '{}': exists={}", stickerSetName, exists);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            LOGGER.error("❌ [internal] Ошибка при проверке наличия стикерсета", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "error", "Internal error",
+                            "message", "Unexpected error while checking stickerset existence"
+                    ));
         }
     }
 
