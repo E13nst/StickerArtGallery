@@ -109,7 +109,8 @@ public class CreateStickerSetDto {
     public void setIsPublic(Boolean isPublic) {
         this.isPublic = isPublic;
         // Автоматически маппим в visibility для обратной совместимости
-        if (isPublic != null) {
+        // Но только если visibility еще не установлен (приоритет у visibility)
+        if (isPublic != null && this.visibility == null) {
             this.visibility = isPublic ? StickerSetVisibility.PUBLIC : StickerSetVisibility.PRIVATE;
         }
     }

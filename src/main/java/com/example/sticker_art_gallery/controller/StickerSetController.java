@@ -676,12 +676,19 @@ public class StickerSetController {
               "name": "https://t.me/addstickers/my_pack_by_bot",
               "title": "Мои стикеры",
               "categoryKeys": ["animals", "cute"],
-              "isPublic": true
+              "visibility": "PUBLIC"
             }
             ```
             
             Поле `name` обязательно. Остальные поля опциональны: `title` подтягивается из Telegram Bot API, если не указано;
-            `isPublic` по умолчанию `true`. Пользователь определяется по заголовку `X-Telegram-Init-Data`.
+            `visibility` по умолчанию `PUBLIC` (если не указаны ни `visibility`, ни `isPublic`). 
+            Пользователь определяется по заголовку `X-Telegram-Init-Data`.
+            
+            **Параметры видимости**
+            - `visibility`: "PUBLIC" (виден всем в галерее) или "PRIVATE" (виден только владельцу)
+            - `isPublic`: устаревшее поле, поддерживается для обратной совместимости. Используйте `visibility` вместо него.
+            - Если указаны оба поля, приоритет у `visibility`.
+            - Если не указаны ни `visibility`, ни `isPublic`, используется `PUBLIC` по умолчанию.
             
             **Результат**
             Возвращает полный `StickerSetDto`, идентичный ответу `GET /api/stickersets/{id}` (включая категории, счётчики и данные Telegram Bot API).
@@ -774,14 +781,24 @@ public class StickerSetController {
         required = true,
         content = @Content(
             schema = @Schema(implementation = CreateStickerSetDto.class),
-            examples = @ExampleObject(value = """
-                {
-                  "name": "https://t.me/addstickers/my_pack_by_bot",
-                  "title": "Мои стикеры",
-                  "categoryKeys": ["animals", "cute"],
-                  "isPublic": true
-                }
-                """)
+            examples = {
+                @ExampleObject(name = "С visibility (рекомендуется)", value = """
+                    {
+                      "name": "https://t.me/addstickers/my_pack_by_bot",
+                      "title": "Мои стикеры",
+                      "categoryKeys": ["animals", "cute"],
+                      "visibility": "PUBLIC"
+                    }
+                    """),
+                @ExampleObject(name = "С isPublic (устарело, для обратной совместимости)", value = """
+                    {
+                      "name": "https://t.me/addstickers/my_pack_by_bot",
+                      "title": "Мои стикеры",
+                      "categoryKeys": ["animals", "cute"],
+                      "isPublic": true
+                    }
+                    """)
+            }
         )
     )
     public ResponseEntity<?> createStickerSet(

@@ -109,6 +109,12 @@ public class InternalStickerSetController {
         description = """
             Межсервисный эндпоинт для регистрации стикерсета Telegram в галерее.
             Токен сервиса должен быть передан в заголовке `X-Service-Token`.
+            
+            **Параметры видимости**
+            - `visibility`: "PUBLIC" (виден всем в галерее) или "PRIVATE" (виден только владельцу)
+            - `isPublic`: устаревшее поле, поддерживается для обратной совместимости. Используйте `visibility` вместо него.
+            - Если указаны оба поля, приоритет у `visibility`.
+            - Если не указаны ни `visibility`, ни `isPublic`, используется `PRIVATE` по умолчанию.
             """,
         parameters = {
             @Parameter(
@@ -132,14 +138,24 @@ public class InternalStickerSetController {
         required = true,
         content = @Content(
             schema = @Schema(implementation = CreateStickerSetDto.class),
-            examples = @ExampleObject(value = """
-                {
-                  "name": "https://t.me/addstickers/my_pack_by_bot",
-                  "title": "Мои стикеры",
-                  "categoryKeys": ["animals", "cute"],
-                  "isPublic": true
-                }
-                """)
+            examples = {
+                @ExampleObject(name = "С visibility (рекомендуется)", value = """
+                    {
+                      "name": "https://t.me/addstickers/my_pack_by_bot",
+                      "title": "Мои стикеры",
+                      "categoryKeys": ["animals", "cute"],
+                      "visibility": "PRIVATE"
+                    }
+                    """),
+                @ExampleObject(name = "С isPublic (устарело, для обратной совместимости)", value = """
+                    {
+                      "name": "https://t.me/addstickers/my_pack_by_bot",
+                      "title": "Мои стикеры",
+                      "categoryKeys": ["animals", "cute"],
+                      "isPublic": false
+                    }
+                    """)
+            }
         )
     )
     public ResponseEntity<?> createStickerSetForUser(
