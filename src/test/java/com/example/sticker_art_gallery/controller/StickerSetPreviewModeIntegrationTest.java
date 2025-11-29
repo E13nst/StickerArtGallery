@@ -74,15 +74,15 @@ class StickerSetPreviewModeIntegrationTest {
 
     @Test
     @Story("Preview mode")
-    @DisplayName("preview=true возвращает только 3 случайных стикера")
+    @DisplayName("preview=true возвращает только 1 случайный стикер")
     @Severity(SeverityLevel.NORMAL)
-    void previewMode_ShouldReturnOnlyThreeStickers() throws Exception {
+    void previewMode_ShouldReturnOnlyOneSticker() throws Exception {
         java.util.Map<String, String> params = new java.util.HashMap<>();
         params.put("preview", "true");
         testSteps.getAllStickerSets(initData, params)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].telegramStickerSetInfo.stickers").isArray())
-                .andExpect(jsonPath("$.content[0].telegramStickerSetInfo.stickers.length()").value(3))
+                .andExpect(jsonPath("$.content[0].telegramStickerSetInfo.stickers.length()").value(1))
                 .andExpect(jsonPath("$.content[0].telegramStickerSetInfo.name").value(STICKERSET_NAME))
                 .andExpect(jsonPath("$.content[0].telegramStickerSetInfo.title").value("Test Preview Pack"));
     }
@@ -109,7 +109,7 @@ class StickerSetPreviewModeIntegrationTest {
         params.put("preview", "true");
         testSteps.getStickerSetsWithFilters(null, null, null, initData, params)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].telegramStickerSetInfo.stickers.length()").value(3));
+                .andExpect(jsonPath("$.content[0].telegramStickerSetInfo.stickers.length()").value(1));
     }
 
     /**

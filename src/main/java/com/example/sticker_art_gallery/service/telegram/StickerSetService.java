@@ -503,7 +503,7 @@ public class StickerSetService {
      * @param visibilityFilter фильтр видимости (ALL/PUBLIC/PRIVATE)
      * @param type фильтр по типу стикерсета (может быть null)
      * @param shortInfo возвращать только краткую информацию без telegramStickerSetInfo
-     * @param preview возвращать только 3 случайных стикера в telegramStickerSetInfo
+     * @param preview возвращать только 1 случайный стикер в telegramStickerSetInfo
      * @param language язык для локализации категорий
      */
     public PageResponse<StickerSetDto> findByUserIdWithPagination(Long userId,
@@ -549,7 +549,7 @@ public class StickerSetService {
      * @param visibilityFilter фильтр видимости (ALL/PUBLIC/PRIVATE)
      * @param type фильтр по типу стикерсета (может быть null)
      * @param shortInfo возвращать только краткую информацию без telegramStickerSetInfo
-     * @param preview возвращать только 3 случайных стикера в telegramStickerSetInfo
+     * @param preview возвращать только 1 случайный стикер в telegramStickerSetInfo
      * @param language язык для локализации категорий
      */
     public PageResponse<StickerSetDto> findByAuthorIdWithPagination(Long authorId,
@@ -1016,7 +1016,7 @@ public class StickerSetService {
     
     /**
      * Фильтрует стикеры в telegramStickerSetInfo для режима превью.
-     * Оставляет только 3 случайных стикера из полного списка.
+     * Оставляет только 1 случайный стикер из полного списка.
      */
     private Object filterStickersForPreview(Object telegramStickerSetInfo) {
         if (telegramStickerSetInfo instanceof java.util.Map) {
@@ -1028,12 +1028,12 @@ public class StickerSetService {
                 @SuppressWarnings("unchecked")
                 java.util.List<Object> stickers = (java.util.List<Object>) stickersObj;
                 
-                if (stickers.size() > 3) {
-                    // Выбираем 3 случайных стикера
+                if (stickers.size() > 1) {
+                    // Выбираем 1 случайный стикер
                     java.util.List<Object> shuffled = new java.util.ArrayList<>(stickers);
                     java.util.Collections.shuffle(shuffled);
-                    infoMap.put("stickers", shuffled.subList(0, 3));
-                    LOGGER.debug("🎲 Фильтрация стикеров для превью: {} -> 3 случайных", stickers.size());
+                    infoMap.put("stickers", shuffled.subList(0, 1));
+                    LOGGER.debug("🎲 Фильтрация стикеров для превью: {} -> 1 случайный", stickers.size());
                 }
             }
             return infoMap;
@@ -1043,7 +1043,7 @@ public class StickerSetService {
     
     /**
      * Обогащает один стикерсет данными из Bot API и категориями (безопасно)
-     * @param preview если true, возвращает только 3 случайных стикера вместо полного списка
+     * @param preview если true, возвращает только 1 случайный стикер вместо полного списка
      */
     private StickerSetDto enrichSingleStickerSetSafelyWithCategories(StickerSet stickerSet, String language, Long currentUserId, boolean shortInfo, boolean preview) {
         boolean isAdmin = isCurrentUserAdmin();

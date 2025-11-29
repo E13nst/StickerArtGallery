@@ -23,8 +23,8 @@ class StickerSetPreviewFilterTest {
     private StickerSetService stickerSetService;
 
     @Test
-    @DisplayName("filterStickersForPreview должен оставить только 3 стикера из 10")
-    void filterStickersForPreview_WithTenStickers_ShouldReturnThree() {
+    @DisplayName("filterStickersForPreview должен оставить только 1 стикер из 10")
+    void filterStickersForPreview_WithTenStickers_ShouldReturnOne() {
         // Given: создаем объект с 10 стикерами
         Map<String, Object> telegramInfo = createTelegramInfoWithStickers(10);
         
@@ -46,7 +46,7 @@ class StickerSetPreviewFilterTest {
             List<Object> stickers = (List<Object>) resultMap.get("stickers");
             
             assertNotNull(stickers);
-            assertEquals(3, stickers.size(), "Должно быть ровно 3 стикера");
+            assertEquals(1, stickers.size(), "Должен быть ровно 1 стикер");
             
             // Проверяем, что остальные поля не изменились
             assertEquals("test_pack", resultMap.get("name"));
@@ -58,10 +58,10 @@ class StickerSetPreviewFilterTest {
     }
 
     @Test
-    @DisplayName("filterStickersForPreview должен вернуть все стикеры если их меньше 3")
-    void filterStickersForPreview_WithLessThanThreeStickers_ShouldReturnAll() {
-        // Given: создаем объект с 2 стикерами
-        Map<String, Object> telegramInfo = createTelegramInfoWithStickers(2);
+    @DisplayName("filterStickersForPreview должен вернуть все стикеры если их меньше или равно 1")
+    void filterStickersForPreview_WithLessThanOrEqualToOneSticker_ShouldReturnAll() {
+        // Given: создаем объект с 1 стикером
+        Map<String, Object> telegramInfo = createTelegramInfoWithStickers(1);
         
         // When: применяем фильтрацию
         try {
@@ -80,7 +80,7 @@ class StickerSetPreviewFilterTest {
             List<Object> stickers = (List<Object>) resultMap.get("stickers");
             
             assertNotNull(stickers);
-            assertEquals(2, stickers.size(), "Должны вернуться все 2 стикера");
+            assertEquals(1, stickers.size(), "Должен вернуться 1 стикер");
             
         } catch (Exception e) {
             fail("Ошибка при вызове метода через рефлексию: " + e.getMessage());
@@ -145,9 +145,9 @@ class StickerSetPreviewFilterTest {
             
             // Then: с высокой вероятностью результаты должны отличаться
             // (хотя теоретически могут совпасть случайно)
-            // Проверяем, что оба результата содержат 3 стикера
-            assertEquals(3, firstResultStickerIds.size());
-            assertEquals(3, secondResultStickerIds.size());
+            // Проверяем, что оба результата содержат 1 стикер
+            assertEquals(1, firstResultStickerIds.size());
+            assertEquals(1, secondResultStickerIds.size());
             
         } catch (Exception e) {
             fail("Ошибка при вызове метода через рефлексию: " + e.getMessage());
@@ -204,4 +204,6 @@ class StickerSetPreviewFilterTest {
         return copy;
     }
 }
+
+
 

@@ -250,7 +250,7 @@ public class StickerSetController {
             @RequestParam(defaultValue = "false") boolean likedOnly,
             @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
             @RequestParam(defaultValue = "false") boolean shortInfo,
-            @Parameter(description = "Режим превью: возвращать только 3 случайных стикера в telegramStickerSetInfo", example = "false")
+            @Parameter(description = "Режим превью: возвращать только 1 случайный стикер в telegramStickerSetInfo", example = "false")
             @RequestParam(defaultValue = "false") boolean preview,
             HttpServletRequest request) {
         try {
@@ -321,7 +321,7 @@ public class StickerSetController {
             @RequestParam(defaultValue = "ALL") com.example.sticker_art_gallery.dto.VisibilityFilter visibility,
             @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
             @RequestParam(defaultValue = "false") boolean shortInfo,
-            @Parameter(description = "Режим превью: возвращать только 3 случайных стикера в telegramStickerSetInfo", example = "false")
+            @Parameter(description = "Режим превью: возвращать только 1 случайный стикер в telegramStickerSetInfo", example = "false")
             @RequestParam(defaultValue = "false") boolean preview,
             HttpServletRequest request) {
         try {
@@ -427,7 +427,7 @@ public class StickerSetController {
             @RequestParam(defaultValue = "ALL") com.example.sticker_art_gallery.dto.VisibilityFilter visibility,
             @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
             @RequestParam(defaultValue = "false") boolean shortInfo,
-            @Parameter(description = "Режим превью: возвращать только 3 случайных стикера в telegramStickerSetInfo", example = "false")
+            @Parameter(description = "Режим превью: возвращать только 1 случайный стикер в telegramStickerSetInfo", example = "false")
             @RequestParam(defaultValue = "false") boolean preview,
             HttpServletRequest request) {
         try {
@@ -610,7 +610,7 @@ public class StickerSetController {
             @RequestParam(required = false) Long userId,
             @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
             @RequestParam(defaultValue = "false") boolean shortInfo,
-            @Parameter(description = "Режим превью: возвращать только 3 случайных стикера в telegramStickerSetInfo", example = "false")
+            @Parameter(description = "Режим превью: возвращать только 1 случайный стикер в telegramStickerSetInfo", example = "false")
             @RequestParam(defaultValue = "false") boolean preview,
             HttpServletRequest request) {
         try {

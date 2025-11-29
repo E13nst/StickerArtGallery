@@ -189,7 +189,7 @@ public class LikeService {
     
     /**
      * Получить лайкнутые стикерсеты пользователя
-     * @param preview возвращать только 3 случайных стикера в telegramStickerSetInfo
+     * @param preview возвращать только 1 случайный стикер в telegramStickerSetInfo
      */
     @Transactional(readOnly = true)
     public PageResponse<StickerSetDto> getLikedStickerSets(Long userId, PageRequest pageRequest, String language, boolean shortInfo, boolean preview) {
@@ -216,7 +216,7 @@ public class LikeService {
     
     /**
      * Получить лайкнутые стикерсеты пользователя по категориям
-     * @param preview возвращать только 3 случайных стикера в telegramStickerSetInfo
+     * @param preview возвращать только 1 случайный стикер в telegramStickerSetInfo
      */
     @Transactional(readOnly = true)
     public PageResponse<StickerSetDto> getLikedStickerSetsByCategories(Long userId, String[] categoryKeys, 
@@ -248,7 +248,7 @@ public class LikeService {
     
     /**
      * Поиск лайкнутых стикерсетов пользователя по query (title или description)
-     * @param preview возвращать только 3 случайных стикера в telegramStickerSetInfo
+     * @param preview возвращать только 1 случайный стикер в telegramStickerSetInfo
      */
     @Transactional(readOnly = true)
     public PageResponse<StickerSetDto> searchLikedStickerSets(Long userId, String query, 

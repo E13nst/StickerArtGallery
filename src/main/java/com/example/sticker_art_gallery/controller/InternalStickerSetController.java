@@ -442,7 +442,7 @@ public class InternalStickerSetController {
             @RequestParam(required = false) String categoryKeys,
             @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
             @RequestParam(defaultValue = "false") boolean shortInfo,
-            @Parameter(description = "Режим превью: возвращать только 3 случайных стикера в telegramStickerSetInfo", example = "false")
+            @Parameter(description = "Режим превью: возвращать только 1 случайный стикер в telegramStickerSetInfo", example = "false")
             @RequestParam(defaultValue = "false") boolean preview,
             HttpServletRequest request) {
         try {
