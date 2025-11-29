@@ -1,7 +1,8 @@
 package com.example.sticker_art_gallery.controller;
 
-import com.example.sticker_art_gallery.dto.UserDto;
+import com.example.sticker_art_gallery.dto.*;
 import com.example.sticker_art_gallery.model.user.UserEntity;
+import com.example.sticker_art_gallery.service.statistics.StatisticsService;
 import com.example.sticker_art_gallery.service.user.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -12,6 +13,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,10 +37,12 @@ public class UserController {
     private static final Logger LOGGER = LoggerFactory.getLogger(UserController.class);
     
     private final UserService userService;
+    private final StatisticsService statisticsService;
     
     @Autowired
-    public UserController(UserService userService) {
+    public UserController(UserService userService, StatisticsService statisticsService) {
         this.userService = userService;
+        this.statisticsService = statisticsService;
     }
     
     /**
@@ -128,6 +133,89 @@ public class UserController {
             return ResponseEntity.ok(photoData);
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при получении фото профиля пользователя {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Получить статистику по пользователям
+     */
+    @GetMapping("/statistics")
+    @PreAuthorize("permitAll()")
+    @Operation(
+        summary = "Получить статистику по пользователям",
+        description = "Возвращает статистику по пользователям: общее количество, новые за день/неделю, активные за день/неделю"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Статистика получена",
+            content = @Content(schema = @Schema(implementation = UserStatisticsDto.class),
+                examples = @ExampleObject(value = """
+                    {
+                        "total": 1250,
+                        "daily": 15,
+                        "weekly": 98,
+                        "activeDaily": 45,
+                        "activeWeekly": 320
+                    }
+                    """))),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<UserStatisticsDto> getUserStatistics() {
+        try {
+            LOGGER.info("📊 Запрос статистики по пользователям");
+            UserStatisticsDto statistics = statisticsService.getUserStatistics();
+            return ResponseEntity.ok(statistics);
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при получении статистики пользователей: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Получить рейтинг пользователей по количеству созданных стикерсетов
+     */
+    @GetMapping("/leaderboard")
+    @PreAuthorize("permitAll()")
+    @Operation(
+        summary = "Получить рейтинг пользователей",
+        description = "Возвращает рейтинг пользователей по количеству созданных стикерсетов с разделением на публичные и приватные"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Рейтинг получен",
+            content = @Content(schema = @Schema(implementation = PageResponse.class),
+                examples = @ExampleObject(value = """
+                    {
+                        "content": [
+                            {
+                                "userId": 123456789,
+                                "username": "testuser",
+                                "firstName": "Test",
+                                "lastName": "User",
+                                "totalCount": 42,
+                                "publicCount": 28,
+                                "privateCount": 14
+                            }
+                        ],
+                        "page": 0,
+                        "size": 20,
+                        "totalElements": 150,
+                        "totalPages": 8
+                    }
+                    """))),
+        @ApiResponse(responseCode = "400", description = "Некорректные параметры пагинации"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<PageResponse<UserLeaderboardDto>> getUserLeaderboard(
+            @Parameter(description = "Номер страницы (начиная с 0)", example = "0")
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @Parameter(description = "Количество элементов на странице (1-100)", example = "20")
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+        try {
+            LOGGER.info("🏆 Запрос рейтинга пользователей: page={}, size={}", page, size);
+            PageResponse<UserLeaderboardDto> leaderboard = statisticsService.getUserLeaderboard(page, size);
+            return ResponseEntity.ok(leaderboard);
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при получении рейтинга пользователей: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }

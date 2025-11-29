@@ -2,6 +2,7 @@ package com.example.sticker_art_gallery.controller;
 
 import com.example.sticker_art_gallery.dto.LikeDto;
 import com.example.sticker_art_gallery.dto.LikeResponseDto;
+import com.example.sticker_art_gallery.dto.LikeStatisticsDto;
 import com.example.sticker_art_gallery.dto.LikeToggleResult;
 import com.example.sticker_art_gallery.dto.PageRequest;
 import com.example.sticker_art_gallery.dto.PageResponse;
@@ -9,6 +10,7 @@ import com.example.sticker_art_gallery.dto.StickerSetDto;
 import com.example.sticker_art_gallery.dto.StickerSetWithLikesDto;
 import com.example.sticker_art_gallery.service.LikeService;
 import com.example.sticker_art_gallery.service.user.UserService;
+import com.example.sticker_art_gallery.service.statistics.StatisticsService;
 import com.example.sticker_art_gallery.model.user.UserEntity;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -40,10 +43,12 @@ public class LikeController {
     
     private final LikeService likeService;
     private final UserService userService;
+    private final StatisticsService statisticsService;
     
-    public LikeController(LikeService likeService, UserService userService) {
+    public LikeController(LikeService likeService, UserService userService, StatisticsService statisticsService) {
         this.likeService = likeService;
         this.userService = userService;
+        this.statisticsService = statisticsService;
     }
     
     /**
@@ -508,5 +513,37 @@ public class LikeController {
         // По умолчанию возвращаем английский
         LOGGER.debug("🌐 Используется язык по умолчанию: en");
         return "en";
+    }
+
+    /**
+     * Получить статистику по лайкам
+     */
+    @GetMapping("/statistics")
+    @PreAuthorize("permitAll()")
+    @Operation(
+        summary = "Получить статистику по лайкам",
+        description = "Возвращает статистику по лайкам: общее количество, поставленные за день/неделю"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Статистика получена",
+            content = @Content(schema = @Schema(implementation = LikeStatisticsDto.class),
+                examples = @ExampleObject(value = """
+                    {
+                        "total": 12345,
+                        "daily": 156,
+                        "weekly": 1024
+                    }
+                    """))),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<LikeStatisticsDto> getLikeStatistics() {
+        try {
+            LOGGER.info("📊 Запрос статистики по лайкам");
+            LikeStatisticsDto statistics = statisticsService.getLikeStatistics();
+            return ResponseEntity.ok(statistics);
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при получении статистики лайков: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 }

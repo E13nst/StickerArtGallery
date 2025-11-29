@@ -133,6 +133,11 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
 
     long countByCreatedAtAfter(LocalDateTime createdAfter);
 
+    /**
+     * Подсчитать количество лайков за период между двумя датами
+     */
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
     @Query("SELECT DISTINCT l.userId FROM Like l WHERE l.createdAt >= :since")
     List<Long> findDistinctUserIdsByCreatedAtAfter(@Param("since") LocalDateTime since);
     

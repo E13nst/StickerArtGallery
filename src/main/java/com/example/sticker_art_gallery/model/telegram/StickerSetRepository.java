@@ -12,7 +12,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.Set;
 
 @Repository
 public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
@@ -182,6 +181,29 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
 
     @Query("SELECT DISTINCT ss.userId FROM StickerSet ss WHERE ss.createdAt >= :since")
     List<Long> findDistinctUserIdsByCreatedAtAfter(@Param("since") LocalDateTime since);
+
+    /**
+     * Подсчитать количество стикерсетов по видимости и времени создания
+     */
+    long countByVisibilityAndCreatedAtAfter(StickerSetVisibility visibility, LocalDateTime createdAfter);
+
+    /**
+     * Подсчитать общее количество стикерсетов по видимости
+     */
+    long countByVisibility(StickerSetVisibility visibility);
+
+    /**
+     * Получить топ пользователей по количеству созданных стикерсетов с пагинацией
+     * Возвращает userId, totalCount, publicCount, privateCount
+     */
+    @Query("SELECT ss.userId, COUNT(ss.id) as totalCount, " +
+           "SUM(CASE WHEN ss.visibility = 'PUBLIC' THEN 1 ELSE 0 END) as publicCount, " +
+           "SUM(CASE WHEN ss.visibility = 'PRIVATE' THEN 1 ELSE 0 END) as privateCount " +
+           "FROM StickerSet ss " +
+           "WHERE ss.state = 'ACTIVE' " +
+           "GROUP BY ss.userId " +
+           "ORDER BY totalCount DESC, ss.userId ASC")
+    Page<Object[]> findTopUsersByStickerSetCount(Pageable pageable);
     
     /**
      * Поиск публичных активных стикерсетов по title или description с фильтрацией

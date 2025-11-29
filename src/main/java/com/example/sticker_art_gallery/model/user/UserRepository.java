@@ -23,5 +23,10 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     boolean existsByUsername(String username);
 
     long countByCreatedAtAfter(OffsetDateTime createdAfter);
+
+    /**
+     * Подсчитать количество пользователей за период между двумя датами
+     */
+    long countByCreatedAtBetween(OffsetDateTime start, OffsetDateTime end);
 }
 

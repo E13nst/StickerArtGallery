@@ -6,6 +6,7 @@ import com.example.sticker_art_gallery.service.telegram.StickerSetService;
 import com.example.sticker_art_gallery.service.user.UserService;
 import com.example.sticker_art_gallery.service.ai.AutoCategorizationService;
 import com.example.sticker_art_gallery.service.StickerSetQueryService;
+import com.example.sticker_art_gallery.service.statistics.StatisticsService;
 import com.example.sticker_art_gallery.exception.UnauthorizedException;
 import com.example.sticker_art_gallery.model.user.UserEntity;
 import org.slf4j.Logger;
@@ -47,15 +48,18 @@ public class StickerSetController {
     private final UserService userService;
     private final AutoCategorizationService autoCategorizationService;
     private final StickerSetQueryService stickerSetQueryService;
+    private final StatisticsService statisticsService;
     
     @Autowired
     public StickerSetController(StickerSetService stickerSetService,
                                UserService userService, AutoCategorizationService autoCategorizationService,
-                               StickerSetQueryService stickerSetQueryService) {
+                               StickerSetQueryService stickerSetQueryService,
+                               StatisticsService statisticsService) {
         this.stickerSetService = stickerSetService;
         this.userService = userService;
         this.autoCategorizationService = autoCategorizationService;
         this.stickerSetQueryService = stickerSetQueryService;
+        this.statisticsService = statisticsService;
     }
     
     /**
@@ -1709,5 +1713,43 @@ public class StickerSetController {
         filter.setPreview(preview);
         
         return filter;
+    }
+
+    /**
+     * Получить статистику по стикерсетам
+     */
+    @GetMapping("/statistics")
+    @PreAuthorize("permitAll()")
+    @Operation(
+        summary = "Получить статистику по стикерсетам",
+        description = "Возвращает статистику по стикерсетам: общее количество, созданные за день/неделю, с разделением на публичные и приватные"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Статистика получена",
+            content = @Content(schema = @Schema(implementation = StickerSetStatisticsDto.class),
+                examples = @ExampleObject(value = """
+                    {
+                        "total": 5432,
+                        "totalPublic": 3200,
+                        "totalPrivate": 2232,
+                        "daily": 25,
+                        "dailyPublic": 15,
+                        "dailyPrivate": 10,
+                        "weekly": 180,
+                        "weeklyPublic": 110,
+                        "weeklyPrivate": 70
+                    }
+                    """))),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<StickerSetStatisticsDto> getStickerSetStatistics() {
+        try {
+            LOGGER.info("📊 Запрос статистики по стикерсетам");
+            StickerSetStatisticsDto statistics = statisticsService.getStickerSetStatistics();
+            return ResponseEntity.ok(statistics);
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при получении статистики стикерсетов: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 } 
