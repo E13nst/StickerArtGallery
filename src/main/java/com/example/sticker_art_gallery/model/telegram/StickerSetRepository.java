@@ -196,41 +196,45 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
      * Получить топ пользователей по количеству созданных стикерсетов (общая статистика)
      * Сортировка по totalCount
      */
-    @Query("SELECT ss.userId, COUNT(ss.id) as totalCount, " +
-           "SUM(CASE WHEN ss.visibility = 'PUBLIC' THEN 1 ELSE 0 END) as publicCount, " +
-           "SUM(CASE WHEN ss.visibility = 'PRIVATE' THEN 1 ELSE 0 END) as privateCount " +
-           "FROM StickerSet ss " +
+    @Query(value = "SELECT ss.user_id, " +
+           "COUNT(ss.id) as total_count, " +
+           "SUM(CASE WHEN ss.visibility = 'PUBLIC' THEN 1 ELSE 0 END) as public_count, " +
+           "SUM(CASE WHEN ss.visibility = 'PRIVATE' THEN 1 ELSE 0 END) as private_count " +
+           "FROM stickersets ss " +
            "WHERE ss.state = 'ACTIVE' " +
-           "GROUP BY ss.userId " +
-           "ORDER BY totalCount DESC, ss.userId ASC")
+           "GROUP BY ss.user_id " +
+           "ORDER BY total_count DESC, ss.user_id ASC",
+           nativeQuery = true)
     Page<Object[]> findTopUsersByTotalStickerSetCount(Pageable pageable);
 
     /**
      * Получить топ пользователей по количеству созданных публичных стикерсетов
-     * Сортировка по publicCount
+     * Сортировка по количеству публичных стикерсетов
      */
-    @Query("SELECT ss.userId, COUNT(ss.id) as totalCount, " +
-           "SUM(CASE WHEN ss.visibility = 'PUBLIC' THEN 1 ELSE 0 END) as publicCount, " +
-           "SUM(CASE WHEN ss.visibility = 'PRIVATE' THEN 1 ELSE 0 END) as privateCount " +
-           "FROM StickerSet ss " +
-           "WHERE ss.state = 'ACTIVE' " +
-           "GROUP BY ss.userId " +
-           "HAVING publicCount > 0 " +
-           "ORDER BY publicCount DESC, ss.userId ASC")
+    @Query(value = "SELECT ss.user_id, " +
+           "(SELECT COUNT(s2.id) FROM stickersets s2 WHERE s2.user_id = ss.user_id AND s2.state = 'ACTIVE') as total_count, " +
+           "COUNT(ss.id) as public_count, " +
+           "(SELECT COUNT(s3.id) FROM stickersets s3 WHERE s3.user_id = ss.user_id AND s3.state = 'ACTIVE' AND s3.visibility = 'PRIVATE') as private_count " +
+           "FROM stickersets ss " +
+           "WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PUBLIC' " +
+           "GROUP BY ss.user_id " +
+           "ORDER BY public_count DESC, ss.user_id ASC",
+           nativeQuery = true)
     Page<Object[]> findTopUsersByPublicStickerSetCount(Pageable pageable);
 
     /**
      * Получить топ пользователей по количеству созданных приватных стикерсетов
-     * Сортировка по privateCount
+     * Сортировка по количеству приватных стикерсетов
      */
-    @Query("SELECT ss.userId, COUNT(ss.id) as totalCount, " +
-           "SUM(CASE WHEN ss.visibility = 'PUBLIC' THEN 1 ELSE 0 END) as publicCount, " +
-           "SUM(CASE WHEN ss.visibility = 'PRIVATE' THEN 1 ELSE 0 END) as privateCount " +
-           "FROM StickerSet ss " +
-           "WHERE ss.state = 'ACTIVE' " +
-           "GROUP BY ss.userId " +
-           "HAVING privateCount > 0 " +
-           "ORDER BY privateCount DESC, ss.userId ASC")
+    @Query(value = "SELECT ss.user_id, " +
+           "(SELECT COUNT(s2.id) FROM stickersets s2 WHERE s2.user_id = ss.user_id AND s2.state = 'ACTIVE') as total_count, " +
+           "(SELECT COUNT(s3.id) FROM stickersets s3 WHERE s3.user_id = ss.user_id AND s3.state = 'ACTIVE' AND s3.visibility = 'PUBLIC') as public_count, " +
+           "COUNT(ss.id) as private_count " +
+           "FROM stickersets ss " +
+           "WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PRIVATE' " +
+           "GROUP BY ss.user_id " +
+           "ORDER BY private_count DESC, ss.user_id ASC",
+           nativeQuery = true)
     Page<Object[]> findTopUsersByPrivateStickerSetCount(Pageable pageable);
     
     /**

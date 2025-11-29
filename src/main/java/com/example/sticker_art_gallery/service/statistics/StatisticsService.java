@@ -207,7 +207,8 @@ public class StatisticsService {
 
         List<UserLeaderboardDto> leaderboard = result.getContent().stream()
                 .map(row -> {
-                    Long userId = (Long) row[0];
+                    // Обрабатываем userId - может быть Long или BigInteger из native query
+                    Long userId = row[0] instanceof Long ? (Long) row[0] : ((Number) row[0]).longValue();
                     Long totalCount = ((Number) row[1]).longValue();
                     Long publicCount = ((Number) row[2]).longValue();
                     Long privateCount = ((Number) row[3]).longValue();
