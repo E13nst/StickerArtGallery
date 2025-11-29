@@ -189,9 +189,21 @@ public class StatisticsService {
         return dto;
     }
 
-    public PageResponse<UserLeaderboardDto> getUserLeaderboard(int page, int size) {
+    public PageResponse<UserLeaderboardDto> getUserLeaderboard(int page, int size, StickerSetVisibility visibility) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<Object[]> result = stickerSetRepository.findTopUsersByStickerSetCount(pageable);
+        Page<Object[]> result;
+
+        // Выбираем метод в зависимости от visibility
+        if (visibility == null) {
+            // Общая статистика - сортировка по totalCount
+            result = stickerSetRepository.findTopUsersByTotalStickerSetCount(pageable);
+        } else if (visibility == StickerSetVisibility.PUBLIC) {
+            // Только публичные - сортировка по publicCount
+            result = stickerSetRepository.findTopUsersByPublicStickerSetCount(pageable);
+        } else {
+            // Только приватные - сортировка по privateCount
+            result = stickerSetRepository.findTopUsersByPrivateStickerSetCount(pageable);
+        }
 
         List<UserLeaderboardDto> leaderboard = result.getContent().stream()
                 .map(row -> {

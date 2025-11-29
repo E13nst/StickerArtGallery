@@ -1,6 +1,7 @@
 package com.example.sticker_art_gallery.controller;
 
 import com.example.sticker_art_gallery.dto.*;
+import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
 import com.example.sticker_art_gallery.model.user.UserEntity;
 import com.example.sticker_art_gallery.service.statistics.StatisticsService;
 import com.example.sticker_art_gallery.service.user.UserService;
@@ -178,7 +179,13 @@ public class UserController {
     @PreAuthorize("permitAll()")
     @Operation(
         summary = "Получить рейтинг пользователей",
-        description = "Возвращает рейтинг пользователей по количеству созданных стикерсетов с разделением на публичные и приватные"
+        description = """
+            Возвращает рейтинг пользователей по количеству созданных стикерсетов.
+            Параметр visibility определяет, по какому типу стикерсетов сортировать рейтинг:
+            - PUBLIC: сортировка по количеству публичных стикерсетов
+            - PRIVATE: сортировка по количеству приватных стикерсетов
+            - не указан: сортировка по общему количеству стикерсетов (totalCount)
+            """
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Рейтинг получен",
@@ -209,10 +216,16 @@ public class UserController {
             @Parameter(description = "Номер страницы (начиная с 0)", example = "0")
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @Parameter(description = "Количество элементов на странице (1-100)", example = "20")
-            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            @Parameter(description = "Тип видимости для сортировки рейтинга (PUBLIC/PRIVATE). Если не указан, сортировка по общему количеству (totalCount)", 
+                       example = "PUBLIC", 
+                       schema = @Schema(allowableValues = {"PUBLIC", "PRIVATE"}, defaultValue = "PUBLIC"))
+            @RequestParam(required = false) StickerSetVisibility visibility) {
         try {
-            LOGGER.info("🏆 Запрос рейтинга пользователей: page={}, size={}", page, size);
-            PageResponse<UserLeaderboardDto> leaderboard = statisticsService.getUserLeaderboard(page, size);
+            // Если visibility не передан (null), используем null для общей статистики
+            // Если передан PUBLIC или PRIVATE, используем его для соответствующей сортировки
+            LOGGER.info("🏆 Запрос рейтинга пользователей: page={}, size={}, visibility={}", page, size, visibility);
+            PageResponse<UserLeaderboardDto> leaderboard = statisticsService.getUserLeaderboard(page, size, visibility);
             return ResponseEntity.ok(leaderboard);
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при получении рейтинга пользователей: {}", e.getMessage(), e);

@@ -193,8 +193,8 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
     long countByVisibility(StickerSetVisibility visibility);
 
     /**
-     * Получить топ пользователей по количеству созданных стикерсетов с пагинацией
-     * Возвращает userId, totalCount, publicCount, privateCount
+     * Получить топ пользователей по количеству созданных стикерсетов (общая статистика)
+     * Сортировка по totalCount
      */
     @Query("SELECT ss.userId, COUNT(ss.id) as totalCount, " +
            "SUM(CASE WHEN ss.visibility = 'PUBLIC' THEN 1 ELSE 0 END) as publicCount, " +
@@ -203,7 +203,35 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
            "WHERE ss.state = 'ACTIVE' " +
            "GROUP BY ss.userId " +
            "ORDER BY totalCount DESC, ss.userId ASC")
-    Page<Object[]> findTopUsersByStickerSetCount(Pageable pageable);
+    Page<Object[]> findTopUsersByTotalStickerSetCount(Pageable pageable);
+
+    /**
+     * Получить топ пользователей по количеству созданных публичных стикерсетов
+     * Сортировка по publicCount
+     */
+    @Query("SELECT ss.userId, COUNT(ss.id) as totalCount, " +
+           "SUM(CASE WHEN ss.visibility = 'PUBLIC' THEN 1 ELSE 0 END) as publicCount, " +
+           "SUM(CASE WHEN ss.visibility = 'PRIVATE' THEN 1 ELSE 0 END) as privateCount " +
+           "FROM StickerSet ss " +
+           "WHERE ss.state = 'ACTIVE' " +
+           "GROUP BY ss.userId " +
+           "HAVING publicCount > 0 " +
+           "ORDER BY publicCount DESC, ss.userId ASC")
+    Page<Object[]> findTopUsersByPublicStickerSetCount(Pageable pageable);
+
+    /**
+     * Получить топ пользователей по количеству созданных приватных стикерсетов
+     * Сортировка по privateCount
+     */
+    @Query("SELECT ss.userId, COUNT(ss.id) as totalCount, " +
+           "SUM(CASE WHEN ss.visibility = 'PUBLIC' THEN 1 ELSE 0 END) as publicCount, " +
+           "SUM(CASE WHEN ss.visibility = 'PRIVATE' THEN 1 ELSE 0 END) as privateCount " +
+           "FROM StickerSet ss " +
+           "WHERE ss.state = 'ACTIVE' " +
+           "GROUP BY ss.userId " +
+           "HAVING privateCount > 0 " +
+           "ORDER BY privateCount DESC, ss.userId ASC")
+    Page<Object[]> findTopUsersByPrivateStickerSetCount(Pageable pageable);
     
     /**
      * Поиск публичных активных стикерсетов по title или description с фильтрацией
