@@ -66,3 +66,5 @@ COMMENT ON COLUMN stickersets.type IS 'Источник: USER (пользова�
 COMMENT ON COLUMN stickersets.deleted_at IS 'Дата удаления (только для state=DELETED)';
 
 
+
+

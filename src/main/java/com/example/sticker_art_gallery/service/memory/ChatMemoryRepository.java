@@ -5,7 +5,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
-@Repository
+@Repository("postgresChatMemoryRepository")
 public interface ChatMemoryRepository extends JpaRepository<ChatMemoryEntity, Long> {
     List<ChatMemoryEntity> findByConversationIdOrderByMessageIndexAsc(String conversationId);
     int countByConversationId(String conversationId);

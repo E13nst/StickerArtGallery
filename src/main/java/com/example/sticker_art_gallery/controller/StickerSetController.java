@@ -5,6 +5,7 @@ import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.service.telegram.StickerSetService;
 import com.example.sticker_art_gallery.service.user.UserService;
 import com.example.sticker_art_gallery.service.ai.AutoCategorizationService;
+import com.example.sticker_art_gallery.service.ai.StickerSetDescriptionService;
 import com.example.sticker_art_gallery.service.StickerSetQueryService;
 import com.example.sticker_art_gallery.service.statistics.StatisticsService;
 import com.example.sticker_art_gallery.exception.UnauthorizedException;
@@ -34,6 +35,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+import java.util.Map;
 import java.util.Set;
 
 @RestController
@@ -47,17 +49,20 @@ public class StickerSetController {
     private final StickerSetService stickerSetService;
     private final UserService userService;
     private final AutoCategorizationService autoCategorizationService;
+    private final StickerSetDescriptionService stickerSetDescriptionService;
     private final StickerSetQueryService stickerSetQueryService;
     private final StatisticsService statisticsService;
     
     @Autowired
     public StickerSetController(StickerSetService stickerSetService,
                                UserService userService, AutoCategorizationService autoCategorizationService,
+                               StickerSetDescriptionService stickerSetDescriptionService,
                                StickerSetQueryService stickerSetQueryService,
                                StatisticsService statisticsService) {
         this.stickerSetService = stickerSetService;
         this.userService = userService;
         this.autoCategorizationService = autoCategorizationService;
+        this.stickerSetDescriptionService = stickerSetDescriptionService;
         this.stickerSetQueryService = stickerSetQueryService;
         this.statisticsService = statisticsService;
     }
@@ -1092,6 +1097,66 @@ public class StickerSetController {
             return ResponseEntity.badRequest().body(null);
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при предложении категорий стикерсета {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    /**
+     * Сгенерировать описание стикерсета с помощью AI
+     */
+    @PostMapping("/{id}/ai/generate-description")
+    @Operation(
+        summary = "Сгенерировать описание стикерсета с помощью AI",
+        description = "Использует AI (ChatGPT) для анализа изображения стикерсета и генерации описаний на русском и английском языках. " +
+                     "Описания сохраняются в отдельную таблицу для поддержки множества языков. " +
+                     "Доступно владельцу стикерсета или администратору. " +
+                     "Для работы требуется переменная окружения OPENAI_API_KEY и доступность сервиса sticker-processor."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Описания успешно сгенерированы",
+            content = @Content(schema = @Schema(implementation = Map.class),
+                examples = @ExampleObject(value = """
+                    {
+                        "ru": "Коллекция милых котиков с забавными выражениями",
+                        "en": "Collection of cute cats with funny expressions"
+                    }
+                    """))),
+        @ApiResponse(responseCode = "400", description = "Некорректные данные"),
+        @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен - можно генерировать описания только для своих стикерсетов"),
+        @ApiResponse(responseCode = "404", description = "Стикерсет с указанным ID не найден"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера или ошибка при работе с AI/sticker-processor")
+    })
+    public ResponseEntity<Map<String, String>> generateDescriptionForStickerSet(
+            @Parameter(description = "ID стикерсета", required = true, example = "1")
+            @PathVariable @Positive(message = "ID должен быть положительным числом") Long id,
+            HttpServletRequest request) {
+        try {
+            LOGGER.info("🤖 Генерация описания для стикерсета ID: {}", id);
+            
+            // Проверка прав доступа (владелец или админ)
+            Long currentUserId = getCurrentUserId();
+            StickerSet stickerSet = stickerSetService.findById(id);
+            if (stickerSet == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            if (!isOwnerOrAdmin(stickerSet.getUserId(), currentUserId)) {
+                LOGGER.warn("⚠️ Пользователь {} попытался сгенерировать описание для чужого стикерсета {}", currentUserId, id);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            
+            // Генерируем описания
+            Map<String, String> descriptions = stickerSetDescriptionService.generateDescriptionForStickerSet(id, currentUserId);
+            
+            LOGGER.info("✅ Описания для стикерсета {} успешно сгенерированы", id);
+            return ResponseEntity.ok(descriptions);
+            
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("⚠️ Некорректные данные для генерации описания стикерсета {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при генерации описания стикерсета {}: {}", id, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }

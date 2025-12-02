@@ -31,18 +31,23 @@ DB_NAME=mindbase
 DB_USERNAME=dalek
 DB_PASSWORD=your_password
 
+# Redis Configuration
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+
 # Application URLs
 APP_URL=http://localhost:8080
 MINI_APP_URL=http://localhost:8080/mini-app/
-
-# OpenAI Configuration (опционально)
-OPENAI_API_KEY=your_openai_api_key_here
 
 # Sticker Processor
 STICKER_PROCESSOR_URL=https://sticker-processor-e13nst.amvera.io
 
 # Internal service access
 STICKERBOT_SERVICE_TOKEN=your_generated_service_token
+
+# OpenAI Configuration (опционально)
+OPENAI_API_KEY=your_openai_api_key_here
 ```
 
 3. **Запустите приложение через Makefile:**
@@ -91,6 +96,9 @@ make docker-logs-app
 | `DB_NAME` | ✅ | Имя базы данных |
 | `DB_USERNAME` | ✅ | Имя пользователя БД |
 | `DB_PASSWORD` | ✅ | Пароль БД |
+| `REDIS_HOST` | ✅ | Хост Redis сервера |
+| `REDIS_PORT` | ✅ | Порт Redis (по умолчанию: 6379) |
+| `REDIS_PASSWORD` | ❌ | Пароль Redis (если требуется) |
 | `APP_URL` | ✅ | Базовый URL приложения |
 | `MINI_APP_URL` | ❌ | URL мини-приложения (по умолчанию: `${APP_URL}/mini-app/`) |
 | `STICKER_PROCESSOR_URL` | ✅ | URL сервиса обработки стикеров |
@@ -203,6 +211,16 @@ git commit -m "Deploy to production"
 git push origin main
 ```
 
+## 📚 Документация
+
+Дополнительная документация:
+
+- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Руководство по разработке и команды Makefile
+- **[TESTING.md](TESTING.md)** - Полное руководство по тестированию (Unit, Integration, Benchmark, Allure)
+- **[AMVERA_DEPLOY.md](AMVERA_DEPLOY.md)** - Инструкции по деплою на Amvera
+- **[LOGGING_CONFIG.md](LOGGING_CONFIG.md)** - Настройка логирования через переменные окружения
+- **[doc/](doc/)** - API документация и спецификации
+
 ## 📞 Поддержка
 
 При возникновении проблем проверьте:
@@ -212,6 +230,28 @@ git push origin main
 3. **Redis** - кэш-сервер работает
 4. **Логи приложения** - используйте `make logs` или `make docker-logs-app`
 5. **Статус приложения** - `make status`
+
+Для получения справки по командам:
+```bash
+make help
+```
+
+## 🧪 Тестирование
+
+Быстрый запуск тестов:
+
+```bash
+# Unit тесты (быстро, без зависимостей)
+make test
+
+# Все тесты (unit + integration)
+make test-all
+
+# С Allure отчетом
+make test-allure-serve
+```
+
+Подробнее: [TESTING.md](TESTING.md)
 
 ## 📄 Лицензия
 

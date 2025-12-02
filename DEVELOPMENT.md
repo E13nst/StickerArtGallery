@@ -1,4 +1,4 @@
-# 🚀 Разработка Telegram Bot Dream Stream
+# 🚀 Разработка Sticker Art Gallery
 
 ## 📋 Быстрый старт
 
@@ -92,8 +92,7 @@ make deploy
 ```
 src/
 ├── main/
-│   ├── java/com/example/dream_stream_bot/
-│   │   ├── bot/                    # Telegram бот
+│   ├── java/com/example/sticker_art_gallery/
 │   │   ├── config/                 # Конфигурация Spring
 │   │   ├── controller/             # REST контроллеры
 │   │   ├── model/                  # Модели данных
@@ -102,7 +101,8 @@ src/
 │   │   └── util/                   # Утилиты
 │   └── resources/
 │       ├── static/mini-app/        # Telegram Mini App
-│       └── application.yml         # Конфигурация
+│       ├── db/migration/           # Flyway миграции
+│       └── application.yaml        # Конфигурация
 └── test/                           # Тесты
 ```
 
@@ -113,12 +113,19 @@ src/
 ```bash
 # База данных
 DB_HOST=localhost
-DB_NAME=dream_stream
-DB_USERNAME=username
-DB_PASSWORD=password
+DB_NAME=mindbase
+DB_USERNAME=dalek
+DB_PASSWORD=your_password
 
 # Telegram Bot Token
 TELEGRAM_BOT_TOKEN=your_bot_token_here
+
+# Application URLs
+APP_URL=http://localhost:8080
+MINI_APP_URL=http://localhost:8080/mini-app/
+
+# Sticker Processor
+STICKER_PROCESSOR_URL=https://sticker-processor-e13nst.amvera.io
 
 # Internal service token for StickerBot integration
 STICKERBOT_SERVICE_TOKEN=service_token_here

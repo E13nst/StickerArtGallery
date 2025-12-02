@@ -239,11 +239,14 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
     
     /**
      * Поиск публичных активных стикерсетов по title или description с фильтрацией
+     * Ищет также по многоязычным описаниям из таблицы stickerset_descriptions
      */
     @Query("SELECT DISTINCT ss FROM StickerSet ss " +
            "LEFT JOIN ss.categories c " +
+           "LEFT JOIN ss.descriptions sd " +
            "WHERE (LOWER(ss.title) LIKE LOWER(CONCAT('%', :query, '%')) " +
-           "       OR LOWER(ss.description) LIKE LOWER(CONCAT('%', :query, '%'))) " +
+           "       OR LOWER(ss.description) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "       OR LOWER(sd.description) LIKE LOWER(CONCAT('%', :query, '%'))) " +
            "AND ss.state = 'ACTIVE' " +
            "AND ss.visibility = 'PUBLIC' " +
            "AND (:categoryKeys IS NULL OR c.key IN :categoryKeys) " +

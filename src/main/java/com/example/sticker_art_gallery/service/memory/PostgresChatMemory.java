@@ -10,8 +10,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-@Component
+// @Component - отключено, используем InMemoryChatMemory
 public class PostgresChatMemory implements ChatMemory {
     @Autowired
     private ChatMemoryRepository repository;
@@ -25,22 +26,58 @@ public class PostgresChatMemory implements ChatMemory {
             entity.setConversationId(conversationId);
             entity.setMessageIndex(startIndex + i);
             entity.setRole(msg.getMessageType().name().toLowerCase());
-            entity.setContent(msg.getContent());
+            // В Spring AI 1.0.0 Message имеет метод getContent() который возвращает Content
+            // Content может содержать текст и/или медиа
+            String content = "";
+            try {
+                // Пробуем получить текст через getContent()
+                Object messageContent = msg.getClass().getMethod("getContent").invoke(msg);
+                if (messageContent != null) {
+                    // Content может быть списком или объектом с методом getText()
+                    if (messageContent instanceof List) {
+                        List<?> contentList = (List<?>) messageContent;
+                        content = contentList.stream()
+                            .map(c -> {
+                                try {
+                                    return (String) c.getClass().getMethod("getText").invoke(c);
+                                } catch (Exception e) {
+                                    return c.toString();
+                                }
+                            })
+                            .filter(s -> s != null && !s.isEmpty())
+                            .collect(Collectors.joining(" "));
+                    } else {
+                        try {
+                            content = (String) messageContent.getClass().getMethod("getText").invoke(messageContent);
+                        } catch (Exception e) {
+                            content = messageContent.toString();
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // Fallback: используем toString()
+                content = msg.toString();
+            }
+            if (content == null || content.isEmpty()) {
+                content = msg.toString();
+            }
+            entity.setContent(content);
             repository.save(entity);
         }
     }
 
+    // В Spring AI 1.0.0 метод get() принимает только conversationId
     @Override
-    public List<Message> get(String conversationId, int lastN) {
+    public List<Message> get(String conversationId) {
         List<ChatMemoryEntity> entities = repository.findByConversationIdOrderByMessageIndexAsc(conversationId);
         return entities.stream()
-            .skip(Math.max(0, entities.size() - lastN))
             .map(e -> {
                 String role = e.getRole().toLowerCase();
+                String content = e.getContent();
                 switch (role) {
-                    case "user": return new UserMessage(e.getContent());
-                    case "assistant": return new AssistantMessage(e.getContent());
-                    case "system": return new SystemMessage(e.getContent());
+                    case "user": return new UserMessage(content);
+                    case "assistant": return new AssistantMessage(content);
+                    case "system": return new SystemMessage(content);
                     default: throw new IllegalArgumentException("Unknown role: " + e.getRole());
                 }
             })

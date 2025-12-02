@@ -93,6 +93,14 @@ public class StickerSet {
     @EqualsAndHashCode.Exclude
     private Set<Like> likes = new HashSet<>();
     
+    /**
+     * Многоязычные описания стикерсета (one-to-many)
+     */
+    @OneToMany(mappedBy = "stickerSet", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Set<StickerSetDescription> descriptions = new HashSet<>();
+    
     @PrePersist
     protected void onCreate() {
         createdAt = java.time.LocalDateTime.now();
@@ -245,5 +253,21 @@ public class StickerSet {
             this.state = StickerSetState.ACTIVE;
             this.deletedAt = null;
         }
+    }
+    
+    /**
+     * Получить описание стикерсета на указанном языке
+     * @param language код языка (ru, en, и т.д.)
+     * @return описание на указанном языке или null, если не найдено
+     */
+    public String getDescription(String language) {
+        if (descriptions == null) {
+            return null;
+        }
+        return descriptions.stream()
+                .filter(d -> d.getLanguage().equals(language))
+                .map(StickerSetDescription::getDescription)
+                .findFirst()
+                .orElse(null);
     }
 } 

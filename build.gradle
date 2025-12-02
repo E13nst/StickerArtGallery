@@ -27,14 +27,18 @@ repositories {
 
 dependencyManagement {
     imports {
-        mavenBom "org.springframework.ai:spring-ai-bom:1.0.0-M2"
+        mavenBom "org.springframework.ai:spring-ai-bom:1.0.0"
         mavenBom "io.qameta.allure:allure-bom:2.25.0"
     }
 }
 
 dependencies {
+    // Spring AI BOM для управления версиями
+    implementation platform('org.springframework.ai:spring-ai-bom:1.0.0')
+    
     implementation 'org.springframework.boot:spring-boot-starter'
-    implementation 'org.springframework.ai:spring-ai-openai-spring-boot-starter:1.0.0-M2'
+    // Новый артефакт для OpenAI (версия из BOM)
+    implementation 'org.springframework.ai:spring-ai-starter-model-openai'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'

@@ -8,7 +8,9 @@ import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
 import com.example.sticker_art_gallery.model.telegram.StickerSetType;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class StickerSetDto {
@@ -24,8 +26,14 @@ public class StickerSetDto {
     @Pattern(regexp = "^[\\p{L}\\p{N}\\s\\-_.,!?()]+$", message = "Название может содержать только буквы, цифры, пробелы и символы: -_.,!?()")
     private String title;
     
-    @Schema(description = "Описание стикерсета (опционально)", example = "Коллекция милых котиков", nullable = true)
+    @Deprecated
+    @Schema(description = "Устаревшее поле. Используйте 'descriptions'. Описание стикерсета (опционально)", 
+            example = "Коллекция милых котиков", nullable = true, hidden = true)
     private String description;
+    
+    @Schema(description = "Многоязычные описания стикерсета. Ключ - код языка (ru, en), значение - описание", 
+            example = "{\"ru\": \"Коллекция милых котиков\", \"en\": \"Collection of cute cats\"}", nullable = true)
+    private Map<String, String> descriptions;
     
     @NotBlank(message = "Имя стикерсета не может быть пустым")
     @Size(min = 1, max = 64, message = "Имя стикерсета должно быть от 1 до 64 символов")
@@ -281,6 +289,14 @@ public class StickerSetDto {
         this.availableActions = availableActions;
     }
     
+    public Map<String, String> getDescriptions() {
+        return descriptions;
+    }
+    
+    public void setDescriptions(Map<String, String> descriptions) {
+        this.descriptions = descriptions;
+    }
+    
     /**
      * Вычисляет доступные действия для стикерсета на основе текущего пользователя, его роли и состояния стикерсета
      * 
@@ -434,6 +450,15 @@ public class StickerSetDto {
                     .map(category -> CategoryDto.fromEntity(category, language))
                     .collect(Collectors.toList())
             );
+        }
+        
+        // Добавляем многоязычные описания
+        if (entity.getDescriptions() != null && !entity.getDescriptions().isEmpty()) {
+            Map<String, String> descriptionsMap = new HashMap<>();
+            entity.getDescriptions().forEach(desc -> {
+                descriptionsMap.put(desc.getLanguage(), desc.getDescription());
+            });
+            dto.setDescriptions(descriptionsMap);
         }
         
         // Устанавливаем isLikedByCurrentUser по умолчанию в false (будет переопределено, если передан currentUserId)

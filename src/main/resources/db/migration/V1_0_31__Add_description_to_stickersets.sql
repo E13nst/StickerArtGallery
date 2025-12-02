@@ -9,3 +9,5 @@ ADD COLUMN description TEXT NULL;
 -- Добавить комментарий
 COMMENT ON COLUMN stickersets.description IS 'Описание стикерсета (опционально)';
 
+
+

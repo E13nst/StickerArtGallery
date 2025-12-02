@@ -21,6 +21,7 @@ app:
         # "video/mp4": true                  # Сжимать видео
         # "image/webp": false               # НЕ сжимать маленькие изображения
   ai:
+    context-length: ${AI_CONTEXT_LENGTH:10}  # Длина контекста для InMemoryChatMemory (количество сообщений)
     auto-category:
       max-categories: ${AI_AUTO_CATEGORY_MAX_CATEGORIES:5}
       max-retries: ${AI_AUTO_CATEGORY_MAX_RETRIES:2}
@@ -39,6 +40,10 @@ spring:
         options:
           model: ${OPENAI_MODEL:gpt-4o-mini}
           temperature: ${OPENAI_TEMPERATURE:0.7}
+      # Разумные таймауты для запросов с изображениями
+      client:
+        connection-timeout: 60000   # 60 секунд (1 минута) для подключения
+        read-timeout: 180000         # 180 секунд (3 минуты) для чтения (запросы с изображениями могут занимать до 2-3 минут)
 #      proxy:
 #        host: ${OPENAI_PROXY_HOST:}
 #        port: ${OPENAI_PROXY_PORT:}

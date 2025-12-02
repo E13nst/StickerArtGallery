@@ -1,4 +1,4 @@
-# Деплой Telegram бота на Amvera
+# Деплой Sticker Art Gallery на Amvera
 
 ## Подготовка к деплою
 
@@ -6,15 +6,18 @@
 
 В Amvera нужно настроить следующие переменные окружения:
 
-- `TELEGRAM_API_TOKEN` - токен вашего Telegram бота
-- `OPENAI_API_KEY` - ключ API OpenAI
-- `BOT_WEBHOOK_URL` - URL вашего приложения на Amvera (например: `https://your-app-name.amvera.io`)
-- `STICKERBOT_SERVICE_TOKEN` - межсервисный токен для доступа к внутренним эндпоинтам галереи
+- `TELEGRAM_BOT_TOKEN` - токен вашего Telegram бота
+- `DB_HOST`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` - настройки PostgreSQL
+- `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` - настройки Redis
+- `APP_URL` - URL вашего приложения на Amvera (например: `https://your-app-name.amvera.io`)
+- `MINI_APP_URL` - URL мини-приложения (по умолчанию: `${APP_URL}/mini-app/`)
+- `STICKER_PROCESSOR_URL` - URL сервиса обработки стикеров
+- `STICKERBOT_SERVICE_TOKEN` - межсервисный токен для доступа к внутренним эндпоинтам
+- `OPENAI_API_KEY` - ключ API OpenAI (опционально)
 
-### 2. Настройка Telegram Webhook
+### 2. Настройка базы данных
 
-После деплоя приложения нужно установить веб-хук для Telegram бота. 
-Это происходит автоматически при запуске приложения в продакшн режиме.
+Убедитесь, что PostgreSQL и Redis доступны и настроены правильно.
 
 ### 3. Деплой через Amvera CLI
 
@@ -56,8 +59,8 @@ git push amvera main
 
 ### Профили Spring Boot
 
-- **dev** - для локальной разработки (long polling)
-- **prod** - для продакшена (webhook)
+- **dev** - для локальной разработки
+- **prod** - для продакшена
 
 ## Мониторинг
 
@@ -98,122 +101,42 @@ amvera logs your-app-name
 
 ---
 
-## 1. **Таблица ботов**
+## Деплой через Git
 
-```sql
-CREATE TABLE bot (
-    id SERIAL PRIMARY KEY,
-    bot_uid VARCHAR(64) NOT NULL UNIQUE,         -- уникальный идентификатор (username или свой)
-    telegram_bot_id BIGINT NOT NULL UNIQUE,      -- Telegram Bot ID
-    name VARCHAR(128) NOT NULL
-);
-```
-- `id` — внутренний ключ.
-- `bot_uid` — уникальный идентификатор (можно использовать username или что-то своё).
-- `telegram_bot_id` — Telegram Bot ID (числовой).
-- `name` — человекочитаемое имя.
+### 1. Закоммитьте все изменения
 
----
-
-## 2. **Таблица истории чата (chat_memory)**
-
-```sql
-CREATE TABLE chat_memory (
-    id SERIAL PRIMARY KEY,
-    conversation_id VARCHAR(255) NOT NULL,   -- уникальный ключ диалога (например, chatId, userId, botId и т.д.)
-    message_index INT NOT NULL,              -- порядковый номер сообщения в рамках диалога
-    role VARCHAR(16) NOT NULL,               -- роль: 'user', 'assistant', 'system' и т.д.
-    content TEXT NOT NULL,                   -- текст сообщения
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT chat_memory_conversation_id_message_index_key UNIQUE (conversation_id, message_index)
-);
-```
-
----
-
-## 3. **Пояснения по полям**
-
-- **conversation_id** — строковый идентификатор диалога. Формируется в коде (например, из chatId, userId, botId и т.д.).
-- **message_index** — порядковый номер сообщения в рамках одного диалога (conversation_id).
-- **role, content, created_at** — как и раньше.
-- **UNIQUE (conversation_id, message_index)** — обеспечивает уникальность сообщений в рамках одного диалога.
-
----
-
-## 4. **Как формировать ключ диалога в коде**
-
-- Для приватного чата: conversation_id = "botId:userId"
-- Для группового чата: conversation_id = "botId:chatId"
-- Формат ключа можно выбрать любой, главное — чтобы он был уникален для каждого диалога.
-
----
-
-## 5. **Пример запроса истории**
-
-```sql
-SELECT * FROM chat_memory
-WHERE conversation_id = :conversationId
-ORDER BY message_index ASC
-LIMIT :lastN OFFSET GREATEST(0, (SELECT COUNT(*) FROM chat_memory WHERE conversation_id = :conversationId) - :lastN)
-```
-
----
-
-Чтобы пересобрать проект в JVM-среде на хостинге Amvera и подтянуть все новые зависимости, выполните следующие шаги:
-
----
-
-### 1. **Закоммитьте все изменения в репозиторий**
-Убедитесь, что все изменения (включая pom.xml и конфиги) закоммичены и запушены в ваш основной репозиторий (например, на GitHub или в Amvera Git).
-
-```sh
+```bash
 git add .
-git commit -m "feat: обновлены зависимости и конфиги"
-git push
+git commit -m "feat: обновления для деплоя"
+git push origin main
 ```
 
----
+### 2. Автоматический деплой
 
-### 2. **Запустите деплой на Amvera**
+Amvera автоматически:
+- Скачивает исходники из репозитория
+- Собирает проект (`./gradlew clean build`)
+- Подтягивает все зависимости из `build.gradle`
+- Собирает JAR и запускает приложение
 
-#### **Вариант 1: Через Amvera CLI**
-Если используете Amvera CLI:
-```sh
-amvera deploy
-```
-Amvera автоматически выполнит:
-- Скачивание исходников
-- Сборку проекта (`./gradlew clean build`)
-- Подтянет все зависимости из pom.xml
-- Соберёт jar и запустит приложение
+### 3. Проверка деплоя
 
-#### **Вариант 2: Через Git push**
-Если деплой настроен через git remote:
-```sh
-git push amvera main
-```
-Amvera запустит сборку и деплой по вашему коммиту.
-
----
-
-### 3. **Проверьте логи и статус**
-После деплоя проверьте логи:
-```sh
+```bash
+# Через Amvera CLI
 amvera logs your-app-name
-```
-или через веб-интерфейс Amvera.
 
----
-
-### 4. **(Опционально) Принудительная очистка кэша зависимостей**
-Если были проблемы с зависимостями, можно добавить в build-скрипт:
-```sh
-./gradlew clean build --refresh-dependencies
+# Или через веб-интерфейс Amvera
 ```
-или в секцию `build.args` в `amvera.yml`:
-```yaml
+
+### 4. Принудительная очистка кэша зависимостей
+
+Если были проблемы с зависимостями:
+
+```bash
+# В amvera.yml можно добавить:
 build:
-  args: 'clean install -U spring-boot:repackage -B -X'
+  args: 'clean build --refresh-dependencies'
 ```
+
 Это заставит Gradle заново скачать все зависимости.
 
