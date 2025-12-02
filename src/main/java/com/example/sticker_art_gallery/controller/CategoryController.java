@@ -356,45 +356,6 @@ public class CategoryController {
     }
     
     /**
-     * Тестовый эндпоинт для проверки подключения к ChatGPT (POST с JSON body)
-     * Доступен только для администраторов
-     */
-    @PostMapping("/ai/test-chatgpt")
-    @Operation(
-        summary = "Тест подключения к ChatGPT (POST)",
-        description = "Простой тест для проверки работоспособности подключения к OpenAI ChatGPT. " +
-                     "Принимает message и prompt через JSON body, возвращает ответ от AI. " +
-                     "Доступен только для администраторов."
-    )
-    @ApiResponse(responseCode = "200", description = "Ответ от ChatGPT получен",
-        content = @Content(schema = @Schema(implementation = Map.class),
-            examples = @io.swagger.v3.oas.annotations.media.ExampleObject(value = """
-                {
-                    "success": true,
-                    "message": "Ответ от AI",
-                    "response": "Текст ответа от ChatGPT",
-                    "responseLength": 150,
-                    "timestamp": "2025-11-02T08:30:00Z"
-                }
-                """)))
-    @ApiResponse(responseCode = "403", description = "Доступ запрещен - требуется роль ADMIN")
-    @ApiResponse(responseCode = "500", description = "Ошибка при вызове ChatGPT")
-    public ResponseEntity<Map<String, Object>> testChatGPTPost(
-            @RequestBody Map<String, String> body) {
-        
-        // Проверка прав администратора
-        if (!isAdmin()) {
-            LOGGER.warn("⚠️ Попытка доступа к тестовому эндпоинту ChatGPT без прав администратора");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(Map.of("error", "Forbidden", "message", "Доступ разрешен только администраторам"));
-        }
-        
-        String message = body != null && body.containsKey("message") ? body.get("message") : "Привет! Как дела?";
-        String prompt = body != null && body.containsKey("prompt") ? body.get("prompt") : "Ты дружелюбный помощник.";
-        return testChatGPT(message, prompt);
-    }
-    
-    /**
      * Общий метод для тестирования ChatGPT
      */
     private ResponseEntity<Map<String, Object>> testChatGPT(String message, String prompt) {
