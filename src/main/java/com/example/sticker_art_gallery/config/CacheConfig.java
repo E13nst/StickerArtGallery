@@ -39,7 +39,10 @@ public class CacheConfig {
             new CaffeineCache("userInfo", defaultBuilder.build()),
             new CaffeineCache("userProfilePhotos", defaultBuilder.build()),
             new CaffeineCache("artRules", defaultBuilder.build()),
-            new CaffeineCache("serviceStatistics", statisticsBuilder.build())
+            new CaffeineCache("serviceStatistics", statisticsBuilder.build()),
+            new CaffeineCache("userStatistics", statisticsBuilder.build()),
+            new CaffeineCache("stickerSetStatistics", statisticsBuilder.build()),
+            new CaffeineCache("likeStatistics", statisticsBuilder.build())
         ));
 
         return cacheManager;
