@@ -2,13 +2,14 @@ package com.example.sticker_art_gallery.controller;
 
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
-import com.example.sticker_art_gallery.model.telegram.StickerSetState;
-import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
-import com.example.sticker_art_gallery.model.telegram.StickerSetType;
+import com.example.sticker_art_gallery.testdata.TestConstants;
 import com.example.sticker_art_gallery.testdata.TestDataBuilder;
+import com.example.sticker_art_gallery.testdata.StickerSetTestBuilder;
 import com.example.sticker_art_gallery.teststeps.StickerSetTestSteps;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -21,7 +22,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Epic("Стикерсеты")
 @Feature("Админ-эндпоинты: официальный статус и автор")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class StickerSetAdminEndpointsIntegrationTest {
+
+    private static final String TEST_STICKERSET_NAME = TestConstants.TEST_STICKERSET_ADMIN;
 
     @Autowired
     private StickerSetTestSteps testSteps;
@@ -36,29 +40,32 @@ class StickerSetAdminEndpointsIntegrationTest {
 
     private Long testStickerSetId;
 
-    @BeforeEach
+    @BeforeAll
     void setUp() {
+        // Создаем пользователей один раз для всех тестов
         testSteps.createTestUserAndProfile(userId);
         testSteps.createTestUserAndProfile(adminUserId);
         testSteps.makeAdmin(adminUserId);
         userInitData = testSteps.createValidInitData(userId);
         adminInitData = testSteps.createValidInitData(adminUserId);
 
+        // Удаляем существующий тестовый стикерсет (на случай предыдущих запусков)
+        testSteps.cleanupTestStickerSets(TEST_STICKERSET_NAME);
+
         // Создаем стикерсет напрямую в репозитории, чтобы не зависеть от внешнего Bot API
-        StickerSet ss = new StickerSet();
-        ss.setUserId(userId);
-        ss.setTitle("Test Set");
-        ss.setName("test_set_by_StickerGalleryBot");
-        ss.setState(StickerSetState.ACTIVE);
-        ss.setVisibility(StickerSetVisibility.PUBLIC);
-        ss.setType(StickerSetType.USER);
-        ss.setAuthorId(null);
+        StickerSet ss = StickerSetTestBuilder.builder()
+                .withUserId(userId)
+                .withTitle("Test Set")
+                .withName(TEST_STICKERSET_NAME)
+                .build();
         testStickerSetId = stickerSetRepository.save(ss).getId();
     }
 
-    @AfterEach
+    @AfterAll
     void tearDown() {
-        stickerSetRepository.deleteAll();
+        // Безопасная очистка: удаляем только тестовый стикерсет по имени
+        // НЕ используем deleteAll() для безопасности продакшн БД
+        testSteps.cleanupTestStickerSets(TEST_STICKERSET_NAME);
     }
 
     @Test
@@ -91,9 +98,9 @@ class StickerSetAdminEndpointsIntegrationTest {
     @DisplayName("Админ устанавливает authorId и очищает его")
     void adminCanSetAndClearAuthor() throws Exception {
         // set author
-        testSteps.setAuthor(testStickerSetId, 123456789L, adminInitData)
+        testSteps.setAuthor(testStickerSetId, TestConstants.TEST_AUTHOR_ID_123456789, adminInitData)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.authorId").value(123456789L));
+                .andExpect(jsonPath("$.authorId").value(TestConstants.TEST_AUTHOR_ID_123456789));
 
         // clear author
         testSteps.clearAuthor(testStickerSetId, adminInitData)
@@ -109,11 +116,13 @@ class StickerSetAdminEndpointsIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
-    @Test
+    @ParameterizedTest
+    @ValueSource(longs = {-1L, -5L, -100L, 0L})
     @Story("Автор")
-    @DisplayName("Валидация authorId: отрицательное значение -> 400")
-    void setAuthorValidation() throws Exception {
-        testSteps.setAuthor(testStickerSetId, -5L, adminInitData)
+    @DisplayName("Валидация authorId: некорректные значения ({0}) -> 400")
+    @Tag("validation")
+    void setAuthorValidation_InvalidAuthorIds_ShouldReturn400(long invalidAuthorId) throws Exception {
+        testSteps.setAuthor(testStickerSetId, invalidAuthorId, adminInitData)
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
     }

@@ -9,9 +9,7 @@ import com.example.sticker_art_gallery.teststeps.StickerSetTestSteps;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.qameta.allure.*;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -32,6 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Feature("Интеграция: лайки и сортировка по likesCount")
 @DisplayName("Интеграционные тесты LikeController")
 @Tag("integration")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class LikeControllerIntegrationTest {
 
     @Autowired
@@ -47,28 +46,46 @@ class LikeControllerIntegrationTest {
     @Autowired
     private UserProfileRepository userProfileRepository;
 
+    private StickerSetTestSteps testSteps;
+    private String initData;
+
+    @BeforeAll
+    void setUp() {
+        // Инициализируем testSteps один раз для всех тестов
+        testSteps = new StickerSetTestSteps();
+        testSteps.setMockMvc(mockMvc);
+        testSteps.setObjectMapper(objectMapper);
+        testSteps.setAppConfig(appConfig);
+        testSteps.setStickerSetRepository(stickerSetRepository);
+        testSteps.setUserRepository(userRepository);
+        testSteps.setUserProfileRepository(userProfileRepository);
+
+        // Очищаем тестовые данные
+        testSteps.cleanupTestData();
+
+        // Создаем пользователя и профиль один раз для всех тестов
+        testSteps.createTestUserAndProfile(TestDataBuilder.TEST_USER_ID);
+        initData = testSteps.createValidInitData(TestDataBuilder.TEST_USER_ID);
+    }
+
+    @AfterAll
+    void tearDown() {
+        // Очищаем тестовые данные после всех тестов
+        testSteps.cleanupTestData();
+    }
+
     @Test
     @Story("likesCount попадает в ответы и влияет на сортировку")
     void likesCountShouldBeReturnedAndAffectSorting() throws Exception {
-        StickerSetTestSteps steps = new StickerSetTestSteps();
-        steps.setMockMvc(mockMvc);
-        steps.setObjectMapper(objectMapper);
-        steps.setAppConfig(appConfig);
-        steps.setStickerSetRepository(stickerSetRepository);
-        steps.setUserRepository(userRepository);
-        steps.setUserProfileRepository(userProfileRepository);
-        steps.cleanupTestData();
-        steps.createTestUserAndProfile(TestDataBuilder.TEST_USER_ID);
-        String initData = steps.createValidInitData(TestDataBuilder.TEST_USER_ID);
 
         // Создаём валидные стикерсеты через API (валидируются через Telegram)
-        var res1 = steps.createStickerSet(
+        var res1 = testSteps.createStickerSet(
                 com.example.sticker_art_gallery.testdata.TestDataBuilder.createStickerSetDtoWithUrl("Dunem"), initData)
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         Long id1 = objectMapper.readTree(res1).get("id").asLong();
 
-        var res2 = steps.createStickerSet(
+        var res2 = testSteps.createStickerSet(
                 com.example.sticker_art_gallery.testdata.TestDataBuilder.createStickerSetDtoWithUrl("citati_prosto"), initData)
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();

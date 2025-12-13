@@ -1,22 +1,18 @@
 package com.example.sticker_art_gallery.controller;
 
 import com.example.sticker_art_gallery.config.AppConfig;
-import com.example.sticker_art_gallery.dto.CreateStickerSetDto;
-import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
-import com.example.sticker_art_gallery.model.profile.UserProfileRepository;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
-import com.example.sticker_art_gallery.model.telegram.StickerSetState;
-import com.example.sticker_art_gallery.model.telegram.StickerSetType;
-import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
-import com.example.sticker_art_gallery.model.user.UserEntity;
-import com.example.sticker_art_gallery.model.user.UserRepository;
+import com.example.sticker_art_gallery.testdata.TestConstants;
+import com.example.sticker_art_gallery.testdata.TestDataBuilder;
+import com.example.sticker_art_gallery.testdata.StickerSetTestBuilder;
+import com.example.sticker_art_gallery.teststeps.StickerSetTestSteps;
 import com.example.sticker_art_gallery.util.TelegramInitDataGenerator;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.qameta.allure.*;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -37,13 +33,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Feature("Поиск стикерсетов")
 @DisplayName("Интеграционные тесты поиска стикерсетов")
 @Tag("integration")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class StickerSetSearchIntegrationTest {
+    
+    // Используем константы из TestConstants
+    private static final String TEST_STICKERSET_CAT = TestConstants.TEST_STICKERSET_CAT;
+    private static final String TEST_STICKERSET_DOG = TestConstants.TEST_STICKERSET_DOG;
+    private static final String TEST_STICKERSET_ANIMAL = TestConstants.TEST_STICKERSET_ANIMAL;
+    private static final String TEST_STICKERSET_PRIVATE = TestConstants.TEST_STICKERSET_PRIVATE;
+    private static final String TEST_STICKERSET_BLOCKED = TestConstants.TEST_STICKERSET_BLOCKED_CAT;
+    private static final String TEST_STICKERSET_OFFICIAL = TestConstants.TEST_STICKERSET_OFFICIAL_CAT;
     
     @Autowired
     private MockMvc mockMvc;
-    
-    @Autowired
-    private ObjectMapper objectMapper;
     
     @Autowired
     private AppConfig appConfig;
@@ -52,107 +54,115 @@ class StickerSetSearchIntegrationTest {
     private StickerSetRepository stickerSetRepository;
     
     @Autowired
-    private UserRepository userRepository;
-    
-    @Autowired
-    private UserProfileRepository userProfileRepository;
+    private StickerSetTestSteps testSteps;
     
     private String validInitData;
-    private static final Long TEST_USER_ID = 141614461L;
+    private static final Long TEST_USER_ID = TestDataBuilder.TEST_USER_ID;
     
-    @org.junit.jupiter.api.BeforeEach
+    @BeforeAll
     void setUp() throws Exception {
-        cleanupTestData();
-        createTestUserAndProfile();
+        // Создаем пользователя и профиль один раз для всех тестов
+        testSteps.createTestUserAndProfile(TEST_USER_ID);
         
         String botToken = appConfig.getTelegram().getBotToken();
         validInitData = TelegramInitDataGenerator.builder()
                 .botToken(botToken)
                 .userId(TEST_USER_ID)
-                .username("TestUser")
-                .firstName("Test")
-                .lastName("User")
-                .languageCode("en")
+                .username(TestConstants.TEST_USERNAME_TEST_USER)
+                .firstName(TestConstants.TEST_FIRST_NAME_TEST)
+                .lastName(TestConstants.TEST_LAST_NAME_USER)
+                .languageCode(TestConstants.TEST_LANGUAGE_CODE_EN)
                 .build();
         
-        // Создаем тестовые стикерсеты для поиска
+        // Удаляем существующие тестовые стикерсеты (на случай предыдущих запусков)
+        testSteps.cleanupTestStickerSets(
+            TEST_STICKERSET_CAT,
+            TEST_STICKERSET_DOG,
+            TEST_STICKERSET_ANIMAL,
+            TEST_STICKERSET_PRIVATE,
+            TEST_STICKERSET_BLOCKED,
+            TEST_STICKERSET_OFFICIAL
+        );
+        
+        // Создаем тестовые стикерсеты для поиска один раз для всех тестов
         createTestStickerSets();
     }
     
-    @org.junit.jupiter.api.AfterEach
+    @AfterAll
     void tearDown() {
-        cleanupTestData();
+        // Безопасная очистка: удаляем только тестовые стикерсеты по именам
+        // НЕ удаляем пользователя и профиль, так как они могут использоваться в продакшене
+        testSteps.cleanupTestStickerSets(
+            TEST_STICKERSET_CAT,
+            TEST_STICKERSET_DOG,
+            TEST_STICKERSET_ANIMAL,
+            TEST_STICKERSET_PRIVATE,
+            TEST_STICKERSET_BLOCKED,
+            TEST_STICKERSET_OFFICIAL
+        );
     }
     
     private void createTestStickerSets() {
         // Стикерсет с "cat" в title
-        StickerSet catStickers = new StickerSet();
-        catStickers.setUserId(TEST_USER_ID);
-        catStickers.setTitle("Funny Cat Stickers");
-        catStickers.setDescription("Collection of cute cats");
-        catStickers.setName("funny_cat_stickers_test");
-        catStickers.setState(StickerSetState.ACTIVE);
-        catStickers.setVisibility(StickerSetVisibility.PUBLIC);
-        catStickers.setType(StickerSetType.USER);
+        StickerSet catStickers = StickerSetTestBuilder.builder()
+                .withUserId(TEST_USER_ID)
+                .withTitle("Funny Cat Stickers")
+                .withDescription("Collection of cute cats")
+                .withName(TEST_STICKERSET_CAT)
+                .build();
         stickerSetRepository.save(catStickers);
         
         // Стикерсет с "dog" в title
-        StickerSet dogStickers = new StickerSet();
-        dogStickers.setUserId(TEST_USER_ID);
-        dogStickers.setTitle("Happy Dogs Pack");
-        dogStickers.setDescription("Best dog stickers ever");
-        dogStickers.setName("happy_dogs_pack_test");
-        dogStickers.setState(StickerSetState.ACTIVE);
-        dogStickers.setVisibility(StickerSetVisibility.PUBLIC);
-        dogStickers.setType(StickerSetType.USER);
+        StickerSet dogStickers = StickerSetTestBuilder.builder()
+                .withUserId(TEST_USER_ID)
+                .withTitle("Happy Dogs Pack")
+                .withDescription("Best dog stickers ever")
+                .withName(TEST_STICKERSET_DOG)
+                .build();
         stickerSetRepository.save(dogStickers);
         
         // Стикерсет с "cat" в description
-        StickerSet animalStickers = new StickerSet();
-        animalStickers.setUserId(TEST_USER_ID);
-        animalStickers.setTitle("Animal Kingdom");
-        animalStickers.setDescription("Features cute cat and dog images");
-        animalStickers.setName("animal_kingdom_test");
-        animalStickers.setState(StickerSetState.ACTIVE);
-        animalStickers.setVisibility(StickerSetVisibility.PUBLIC);
-        animalStickers.setType(StickerSetType.USER);
+        StickerSet animalStickers = StickerSetTestBuilder.builder()
+                .withUserId(TEST_USER_ID)
+                .withTitle("Animal Kingdom")
+                .withDescription("Features cute cat and dog images")
+                .withName(TEST_STICKERSET_ANIMAL)
+                .build();
         stickerSetRepository.save(animalStickers);
         
         // Приватный стикерсет (не должен находиться)
-        StickerSet privateStickers = new StickerSet();
-        privateStickers.setUserId(TEST_USER_ID);
-        privateStickers.setTitle("Private Cat Collection");
-        privateStickers.setDescription("My personal cat stickers");
-        privateStickers.setName("private_cat_test");
-        privateStickers.setState(StickerSetState.ACTIVE);
-        privateStickers.setVisibility(StickerSetVisibility.PRIVATE);
-        privateStickers.setType(StickerSetType.USER);
+        StickerSet privateStickers = StickerSetTestBuilder.builder()
+                .withUserId(TEST_USER_ID)
+                .withTitle("Private Cat Collection")
+                .withDescription("My personal cat stickers")
+                .withName(TEST_STICKERSET_PRIVATE)
+                .asPrivate()
+                .build();
         stickerSetRepository.save(privateStickers);
         
         // Заблокированный стикерсет (не должен находиться)
-        StickerSet blockedStickers = new StickerSet();
-        blockedStickers.setUserId(TEST_USER_ID);
-        blockedStickers.setTitle("Blocked Cat Stickers");
-        blockedStickers.setDescription("These cats are blocked");
-        blockedStickers.setName("blocked_cat_test");
-        blockedStickers.setState(StickerSetState.BLOCKED);
-        blockedStickers.setVisibility(StickerSetVisibility.PUBLIC);
-        blockedStickers.setType(StickerSetType.USER);
+        StickerSet blockedStickers = StickerSetTestBuilder.builder()
+                .withUserId(TEST_USER_ID)
+                .withTitle("Blocked Cat Stickers")
+                .withDescription("These cats are blocked")
+                .withName(TEST_STICKERSET_BLOCKED)
+                .asBlocked("Test block reason")
+                .build();
         stickerSetRepository.save(blockedStickers);
         
         // Официальный стикерсет
-        StickerSet officialStickers = new StickerSet();
-        officialStickers.setUserId(TEST_USER_ID);
-        officialStickers.setTitle("Official Cat Pack");
-        officialStickers.setDescription("Official Telegram cats");
-        officialStickers.setName("official_cat_test");
-        officialStickers.setState(StickerSetState.ACTIVE);
-        officialStickers.setVisibility(StickerSetVisibility.PUBLIC);
-        officialStickers.setType(StickerSetType.OFFICIAL);
+        StickerSet officialStickers = StickerSetTestBuilder.builder()
+                .withUserId(TEST_USER_ID)
+                .withTitle("Official Cat Pack")
+                .withDescription("Official Telegram cats")
+                .withName(TEST_STICKERSET_OFFICIAL)
+                .asOfficial()
+                .build();
         stickerSetRepository.save(officialStickers);
     }
     
     @Test
+    @Timeout(value = 3, unit = java.util.concurrent.TimeUnit.SECONDS)
     @Story("Поиск по title")
     @DisplayName("Поиск стикерсетов по совпадению в title")
     @Description("Должен найти все публичные активные стикерсеты с 'cat' в названии")
@@ -221,22 +231,21 @@ class StickerSetSearchIntegrationTest {
                 .andExpect(jsonPath("$.content[*].state", everyItem(is("ACTIVE"))));
     }
     
-    @Test
+    @ParameterizedTest
+    @ValueSource(strings = {"CAT", "Cat", "cat", "CaT"})
     @Story("Регистронезависимый поиск")
-    @DisplayName("Поиск не зависит от регистра")
+    @DisplayName("Поиск не зависит от регистра: {0} -> результаты найдены")
     @Description("Должен найти результаты независимо от регистра запроса")
-    void testSearchCaseInsensitive() throws Exception {
-        // Тестируем разные варианты регистра
-        for (String query : new String[]{"CAT", "Cat", "cat", "CaT"}) {
-            mockMvc.perform(get("/api/stickersets/search")
-                    .param("query", query)
-                    .param("page", "0")
-                    .param("size", "20")
-                    .header("X-Telegram-Init-Data", validInitData))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.content", hasSize(greaterThanOrEqualTo(2))))
-                    .andExpect(jsonPath("$.totalElements", greaterThanOrEqualTo(2)));
-        }
+    @Tag("search")
+    void testSearchCaseInsensitive(String query) throws Exception {
+        mockMvc.perform(get("/api/stickersets/search")
+                .param("query", query)
+                .param("page", "0")
+                .param("size", "20")
+                .header("X-Telegram-Init-Data", validInitData))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(greaterThanOrEqualTo(2))))
+                .andExpect(jsonPath("$.totalElements", greaterThanOrEqualTo(2)));
     }
     
     @Test
@@ -285,34 +294,6 @@ class StickerSetSearchIntegrationTest {
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.content", hasSize(0)))
                 .andExpect(jsonPath("$.totalElements").value(0));
-    }
-    
-    // Вспомогательные методы
-    
-    private void createTestUserAndProfile() {
-        UserEntity user = new UserEntity();
-        user.setId(TEST_USER_ID); // Telegram ID хранится в поле id
-        user.setUsername("TestUser");
-        user.setFirstName("Test");
-        user.setLastName("User");
-        user.setLanguageCode("en");
-        userRepository.save(user);
-        
-        UserProfileEntity profile = new UserProfileEntity();
-        profile.setUserId(TEST_USER_ID);
-        profile.setArtBalance(0L); // Long, а не int
-        userProfileRepository.save(profile);
-    }
-    
-    private void cleanupTestData() {
-        // Удаляем все стикерсеты тестового пользователя
-        stickerSetRepository.deleteAll(
-            stickerSetRepository.findByUserId(TEST_USER_ID)
-        );
-        
-        // Удаляем тестового пользователя и профиль
-        userProfileRepository.deleteById(TEST_USER_ID);
-        userRepository.deleteById(TEST_USER_ID);
     }
 }
 

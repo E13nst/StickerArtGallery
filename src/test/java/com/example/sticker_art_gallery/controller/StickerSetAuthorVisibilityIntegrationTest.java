@@ -1,19 +1,13 @@
 package com.example.sticker_art_gallery.controller;
 
-import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
-import com.example.sticker_art_gallery.model.telegram.StickerSetState;
-import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
-import com.example.sticker_art_gallery.model.telegram.StickerSetType;
+import com.example.sticker_art_gallery.testdata.TestConstants;
 import com.example.sticker_art_gallery.testdata.TestUsers;
+import com.example.sticker_art_gallery.testdata.StickerSetTestBuilder;
 import com.example.sticker_art_gallery.teststeps.StickerSetTestSteps;
 import io.qameta.allure.*;
 import org.hamcrest.Matchers;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,11 +22,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Tag("integration")
 @Epic("Стикерсеты")
 @Feature("Доступ к авторским стикерсетам")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class StickerSetAuthorVisibilityIntegrationTest {
 
-    private static final String AUTHOR_PUBLIC_PACK = "author_public_pack_by_testbot";
-    private static final String AUTHOR_PRIVATE_PACK = "author_private_pack_by_testbot";
-    private static final String AUTHOR_BLOCKED_PACK = "author_blocked_pack_by_testbot";
+    // Используем константы из TestConstants
+    private static final String AUTHOR_PUBLIC_PACK = TestConstants.TEST_STICKERSET_AUTHOR_PUBLIC;
+    private static final String AUTHOR_PRIVATE_PACK = TestConstants.TEST_STICKERSET_AUTHOR_PRIVATE;
+    private static final String AUTHOR_BLOCKED_PACK = TestConstants.TEST_STICKERSET_AUTHOR_BLOCKED;
 
     @Autowired
     private StickerSetTestSteps testSteps;
@@ -44,8 +40,9 @@ class StickerSetAuthorVisibilityIntegrationTest {
     private String authorInitData;
     private String viewerInitData;
 
-    @BeforeEach
+    @BeforeAll
     void setUp() {
+        // Создаем пользователей один раз для всех тестов
         testSteps.createTestUserAndProfile(TestUsers.ADMIN.id());
         testSteps.createTestUserAndProfile(TestUsers.OWNER.id());
         testSteps.createTestUserAndProfile(TestUsers.VIEWER.id());
@@ -55,24 +52,46 @@ class StickerSetAuthorVisibilityIntegrationTest {
         authorInitData = testSteps.createValidInitData(TestUsers.OWNER.id());
         viewerInitData = testSteps.createValidInitData(TestUsers.VIEWER.id());
 
-        // Удаляем существующие тестовые стикерсеты
-        stickerSetRepository.findByNameIgnoreCase(AUTHOR_PUBLIC_PACK).ifPresent(stickerSetRepository::delete);
-        stickerSetRepository.findByNameIgnoreCase(AUTHOR_PRIVATE_PACK).ifPresent(stickerSetRepository::delete);
-        stickerSetRepository.findByNameIgnoreCase(AUTHOR_BLOCKED_PACK).ifPresent(stickerSetRepository::delete);
+        // Удаляем существующие тестовые стикерсеты (на случай предыдущих запусков)
+        testSteps.cleanupTestStickerSets(
+            AUTHOR_PUBLIC_PACK,
+            AUTHOR_PRIVATE_PACK,
+            AUTHOR_BLOCKED_PACK
+        );
 
+        // Создаем тестовые стикерсеты один раз для всех тестов используя StickerSetTestBuilder
         stickerSetRepository.saveAll(List.of(
-                buildStickerSet(TestUsers.VIEWER.id(), TestUsers.OWNER.id(), AUTHOR_PUBLIC_PACK, true),
-                buildStickerSet(TestUsers.VIEWER.id(), TestUsers.OWNER.id(), AUTHOR_PRIVATE_PACK, false),
-                buildBlockedStickerSet(TestUsers.VIEWER.id(), TestUsers.OWNER.id(), AUTHOR_BLOCKED_PACK)
+                StickerSetTestBuilder.builder()
+                        .withUserId(TestUsers.VIEWER.id())
+                        .withAuthorId(TestUsers.OWNER.id())
+                        .withTitle(AUTHOR_PUBLIC_PACK + "_title")
+                        .withName(AUTHOR_PUBLIC_PACK)
+                        .build(),
+                StickerSetTestBuilder.builder()
+                        .withUserId(TestUsers.VIEWER.id())
+                        .withAuthorId(TestUsers.OWNER.id())
+                        .withTitle(AUTHOR_PRIVATE_PACK + "_title")
+                        .withName(AUTHOR_PRIVATE_PACK)
+                        .asPrivate()
+                        .build(),
+                StickerSetTestBuilder.builder()
+                        .withUserId(TestUsers.VIEWER.id())
+                        .withAuthorId(TestUsers.OWNER.id())
+                        .withTitle(AUTHOR_BLOCKED_PACK + "_title")
+                        .withName(AUTHOR_BLOCKED_PACK)
+                        .asBlocked("Test block reason")
+                        .build()
         ));
     }
 
-    @AfterEach
+    @AfterAll
     void tearDown() {
-        // Удаляем тестовые стикерсеты по именам
-        stickerSetRepository.findByNameIgnoreCase(AUTHOR_PUBLIC_PACK).ifPresent(stickerSetRepository::delete);
-        stickerSetRepository.findByNameIgnoreCase(AUTHOR_PRIVATE_PACK).ifPresent(stickerSetRepository::delete);
-        stickerSetRepository.findByNameIgnoreCase(AUTHOR_BLOCKED_PACK).ifPresent(stickerSetRepository::delete);
+        // Удаляем тестовые стикерсеты один раз после всех тестов
+        testSteps.cleanupTestStickerSets(
+            AUTHOR_PUBLIC_PACK,
+            AUTHOR_PRIVATE_PACK,
+            AUTHOR_BLOCKED_PACK
+        );
     }
 
     @Test
@@ -137,31 +156,5 @@ class StickerSetAuthorVisibilityIntegrationTest {
                 .andExpect(jsonPath("$.content[*].state", Matchers.not(Matchers.hasItem("BLOCKED"))));
     }
 
-    private StickerSet buildStickerSet(Long userId, Long authorId, String name, boolean isPublic) {
-        StickerSet stickerSet = new StickerSet();
-        stickerSet.setUserId(userId);
-        stickerSet.setAuthorId(authorId);
-        stickerSet.setTitle(name + "_title");
-        stickerSet.setName(name);
-        stickerSet.setState(StickerSetState.ACTIVE);
-        stickerSet.setVisibility(isPublic ? StickerSetVisibility.PUBLIC : StickerSetVisibility.PRIVATE);
-        stickerSet.setType(StickerSetType.USER);
-        stickerSet.setLikesCount(0);
-        return stickerSet;
-    }
-
-    private StickerSet buildBlockedStickerSet(Long userId, Long authorId, String name) {
-        StickerSet stickerSet = new StickerSet();
-        stickerSet.setUserId(userId);
-        stickerSet.setAuthorId(authorId);
-        stickerSet.setTitle(name + "_title");
-        stickerSet.setName(name);
-        stickerSet.setState(StickerSetState.BLOCKED);
-        stickerSet.setVisibility(StickerSetVisibility.PUBLIC);
-        stickerSet.setType(StickerSetType.USER);
-        stickerSet.setLikesCount(0);
-        stickerSet.setBlockReason("Test block reason");
-        return stickerSet;
-    }
 }
 

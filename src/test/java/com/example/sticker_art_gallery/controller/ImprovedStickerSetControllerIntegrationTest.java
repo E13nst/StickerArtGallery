@@ -9,9 +9,7 @@ import com.example.sticker_art_gallery.testdata.TestDataBuilder;
 import com.example.sticker_art_gallery.teststeps.StickerSetTestSteps;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.qameta.allure.*;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -32,6 +30,7 @@ import java.util.UUID;
 @Feature("Создание и управление стикерсетами")
 @DisplayName("Улучшенные интеграционные тесты StickerSetController")
 @Tag("integration")  // Запускаются только явно: make test-integration
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ImprovedStickerSetControllerIntegrationTest {
     
     @Autowired
@@ -56,9 +55,9 @@ class ImprovedStickerSetControllerIntegrationTest {
     
     private String validInitData;
     
-    @org.junit.jupiter.api.BeforeEach
+    @BeforeAll
     void setUp() throws Exception {
-        // Инициализируем testSteps
+        // Инициализируем testSteps один раз для всех тестов
         testSteps = new StickerSetTestSteps();
         testSteps.setMockMvc(mockMvc);
         testSteps.setObjectMapper(objectMapper);
@@ -70,16 +69,23 @@ class ImprovedStickerSetControllerIntegrationTest {
         // Очищаем тестовые данные
         testSteps.cleanupTestData();
         
-        // Создаем тестового пользователя и профиль
+        // Создаем тестового пользователя и профиль один раз для всех тестов
         testSteps.createTestUserAndProfile(TestDataBuilder.TEST_USER_ID);
         
         // Создаем валидную initData
         validInitData = testSteps.createValidInitData(TestDataBuilder.TEST_USER_ID);
     }
     
-    @org.junit.jupiter.api.AfterEach
+    @AfterAll
     void tearDown() {
-        // Очищаем тестовые данные после теста
+        // Очищаем тестовые данные после всех тестов
+        testSteps.cleanupTestData();
+    }
+    
+    @AfterEach
+    void cleanupAfterTest() {
+        // Очищаем тестовые стикерсеты после каждого теста
+        // (так как тесты создают стикерсеты через API)
         testSteps.cleanupTestData();
     }
     

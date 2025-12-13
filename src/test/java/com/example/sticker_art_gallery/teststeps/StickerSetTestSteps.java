@@ -16,8 +16,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
-import java.util.List;
-
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -103,17 +101,30 @@ public class StickerSetTestSteps {
     
     @Step("Очистить тестовые данные")
     public void cleanupTestData() {
-        // Удаляем тестовые стикерсеты - используем findAll() вместо findByNameIgnoreCase()
-        for (String name : TestDataBuilder.TEST_STICKER_SETS) {
-            List<com.example.sticker_art_gallery.model.telegram.StickerSet> stickerSets = 
-                stickerSetRepository.findAll().stream()
-                    .filter(s -> s.getName().equalsIgnoreCase(name))
-                    .collect(java.util.stream.Collectors.toList());
-            
-            for (com.example.sticker_art_gallery.model.telegram.StickerSet s : stickerSets) {
-                System.out.println("🗑️ Удаляем тестовый стикерсет: " + name + " (ID: " + s.getId() + ")");
-                stickerSetRepository.delete(s);
+        // Удаляем тестовые стикерсеты - используем индексированный запрос findByNameIgnoreCase()
+        cleanupTestStickerSets(TestDataBuilder.TEST_STICKER_SETS);
+    }
+    
+    @Step("Безопасная очистка тестовых стикерсетов по именам")
+    public void cleanupTestStickerSets(String... names) {
+        // Безопасное удаление только тестовых стикерсетов по именам
+        // Используется для продакшн БД - удаляет только указанные стикерсеты
+        for (String name : names) {
+            if (name == null || name.trim().isEmpty()) {
+                continue; // Пропускаем пустые имена
             }
+            stickerSetRepository.findByNameIgnoreCase(name.trim())
+                .ifPresent(s -> {
+                    System.out.println("🗑️ Удаляем тестовый стикерсет: " + name + " (ID: " + s.getId() + ")");
+                    stickerSetRepository.delete(s);
+                });
+        }
+    }
+    
+    @Step("Безопасная очистка тестовых стикерсетов по списку имен")
+    public void cleanupTestStickerSets(java.util.List<String> names) {
+        if (names != null && !names.isEmpty()) {
+            cleanupTestStickerSets(names.toArray(new String[0]));
         }
     }
     
@@ -151,9 +162,8 @@ public class StickerSetTestSteps {
 
     @Step("Получить стикерсеты конкретного пользователя через API")
     public ResultActions getStickerSetsByUser(Long userId, String initData, java.util.Map<String, String> queryParams) throws Exception {
-        var requestBuilder = get("/api/stickersets")
-                .header("X-Telegram-Init-Data", initData)
-                .param("userId", String.valueOf(userId));
+        var requestBuilder = get("/api/stickersets/user/{userId}", userId)
+                .header("X-Telegram-Init-Data", initData);
         if (queryParams != null) {
             for (java.util.Map.Entry<String, String> entry : queryParams.entrySet()) {
                 requestBuilder = requestBuilder.param(entry.getKey(), entry.getValue());

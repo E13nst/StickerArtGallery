@@ -2,17 +2,18 @@ package com.example.sticker_art_gallery.controller;
 
 import com.example.sticker_art_gallery.config.AppConfig;
 import com.example.sticker_art_gallery.dto.CreateStickerSetDto;
-import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
-import com.example.sticker_art_gallery.model.profile.UserProfileRepository;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
-import com.example.sticker_art_gallery.model.user.UserEntity;
 import com.example.sticker_art_gallery.model.user.UserRepository;
+import com.example.sticker_art_gallery.model.profile.UserProfileRepository;
+import com.example.sticker_art_gallery.testdata.TestDataBuilder;
+import com.example.sticker_art_gallery.teststeps.StickerSetTestSteps;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.sticker_art_gallery.util.TelegramInitDataGenerator;
 import io.qameta.allure.*;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -33,6 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Feature("Создание и управление стикерсетами")
 @DisplayName("Интеграционные тесты StickerSetController")
 @Tag("integration")  // Запускаются только явно: make test-integration
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class StickerSetControllerIntegrationTest {
     
     static {
@@ -70,17 +72,27 @@ class StickerSetControllerIntegrationTest {
     @Autowired
     private UserProfileRepository userProfileRepository;
 
+    private StickerSetTestSteps testSteps;
     private String validInitData;
     
-    private static final Long TEST_USER_ID = 141614461L;
+    private static final Long TEST_USER_ID = TestDataBuilder.TEST_USER_ID;
 
-    @org.junit.jupiter.api.BeforeEach
+    @BeforeAll
     void setUp() throws Exception {
-        // ⚠️ ВНИМАНИЕ: Работаем с ПРОДАКШЕН БД! Очищаем тестовые данные
-        cleanupTestData();
+        // Инициализируем testSteps один раз для всех тестов
+        testSteps = new StickerSetTestSteps();
+        testSteps.setMockMvc(mockMvc);
+        testSteps.setObjectMapper(objectMapper);
+        testSteps.setAppConfig(appConfig);
+        testSteps.setStickerSetRepository(stickerSetRepository);
+        testSteps.setUserRepository(userRepository);
+        testSteps.setUserProfileRepository(userProfileRepository);
         
-        // Создаем тестового пользователя и профиль
-        createTestUserAndProfile();
+        // ⚠️ ВНИМАНИЕ: Работаем с ПРОДАКШЕН БД! Очищаем тестовые данные
+        testSteps.cleanupTestData();
+        
+        // Создаем тестового пользователя и профиль один раз для всех тестов
+        testSteps.createTestUserAndProfile(TEST_USER_ID);
         
         // Генерируем валидную initData используя реальный токен бота из конфигурации
         String botToken = appConfig.getTelegram().getBotToken();
@@ -94,58 +106,18 @@ class StickerSetControllerIntegrationTest {
                 .build();
     }
     
-    @org.junit.jupiter.api.AfterEach
+    @AfterAll
     void tearDown() {
-        // ⚠️ ВНИМАНИЕ: Очищаем данные после теста, чтобы не засорять продакшен БД!
-        System.out.println("🧹 Очистка тестовых данных после выполнения теста...");
-        cleanupTestData();
+        // ⚠️ ВНИМАНИЕ: Очищаем данные после всех тестов, чтобы не засорять продакшен БД!
+        System.out.println("🧹 Очистка тестовых данных после выполнения всех тестов...");
+        testSteps.cleanupTestData();
     }
     
-    /**
-     * ⚠️ Создает тестового пользователя и его профиль
-     * ВНИМАНИЕ: Удаляется в cleanupTestData()
-     */
-    private void createTestUserAndProfile() {
-        // Создаем пользователя если его нет
-        if (!userRepository.existsById(TEST_USER_ID)) {
-            UserEntity user = new UserEntity();
-            user.setId(TEST_USER_ID);
-            user.setFirstName("Test");
-            user.setLastName("User");
-            user.setUsername("test_integration_user");
-            user.setLanguageCode("ru");
-            userRepository.save(user);
-            System.out.println("👤 Создан тестовый пользователь: " + TEST_USER_ID);
-        }
-        
-        // Создаем профиль если его нет
-        if (!userProfileRepository.existsByUserId(TEST_USER_ID)) {
-            UserProfileEntity profile = new UserProfileEntity();
-            profile.setUserId(TEST_USER_ID);
-            profile.setRole(UserProfileEntity.UserRole.USER);
-            profile.setArtBalance(0L);
-            userProfileRepository.save(profile);
-            System.out.println("📋 Создан тестовый профиль для пользователя: " + TEST_USER_ID);
-        }
-    }
-    
-    /**
-     * ⚠️ Удаляет ВСЕ тестовые данные (стикерсеты, профили, пользователей)
-     * Безопасно для продакшен БД - удаляет только тестовые данные
-     */
-    private void cleanupTestData() {
-        // 1. Удаляем тестовые стикерсеты
-        String[] testStickerSets = {"citati_prosto", "shblokun", "test_stickers"};
-        for (String name : testStickerSets) {
-            stickerSetRepository.findByNameIgnoreCase(name)
-                    .ifPresent(s -> {
-                        System.out.println("🗑️ Удаляем тестовый стикерсет: " + name);
-                        stickerSetRepository.delete(s);
-                    });
-        }
-        
-        // 2. НЕ удаляем пользователя и профиль - они могут использоваться
-        // в продакшене. Только очищаем стикерсеты.
+    @AfterEach
+    void cleanupAfterTest() {
+        // Очищаем тестовые стикерсеты после каждого теста
+        // (так как тесты создают стикерсеты через API)
+        testSteps.cleanupTestData();
     }
 
     private org.springframework.test.web.servlet.ResultActions performCreateStickerSet(CreateStickerSetDto createDto, String initData) throws Exception {
@@ -173,6 +145,7 @@ class StickerSetControllerIntegrationTest {
     }
 
     @Test
+    @Timeout(value = 5, unit = java.util.concurrent.TimeUnit.SECONDS)
     @Story("Создание стикерсета")
     @DisplayName("POST /api/stickersets с валидными данными должен возвращать 201")
     @Description("Проверяет создание нового стикерсета с валидным именем. " +
@@ -198,6 +171,7 @@ class StickerSetControllerIntegrationTest {
     }
 
     @Test
+    @Timeout(value = 5, unit = java.util.concurrent.TimeUnit.SECONDS)
     @Story("Создание стикерсета")
     @DisplayName("POST /api/stickersets с URL стикерсета должен возвращать 201")
     @Description("Проверяет, что API корректно обрабатывает URL стикерсета (t.me/addstickers/NAME) " +
@@ -235,12 +209,29 @@ class StickerSetControllerIntegrationTest {
                 .andExpect(jsonPath("$.userId").value(141614461));
     }
 
-    @Test
-    @DisplayName("POST /api/stickersets с пустым именем должен возвращать 400")
-    void createStickerSet_WithEmptyName_ShouldReturn400() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "",
+            "invalid-name",
+            "name with spaces",
+            "Name@With#Special$Chars",
+            "name.with.dots",
+            "name,with,commas",
+            "name!with!exclamation",
+            "name?with?question",
+            "name(with)parentheses",
+            "https://t.me/addstickers/",
+            "https://t.me/addstickers/invalid-name",
+            "https://t.me/addstickers/name with spaces",
+            "ftp://t.me/addstickers/Test",
+            "http://example.com/addstickers/Test"
+    })
+    @DisplayName("POST /api/stickersets: валидация некорректных имен и URL -> 400 Bad Request")
+    @Tag("validation")
+    void createStickerSet_WithInvalidNames_ShouldReturn400(String invalidName) throws Exception {
         // Given
         CreateStickerSetDto createDto = new CreateStickerSetDto();
-        createDto.setName("");
+        createDto.setName(invalidName);
 
         // When & Then
         performCreateStickerSet(createDto, validInitData)
@@ -249,41 +240,15 @@ class StickerSetControllerIntegrationTest {
                 .andExpect(jsonPath("$.message").exists());
     }
 
-    @Test
-    @DisplayName("POST /api/stickersets с некорректным именем должен возвращать 400")
-    void createStickerSet_WithInvalidName_ShouldReturn400() throws Exception {
-        // Given
-        CreateStickerSetDto createDto = new CreateStickerSetDto();
-        createDto.setName("invalid-name!");
-
-        // When & Then
-        performCreateStickerSet(createDto, validInitData)
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").exists())
-                .andExpect(jsonPath("$.message").exists());
-    }
-
-    @Test
-    @DisplayName("POST /api/stickersets с некорректным URL должен возвращать 400")
-    void createStickerSet_WithInvalidUrl_ShouldReturn400() throws Exception {
-        // Given
-        CreateStickerSetDto createDto = new CreateStickerSetDto();
-        createDto.setName("https://t.me/addstickers/");
-
-        // When & Then
-        performCreateStickerSet(createDto, validInitData)
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").exists())
-                .andExpect(jsonPath("$.message").exists());
-    }
-
-    @Test
-    @DisplayName("POST /api/stickersets с слишком длинным title должен возвращать 400")
-    void createStickerSet_WithTooLongTitle_ShouldReturn400() throws Exception {
+    @ParameterizedTest
+    @ValueSource(ints = {65, 100, 200})
+    @DisplayName("POST /api/stickersets: валидация слишком длинного title -> 400 Bad Request")
+    @Tag("validation")
+    void createStickerSet_WithTooLongTitle_ShouldReturn400(int titleLength) throws Exception {
         // Given
         CreateStickerSetDto createDto = new CreateStickerSetDto();
         createDto.setName("test_stickers");
-        createDto.setTitle("A".repeat(65)); // Максимум 64 символа
+        createDto.setTitle("A".repeat(titleLength)); // Максимум 64 символа
 
         // When & Then
         performCreateStickerSet(createDto, validInitData)
