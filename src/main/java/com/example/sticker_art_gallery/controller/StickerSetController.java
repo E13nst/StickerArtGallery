@@ -8,6 +8,7 @@ import com.example.sticker_art_gallery.service.ai.AutoCategorizationService;
 import com.example.sticker_art_gallery.service.ai.StickerSetDescriptionService;
 import com.example.sticker_art_gallery.service.StickerSetQueryService;
 import com.example.sticker_art_gallery.service.statistics.StatisticsService;
+import com.example.sticker_art_gallery.service.transaction.WalletService;
 import com.example.sticker_art_gallery.exception.UnauthorizedException;
 import com.example.sticker_art_gallery.model.user.UserEntity;
 import org.slf4j.Logger;
@@ -52,19 +53,22 @@ public class StickerSetController {
     private final StickerSetDescriptionService stickerSetDescriptionService;
     private final StickerSetQueryService stickerSetQueryService;
     private final StatisticsService statisticsService;
+    private final WalletService walletService;
     
     @Autowired
     public StickerSetController(StickerSetService stickerSetService,
                                UserService userService, AutoCategorizationService autoCategorizationService,
                                StickerSetDescriptionService stickerSetDescriptionService,
                                StickerSetQueryService stickerSetQueryService,
-                               StatisticsService statisticsService) {
+                               StatisticsService statisticsService,
+                               WalletService walletService) {
         this.stickerSetService = stickerSetService;
         this.userService = userService;
         this.autoCategorizationService = autoCategorizationService;
         this.stickerSetDescriptionService = stickerSetDescriptionService;
         this.stickerSetQueryService = stickerSetQueryService;
         this.statisticsService = statisticsService;
+        this.walletService = walletService;
     }
     
     /**
@@ -1278,6 +1282,17 @@ public class StickerSetController {
             }
             StickerSetDto updatedDto = StickerSetDto.fromEntity(updatedStickerSet);
             
+            // Проверяем наличие TON кошелька
+            boolean hasTonWallet = false;
+            if (currentUserId != null) {
+                try {
+                    hasTonWallet = walletService.hasActiveWallet(currentUserId);
+                } catch (Exception e) {
+                    LOGGER.debug("⚠️ Ошибка при проверке наличия кошелька для пользователя {}: {}", currentUserId, e.getMessage());
+                    hasTonWallet = false;
+                }
+            }
+            
             // Устанавливаем availableActions
             updatedDto.setAvailableActions(StickerSetDto.calculateAvailableActions(
                 currentUserId,
@@ -1285,7 +1300,8 @@ public class StickerSetController {
                 updatedStickerSet.getUserId(),
                 updatedStickerSet.getAuthorId(),
                 updatedStickerSet.getState(),
-                updatedStickerSet.getVisibility()
+                updatedStickerSet.getVisibility(),
+                hasTonWallet
             ));
             
             LOGGER.info("✅ Стикерсет {} {}", id, action);
@@ -1360,6 +1376,17 @@ public class StickerSetController {
             StickerSet blockedStickerSet = stickerSetService.blockStickerSet(id, reason);
             StickerSetDto blockedDto = StickerSetDto.fromEntity(blockedStickerSet);
             
+            // Проверяем наличие TON кошелька
+            boolean hasTonWallet = false;
+            if (currentUserId != null) {
+                try {
+                    hasTonWallet = walletService.hasActiveWallet(currentUserId);
+                } catch (Exception e) {
+                    LOGGER.debug("⚠️ Ошибка при проверке наличия кошелька для пользователя {}: {}", currentUserId, e.getMessage());
+                    hasTonWallet = false;
+                }
+            }
+            
             // Устанавливаем availableActions
             blockedDto.setAvailableActions(StickerSetDto.calculateAvailableActions(
                 currentUserId,
@@ -1367,7 +1394,8 @@ public class StickerSetController {
                 blockedStickerSet.getUserId(),
                 blockedStickerSet.getAuthorId(),
                 blockedStickerSet.getState(),
-                blockedStickerSet.getVisibility()
+                blockedStickerSet.getVisibility(),
+                hasTonWallet
             ));
             
             LOGGER.info("✅ Стикерсет {} заблокирован по причине: {}", id, reason);
@@ -1434,6 +1462,17 @@ public class StickerSetController {
             StickerSet unblockedStickerSet = stickerSetService.unblockStickerSet(id);
             StickerSetDto unblockedDto = StickerSetDto.fromEntity(unblockedStickerSet);
             
+            // Проверяем наличие TON кошелька
+            boolean hasTonWallet = false;
+            if (currentUserId != null) {
+                try {
+                    hasTonWallet = walletService.hasActiveWallet(currentUserId);
+                } catch (Exception e) {
+                    LOGGER.debug("⚠️ Ошибка при проверке наличия кошелька для пользователя {}: {}", currentUserId, e.getMessage());
+                    hasTonWallet = false;
+                }
+            }
+            
             // Устанавливаем availableActions
             unblockedDto.setAvailableActions(StickerSetDto.calculateAvailableActions(
                 currentUserId,
@@ -1441,7 +1480,8 @@ public class StickerSetController {
                 unblockedStickerSet.getUserId(),
                 unblockedStickerSet.getAuthorId(),
                 unblockedStickerSet.getState(),
-                unblockedStickerSet.getVisibility()
+                unblockedStickerSet.getVisibility(),
+                hasTonWallet
             ));
             
             LOGGER.info("✅ Стикерсет {} разблокирован", id);

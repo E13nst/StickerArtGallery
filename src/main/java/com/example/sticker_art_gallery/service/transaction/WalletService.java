@@ -98,6 +98,21 @@ public class WalletService {
     }
 
     /**
+     * Проверить наличие активного кошелька у пользователя
+     * 
+     * @param userId ID пользователя
+     * @return true если у пользователя есть активный кошелек, false иначе
+     */
+    @Transactional(readOnly = true)
+    public boolean hasActiveWallet(Long userId) {
+        if (userId == null) {
+            return false;
+        }
+        List<UserWalletEntity> activeWallets = walletRepository.findByUser_IdAndIsActiveTrue(userId);
+        return !activeWallets.isEmpty();
+    }
+
+    /**
      * Деактивировать все активные кошельки пользователя
      */
     private void deactivateAllActiveWallets(Long userId) {

@@ -14,6 +14,7 @@ import com.example.sticker_art_gallery.model.profile.ArtTransactionRepository;
 import com.example.sticker_art_gallery.service.category.CategoryService;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.LikeService;
+import com.example.sticker_art_gallery.service.transaction.WalletService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.slf4j.Logger;
@@ -37,6 +38,7 @@ public class StickerSetService {
     private final CategoryService categoryService;
     private final ArtRewardService artRewardService;
     private final ArtTransactionRepository artTransactionRepository;
+    private final WalletService walletService;
     private LikeService likeService; // Lazy injection to avoid circular dependency
     
     @Autowired
@@ -44,12 +46,14 @@ public class StickerSetService {
                              TelegramBotApiService telegramBotApiService,
                              CategoryService categoryService,
                              ArtRewardService artRewardService,
-                             ArtTransactionRepository artTransactionRepository) {
+                             ArtTransactionRepository artTransactionRepository,
+                             WalletService walletService) {
         this.stickerSetRepository = stickerSetRepository;
         this.telegramBotApiService = telegramBotApiService;
         this.categoryService = categoryService;
         this.artRewardService = artRewardService;
         this.artTransactionRepository = artTransactionRepository;
+        this.walletService = walletService;
     }
     
     @Autowired(required = false)
@@ -1069,9 +1073,18 @@ public class StickerSetService {
      */
     private StickerSetDto enrichSingleStickerSetSafelyWithCategories(StickerSet stickerSet, String language, Long currentUserId, boolean shortInfo, boolean preview, boolean includeAvailableActions) {
         boolean isAdmin = isCurrentUserAdmin();
-        LOGGER.debug("🔍 Обогащение стикерсета {}: currentUserId={}, stickerSetUserId={}, isAdmin={}, preview={}, includeAvailableActions={}", 
-                stickerSet.getId(), currentUserId, stickerSet.getUserId(), isAdmin, preview, includeAvailableActions);
-        StickerSetDto dto = StickerSetDto.fromEntity(stickerSet, language, currentUserId, isAdmin, includeAvailableActions);
+        boolean hasTonWallet = false;
+        if (currentUserId != null && includeAvailableActions) {
+            try {
+                hasTonWallet = walletService.hasActiveWallet(currentUserId);
+            } catch (Exception e) {
+                LOGGER.debug("⚠️ Ошибка при проверке наличия кошелька для пользователя {}: {}", currentUserId, e.getMessage());
+                hasTonWallet = false;
+            }
+        }
+        LOGGER.debug("🔍 Обогащение стикерсета {}: currentUserId={}, stickerSetUserId={}, isAdmin={}, preview={}, includeAvailableActions={}, hasTonWallet={}", 
+                stickerSet.getId(), currentUserId, stickerSet.getUserId(), isAdmin, preview, includeAvailableActions, hasTonWallet);
+        StickerSetDto dto = StickerSetDto.fromEntity(stickerSet, language, currentUserId, isAdmin, includeAvailableActions, hasTonWallet);
         
         if (dto == null) {
             LOGGER.warn("⚠️ Не удалось создать DTO для стикерсета {}", stickerSet.getId());
