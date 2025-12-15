@@ -93,7 +93,7 @@ public class StickerSetDescriptionService {
 
         // 4. Формируем пользовательский промпт
         String userPrompt = String.format(
-            "Проанализируй стикерсет с названием '%s' и предоставь описание на русском и английском языках.",
+            "Analyze the sticker set titled ‘%s’ and provide a description in Russian and English.",
             title
         );
 

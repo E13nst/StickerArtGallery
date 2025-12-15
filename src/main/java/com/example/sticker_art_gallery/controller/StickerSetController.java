@@ -344,8 +344,12 @@ public class StickerSetController {
             // Определяем итоговый фильтр видимости
             com.example.sticker_art_gallery.dto.VisibilityFilter effectiveVisibility = visibility;
             
+            // Определяем, является ли текущий пользователь владельцем или админом
+            boolean isOwnerOrAdmin = isOwnerOrAdmin(userId, currentUserId);
+            boolean includeBlocked = isOwnerOrAdmin; // Заблокированные видны только владельцу и админу
+            
             // Если пользователь не владелец и не админ, принудительно ограничиваем видимость
-            if (!isOwnerOrAdmin(userId, currentUserId)) {
+            if (!isOwnerOrAdmin) {
                 // Для чужих стикерсетов можем показывать только публичные
                 if (visibility == com.example.sticker_art_gallery.dto.VisibilityFilter.ALL || 
                     visibility == com.example.sticker_art_gallery.dto.VisibilityFilter.PRIVATE) {
@@ -355,8 +359,8 @@ public class StickerSetController {
                 }
             }
             
-            LOGGER.info("👤 Получение стикерсетов пользователя {}: visibility={}, effectiveVisibility={}", 
-                userId, visibility, effectiveVisibility);
+            LOGGER.info("👤 Получение стикерсетов пользователя {}: visibility={}, effectiveVisibility={}, includeBlocked={}", 
+                userId, visibility, effectiveVisibility, includeBlocked);
             
             // Построение параметров запроса
             PageRequest pageRequest = new PageRequest();
@@ -372,7 +376,7 @@ public class StickerSetController {
             
             String language = getLanguageFromHeaderOrUser(request);
             
-            // Вызов сервиса
+            // Вызов сервиса с учетом прав доступа к заблокированным стикерсетам
             PageResponse<StickerSetDto> result = stickerSetService.findByUserIdWithPagination(
                 userId,
                 pageRequest,
@@ -384,7 +388,8 @@ public class StickerSetController {
                 type,
                 shortInfo,
                 preview,
-                language
+                language,
+                includeBlocked
             );
             
             LOGGER.debug("✅ Найдено {} стикерсетов пользователя {} на странице {} из {}", 

@@ -1,10 +1,7 @@
 package com.example.sticker_art_gallery.service.telegram;
 
 import com.example.sticker_art_gallery.dto.CreateStickerSetDto;
-import com.example.sticker_art_gallery.model.profile.ArtTransactionEntity;
 import com.example.sticker_art_gallery.model.profile.ArtTransactionRepository;
-import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
-import com.example.sticker_art_gallery.model.profile.UserProfileRepository;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
 import com.example.sticker_art_gallery.model.telegram.StickerSetState;
@@ -13,7 +10,6 @@ import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.profile.ArtRuleService;
 import com.example.sticker_art_gallery.testdata.TestDataBuilder;
 import io.qameta.allure.*;
-import jakarta.persistence.EntityManager;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -27,10 +23,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -56,35 +49,21 @@ class StickerSetStateAndPublishIntegrationTest {
     private ArtTransactionRepository artTransactionRepository;
 
     @Autowired
-    private UserProfileRepository userProfileRepository;
-
-    @Autowired
     private ArtRuleService artRuleService;
 
     @Autowired
-    private EntityManager entityManager;
+    private StickerSetArtRewardTestHelper testHelper;
 
     @MockBean
     private TelegramBotApiService telegramBotApiService;
 
     @BeforeEach
     void setUp() {
-        // Чистим предыдущие данные для стабильности теста
-        stickerSetRepository.findByNameIgnoreCase(NORMALIZED_NAME)
-                .ifPresent(stickerSetRepository::delete);
-        artTransactionRepository.deleteAll();
-
-        UserProfileEntity profile = userProfileRepository.findByUserId(USER_ID)
-                .orElseGet(() -> {
-                    UserProfileEntity entity = new UserProfileEntity();
-                    entity.setUserId(USER_ID);
-                    entity.setRole(UserProfileEntity.UserRole.USER);
-                    entity.setArtBalance(0L);
-                    entity.setIsBlocked(false);
-                    return userProfileRepository.save(entity);
-                });
-        profile.setArtBalance(0L);
-        userProfileRepository.save(profile);
+        // Очищаем тестовые данные для стабильности теста
+        testHelper.cleanupTestData(NORMALIZED_NAME);
+        
+        // Настраиваем пользователя с нулевым балансом ART
+        testHelper.setupUserWithZeroBalance(USER_ID);
 
         // Убеждаемся, что нужные правила существуют
         Assertions.assertThat(artRuleService.getAllRules())
@@ -96,66 +75,76 @@ class StickerSetStateAndPublishIntegrationTest {
     @Test
     @Story("Восстановление удаленного стикерсета")
     @Severity(SeverityLevel.CRITICAL)
-    @DisplayName("Восстановление DELETED стикерсета не должно начислять ART")
+    @DisplayName("Восстановление DELETED стикерсета не должно начислять ART повторно")
     void restoreDeletedStickerSet_ShouldNotAwardArtPoints() {
-        // Получаем начальный баланс
-        UserProfileEntity initialProfile = userProfileRepository.findByUserId(USER_ID).orElseThrow();
-        long initialBalance = initialProfile.getArtBalance();
+        // given: получаем начальный баланс и создаем тестовый стикерсет
+        // Бизнес-правило: при восстановлении удаленного стикерсета ART НЕ начисляются повторно
+        // ART начисляются только при первом создании (не восстановлении)
+        long initialBalance = testHelper.getInitialBalance(USER_ID);
         
-        // Убеждаемся, что начальный баланс известен
-        assertThat(initialBalance).isNotNull();
-
-        // given: создаем и удаляем стикерсет
-        Object telegramInfo = new Object();
-        when(telegramBotApiService.validateStickerSetExists(NORMALIZED_NAME)).thenReturn(telegramInfo);
-        when(telegramBotApiService.extractTitleFromStickerSetInfo(telegramInfo)).thenReturn("Test Pack");
-
-        CreateStickerSetDto createDto = new CreateStickerSetDto();
-        createDto.setName(STICKERSET_NAME);
-        createDto.setVisibility(StickerSetVisibility.PUBLIC);
-
+        // Шаг 1: Создаем публичный стикерсет (начисляется 10 ART)
+        testHelper.mockTelegramStickerSetValidation(telegramBotApiService, NORMALIZED_NAME, "Test Pack");
+        CreateStickerSetDto createDto = testHelper.createPublicStickerSetDto(STICKERSET_NAME);
         StickerSet created = stickerSetService.createStickerSetForUser(createDto, USER_ID, "ru", null);
         Long stickerSetId = created.getId();
+        testHelper.flushAndClear();
 
-        // Удаляем стикерсет (soft delete)
+        // Проверяем промежуточное состояние: ART должны быть начислены за первое создание
+        testHelper.verifyBalanceChange(
+            USER_ID, 
+            initialBalance, 
+            10L, 
+            "После создания публичного стикерсета баланс должен увеличиться на 10 ART"
+        );
+
+        // Шаг 2: Удаляем стикерсет (soft delete)
+        // Стикерсет переходит в состояние DELETED, но запись остается в БД
         stickerSetService.deleteById(stickerSetId);
-        entityManager.flush();
-        entityManager.clear();
+        testHelper.flushAndClear();
 
-        // Проверяем, что стикерсет удален
+        // Проверяем, что стикерсет действительно удален
         StickerSet deleted = stickerSetRepository.findById(stickerSetId).orElseThrow();
-        assertThat(deleted.getState()).isEqualTo(StickerSetState.DELETED);
-        assertThat(deleted.getDeletedAt()).isNotNull();
+        assertThat(deleted.getState())
+                .as("Стикерсет должен быть в состоянии DELETED")
+                .isEqualTo(StickerSetState.DELETED);
+        assertThat(deleted.getDeletedAt())
+                .as("У удаленного стикерсета должен быть установлен deletedAt")
+                .isNotNull();
 
         // when: восстанавливаем стикерсет
-        CreateStickerSetDto restoreDto = new CreateStickerSetDto();
-        restoreDto.setName(STICKERSET_NAME);
-        restoreDto.setVisibility(StickerSetVisibility.PUBLIC);
-
-        when(telegramBotApiService.validateStickerSetExists(NORMALIZED_NAME)).thenReturn(telegramInfo);
-        when(telegramBotApiService.extractTitleFromStickerSetInfo(telegramInfo)).thenReturn("Test Pack Restored");
-
+        // При восстановлении система определяет, что это существующий DELETED стикерсет
+        // и восстанавливает его БЕЗ начисления ART (флаг isRestored = true)
+        testHelper.mockTelegramStickerSetValidation(telegramBotApiService, NORMALIZED_NAME, "Test Pack Restored");
+        CreateStickerSetDto restoreDto = testHelper.createPublicStickerSetDto(STICKERSET_NAME);
         StickerSet restored = stickerSetService.createStickerSetForUser(restoreDto, USER_ID, "ru", null);
+        testHelper.flushAndClear();
 
-        entityManager.flush();
-        entityManager.clear();
+        // then: проверяем результаты восстановления
+        // 1. Баланс не должен измениться дополнительно (только 10 ART за первое создание)
+        testHelper.verifyBalanceChange(
+            USER_ID, 
+            initialBalance, 
+            10L, 
+            "Баланс не должен измениться при восстановлении - только 10 ART за первое создание"
+        );
 
-        // then: баланс не должен измениться (ART не начисляется при восстановлении)
-        UserProfileEntity profile = userProfileRepository.findByUserId(USER_ID).orElseThrow();
-        assertThat(profile.getArtBalance())
-                .as("Баланс не должен измениться при восстановлении")
-                .isEqualTo(initialBalance + 10L); // Только за первое создание
+        // 2. Стикерсет должен быть восстановлен (ACTIVE, без deletedAt, тот же ID)
+        assertThat(restored.getState())
+                .as("Восстановленный стикерсет должен быть в состоянии ACTIVE")
+                .isEqualTo(StickerSetState.ACTIVE);
+        assertThat(restored.getDeletedAt())
+                .as("У восстановленного стикерсета не должно быть deletedAt")
+                .isNull();
+        assertThat(restored.getId())
+                .as("Восстановленный стикерсет должен иметь тот же ID")
+                .isEqualTo(stickerSetId);
 
-        // Проверяем, что стикерсет восстановлен
-        assertThat(restored.getState()).isEqualTo(StickerSetState.ACTIVE);
-        assertThat(restored.getDeletedAt()).isNull();
-        assertThat(restored.getId()).isEqualTo(stickerSetId); // Тот же ID
-
-        // Проверяем, что транзакций только одна (за первое создание)
-        var txPage = artTransactionRepository.findByUserIdOrderByCreatedAtDesc(USER_ID, PageRequest.of(0, 10));
-        assertThat(txPage.getTotalElements())
-                .as("Должна быть только одна транзакция (за первое создание)")
-                .isEqualTo(1);
+        // 3. Должна быть только одна транзакция (за первое создание, не за восстановление)
+        testHelper.verifyTransactionCount(
+            USER_ID, 
+            1L, 
+            "Должна быть только одна транзакция ART - за первое создание, не за восстановление"
+        );
     }
 
     @Test
@@ -163,66 +152,47 @@ class StickerSetStateAndPublishIntegrationTest {
     @Severity(SeverityLevel.CRITICAL)
     @DisplayName("Публикация PRIVATE стикерсета должна начислять ART за первую публикацию")
     void publishPrivateStickerSet_ShouldAwardArtPoints() {
-        // Получаем начальный баланс
-        UserProfileEntity initialProfile = userProfileRepository.findByUserId(USER_ID).orElseThrow();
-        long initialBalance = initialProfile.getArtBalance();
-        
-        // Убеждаемся, что начальный баланс известен
-        assertThat(initialBalance).isNotNull();
+        // given: получаем начальный баланс и создаем приватный стикерсет
+        // Бизнес-правило: 
+        // 1. PRIVATE стикерсеты НЕ начисляют ART при создании
+        // 2. При первой публикации (PRIVATE -> PUBLIC) начисляется 10 ART
+        long initialBalance = testHelper.getInitialBalance(USER_ID);
 
-        // given: создаем приватный стикерсет
-        Object telegramInfo = new Object();
-        when(telegramBotApiService.validateStickerSetExists(NORMALIZED_NAME)).thenReturn(telegramInfo);
-        when(telegramBotApiService.extractTitleFromStickerSetInfo(telegramInfo)).thenReturn("Test Pack");
-
-        CreateStickerSetDto createDto = new CreateStickerSetDto();
-        createDto.setName(STICKERSET_NAME);
-        createDto.setVisibility(StickerSetVisibility.PRIVATE); // Приватный
-
+        // Шаг 1: Создаем приватный стикерсет
+        // При создании PRIVATE стикерсета ART не начисляются
+        testHelper.mockTelegramStickerSetValidation(telegramBotApiService, NORMALIZED_NAME, "Test Pack");
+        CreateStickerSetDto createDto = testHelper.createPrivateStickerSetDto(STICKERSET_NAME);
         StickerSet created = stickerSetService.createStickerSetForUser(createDto, USER_ID, "ru", null);
         Long stickerSetId = created.getId();
+        testHelper.flushAndClear();
 
-        entityManager.flush();
-        entityManager.clear();
+        // Проверяем промежуточное состояние: баланс не должен измениться
+        testHelper.verifyBalanceUnchanged(
+            USER_ID, 
+            initialBalance, 
+            "Баланс не должен измениться при создании приватного стикерсета"
+        );
 
-        // Проверяем, что ART не начислены при создании приватного
-        UserProfileEntity beforePublish = userProfileRepository.findByUserId(USER_ID).orElseThrow();
-        assertThat(beforePublish.getArtBalance())
-                .as("Баланс не должен измениться при создании приватного стикерсета")
-                .isEqualTo(initialBalance);
-
-        // when: публикуем стикерсет
+        // when: публикуем стикерсет (PRIVATE -> PUBLIC)
+        // При публикации система проверяет, была ли уже публикация этого стикерсета
+        // Если это первая публикация, начисляется 10 ART
         StickerSet published = stickerSetService.publishStickerSet(stickerSetId);
+        testHelper.flushAndClear();
 
-        entityManager.flush();
-        entityManager.clear();
+        // then: проверяем результаты публикации
+        // 1. Баланс должен увеличиться на 10 ART за публикацию
+        testHelper.verifyBalanceChange(
+            USER_ID, 
+            initialBalance, 
+            10L, 
+            "Баланс должен увеличиться на 10 ART за первую публикацию стикерсета"
+        );
 
-        // then: должен быть начислен ART за публикацию
-        UserProfileEntity profile = userProfileRepository.findByUserId(USER_ID).orElseThrow();
-        assertThat(profile.getArtBalance())
-                .as("Баланс должен увеличиться на 10 ART за публикацию")
-                .isEqualTo(initialBalance + 10L);
+        // 2. Должна быть создана транзакция ART за публикацию
+        testHelper.verifyArtTransactionForPublish(NORMALIZED_NAME, stickerSetId, 10L);
 
-        // Проверяем транзакцию
-        String expectedExternalId = "sticker-publish:" + NORMALIZED_NAME;
-        Optional<ArtTransactionEntity> transactionOpt = artTransactionRepository.findByExternalId(expectedExternalId);
-        assertThat(transactionOpt)
-                .as("Транзакция с ожидаемым externalId")
-                .isPresent();
-
-        ArtTransactionEntity transaction = transactionOpt.get();
-        assertThat(transaction.getRuleCode()).isEqualTo(ArtRewardService.RULE_PUBLISH_STICKERSET);
-        assertThat(transaction.getDelta()).isEqualTo(10L);
-        assertThat(transaction.getBalanceAfter()).isEqualTo(profile.getArtBalance());
-        assertThat(transaction.getMetadata())
-                .as("Метаданные должны содержать stickerSetId и name")
-                .contains("stickerSetId")
-                .contains("name")
-                .contains(String.valueOf(stickerSetId))
-                .contains(NORMALIZED_NAME);
-
-        // Проверяем, что стикерсет стал публичным
-        assertThat(published.getVisibility()).isEqualTo(StickerSetVisibility.PUBLIC);
+        // 3. Стикерсет должен стать публичным
+        testHelper.verifyStickerSetVisibility(published, StickerSetVisibility.PUBLIC);
     }
 
     @Test
@@ -230,58 +200,56 @@ class StickerSetStateAndPublishIntegrationTest {
     @Severity(SeverityLevel.CRITICAL)
     @DisplayName("Повторная публикация не должна начислять ART повторно")
     void republishStickerSet_ShouldNotAwardArtPointsAgain() {
-        // Получаем начальный баланс
-        UserProfileEntity initialProfile = userProfileRepository.findByUserId(USER_ID).orElseThrow();
-        long initialBalance = initialProfile.getArtBalance();
-        
-        // Убеждаемся, что начальный баланс известен
-        assertThat(initialBalance).isNotNull();
+        // given: получаем начальный баланс и создаем приватный стикерсет
+        // Бизнес-правило: ART за публикацию начисляются только один раз за стикерсет
+        // Повторные публикации (после unpublish) не начисляют ART
+        long initialBalance = testHelper.getInitialBalance(USER_ID);
 
-        // given: создаем приватный стикерсет и публикуем его
-        Object telegramInfo = new Object();
-        when(telegramBotApiService.validateStickerSetExists(NORMALIZED_NAME)).thenReturn(telegramInfo);
-        when(telegramBotApiService.extractTitleFromStickerSetInfo(telegramInfo)).thenReturn("Test Pack");
-
-        CreateStickerSetDto createDto = new CreateStickerSetDto();
-        createDto.setName(STICKERSET_NAME);
-        createDto.setVisibility(StickerSetVisibility.PRIVATE);
-
+        // Шаг 1: Создаем приватный стикерсет
+        testHelper.mockTelegramStickerSetValidation(telegramBotApiService, NORMALIZED_NAME, "Test Pack");
+        CreateStickerSetDto createDto = testHelper.createPrivateStickerSetDto(STICKERSET_NAME);
         StickerSet created = stickerSetService.createStickerSetForUser(createDto, USER_ID, "ru", null);
         Long stickerSetId = created.getId();
 
-        // Первая публикация
+        // Шаг 2: Первая публикация (PRIVATE -> PUBLIC)
+        // При первой публикации начисляется 10 ART
         stickerSetService.publishStickerSet(stickerSetId);
-        entityManager.flush();
-        entityManager.clear();
+        testHelper.flushAndClear();
 
-        // Проверяем баланс после первой публикации
-        UserProfileEntity afterFirstPublish = userProfileRepository.findByUserId(USER_ID).orElseThrow();
-        long balanceAfterFirstPublish = afterFirstPublish.getArtBalance();
+        // Проверяем промежуточное состояние: баланс должен увеличиться на 10 ART
+        long balanceAfterFirstPublish = testHelper.getInitialBalance(USER_ID);
+        assertThat(balanceAfterFirstPublish)
+                .as("После первой публикации баланс должен быть " + (initialBalance + 10L))
+                .isEqualTo(initialBalance + 10L);
 
-        // Делаем приватным
+        // Шаг 3: Делаем стикерсет снова приватным (PUBLIC -> PRIVATE)
+        // Это не влияет на баланс, просто меняет видимость
         stickerSetService.unpublishStickerSet(stickerSetId);
-        entityManager.flush();
-        entityManager.clear();
+        testHelper.flushAndClear();
 
-        // when: публикуем повторно
+        // when: публикуем стикерсет повторно (PRIVATE -> PUBLIC)
+        // Система проверяет, была ли уже публикация этого стикерсета
+        // Поскольку публикация уже была, ART НЕ начисляются повторно
         stickerSetService.publishStickerSet(stickerSetId);
-        entityManager.flush();
-        entityManager.clear();
+        testHelper.flushAndClear();
 
-        // then: баланс не должен измениться (ART не начисляется повторно)
-        UserProfileEntity profile = userProfileRepository.findByUserId(USER_ID).orElseThrow();
-        assertThat(profile.getArtBalance())
-                .as("Баланс не должен измениться при повторной публикации")
-                .isEqualTo(balanceAfterFirstPublish);
+        // then: проверяем, что ART не начислены повторно
+        // 1. Баланс не должен измениться дополнительно
+        testHelper.verifyBalanceChange(
+            USER_ID, 
+            initialBalance, 
+            10L, 
+            "Баланс не должен измениться при повторной публикации - только 10 ART за первую публикацию"
+        );
 
-        // Проверяем, что транзакций за публикацию только одна
-        var publishTransactions = artTransactionRepository.findByUserIdOrderByCreatedAtDesc(USER_ID, PageRequest.of(0, 10))
+        // 2. Должна быть только одна транзакция за публикацию
+        long publishTransactionCount = artTransactionRepository.findByUserIdOrderByCreatedAtDesc(USER_ID, PageRequest.of(0, 10))
                 .getContent()
                 .stream()
                 .filter(tx -> tx.getRuleCode().equals(ArtRewardService.RULE_PUBLISH_STICKERSET))
                 .count();
-        assertThat(publishTransactions)
-                .as("Должна быть только одна транзакция за публикацию")
+        assertThat(publishTransactionCount)
+                .as("Должна быть только одна транзакция ART за публикацию (за первую публикацию)")
                 .isEqualTo(1);
     }
 
@@ -291,37 +259,42 @@ class StickerSetStateAndPublishIntegrationTest {
     @DisplayName("Попытка загрузить BLOCKED стикерсет должна выбросить исключение")
     void createStickerSet_WithBlockedStickerSet_ShouldThrowException() {
         // given: создаем и блокируем стикерсет
-        Object telegramInfo = new Object();
-        when(telegramBotApiService.validateStickerSetExists(NORMALIZED_NAME)).thenReturn(telegramInfo);
-        when(telegramBotApiService.extractTitleFromStickerSetInfo(telegramInfo)).thenReturn("Test Pack");
-
-        CreateStickerSetDto createDto = new CreateStickerSetDto();
-        createDto.setName(STICKERSET_NAME);
-        createDto.setVisibility(StickerSetVisibility.PUBLIC);
-
+        // Бизнес-правило: заблокированные стикерсеты нельзя загружать повторно
+        // Система должна выбросить исключение с причиной блокировки
+        
+        // Шаг 1: Создаем публичный стикерсет
+        testHelper.mockTelegramStickerSetValidation(telegramBotApiService, NORMALIZED_NAME, "Test Pack");
+        CreateStickerSetDto createDto = testHelper.createPublicStickerSetDto(STICKERSET_NAME);
         StickerSet created = stickerSetService.createStickerSetForUser(createDto, USER_ID, "ru", null);
         Long stickerSetId = created.getId();
 
-        // Блокируем стикерсет
-        stickerSetService.blockStickerSet(stickerSetId, "Нарушение правил");
-        entityManager.flush();
-        entityManager.clear();
+        // Шаг 2: Блокируем стикерсет администратором
+        // Стикерсет переходит в состояние BLOCKED с указанием причины
+        String blockReason = "Нарушение правил";
+        stickerSetService.blockStickerSet(stickerSetId, blockReason);
+        testHelper.flushAndClear();
 
-        // Проверяем, что стикерсет заблокирован
+        // Проверяем промежуточное состояние: стикерсет должен быть заблокирован
         StickerSet blocked = stickerSetRepository.findById(stickerSetId).orElseThrow();
-        assertThat(blocked.getState()).isEqualTo(StickerSetState.BLOCKED);
+        assertThat(blocked.getState())
+                .as("Стикерсет должен быть в состоянии BLOCKED")
+                .isEqualTo(StickerSetState.BLOCKED);
+        assertThat(blocked.getBlockReason())
+                .as("У заблокированного стикерсета должна быть указана причина")
+                .isEqualTo(blockReason);
 
         // when & then: попытка загрузить заблокированный стикерсет должна выбросить исключение
-        CreateStickerSetDto newDto = new CreateStickerSetDto();
-        newDto.setName(STICKERSET_NAME);
-        newDto.setVisibility(StickerSetVisibility.PUBLIC);
+        // Система проверяет существующий стикерсет и видит, что он заблокирован
+        // Выбрасывается IllegalArgumentException с сообщением о блокировке и причиной
+        CreateStickerSetDto newDto = testHelper.createPublicStickerSetDto(STICKERSET_NAME);
 
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> {
             stickerSetService.createStickerSetForUser(newDto, USER_ID, "ru", null);
         })
+                .as("Должно быть выброшено исключение при попытке загрузить заблокированный стикерсет")
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("был заблокирован")
-                .hasMessageContaining("Нарушение правил");
+                .hasMessageContaining(blockReason);
     }
 }
 

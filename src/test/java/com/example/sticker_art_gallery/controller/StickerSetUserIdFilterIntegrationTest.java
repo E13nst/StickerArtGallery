@@ -5,7 +5,6 @@ import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
 import com.example.sticker_art_gallery.model.telegram.StickerSetState;
 import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
 import com.example.sticker_art_gallery.model.telegram.StickerSetType;
-import com.example.sticker_art_gallery.testdata.TestDataBuilder;
 import com.example.sticker_art_gallery.teststeps.StickerSetTestSteps;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.*;
@@ -50,12 +49,17 @@ class StickerSetUserIdFilterIntegrationTest {
 
         // ⚠️ ВАЖНО: Удаляем только тестовые данные, созданные в этом тесте
         // Используем транзакцию с откатом, чтобы не удалять продакшен данные
-        // Удаляем только стикерсеты с нашими тестовыми именами
-        stickerSetRepository.findAll().stream()
-                .filter(ss -> ss.getName().contains("_user1_by_") || 
-                             ss.getName().contains("_user2_by_") || 
-                             ss.getName().contains("_user3_by_"))
-                .forEach(stickerSetRepository::delete);
+        // Удаляем по конкретным именам, которые мы знаем (используем индексированный запрос)
+        String[] testNames = {
+            "s1_user1_by_StickerGalleryBot",
+            "s2_user1_by_StickerGalleryBot",
+            "s3_user2_by_StickerGalleryBot",
+            "s4_user3_by_StickerGalleryBot"
+        };
+        for (String name : testNames) {
+            stickerSetRepository.findByNameIgnoreCase(name)
+                .ifPresent(stickerSetRepository::delete);
+        }
 
         // Стикерсет пользователя 1
         StickerSet s1 = new StickerSet();
@@ -106,12 +110,17 @@ class StickerSetUserIdFilterIntegrationTest {
     void tearDown() {
         // ⚠️ ВАЖНО: Не удаляем все данные! 
         // Транзакция с @Rollback автоматически откатит все изменения
-        // Удаляем только тестовые данные с нашими именами
-        stickerSetRepository.findAll().stream()
-                .filter(ss -> ss.getName().contains("_user1_by_") || 
-                             ss.getName().contains("_user2_by_") || 
-                             ss.getName().contains("_user3_by_"))
-                .forEach(stickerSetRepository::delete);
+        // Удаляем по конкретным именам, которые мы знаем (используем индексированный запрос)
+        String[] testNames = {
+            "s1_user1_by_StickerGalleryBot",
+            "s2_user1_by_StickerGalleryBot",
+            "s3_user2_by_StickerGalleryBot",
+            "s4_user3_by_StickerGalleryBot"
+        };
+        for (String name : testNames) {
+            stickerSetRepository.findByNameIgnoreCase(name)
+                .ifPresent(stickerSetRepository::delete);
+        }
     }
 
     @Test

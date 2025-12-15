@@ -15,6 +15,13 @@ spring:
     username: ${DB_USERNAME:dalek}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 30000  # Увеличиваем таймаут для тестов
+      maximum-pool-size: 10     # Увеличиваем пул для параллельных тестов
+      minimum-idle: 5           # Больше минимальных соединений
+      leak-detection-threshold: 60000
+      connection-test-query: SELECT 1
+      auto-commit: false
   
   jpa:
     hibernate:

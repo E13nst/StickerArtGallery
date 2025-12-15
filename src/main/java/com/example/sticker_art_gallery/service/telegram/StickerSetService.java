@@ -517,10 +517,26 @@ public class StickerSetService {
                                                                   boolean shortInfo,
                                                                   boolean preview,
                                                                   String language) {
+        return findByUserIdWithPagination(userId, pageRequest, categoryKeys, hasAuthorOnly, likedOnly, 
+                                          currentUserId, visibilityFilter, type, shortInfo, preview, language, false);
+    }
+    
+    public PageResponse<StickerSetDto> findByUserIdWithPagination(Long userId,
+                                                                  PageRequest pageRequest,
+                                                                  Set<String> categoryKeys,
+                                                                  boolean hasAuthorOnly,
+                                                                  boolean likedOnly,
+                                                                  Long currentUserId,
+                                                                  com.example.sticker_art_gallery.dto.VisibilityFilter visibilityFilter,
+                                                                  StickerSetType type,
+                                                                  boolean shortInfo,
+                                                                  boolean preview,
+                                                                  String language,
+                                                                  boolean includeBlocked) {
         String lang = normalizeLanguage(language);
-        LOGGER.debug("👤 Получение стикерсетов пользователя {} с пагинацией: page={}, size={}, hasAuthorOnly={}, likedOnly={}, visibilityFilter={}, type={}, shortInfo={}, preview={}, language={}, categoryKeys={}",
+        LOGGER.debug("👤 Получение стикерсетов пользователя {} с пагинацией: page={}, size={}, hasAuthorOnly={}, likedOnly={}, visibilityFilter={}, type={}, shortInfo={}, preview={}, language={}, categoryKeys={}, includeBlocked={}",
                 userId, pageRequest.getPage(), pageRequest.getSize(), hasAuthorOnly, likedOnly, visibilityFilter, type, shortInfo, preview, lang,
-                categoryKeys == null ? "null" : String.join(",", categoryKeys));
+                categoryKeys == null ? "null" : String.join(",", categoryKeys), includeBlocked);
 
         Set<String> normalizedCategoryKeys = (categoryKeys == null || categoryKeys.isEmpty()) ? null : categoryKeys;
 
@@ -532,6 +548,7 @@ public class StickerSetService {
                 normalizedCategoryKeys,
                 likedOnly,
                 currentUserId,
+                includeBlocked,
                 pageRequest.toPageable()
         );
 

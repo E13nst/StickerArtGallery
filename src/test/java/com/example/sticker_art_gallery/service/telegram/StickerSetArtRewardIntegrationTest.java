@@ -1,18 +1,11 @@
 package com.example.sticker_art_gallery.service.telegram;
 
 import com.example.sticker_art_gallery.dto.CreateStickerSetDto;
-import com.example.sticker_art_gallery.model.profile.ArtTransactionEntity;
-import com.example.sticker_art_gallery.model.profile.ArtTransactionRepository;
-import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
-import com.example.sticker_art_gallery.model.profile.UserProfileRepository;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
-import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
-import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.profile.ArtRuleService;
 import com.example.sticker_art_gallery.testdata.TestDataBuilder;
 import io.qameta.allure.*;
-import jakarta.persistence.EntityManager;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -22,14 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -49,41 +36,21 @@ class StickerSetArtRewardIntegrationTest {
     private StickerSetService stickerSetService;
 
     @Autowired
-    private StickerSetRepository stickerSetRepository;
-
-    @Autowired
-    private ArtTransactionRepository artTransactionRepository;
-
-    @Autowired
-    private UserProfileRepository userProfileRepository;
-
-    @Autowired
     private ArtRuleService artRuleService;
 
     @Autowired
-    private EntityManager entityManager;
+    private StickerSetArtRewardTestHelper testHelper;
 
     @MockBean
     private TelegramBotApiService telegramBotApiService;
 
     @BeforeEach
     void setUp() {
-        // Чистим предыдущие данные для стабильности теста
-        stickerSetRepository.findByNameIgnoreCase(NORMALIZED_NAME)
-                .ifPresent(stickerSetRepository::delete);
-        artTransactionRepository.deleteAll();
-
-        UserProfileEntity profile = userProfileRepository.findByUserId(USER_ID)
-                .orElseGet(() -> {
-                    UserProfileEntity entity = new UserProfileEntity();
-                    entity.setUserId(USER_ID);
-                    entity.setRole(UserProfileEntity.UserRole.USER);
-                    entity.setArtBalance(0L);
-                    entity.setIsBlocked(false);
-                    return userProfileRepository.save(entity);
-                });
-        profile.setArtBalance(0L);
-        userProfileRepository.save(profile);
+        // Очищаем тестовые данные для стабильности теста
+        testHelper.cleanupTestData(NORMALIZED_NAME);
+        
+        // Настраиваем пользователя с нулевым балансом ART
+        testHelper.setupUserWithZeroBalance(USER_ID);
 
         // Убеждаемся, что нужное правило существует
         Assertions.assertThat(artRuleService.getAllRules())
@@ -93,90 +60,91 @@ class StickerSetArtRewardIntegrationTest {
     @Test
     @Story("Начисление ART при успешном добавлении стикерсета")
     @Severity(SeverityLevel.CRITICAL)
+    @DisplayName("Создание публичного стикерсета должно начислить 10 ART пользователю")
     void createStickerSetForUser_shouldAwardArtPoints() {
-        // Получаем начальный баланс
-        UserProfileEntity initialProfile = userProfileRepository.findByUserId(USER_ID).orElseThrow();
-        long initialBalance = initialProfile.getArtBalance();
+        // given: получаем начальный баланс и настраиваем тестовые данные
+        // Бизнес-правило: при создании PUBLIC стикерсета пользователю начисляется 10 ART
+        long initialBalance = testHelper.getInitialBalance(USER_ID);
+        
+        // Настраиваем мок Telegram API для валидации стикерсета
+        testHelper.mockTelegramStickerSetValidation(telegramBotApiService, NORMALIZED_NAME, "taxiderm");
+        
+        // Создаем DTO для публичного стикерсета
+        // Важно: только PUBLIC стикерсеты начисляют ART при создании
+        CreateStickerSetDto dto = testHelper.createPublicStickerSetDto(STICKERSET_NAME);
 
-        // given
-        Object telegramInfo = new Object();
-        when(telegramBotApiService.validateStickerSetExists(NORMALIZED_NAME)).thenReturn(telegramInfo);
-        when(telegramBotApiService.extractTitleFromStickerSetInfo(telegramInfo)).thenReturn("taxiderm");
-
-        CreateStickerSetDto dto = new CreateStickerSetDto();
-        dto.setName(STICKERSET_NAME);
-        dto.setVisibility(StickerSetVisibility.PUBLIC); // PUBLIC для начисления ART
-
-        // when
+        // when: создаем стикерсет
+        // Внутри сервиса происходит:
+        // 1. Валидация стикерсета через Telegram API
+        // 2. Сохранение стикерсета в БД
+        // 3. Начисление 10 ART пользователю (только для PUBLIC)
         StickerSet created = stickerSetService.createStickerSetForUser(dto, USER_ID, "ru", null);
 
-        entityManager.flush();
-        entityManager.clear();
+        // Сбрасываем кеш Hibernate, чтобы получить актуальные данные из БД
+        // Это необходимо, так как начисление ART происходит в отдельной транзакции
+        testHelper.flushAndClear();
 
-        // then
-        UserProfileEntity profile = userProfileRepository.findByUserId(USER_ID).orElseThrow();
-        // Проверяем относительное изменение баланса
-        assertThat(profile.getArtBalance())
-                .as("Баланс пользователя после создания стикерсета")
-                .isEqualTo(initialBalance + 10L);
+        // then: проверяем результаты
+        // 1. Баланс должен увеличиться на 10 ART
+        testHelper.verifyBalanceChange(
+            USER_ID, 
+            initialBalance, 
+            10L, 
+            "Баланс пользователя должен увеличиться на 10 ART после создания публичного стикерсета"
+        );
 
-        String expectedExternalId = String.format("sticker-upload:%d:%d", USER_ID, created.getId());
-        Optional<ArtTransactionEntity> transactionOpt = artTransactionRepository.findByExternalId(expectedExternalId);
-        assertThat(transactionOpt)
-                .as("Транзакция с ожидаемым externalId")
-                .isPresent();
+        // 2. Должна быть создана транзакция ART с правильными параметрами
+        testHelper.verifyArtTransactionForUpload(USER_ID, created.getId(), 10L);
 
-        ArtTransactionEntity transaction = transactionOpt.get();
-        assertThat(transaction.getRuleCode()).isEqualTo(ArtRewardService.RULE_UPLOAD_STICKERSET);
-        assertThat(transaction.getDelta()).isEqualTo(10L);
-        assertThat(transaction.getBalanceAfter()).isEqualTo(profile.getArtBalance());
-        // Проверяем метаданные более гибко (игнорируя пробелы в JSON)
-        assertThat(transaction.getMetadata())
-                .as("Метаданные должны содержать stickerSetId")
-                .contains("stickerSetId")
-                .contains(String.valueOf(created.getId()));
-
-        // убеждаемся, что кеш правил использовался без ошибок
-        var txPage = artTransactionRepository.findByUserIdOrderByCreatedAtDesc(USER_ID, PageRequest.of(0, 5));
-        assertThat(txPage.getTotalElements()).isEqualTo(1);
+        // 3. Проверяем, что создана только одна транзакция
+        testHelper.verifyTransactionCount(
+            USER_ID, 
+            1L, 
+            "Должна быть создана ровно одна транзакция ART за загрузку стикерсета"
+        );
     }
 
     @Test
     @Story("Начисление ART при создании приватного стикерсета")
     @Severity(SeverityLevel.CRITICAL)
-    @DisplayName("createStickerSetForUser с PRIVATE стикерсетом НЕ должен начислять ART")
+    @DisplayName("Создание PRIVATE стикерсета НЕ должно начислять ART")
     void createStickerSetForUser_WithPrivateStickerSet_ShouldNotAwardArtPoints() {
-        // Получаем начальный баланс
-        UserProfileEntity initialProfile = userProfileRepository.findByUserId(USER_ID).orElseThrow();
-        long initialBalance = initialProfile.getArtBalance();
+        // given: получаем начальный баланс и настраиваем тестовые данные
+        // Бизнес-правило: PRIVATE стикерсеты НЕ начисляют ART при создании
+        // ART начисляется только при публикации (PRIVATE -> PUBLIC)
+        long initialBalance = testHelper.getInitialBalance(USER_ID);
+        
+        // Настраиваем мок Telegram API для валидации стикерсета
+        testHelper.mockTelegramStickerSetValidation(telegramBotApiService, NORMALIZED_NAME, "taxiderm");
+        
+        // Создаем DTO для приватного стикерсета
+        // Важно: PRIVATE стикерсеты не начисляют ART при создании
+        CreateStickerSetDto dto = testHelper.createPrivateStickerSetDto(STICKERSET_NAME);
 
-        // given
-        Object telegramInfo = new Object();
-        when(telegramBotApiService.validateStickerSetExists(NORMALIZED_NAME)).thenReturn(telegramInfo);
-        when(telegramBotApiService.extractTitleFromStickerSetInfo(telegramInfo)).thenReturn("taxiderm");
+        // when: создаем приватный стикерсет
+        // Внутри сервиса происходит:
+        // 1. Валидация стикерсета через Telegram API
+        // 2. Сохранение стикерсета в БД
+        // 3. ART НЕ начисляется, так как visibility = PRIVATE
+        stickerSetService.createStickerSetForUser(dto, USER_ID, "ru", null);
 
-        CreateStickerSetDto dto = new CreateStickerSetDto();
-        dto.setName(STICKERSET_NAME);
-        dto.setVisibility(StickerSetVisibility.PRIVATE); // PRIVATE - не должно начисляться ART
+        // Сбрасываем кеш Hibernate для получения актуальных данных
+        testHelper.flushAndClear();
 
-        // when
-        StickerSet created = stickerSetService.createStickerSetForUser(dto, USER_ID, "ru", null);
+        // then: проверяем, что ART не начислены
+        // 1. Баланс не должен измениться
+        testHelper.verifyBalanceUnchanged(
+            USER_ID, 
+            initialBalance, 
+            "Баланс пользователя не должен измениться при создании приватного стикерсета"
+        );
 
-        entityManager.flush();
-        entityManager.clear();
-
-        // then
-        UserProfileEntity profile = userProfileRepository.findByUserId(USER_ID).orElseThrow();
-        // Баланс не должен измениться
-        assertThat(profile.getArtBalance())
-                .as("Баланс пользователя после создания приватного стикерсета не должен измениться")
-                .isEqualTo(initialBalance);
-
-        // Не должно быть транзакций
-        var txPage = artTransactionRepository.findByUserIdOrderByCreatedAtDesc(USER_ID, PageRequest.of(0, 5));
-        assertThat(txPage.getTotalElements())
-                .as("Не должно быть транзакций для приватного стикерсета")
-                .isEqualTo(0);
+        // 2. Не должно быть создано транзакций ART
+        testHelper.verifyTransactionCount(
+            USER_ID, 
+            0L, 
+            "Не должно быть транзакций ART для приватного стикерсета"
+        );
     }
 }
 
