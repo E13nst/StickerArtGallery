@@ -37,24 +37,31 @@ class StickerSetPreviewModeIntegrationTest {
 
     @Autowired
     private StickerSetRepository stickerSetRepository;
+    
+    @Autowired
+    private com.example.sticker_art_gallery.model.user.UserRepository userRepository;
+    
+    @Autowired
+    private com.example.sticker_art_gallery.repository.LikeRepository likeRepository;
 
     @MockBean
     private TelegramBotApiService telegramBotApiService;
 
     private String initData;
-    private final Long userId = TestDataBuilder.TEST_USER_ID;
+    private final Long TEST_USER_ID = TestDataBuilder.TEST_USER_ID;
     private static final String STICKERSET_NAME = "test_preview_pack";
 
     @BeforeEach
     void setUp() {
-        testSteps.createTestUserAndProfile(userId);
-        initData = testSteps.createValidInitData(userId);
+        testSteps.createTestUserAndProfile(TEST_USER_ID);
+        initData = testSteps.createValidInitData(TEST_USER_ID);
 
-        stickerSetRepository.deleteAll();
+        // Очищаем только тестовые данные (безопасно для продакшн БД)
+        stickerSetRepository.findByName(STICKERSET_NAME).ifPresent(stickerSetRepository::delete);
 
         // Создаем тестовый стикерсет
         StickerSet stickerSet = new StickerSet();
-        stickerSet.setUserId(userId);
+        stickerSet.setUserId(TEST_USER_ID);
         stickerSet.setTitle("Test Preview Pack");
         stickerSet.setName(STICKERSET_NAME);
         stickerSet.setState(StickerSetState.ACTIVE);
@@ -69,7 +76,13 @@ class StickerSetPreviewModeIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        stickerSetRepository.deleteAll();
+        // Очищаем только тестовые данные (безопасно для продакшн БД)
+        stickerSetRepository.findByName(STICKERSET_NAME)
+                .ifPresent(set -> {
+                    likeRepository.deleteAll(likeRepository.findByStickerSetId(set.getId()));
+                    stickerSetRepository.delete(set);
+                });
+        userRepository.findById(TEST_USER_ID).ifPresent(userRepository::delete);
     }
 
     @Test

@@ -123,13 +123,30 @@ task integrationTest(type: Test) {
         excludeTags 'benchmark'
     }
     testLogging {
-        events "passed", "skipped", "failed"
+        events "started", "passed", "skipped", "failed"
         exceptionFormat "full"
-        showStandardStreams = true
+        showStandardStreams = false  // Отключаем для чистоты вывода
+        showCauses = true
+        showStackTraces = true
+        displayGranularity = 2
+        
+        // Показываем название теста при запуске и результат
+        afterTest { desc, result ->
+            println "  ✓ ${desc.className.tokenize('.').last()}.${desc.name} - ${result.resultType} (${result.endTime - result.startTime}ms)"
+        }
+        
+        // Показываем прогресс по файлам
+        beforeTest { desc ->
+            println "  → Запуск: ${desc.className.tokenize('.').last()}.${desc.name}"
+        }
     }
     
     // Используем профиль test для интеграционных тестов
     systemProperty 'spring.profiles.active', 'test'
+    
+    // Таймаут 15 секунд на каждый интеграционный тест
+    systemProperty 'junit.jupiter.execution.timeout.default', '15s'
+    systemProperty 'junit.jupiter.execution.timeout.mode', 'enabled'
     
     // Отключаем Configuration Cache для тестов
     notCompatibleWithConfigurationCache()
@@ -152,6 +169,52 @@ task integrationTest(type: Test) {
     }
     
     description = 'Запускает интеграционные тесты (с внешними зависимостями: БД, Redis)'
+    group = 'verification'
+}
+
+// TON DONATIONS тесты - отдельная группа для тестирования TON функциональности
+task tonTest(type: Test) {
+    useJUnitPlatform {
+        // Запускаем только TON тесты
+        includeTags 'ton'
+    }
+    testLogging {
+        events "started", "passed", "skipped", "failed"
+        exceptionFormat "full"
+        showStandardStreams = false
+        showCauses = true
+        showStackTraces = true
+        displayGranularity = 2
+        
+        afterTest { desc, result ->
+            println "  ✓ ${desc.className.tokenize('.').last()}.${desc.name} - ${result.resultType} (${result.endTime - result.startTime}ms)"
+        }
+        
+        beforeTest { desc ->
+            println "  → ${desc.className.tokenize('.').last()}.${desc.name}"
+        }
+    }
+    
+    systemProperty 'spring.profiles.active', 'test'
+    systemProperty 'junit.jupiter.execution.timeout.default', '15s'
+    systemProperty 'junit.jupiter.execution.timeout.mode', 'enabled'
+    
+    notCompatibleWithConfigurationCache()
+    
+    doFirst {
+        def envFile = file('.env.app')
+        if (envFile.exists()) {
+            envFile.readLines().each { line ->
+                if (line && !line.startsWith('#') && line.contains('=')) {
+                    def (key, value) = line.split('=', 2)
+                    environment key.trim(), value.trim()
+                }
+            }
+            println '✅ Запуск TON DONATIONS тестов'
+        }
+    }
+    
+    description = 'Запускает только TON Donations тесты (Wallet + Donation Flow)'
     group = 'verification'
 }
 
