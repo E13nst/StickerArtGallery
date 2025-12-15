@@ -488,7 +488,7 @@ public class StickerSetService {
                 authorId != null ? (" автора=" + authorId) : (hasAuthorOnly ? " (только с автором)" : ""),
                 pageRequest.getPage(), pageRequest.getSize(), language, shortInfo, preview, type, userId);
         Page<StickerSet> stickerSetsPage = stickerSetRepository.findPublicNotBlockedFiltered(type, authorId, hasAuthorOnly, userId, pageRequest.toPageable());
-        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language, currentUserId, shortInfo, preview);
+        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language, currentUserId, shortInfo, preview, false);
         return PageResponse.of(stickerSetsPage, enrichedDtos);
     }
     
@@ -552,7 +552,7 @@ public class StickerSetService {
                 pageRequest.toPageable()
         );
 
-        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), lang, currentUserId, shortInfo, preview);
+        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), lang, currentUserId, shortInfo, preview, false);
 
         return PageResponse.of(stickerSetsPage, enrichedDtos);
     }
@@ -593,7 +593,7 @@ public class StickerSetService {
                 pageRequest.toPageable()
         );
 
-        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), lang, currentUserId, shortInfo, preview);
+        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), lang, currentUserId, shortInfo, preview, false);
 
         return PageResponse.of(stickerSetsPage, enrichedDtos);
     }
@@ -630,7 +630,7 @@ public class StickerSetService {
         Page<StickerSet> stickerSetsPage = type == StickerSetType.OFFICIAL
                 ? stickerSetRepository.findByCategoryKeysPublicNotBlockedAndOfficial(categoryKeys, pageRequest.toPageable())
                 : stickerSetRepository.findByCategoryKeysPublicAndNotBlocked(categoryKeys, pageRequest.toPageable());
-        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language, currentUserId, shortInfo, preview);
+        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language, currentUserId, shortInfo, preview, false);
         return PageResponse.of(stickerSetsPage, enrichedDtos);
     }
     
@@ -659,7 +659,7 @@ public class StickerSetService {
                 authorId != null ? (" автора=" + authorId) : (hasAuthorOnly ? " (только с автором)" : ""),
                 pageRequest.getPage(), pageRequest.getSize(), shortInfo, preview, type, userId);
         Page<StickerSet> stickerSetsPage = stickerSetRepository.findByCategoryKeysPublicNotBlockedFiltered(categoryKeys, type, authorId, hasAuthorOnly, userId, pageRequest.toPageable());
-        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language, currentUserId, shortInfo, preview);
+        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(stickerSetsPage.getContent(), language, currentUserId, shortInfo, preview, false);
         return PageResponse.of(stickerSetsPage, enrichedDtos);
     }
     
@@ -698,7 +698,7 @@ public class StickerSetService {
         }
         
         String lang = normalizeLanguage(language);
-        StickerSetDto dto = enrichSingleStickerSetSafelyWithCategories(stickerSet, lang, currentUserId, shortInfo, false);
+        StickerSetDto dto = enrichSingleStickerSetSafelyWithCategories(stickerSet, lang, currentUserId, shortInfo, false, true);
         
         LOGGER.debug("🔍 Стикерсет ID {}: userId={}, currentUserId={}, state={}, visibility={}, availableActions={}", 
                 id, stickerSet.getUserId(), currentUserId, stickerSet.getState(), stickerSet.getVisibility(), 
@@ -723,7 +723,7 @@ public class StickerSetService {
             return null;
         }
         
-        return enrichSingleStickerSetSafelyWithCategories(stickerSet, "en", null, shortInfo, false);
+        return enrichSingleStickerSetSafelyWithCategories(stickerSet, "en", null, shortInfo, false, true);
     }
     
     /**
@@ -762,7 +762,7 @@ public class StickerSetService {
                 query, categoryKeys, type, authorId, hasAuthorOnly, userId, pageRequest.toPageable());
         
         List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(
-                stickerSetsPage.getContent(), lang, currentUserId, shortInfo, preview);
+                stickerSetsPage.getContent(), lang, currentUserId, shortInfo, preview, false);
         
         return PageResponse.of(stickerSetsPage, enrichedDtos);
     }
@@ -994,23 +994,27 @@ public class StickerSetService {
      * Обогащает список стикерсетов данными из Bot API и категориями (последовательно для Hibernate)
      */
     private List<StickerSetDto> enrichWithBotApiDataAndCategories(List<StickerSet> stickerSets, String language, Long currentUserId) {
-        return enrichWithBotApiDataAndCategories(stickerSets, language, currentUserId, false, false);
+        return enrichWithBotApiDataAndCategories(stickerSets, language, currentUserId, false, false, false);
     }
     
     public List<StickerSetDto> enrichWithBotApiDataAndCategories(List<StickerSet> stickerSets, String language, Long currentUserId, boolean shortInfo) {
-        return enrichWithBotApiDataAndCategories(stickerSets, language, currentUserId, shortInfo, false);
+        return enrichWithBotApiDataAndCategories(stickerSets, language, currentUserId, shortInfo, false, false);
     }
     
     public List<StickerSetDto> enrichWithBotApiDataAndCategories(List<StickerSet> stickerSets, String language, Long currentUserId, boolean shortInfo, boolean preview) {
+        return enrichWithBotApiDataAndCategories(stickerSets, language, currentUserId, shortInfo, preview, false);
+    }
+    
+    public List<StickerSetDto> enrichWithBotApiDataAndCategories(List<StickerSet> stickerSets, String language, Long currentUserId, boolean shortInfo, boolean preview, boolean includeAvailableActions) {
         if (stickerSets.isEmpty()) {
             return List.of();
         }
         
-        LOGGER.debug("🚀 Обогащение {} стикерсетов данными Bot API и категориями (последовательно, shortInfo={}, preview={})", stickerSets.size(), shortInfo, preview);
+        LOGGER.debug("🚀 Обогащение {} стикерсетов данными Bot API и категориями (последовательно, shortInfo={}, preview={}, includeAvailableActions={})", stickerSets.size(), shortInfo, preview, includeAvailableActions);
         
         // Обрабатываем последовательно, чтобы избежать проблем с Hibernate Session
         List<StickerSetDto> result = stickerSets.stream()
-                .map(stickerSet -> enrichSingleStickerSetSafelyWithCategories(stickerSet, language, currentUserId, shortInfo, preview))
+                .map(stickerSet -> enrichSingleStickerSetSafelyWithCategories(stickerSet, language, currentUserId, shortInfo, preview, includeAvailableActions))
                 .collect(Collectors.toList());
         
         LOGGER.debug("✅ Обогащение завершено для {} стикерсетов", result.size());
@@ -1021,14 +1025,14 @@ public class StickerSetService {
      * Обогащает один стикерсет данными из Bot API и категориями (безопасно)
      */
     private StickerSetDto enrichSingleStickerSetSafelyWithCategories(StickerSet stickerSet, String language) {
-        return enrichSingleStickerSetSafelyWithCategories(stickerSet, language, null, false, false);
+        return enrichSingleStickerSetSafelyWithCategories(stickerSet, language, null, false, false, true);
     }
     
     /**
      * Обогащает один стикерсет данными из Bot API и категориями (безопасно)
      */
     private StickerSetDto enrichSingleStickerSetSafelyWithCategories(StickerSet stickerSet, String language, Long currentUserId) {
-        return enrichSingleStickerSetSafelyWithCategories(stickerSet, language, currentUserId, false, false);
+        return enrichSingleStickerSetSafelyWithCategories(stickerSet, language, currentUserId, false, false, true);
     }
     
     /**
@@ -1061,12 +1065,13 @@ public class StickerSetService {
     /**
      * Обогащает один стикерсет данными из Bot API и категориями (безопасно)
      * @param preview если true, возвращает только 1 случайный стикер вместо полного списка
+     * @param includeAvailableActions если true, вычисляет доступные действия для стикерсета
      */
-    private StickerSetDto enrichSingleStickerSetSafelyWithCategories(StickerSet stickerSet, String language, Long currentUserId, boolean shortInfo, boolean preview) {
+    private StickerSetDto enrichSingleStickerSetSafelyWithCategories(StickerSet stickerSet, String language, Long currentUserId, boolean shortInfo, boolean preview, boolean includeAvailableActions) {
         boolean isAdmin = isCurrentUserAdmin();
-        LOGGER.debug("🔍 Обогащение стикерсета {}: currentUserId={}, stickerSetUserId={}, isAdmin={}, preview={}", 
-                stickerSet.getId(), currentUserId, stickerSet.getUserId(), isAdmin, preview);
-        StickerSetDto dto = StickerSetDto.fromEntity(stickerSet, language, currentUserId, isAdmin);
+        LOGGER.debug("🔍 Обогащение стикерсета {}: currentUserId={}, stickerSetUserId={}, isAdmin={}, preview={}, includeAvailableActions={}", 
+                stickerSet.getId(), currentUserId, stickerSet.getUserId(), isAdmin, preview, includeAvailableActions);
+        StickerSetDto dto = StickerSetDto.fromEntity(stickerSet, language, currentUserId, isAdmin, includeAvailableActions);
         
         if (dto == null) {
             LOGGER.warn("⚠️ Не удалось создать DTO для стикерсета {}", stickerSet.getId());
@@ -1106,11 +1111,11 @@ public class StickerSetService {
      * Если данные Bot API недоступны, возвращает DTO без обогащения, но не выбрасывает исключение
      */
     private StickerSetDto enrichSingleStickerSetSafely(StickerSet stickerSet) {
-        return enrichSingleStickerSetSafelyWithCategories(stickerSet, "en", null, false, false);
+        return enrichSingleStickerSetSafelyWithCategories(stickerSet, "en", null, false, false, true);
     }
     
     private StickerSetDto enrichSingleStickerSetSafely(StickerSet stickerSet, boolean shortInfo) {
-        return enrichSingleStickerSetSafelyWithCategories(stickerSet, "en", null, shortInfo, false);
+        return enrichSingleStickerSetSafelyWithCategories(stickerSet, "en", null, shortInfo, false, true);
     }
     public PageResponse<StickerSetDto> searchStickerSets(String query,
                                                           PageRequest pageRequest,
@@ -1153,7 +1158,7 @@ public class StickerSetService {
                 query, categoryKeys, type, authorId, hasAuthorOnly, userId, pageRequest.toPageable());
         
         List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(
-                stickerSetsPage.getContent(), lang, currentUserId, shortInfo, preview);
+                stickerSetsPage.getContent(), lang, currentUserId, shortInfo, preview, false);
         return PageResponse.of(stickerSetsPage, enrichedDtos);
     }
 } 

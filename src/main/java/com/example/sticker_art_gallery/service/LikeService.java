@@ -200,7 +200,7 @@ public class LikeService {
         
         // Обогащаем данными из Telegram Bot API с учетом shortInfo и preview
         List<StickerSetDto> dtos = stickerSetService.enrichWithBotApiDataAndCategories(
-            likedStickerSets.getContent(), language, userId, shortInfo, preview);
+            likedStickerSets.getContent(), language, userId, shortInfo, preview, false);
         
         return PageResponse.of(likedStickerSets, dtos);
     }
@@ -230,7 +230,7 @@ public class LikeService {
         
         // Обогащаем данными из Telegram Bot API с учетом shortInfo и preview
         List<StickerSetDto> dtos = stickerSetService.enrichWithBotApiDataAndCategories(
-            likedStickerSets.getContent(), language, userId, shortInfo, preview);
+            likedStickerSets.getContent(), language, userId, shortInfo, preview, false);
         
         return PageResponse.of(likedStickerSets, dtos);
     }
@@ -263,7 +263,7 @@ public class LikeService {
         
         // Обогащаем данными из Telegram Bot API с учетом shortInfo и preview
         List<StickerSetDto> dtos = stickerSetService.enrichWithBotApiDataAndCategories(
-            likedStickerSets.getContent(), language, userId, shortInfo, preview);
+            likedStickerSets.getContent(), language, userId, shortInfo, preview, false);
         
         return PageResponse.of(likedStickerSets, dtos);
     }

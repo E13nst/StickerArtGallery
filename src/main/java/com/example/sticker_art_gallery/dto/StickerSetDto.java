@@ -477,14 +477,19 @@ public class StickerSetDto {
     
     // Конструктор для создания DTO из Entity с категориями, информацией о лайках и доступных действиях
     public static StickerSetDto fromEntity(com.example.sticker_art_gallery.model.telegram.StickerSet entity, String language, Long currentUserId, boolean isAdmin) {
+        return fromEntity(entity, language, currentUserId, isAdmin, true);
+    }
+    
+    // Конструктор для создания DTO из Entity с категориями, информацией о лайках и опциональными доступными действиями
+    public static StickerSetDto fromEntity(com.example.sticker_art_gallery.model.telegram.StickerSet entity, String language, Long currentUserId, boolean isAdmin, boolean includeAvailableActions) {
         StickerSetDto dto = fromEntity(entity, language);
         
         if (dto != null && currentUserId != null) {
             dto.setLikedByCurrentUser(entity.isLikedByUser(currentUserId));
         }
         
-        // Вычисляем доступные действия
-        if (dto != null) {
+        // Вычисляем доступные действия только если требуется
+        if (dto != null && includeAvailableActions) {
             dto.setAvailableActions(calculateAvailableActions(
                 currentUserId,
                 isAdmin,
@@ -493,6 +498,9 @@ public class StickerSetDto {
                 entity.getState(),
                 entity.getVisibility()
             ));
+        } else if (dto != null) {
+            // Устанавливаем пустой список, если не нужно вычислять
+            dto.setAvailableActions(new ArrayList<>());
         }
         
         return dto;
