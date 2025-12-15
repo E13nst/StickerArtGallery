@@ -9,7 +9,6 @@ import jakarta.validation.constraints.Positive;
  */
 public class PrepareTransactionRequest {
 
-    @NotNull(message = "ID сущности не может быть null")
     @Positive(message = "ID сущности должен быть положительным числом")
     private Long subjectEntityId;
 

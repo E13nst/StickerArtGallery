@@ -181,7 +181,7 @@ task tonTest(type: Test) {
     testLogging {
         events "started", "passed", "skipped", "failed"
         exceptionFormat "full"
-        showStandardStreams = false
+        showStandardStreams = false  // Отключаем вывод System.out/err для чистоты
         showCauses = true
         showStackTraces = true
         displayGranularity = 2

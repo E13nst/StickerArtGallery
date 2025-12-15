@@ -114,10 +114,6 @@ class DonationFlowIntegrationTest {
                         .header("X-Telegram-Init-Data", donorInitData)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andDo(result -> {
-                    System.out.println("🧪 Response Status: " + result.getResponse().getStatus());
-                    System.out.println("🧪 Response Body: " + result.getResponse().getContentAsString());
-                })
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.intentId").exists())
                 .andExpect(jsonPath("$.intentType").value("DONATION"))
