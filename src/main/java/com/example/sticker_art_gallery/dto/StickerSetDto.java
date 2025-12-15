@@ -98,7 +98,7 @@ public class StickerSetDto {
     
     @Schema(description = "Список доступных действий для текущего пользователя", 
             example = "[\"DELETE\", \"UNPUBLISH\"]",
-            allowableValues = {"DELETE", "BLOCK", "UNBLOCK", "PUBLISH", "UNPUBLISH", "EDIT_CATEGORIES", "DONATION"})
+            allowableValues = {"DELETE", "BLOCK", "UNBLOCK", "PUBLISH", "UNPUBLISH", "EDIT_CATEGORIES", "DONATE"})
     private List<StickerSetAction> availableActions;
     
     // Конструкторы
@@ -354,12 +354,12 @@ public class StickerSetDto {
             }
         }
         
-        // DONATION - для пользователей с TON кошельком, если у стикерсета есть автор и пользователь не является автором
+        // DONATE - для пользователей с TON кошельком, если у стикерсета есть автор и пользователь не является автором
         if (currentUserId != null 
                 && stickerSetAuthorId != null 
                 && hasTonWallet 
                 && !currentUserId.equals(stickerSetAuthorId)) {
-            actions.add(StickerSetAction.DONATION);
+            actions.add(StickerSetAction.DONATE);
         }
         
         return actions;

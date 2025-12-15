@@ -452,8 +452,8 @@ class StickerSetDtoAvailableActionsTest {
 
     @Test
     @Story("Расчет доступных действий")
-    @DisplayName("DONATION должно показываться для пользователя с кошельком, если есть автор и пользователь не является автором")
-    @Description("Проверяет, что пользователь с подключенным TON кошельком видит DONATION для стикерсета с автором, если он не является автором")
+    @DisplayName("DONATE должно показываться для пользователя с кошельком, если есть автор и пользователь не является автором")
+    @Description("Проверяет, что пользователь с подключенным TON кошельком видит DONATE для стикерсета с автором, если он не является автором")
     @Severity(SeverityLevel.CRITICAL)
     void calculateAvailableActions_UserWithWalletAndAuthor_ShouldShowDonation() {
         // When
@@ -464,14 +464,14 @@ class StickerSetDtoAvailableActionsTest {
 
         // Then
         assertEquals(1, actions.size());
-        assertTrue(actions.contains(StickerSetAction.DONATION));
+        assertTrue(actions.contains(StickerSetAction.DONATE));
         assertFalse(actions.contains(StickerSetAction.DELETE));
         assertFalse(actions.contains(StickerSetAction.EDIT_CATEGORIES));
     }
 
     @Test
     @Story("Расчет доступных действий")
-    @DisplayName("DONATION не должно показываться, если пользователь является автором")
+    @DisplayName("DONATE не должно показываться, если пользователь является автором")
     @Description("Проверяет, что пользователь не может донатить самому себе (запрет доната автору, если пользователь является автором)")
     @Severity(SeverityLevel.CRITICAL)
     void calculateAvailableActions_UserIsAuthor_ShouldNotShowDonation() {
@@ -484,13 +484,13 @@ class StickerSetDtoAvailableActionsTest {
         // Then
         assertEquals(1, actions.size());
         assertTrue(actions.contains(StickerSetAction.UNPUBLISH));
-        assertFalse(actions.contains(StickerSetAction.DONATION));
+        assertFalse(actions.contains(StickerSetAction.DONATE));
     }
 
     @Test
     @Story("Расчет доступных действий")
-    @DisplayName("DONATION не должно показываться, если у пользователя нет кошелька")
-    @Description("Проверяет, что DONATION не показывается, если hasTonWallet = false")
+    @DisplayName("DONATE не должно показываться, если у пользователя нет кошелька")
+    @Description("Проверяет, что DONATE не показывается, если hasTonWallet = false")
     @Severity(SeverityLevel.CRITICAL)
     void calculateAvailableActions_UserWithoutWallet_ShouldNotShowDonation() {
         // When
@@ -501,13 +501,13 @@ class StickerSetDtoAvailableActionsTest {
 
         // Then
         assertTrue(actions.isEmpty());
-        assertFalse(actions.contains(StickerSetAction.DONATION));
+        assertFalse(actions.contains(StickerSetAction.DONATE));
     }
 
     @Test
     @Story("Расчет доступных действий")
-    @DisplayName("DONATION не должно показываться, если у стикерсета нет автора")
-    @Description("Проверяет, что DONATION не показывается, если authorId = null")
+    @DisplayName("DONATE не должно показываться, если у стикерсета нет автора")
+    @Description("Проверяет, что DONATE не показывается, если authorId = null")
     @Severity(SeverityLevel.CRITICAL)
     void calculateAvailableActions_StickerSetWithoutAuthor_ShouldNotShowDonation() {
         // When
@@ -518,13 +518,13 @@ class StickerSetDtoAvailableActionsTest {
 
         // Then
         assertTrue(actions.isEmpty());
-        assertFalse(actions.contains(StickerSetAction.DONATION));
+        assertFalse(actions.contains(StickerSetAction.DONATE));
     }
 
     @Test
     @Story("Расчет доступных действий")
-    @DisplayName("DONATION не должно показываться для неавторизованного пользователя")
-    @Description("Проверяет, что DONATION не показывается, если currentUserId = null")
+    @DisplayName("DONATE не должно показываться для неавторизованного пользователя")
+    @Description("Проверяет, что DONATE не показывается, если currentUserId = null")
     @Severity(SeverityLevel.CRITICAL)
     void calculateAvailableActions_UnauthorizedUserWithWallet_ShouldNotShowDonation() {
         // When
@@ -535,13 +535,13 @@ class StickerSetDtoAvailableActionsTest {
 
         // Then
         assertTrue(actions.isEmpty());
-        assertFalse(actions.contains(StickerSetAction.DONATION));
+        assertFalse(actions.contains(StickerSetAction.DONATE));
     }
 
     @Test
     @Story("Расчет доступных действий")
-    @DisplayName("DONATION должно показываться вместе с другими действиями для владельца с кошельком")
-    @Description("Проверяет, что владелец с кошельком видит DONATION вместе с DELETE и EDIT_CATEGORIES, если он не является автором")
+    @DisplayName("DONATE должно показываться вместе с другими действиями для владельца с кошельком")
+    @Description("Проверяет, что владелец с кошельком видит DONATE вместе с DELETE и EDIT_CATEGORIES, если он не является автором")
     @Severity(SeverityLevel.NORMAL)
     void calculateAvailableActions_OwnerWithWalletNotAuthor_ShouldShowDonationAndOtherActions() {
         // When
@@ -554,13 +554,13 @@ class StickerSetDtoAvailableActionsTest {
         assertEquals(3, actions.size());
         assertTrue(actions.contains(StickerSetAction.DELETE));
         assertTrue(actions.contains(StickerSetAction.EDIT_CATEGORIES));
-        assertTrue(actions.contains(StickerSetAction.DONATION));
+        assertTrue(actions.contains(StickerSetAction.DONATE));
     }
 
     @Test
     @Story("Расчет доступных действий")
-    @DisplayName("DONATION должно показываться для админа с кошельком, если он не является автором")
-    @Description("Проверяет, что админ с кошельком видит DONATION вместе с админскими действиями, если он не является автором")
+    @DisplayName("DONATE должно показываться для админа с кошельком, если он не является автором")
+    @Description("Проверяет, что админ с кошельком видит DONATE вместе с админскими действиями, если он не является автором")
     @Severity(SeverityLevel.NORMAL)
     void calculateAvailableActions_AdminWithWalletNotAuthor_ShouldShowDonationAndAdminActions() {
         // When
@@ -573,13 +573,13 @@ class StickerSetDtoAvailableActionsTest {
         assertEquals(3, actions.size());
         assertTrue(actions.contains(StickerSetAction.EDIT_CATEGORIES));
         assertTrue(actions.contains(StickerSetAction.BLOCK));
-        assertTrue(actions.contains(StickerSetAction.DONATION));
+        assertTrue(actions.contains(StickerSetAction.DONATE));
     }
 
     @Test
     @Story("Методы fromEntity")
-    @DisplayName("fromEntity с hasTonWallet=true должен включать DONATION для пользователя с кошельком")
-    @Description("Проверяет, что при создании DTO с hasTonWallet=true и наличием автора, пользователь видит DONATION")
+    @DisplayName("fromEntity с hasTonWallet=true должен включать DONATE для пользователя с кошельком")
+    @Description("Проверяет, что при создании DTO с hasTonWallet=true и наличием автора, пользователь видит DONATE")
     @Severity(SeverityLevel.CRITICAL)
     void fromEntity_WithWalletAndAuthor_ShouldIncludeDonation() {
         // Given
@@ -591,13 +591,13 @@ class StickerSetDtoAvailableActionsTest {
         // Then
         assertNotNull(dto.getAvailableActions());
         assertEquals(1, dto.getAvailableActions().size());
-        assertTrue(dto.getAvailableActions().contains(StickerSetAction.DONATION));
+        assertTrue(dto.getAvailableActions().contains(StickerSetAction.DONATE));
     }
 
     @Test
     @Story("Методы fromEntity")
-    @DisplayName("fromEntity с hasTonWallet=false не должен включать DONATION")
-    @Description("Проверяет, что при создании DTO с hasTonWallet=false DONATION не показывается")
+    @DisplayName("fromEntity с hasTonWallet=false не должен включать DONATE")
+    @Description("Проверяет, что при создании DTO с hasTonWallet=false DONATE не показывается")
     @Severity(SeverityLevel.CRITICAL)
     void fromEntity_WithoutWallet_ShouldNotIncludeDonation() {
         // Given
@@ -609,13 +609,13 @@ class StickerSetDtoAvailableActionsTest {
         // Then
         assertNotNull(dto.getAvailableActions());
         assertTrue(dto.getAvailableActions().isEmpty());
-        assertFalse(dto.getAvailableActions().contains(StickerSetAction.DONATION));
+        assertFalse(dto.getAvailableActions().contains(StickerSetAction.DONATE));
     }
 
     @Test
     @Story("Методы fromEntity")
-    @DisplayName("fromEntity с hasTonWallet=true не должен включать DONATION, если пользователь является автором")
-    @Description("Проверяет, что даже с hasTonWallet=true DONATION не показывается, если пользователь является автором")
+    @DisplayName("fromEntity с hasTonWallet=true не должен включать DONATE, если пользователь является автором")
+    @Description("Проверяет, что даже с hasTonWallet=true DONATE не показывается, если пользователь является автором")
     @Severity(SeverityLevel.CRITICAL)
     void fromEntity_WithWalletButUserIsAuthor_ShouldNotIncludeDonation() {
         // Given
@@ -628,13 +628,13 @@ class StickerSetDtoAvailableActionsTest {
         assertNotNull(dto.getAvailableActions());
         assertEquals(1, dto.getAvailableActions().size());
         assertTrue(dto.getAvailableActions().contains(StickerSetAction.UNPUBLISH));
-        assertFalse(dto.getAvailableActions().contains(StickerSetAction.DONATION));
+        assertFalse(dto.getAvailableActions().contains(StickerSetAction.DONATE));
     }
 
     @Test
     @Story("Методы fromEntity")
-    @DisplayName("fromEntity с hasTonWallet=true не должен включать DONATION, если нет автора")
-    @Description("Проверяет, что даже с hasTonWallet=true DONATION не показывается, если authorId = null")
+    @DisplayName("fromEntity с hasTonWallet=true не должен включать DONATE, если нет автора")
+    @Description("Проверяет, что даже с hasTonWallet=true DONATE не показывается, если authorId = null")
     @Severity(SeverityLevel.CRITICAL)
     void fromEntity_WithWalletButNoAuthor_ShouldNotIncludeDonation() {
         // Given
@@ -646,7 +646,7 @@ class StickerSetDtoAvailableActionsTest {
         // Then
         assertNotNull(dto.getAvailableActions());
         assertTrue(dto.getAvailableActions().isEmpty());
-        assertFalse(dto.getAvailableActions().contains(StickerSetAction.DONATION));
+        assertFalse(dto.getAvailableActions().contains(StickerSetAction.DONATE));
     }
 
     /**
