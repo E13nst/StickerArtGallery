@@ -1,5 +1,9 @@
 package com.example.sticker_art_gallery.service.transaction;
 
+import com.example.sticker_art_gallery.exception.StickerSetNotFoundException;
+import com.example.sticker_art_gallery.exception.WalletNotFoundException;
+import com.example.sticker_art_gallery.model.telegram.StickerSet;
+import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
 import com.example.sticker_art_gallery.model.transaction.*;
 import com.example.sticker_art_gallery.model.user.UserEntity;
 import com.example.sticker_art_gallery.model.user.UserRepository;
@@ -15,6 +19,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -44,15 +49,29 @@ class TransactionIntentServiceTest {
     @Mock
     private PlatformEntityService platformEntityService;
 
+    @Mock
+    private StickerSetRepository stickerSetRepository;
+
+    @Mock
+    private WalletService walletService;
+
     @InjectMocks
     private TransactionIntentService intentService;
 
     private static final Long TEST_USER_ID = 123L;
+    private static final Long TEST_DONOR_USER_ID = 789L;
+    private static final Long TEST_AUTHOR_ID = 456L;
+    private static final Long TEST_STICKER_SET_ID = 999L;
     private static final Long TEST_SUBJECT_ENTITY_ID = 456L;
     private static final Long TEST_AMOUNT_NANO = 1_000_000_000L; // 1 TON
 
     private UserEntity testUser;
+    private UserEntity testDonorUser;
+    private UserEntity testAuthorUser;
     private PlatformEntityEntity testSubjectEntity;
+    private PlatformEntityEntity testAuthorEntity;
+    private StickerSet testStickerSet;
+    private UserWalletEntity testAuthorWallet;
 
     @BeforeEach
     void setUp() {
@@ -66,6 +85,37 @@ class TransactionIntentServiceTest {
         testSubjectEntity.setId(TEST_SUBJECT_ENTITY_ID);
         testSubjectEntity.setEntityType(EntityType.STICKER_SET);
         testSubjectEntity.setEntityRef("sticker_set:" + TEST_SUBJECT_ENTITY_ID);
+
+        // Настройка донатора
+        testDonorUser = new UserEntity();
+        testDonorUser.setId(TEST_DONOR_USER_ID);
+        testDonorUser.setUsername("donor");
+
+        // Настройка автора
+        testAuthorUser = new UserEntity();
+        testAuthorUser.setId(TEST_AUTHOR_ID);
+        testAuthorUser.setUsername("author");
+
+        // Настройка PlatformEntity для автора
+        testAuthorEntity = new PlatformEntityEntity();
+        testAuthorEntity.setId(888L);
+        testAuthorEntity.setEntityType(EntityType.USER);
+        testAuthorEntity.setEntityRef("user:" + TEST_AUTHOR_ID);
+
+        // Настройка StickerSet
+        testStickerSet = new StickerSet();
+        testStickerSet.setId(TEST_STICKER_SET_ID);
+        testStickerSet.setUserId(TEST_AUTHOR_ID);
+        testStickerSet.setAuthorId(TEST_AUTHOR_ID);
+        testStickerSet.setTitle("Test StickerSet");
+
+        // Настройка кошелька автора
+        testAuthorWallet = new UserWalletEntity();
+        testAuthorWallet.setId(777L);
+        testAuthorWallet.setUser(testAuthorUser);
+        testAuthorWallet.setWalletAddress("EQDummyAuthorWalletAddress123456789012345678901234");
+        testAuthorWallet.setIsActive(true);
+        testAuthorWallet.setCreatedAt(OffsetDateTime.now());
     }
 
     @Test
@@ -240,6 +290,137 @@ class TransactionIntentServiceTest {
         assertThat(result).hasSize(2);
         assertThat(result.get(0).getLegType()).isEqualTo(LegType.MAIN);
         assertThat(result.get(1).getLegType()).isEqualTo(LegType.PLATFORM_FEE);
+    }
+
+    @Test
+    @Story("Создание donation intent для стикерсета")
+    @DisplayName("createStickerSetDonationIntent должен создать Intent и MAIN leg для автора")
+    void createStickerSetDonationIntent_shouldCreateIntentAndMainLeg() {
+        // Arrange
+        when(stickerSetRepository.findById(TEST_STICKER_SET_ID)).thenReturn(Optional.of(testStickerSet));
+        when(walletService.getActiveWallet(TEST_AUTHOR_ID)).thenReturn(testAuthorWallet);
+        when(platformEntityService.getOrCreate(EntityType.STICKER_SET, "sticker_set:" + TEST_STICKER_SET_ID, TEST_AUTHOR_ID))
+                .thenReturn(testSubjectEntity);
+        when(platformEntityService.getOrCreate(EntityType.USER, "user:" + TEST_AUTHOR_ID, TEST_AUTHOR_ID))
+                .thenReturn(testAuthorEntity);
+        when(userRepository.findById(TEST_DONOR_USER_ID)).thenReturn(Optional.of(testDonorUser));
+
+        TransactionIntentEntity savedIntent = new TransactionIntentEntity();
+        savedIntent.setId(1L);
+        savedIntent.setIntentType(IntentType.DONATION);
+        savedIntent.setUser(testDonorUser);
+        savedIntent.setSubjectEntity(testSubjectEntity);
+        savedIntent.setAmountNano(TEST_AMOUNT_NANO);
+        savedIntent.setStatus(IntentStatus.CREATED);
+
+        when(intentRepository.save(any(TransactionIntentEntity.class))).thenReturn(savedIntent);
+        when(legRepository.save(any(TransactionLegEntity.class))).thenAnswer(invocation -> {
+            TransactionLegEntity leg = invocation.getArgument(0);
+            leg.setId(1L);
+            return leg;
+        });
+        when(legRepository.findByIntent_Id(1L)).thenReturn(List.of(
+                createTestLeg(1L, LegType.MAIN, testAuthorWallet.getWalletAddress(), TEST_AMOUNT_NANO)
+        ));
+
+        // Act
+        TransactionIntentEntity result = intentService.createStickerSetDonationIntent(
+                TEST_DONOR_USER_ID,
+                TEST_STICKER_SET_ID,
+                TEST_AMOUNT_NANO
+        );
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getId()).isEqualTo(1L);
+        assertThat(result.getIntentType()).isEqualTo(IntentType.DONATION);
+        assertThat(result.getStatus()).isEqualTo(IntentStatus.CREATED);
+        assertThat(result.getAmountNano()).isEqualTo(TEST_AMOUNT_NANO);
+        assertThat(result.getUser().getId()).isEqualTo(TEST_DONOR_USER_ID);
+        assertThat(result.getSubjectEntity()).isEqualTo(testSubjectEntity);
+
+        // Проверяем, что Intent был сохранен
+        verify(intentRepository, times(1)).save(any(TransactionIntentEntity.class));
+
+        // Проверяем, что MAIN leg был создан с правильным адресом автора
+        ArgumentCaptor<TransactionLegEntity> legCaptor = ArgumentCaptor.forClass(TransactionLegEntity.class);
+        verify(legRepository, times(1)).save(legCaptor.capture());
+
+        TransactionLegEntity savedLeg = legCaptor.getValue();
+        assertThat(savedLeg.getLegType()).isEqualTo(LegType.MAIN);
+        assertThat(savedLeg.getToWalletAddress()).isEqualTo(testAuthorWallet.getWalletAddress());
+        assertThat(savedLeg.getToEntity()).isEqualTo(testAuthorEntity);
+        assertThat(savedLeg.getAmountNano()).isEqualTo(TEST_AMOUNT_NANO);
+    }
+
+    @Test
+    @Story("Создание donation intent для стикерсета")
+    @DisplayName("createStickerSetDonationIntent должен выбросить StickerSetNotFoundException если стикерсет не найден")
+    void createStickerSetDonationIntent_shouldThrowExceptionWhenStickerSetNotFound() {
+        // Arrange
+        when(stickerSetRepository.findById(TEST_STICKER_SET_ID)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> intentService.createStickerSetDonationIntent(
+                TEST_DONOR_USER_ID,
+                TEST_STICKER_SET_ID,
+                TEST_AMOUNT_NANO
+        )).isInstanceOf(StickerSetNotFoundException.class)
+          .hasMessageContaining("StickerSet not found");
+
+        verify(intentRepository, never()).save(any());
+        verify(legRepository, never()).save(any());
+    }
+
+    @Test
+    @Story("Создание donation intent для стикерсета")
+    @DisplayName("createStickerSetDonationIntent должен выбросить IllegalStateException если стикерсет не имеет автора")
+    void createStickerSetDonationIntent_shouldThrowExceptionWhenNoAuthor() {
+        // Arrange
+        StickerSet stickerSetWithoutAuthor = new StickerSet();
+        stickerSetWithoutAuthor.setId(TEST_STICKER_SET_ID);
+        stickerSetWithoutAuthor.setAuthorId(null);
+
+        when(stickerSetRepository.findById(TEST_STICKER_SET_ID)).thenReturn(Optional.of(stickerSetWithoutAuthor));
+
+        // Act & Assert
+        assertThatThrownBy(() -> intentService.createStickerSetDonationIntent(
+                TEST_DONOR_USER_ID,
+                TEST_STICKER_SET_ID,
+                TEST_AMOUNT_NANO
+        )).isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("не имеет автора");
+
+        verify(walletService, never()).getActiveWallet(any());
+        verify(intentRepository, never()).save(any());
+    }
+
+    @Test
+    @Story("Создание donation intent для стикерсета")
+    @DisplayName("createStickerSetDonationIntent должен выбросить WalletNotFoundException если у автора нет кошелька")
+    void createStickerSetDonationIntent_shouldThrowExceptionWhenAuthorHasNoWallet() {
+        // Arrange
+        when(stickerSetRepository.findById(TEST_STICKER_SET_ID)).thenReturn(Optional.of(testStickerSet));
+        when(walletService.getActiveWallet(TEST_AUTHOR_ID)).thenThrow(new WalletNotFoundException(TEST_AUTHOR_ID));
+
+        // Act & Assert
+        assertThatThrownBy(() -> intentService.createStickerSetDonationIntent(
+                TEST_DONOR_USER_ID,
+                TEST_STICKER_SET_ID,
+                TEST_AMOUNT_NANO
+        )).isInstanceOf(WalletNotFoundException.class);
+
+        verify(intentRepository, never()).save(any());
+        verify(legRepository, never()).save(any());
+    }
+
+    private TransactionLegEntity createTestLeg(Long id, LegType legType, String walletAddress, Long amountNano) {
+        TransactionLegEntity leg = new TransactionLegEntity();
+        leg.setId(id);
+        leg.setLegType(legType);
+        leg.setToWalletAddress(walletAddress);
+        leg.setAmountNano(amountNano);
+        return leg;
     }
 }
 

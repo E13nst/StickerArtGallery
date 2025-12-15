@@ -13,6 +13,9 @@ public class PrepareTransactionRequest {
     @Positive(message = "ID сущности должен быть положительным числом")
     private Long subjectEntityId;
 
+    @Positive(message = "ID стикерсета должен быть положительным числом")
+    private Long stickerSetId;
+
     @NotNull(message = "Сумма не может быть null")
     @Positive(message = "Сумма должна быть положительным числом")
     private Long amountNano;
@@ -25,6 +28,14 @@ public class PrepareTransactionRequest {
 
     public void setSubjectEntityId(Long subjectEntityId) {
         this.subjectEntityId = subjectEntityId;
+    }
+
+    public Long getStickerSetId() {
+        return stickerSetId;
+    }
+
+    public void setStickerSetId(Long stickerSetId) {
+        this.stickerSetId = stickerSetId;
     }
 
     public Long getAmountNano() {

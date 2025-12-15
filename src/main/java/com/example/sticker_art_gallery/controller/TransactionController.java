@@ -1,6 +1,8 @@
 package com.example.sticker_art_gallery.controller;
 
 import com.example.sticker_art_gallery.dto.transaction.*;
+import com.example.sticker_art_gallery.exception.StickerSetNotFoundException;
+import com.example.sticker_art_gallery.exception.WalletNotFoundException;
 import com.example.sticker_art_gallery.model.transaction.*;
 import com.example.sticker_art_gallery.service.transaction.*;
 import io.swagger.v3.oas.annotations.Operation;
@@ -94,17 +96,30 @@ public class TransactionController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
 
-            LOGGER.info("Подготовка транзакции: userId={}, subjectEntityId={}, amountNano={}, intentType={}",
-                       currentUserId, request.getSubjectEntityId(), request.getAmountNano(), request.getIntentType());
+            LOGGER.info("Подготовка транзакции: userId={}, stickerSetId={}, subjectEntityId={}, amountNano={}, intentType={}",
+                       currentUserId, request.getStickerSetId(), request.getSubjectEntityId(), 
+                       request.getAmountNano(), request.getIntentType());
 
-            // Правила 1 и 2: Создаем Intent первым, затем Legs в одной транзакции
-            TransactionIntentEntity intent = intentService.createIntent(
-                    request.getIntentType() != null ? request.getIntentType() : IntentType.DONATION,
-                    currentUserId,
-                    request.getSubjectEntityId(),
-                    request.getAmountNano(),
-                    null // metadata можно добавить позже
-            );
+            TransactionIntentEntity intent;
+            
+            // Если указан stickerSetId → donation flow
+            if (request.getStickerSetId() != null) {
+                LOGGER.info("Donation flow: stickerSetId={}", request.getStickerSetId());
+                intent = intentService.createStickerSetDonationIntent(
+                        currentUserId,
+                        request.getStickerSetId(),
+                        request.getAmountNano()
+                );
+            } else {
+                // Существующая логика (обратная совместимость)
+                intent = intentService.createIntent(
+                        request.getIntentType() != null ? request.getIntentType() : IntentType.DONATION,
+                        currentUserId,
+                        request.getSubjectEntityId(),
+                        request.getAmountNano(),
+                        null // metadata можно добавить позже
+                );
+            }
 
             // Получаем legs для ответа
             List<TransactionLegEntity> legs = intentService.getLegsForIntent(intent.getId());
@@ -132,9 +147,10 @@ public class TransactionController {
             LOGGER.info("✅ Транзакция подготовлена: intentId={}, legsCount={}", intent.getId(), legDtos.size());
             return ResponseEntity.ok(response);
 
-        } catch (IllegalArgumentException e) {
-            LOGGER.warn("⚠️ Ошибка валидации при подготовке транзакции: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
+        } catch (StickerSetNotFoundException | WalletNotFoundException | IllegalStateException | IllegalArgumentException e) {
+            // Эти исключения обрабатываются ValidationExceptionHandler
+            // Просто пробрасываем дальше
+            throw e;
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при подготовке транзакции: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

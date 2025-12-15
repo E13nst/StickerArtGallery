@@ -143,6 +143,40 @@ public class ValidationExceptionHandler {
     }
 
     /**
+     * Обработка StickerSetNotFoundException (404)
+     */
+    @ExceptionHandler(StickerSetNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleStickerSetNotFound(StickerSetNotFoundException e) {
+        LOGGER.warn("⚠️ StickerSet не найден: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(Map.of("error", e.getMessage()));
+    }
+
+    /**
+     * Обработка WalletNotFoundException (400)
+     */
+    @ExceptionHandler(WalletNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleWalletNotFound(WalletNotFoundException e) {
+        LOGGER.warn("⚠️ Кошелёк не найден: {}", e.getMessage());
+        // Для donation flow возвращаем понятное сообщение
+        String errorMessage = e.getMessage().contains("Active wallet not found") 
+            ? "Автор не привязал кошелёк" 
+            : e.getMessage();
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(Map.of("error", errorMessage));
+    }
+
+    /**
+     * Обработка IllegalStateException (400)
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalState(IllegalStateException ex) {
+        LOGGER.warn("⚠️ Некорректное состояние: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(Map.of("error", ex.getMessage()));
+    }
+
+    /**
      * Обработка IllegalArgumentException (400)
      */
     @ExceptionHandler(IllegalArgumentException.class)

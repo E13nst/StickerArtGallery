@@ -1,5 +1,9 @@
 package com.example.sticker_art_gallery.service.transaction;
 
+import com.example.sticker_art_gallery.exception.StickerSetNotFoundException;
+import com.example.sticker_art_gallery.exception.WalletNotFoundException;
+import com.example.sticker_art_gallery.model.telegram.StickerSet;
+import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
 import com.example.sticker_art_gallery.model.transaction.*;
 import com.example.sticker_art_gallery.model.user.UserEntity;
 import com.example.sticker_art_gallery.model.user.UserRepository;
@@ -28,16 +32,22 @@ public class TransactionIntentService {
     private final TransactionLegRepository legRepository;
     private final UserRepository userRepository;
     private final PlatformEntityService platformEntityService;
+    private final StickerSetRepository stickerSetRepository;
+    private final WalletService walletService;
 
     public TransactionIntentService(
             TransactionIntentRepository intentRepository,
             TransactionLegRepository legRepository,
             UserRepository userRepository,
-            PlatformEntityService platformEntityService) {
+            PlatformEntityService platformEntityService,
+            StickerSetRepository stickerSetRepository,
+            WalletService walletService) {
         this.intentRepository = intentRepository;
         this.legRepository = legRepository;
         this.userRepository = userRepository;
         this.platformEntityService = platformEntityService;
+        this.stickerSetRepository = stickerSetRepository;
+        this.walletService = walletService;
     }
 
     /**
@@ -164,6 +174,103 @@ public class TransactionIntentService {
     @Transactional(readOnly = true)
     public List<TransactionLegEntity> getLegsForIntent(Long intentId) {
         return legRepository.findByIntent_Id(intentId);
+    }
+
+    /**
+     * Создать намерение доната для стикерсета
+     * 
+     * @param donorUserId ID пользователя-донатора
+     * @param stickerSetId ID стикерсета
+     * @param amountNano сумма доната в нано-TON
+     * @return созданное намерение транзакции
+     * @throws StickerSetNotFoundException если стикерсет не найден
+     * @throws IllegalStateException если стикерсет не имеет автора
+     * @throws WalletNotFoundException если у автора нет привязанного кошелька
+     */
+    public TransactionIntentEntity createStickerSetDonationIntent(
+            Long donorUserId,
+            Long stickerSetId,
+            Long amountNano) {
+        
+        LOGGER.info("Создание donation intent: donorUserId={}, stickerSetId={}, amountNano={}", 
+                   donorUserId, stickerSetId, amountNano);
+
+        // 1. Найти StickerSet
+        Optional<StickerSet> stickerSetOpt = stickerSetRepository.findById(stickerSetId);
+        if (stickerSetOpt.isEmpty()) {
+            throw new StickerSetNotFoundException(stickerSetId);
+        }
+        StickerSet stickerSet = stickerSetOpt.get();
+
+        // 2. Проверить автора
+        Long authorId = stickerSet.getAuthorId();
+        if (authorId == null) {
+            throw new IllegalStateException("StickerSet не имеет автора");
+        }
+
+        // 3. Найти кошелёк автора
+        UserWalletEntity authorWallet = walletService.getActiveWallet(authorId);
+        String authorWalletAddress = authorWallet.getWalletAddress();
+
+        // 4. Создать PlatformEntity для StickerSet
+        PlatformEntityEntity stickerSetEntity = platformEntityService.getOrCreate(
+                EntityType.STICKER_SET,
+                "sticker_set:" + stickerSetId,
+                authorId
+        );
+
+        // 5. Создать или получить PlatformEntity для автора
+        PlatformEntityEntity authorEntity = platformEntityService.getOrCreate(
+                EntityType.USER,
+                "user:" + authorId,
+                authorId
+        );
+
+        // 6. Получить донатора
+        Optional<UserEntity> donorOpt = userRepository.findById(donorUserId);
+        if (donorOpt.isEmpty()) {
+            throw new IllegalArgumentException("Пользователь-донатор с ID " + donorUserId + " не найден");
+        }
+        UserEntity donor = donorOpt.get();
+
+        // 7. Создать TransactionIntent
+        TransactionIntentEntity intent = new TransactionIntentEntity();
+        intent.setIntentType(IntentType.DONATION);
+        intent.setUser(donor);
+        intent.setSubjectEntity(stickerSetEntity);
+        intent.setStatus(IntentStatus.CREATED);
+        intent.setAmountNano(amountNano);
+        intent.setCurrency("TON");
+
+        intent = intentRepository.save(intent);
+        LOGGER.debug("Intent создан: id={}", intent.getId());
+
+        // 8. Создать ОДИН TransactionLeg
+        TransactionLegEntity mainLeg = new TransactionLegEntity();
+        mainLeg.setIntent(intent);
+        mainLeg.setLegType(LegType.MAIN);
+        mainLeg.setToEntity(authorEntity);
+        mainLeg.setToWalletAddress(authorWalletAddress);
+        mainLeg.setAmountNano(amountNano);
+
+        legRepository.save(mainLeg);
+        LOGGER.debug("MAIN leg создан для intent: id={}, toWallet={}", intent.getId(), authorWalletAddress);
+
+        // 9. Проверка инварианта: сумма всех legs должна быть равна intent.amountNano
+        // Перезагружаем legs из БД, так как они могут быть не загружены из-за LAZY loading
+        List<TransactionLegEntity> savedLegs = legRepository.findByIntent_Id(intent.getId());
+        long totalLegsAmount = savedLegs.stream()
+                .mapToLong(TransactionLegEntity::getAmountNano)
+                .sum();
+        
+        if (totalLegsAmount != intent.getAmountNano()) {
+            throw new IllegalStateException(
+                    "Intent amount mismatch: intent=" + intent.getAmountNano() + 
+                    ", legs total=" + totalLegsAmount
+            );
+        }
+
+        return intent;
     }
 }
 
