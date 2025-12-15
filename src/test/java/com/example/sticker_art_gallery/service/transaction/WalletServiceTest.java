@@ -226,5 +226,49 @@ class WalletServiceTest {
         assertThat(result.get(0).getId()).isEqualTo(1L);
         assertThat(result.get(1).getId()).isEqualTo(2L);
     }
+
+    @Test
+    @Story("Проверка наличия активного кошелька")
+    @DisplayName("hasActiveWallet должен вернуть true если у пользователя есть активный кошелёк")
+    void hasActiveWallet_shouldReturnTrueWhenWalletExists() {
+        // Arrange
+        when(walletRepository.findByUser_IdAndIsActiveTrue(TEST_USER_ID))
+                .thenReturn(List.of(testWallet));
+
+        // Act
+        boolean result = walletService.hasActiveWallet(TEST_USER_ID);
+
+        // Assert
+        assertThat(result).isTrue();
+        verify(walletRepository).findByUser_IdAndIsActiveTrue(TEST_USER_ID);
+    }
+
+    @Test
+    @Story("Проверка наличия активного кошелька")
+    @DisplayName("hasActiveWallet должен вернуть false если у пользователя нет активного кошелька")
+    void hasActiveWallet_shouldReturnFalseWhenNoWallet() {
+        // Arrange
+        when(walletRepository.findByUser_IdAndIsActiveTrue(TEST_USER_ID))
+                .thenReturn(new ArrayList<>());
+
+        // Act
+        boolean result = walletService.hasActiveWallet(TEST_USER_ID);
+
+        // Assert
+        assertThat(result).isFalse();
+        verify(walletRepository).findByUser_IdAndIsActiveTrue(TEST_USER_ID);
+    }
+
+    @Test
+    @Story("Проверка наличия активного кошелька")
+    @DisplayName("hasActiveWallet должен вернуть false если userId = null")
+    void hasActiveWallet_shouldReturnFalseWhenUserIdIsNull() {
+        // Act
+        boolean result = walletService.hasActiveWallet(null);
+
+        // Assert
+        assertThat(result).isFalse();
+        verify(walletRepository, never()).findByUser_IdAndIsActiveTrue(any());
+    }
 }
 
