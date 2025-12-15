@@ -21,6 +21,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 /**
  * Контроллер для работы с кошельками пользователей
  */
@@ -134,6 +136,42 @@ public class WalletController {
 
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при получении кошелька: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Отвязать кошелёк текущего пользователя
+     * Деактивирует все активные кошельки пользователя
+     */
+    @PostMapping("/unlink")
+    @Operation(
+        summary = "Отвязать кошелёк",
+        description = "Деактивирует все активные кошельки текущего пользователя. Idempotent операция."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Кошелёк успешно отвязан",
+            content = @Content(examples = @ExampleObject(value = """
+                {
+                    "success": true
+                }
+                """))),
+        @ApiResponse(responseCode = "401", description = "Пользователь не авторизован")
+    })
+    public ResponseEntity<?> unlinkWallet() {
+        try {
+            Long currentUserId = getCurrentUserId();
+            if (currentUserId == null) {
+                LOGGER.warn("⚠️ Не удалось определить ID текущего пользователя");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+
+            walletService.unlinkWallet(currentUserId);
+            LOGGER.info("✅ Кошелёк отвязан: userId={}", currentUserId);
+            return ResponseEntity.ok(Map.of("success", true));
+
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при отвязывании кошелька: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

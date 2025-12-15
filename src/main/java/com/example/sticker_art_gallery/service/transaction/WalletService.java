@@ -133,6 +133,28 @@ public class WalletService {
     }
 
     /**
+     * Отвязать кошелёк пользователя (деактивировать все активные кошельки)
+     * Idempotent: можно вызывать сколько угодно раз
+     * 
+     * @param userId ID пользователя
+     */
+    @Transactional
+    public void unlinkWallet(Long userId) {
+        List<UserWalletEntity> activeWallets =
+            walletRepository.findByUser_IdAndIsActiveTrue(userId);
+
+        if (activeWallets.isEmpty()) {
+            return; // idempotent
+        }
+
+        for (UserWalletEntity wallet : activeWallets) {
+            wallet.setIsActive(false);
+        }
+
+        walletRepository.saveAll(activeWallets);
+    }
+
+    /**
      * Деактивировать кошелек
      */
     public void deactivateWallet(Long walletId) {
