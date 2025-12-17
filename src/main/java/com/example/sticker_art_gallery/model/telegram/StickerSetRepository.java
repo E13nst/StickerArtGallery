@@ -238,6 +238,51 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
            "ORDER BY private_count DESC, ss.user_id ASC",
            nativeQuery = true)
     Page<Object[]> findTopUsersByPrivateStickerSetCount(Pageable pageable);
+
+    /**
+     * Получить топ авторов по количеству созданных стикерсетов (общая статистика)
+     * Сортировка по totalCount
+     */
+    @Query(value = "SELECT ss.author_id, " +
+           "COUNT(ss.id) as total_count, " +
+           "SUM(CASE WHEN ss.visibility = 'PUBLIC' THEN 1 ELSE 0 END) as public_count, " +
+           "SUM(CASE WHEN ss.visibility = 'PRIVATE' THEN 1 ELSE 0 END) as private_count " +
+           "FROM stickersets ss " +
+           "WHERE ss.state = 'ACTIVE' AND ss.author_id IS NOT NULL " +
+           "GROUP BY ss.author_id " +
+           "ORDER BY total_count DESC, ss.author_id ASC",
+           nativeQuery = true)
+    Page<Object[]> findTopAuthorsByTotalStickerSetCount(Pageable pageable);
+
+    /**
+     * Получить топ авторов по количеству созданных публичных стикерсетов
+     * Сортировка по количеству публичных стикерсетов
+     */
+    @Query(value = "SELECT ss.author_id, " +
+           "(SELECT COUNT(s2.id) FROM stickersets s2 WHERE s2.author_id = ss.author_id AND s2.state = 'ACTIVE' AND s2.author_id IS NOT NULL) as total_count, " +
+           "COUNT(ss.id) as public_count, " +
+           "(SELECT COUNT(s3.id) FROM stickersets s3 WHERE s3.author_id = ss.author_id AND s3.state = 'ACTIVE' AND s3.visibility = 'PRIVATE' AND s3.author_id IS NOT NULL) as private_count " +
+           "FROM stickersets ss " +
+           "WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PUBLIC' AND ss.author_id IS NOT NULL " +
+           "GROUP BY ss.author_id " +
+           "ORDER BY public_count DESC, ss.author_id ASC",
+           nativeQuery = true)
+    Page<Object[]> findTopAuthorsByPublicStickerSetCount(Pageable pageable);
+
+    /**
+     * Получить топ авторов по количеству созданных приватных стикерсетов
+     * Сортировка по количеству приватных стикерсетов
+     */
+    @Query(value = "SELECT ss.author_id, " +
+           "(SELECT COUNT(s2.id) FROM stickersets s2 WHERE s2.author_id = ss.author_id AND s2.state = 'ACTIVE' AND s2.author_id IS NOT NULL) as total_count, " +
+           "(SELECT COUNT(s3.id) FROM stickersets s3 WHERE s3.author_id = ss.author_id AND s3.state = 'ACTIVE' AND s3.visibility = 'PUBLIC' AND s3.author_id IS NOT NULL) as public_count, " +
+           "COUNT(ss.id) as private_count " +
+           "FROM stickersets ss " +
+           "WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PRIVATE' AND ss.author_id IS NOT NULL " +
+           "GROUP BY ss.author_id " +
+           "ORDER BY private_count DESC, ss.author_id ASC",
+           nativeQuery = true)
+    Page<Object[]> findTopAuthorsByPrivateStickerSetCount(Pageable pageable);
     
     /**
      * Поиск публичных активных стикерсетов по title или description с фильтрацией

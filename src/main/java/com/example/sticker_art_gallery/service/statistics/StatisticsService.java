@@ -233,6 +233,51 @@ public class StatisticsService {
 
         return PageResponse.of(result, leaderboard);
     }
+
+    public PageResponse<AuthorLeaderboardDto> getAuthorLeaderboard(int page, int size, StickerSetVisibility visibility) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Object[]> result;
+
+        // Выбираем метод в зависимости от visibility
+        if (visibility == null) {
+            // Общая статистика - сортировка по totalCount
+            result = stickerSetRepository.findTopAuthorsByTotalStickerSetCount(pageable);
+        } else if (visibility == StickerSetVisibility.PUBLIC) {
+            // Только публичные - сортировка по publicCount
+            result = stickerSetRepository.findTopAuthorsByPublicStickerSetCount(pageable);
+        } else {
+            // Только приватные - сортировка по privateCount
+            result = stickerSetRepository.findTopAuthorsByPrivateStickerSetCount(pageable);
+        }
+
+        List<AuthorLeaderboardDto> leaderboard = result.getContent().stream()
+                .map(row -> {
+                    // Обрабатываем authorId - может быть Long или BigInteger из native query
+                    Long authorId = row[0] instanceof Long ? (Long) row[0] : ((Number) row[0]).longValue();
+                    Long totalCount = ((Number) row[1]).longValue();
+                    Long publicCount = ((Number) row[2]).longValue();
+                    Long privateCount = ((Number) row[3]).longValue();
+
+                    AuthorLeaderboardDto dto = new AuthorLeaderboardDto();
+                    dto.setAuthorId(authorId);
+                    dto.setTotalCount(totalCount);
+                    dto.setPublicCount(publicCount);
+                    dto.setPrivateCount(privateCount);
+
+                    // Получаем данные автора из кэша (authorId = Telegram ID = UserEntity.id)
+                    UserEntity author = userRepository.findById(authorId).orElse(null);
+                    if (author != null) {
+                        dto.setUsername(author.getUsername());
+                        dto.setFirstName(author.getFirstName());
+                        dto.setLastName(author.getLastName());
+                    }
+
+                    return dto;
+                })
+                .collect(Collectors.toList());
+
+        return PageResponse.of(result, leaderboard);
+    }
 }
 
 
