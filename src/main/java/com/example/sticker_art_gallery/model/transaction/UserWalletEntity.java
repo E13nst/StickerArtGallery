@@ -31,11 +31,22 @@ public class UserWalletEntity {
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt = OffsetDateTime.now();
+
     @PrePersist
     public void prePersist() {
         if (this.createdAt == null) {
             this.createdAt = OffsetDateTime.now();
         }
+        if (this.updatedAt == null) {
+            this.updatedAt = OffsetDateTime.now();
+        }
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = OffsetDateTime.now();
     }
 
     public Long getId() {
@@ -84,6 +95,14 @@ public class UserWalletEntity {
 
     public void setCreatedAt(OffsetDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public OffsetDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(OffsetDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }
 

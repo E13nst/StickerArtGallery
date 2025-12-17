@@ -142,7 +142,14 @@ public class WalletController {
 
     /**
      * Отвязать кошелёк текущего пользователя
-     * Деактивирует все активные кошельки пользователя
+     * 
+     * <p><b>Архитектурное примечание:</b>
+     * Backend НЕ узнаёт об отключении кошелька из TON Connect автоматически.
+     * Отвязка считается завершённой ТОЛЬКО после вызова POST /api/wallets/unlink.
+     * Frontend должен вызывать этот эндпоинт при отключении кошелька в TON Connect.
+     * </p>
+     * 
+     * <p>Деактивирует все активные кошельки пользователя. Idempotent операция.</p>
      */
     @PostMapping("/unlink")
     @Operation(
@@ -166,6 +173,7 @@ public class WalletController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
 
+            LOGGER.info("Unlink wallet requested: userId={}", currentUserId);
             walletService.unlinkWallet(currentUserId);
             LOGGER.info("✅ Кошелёк отвязан: userId={}", currentUserId);
             return ResponseEntity.ok(Map.of("success", true));

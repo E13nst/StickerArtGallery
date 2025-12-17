@@ -270,5 +270,69 @@ class WalletServiceTest {
         assertThat(result).isFalse();
         verify(walletRepository, never()).findByUser_IdAndIsActiveTrue(any());
     }
+
+    @Test
+    @Story("Отвязывание кошелька")
+    @DisplayName("unlinkWallet должен деактивировать активный кошелёк")
+    void unlinkWallet_shouldDeactivateActiveWallet() {
+        // Arrange
+        UserWalletEntity activeWallet = new UserWalletEntity();
+        activeWallet.setId(1L);
+        activeWallet.setUser(testUser);
+        activeWallet.setWalletAddress(TEST_WALLET_ADDRESS);
+        activeWallet.setIsActive(true);
+
+        when(walletRepository.findByUser_IdAndIsActiveTrue(TEST_USER_ID))
+                .thenReturn(List.of(activeWallet));
+        when(walletRepository.save(any(UserWalletEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        walletService.unlinkWallet(TEST_USER_ID);
+
+        // Assert
+        assertThat(activeWallet.getIsActive()).isFalse();
+        verify(walletRepository).findByUser_IdAndIsActiveTrue(TEST_USER_ID);
+        verify(walletRepository).save(activeWallet);
+    }
+
+    @Test
+    @Story("Отвязывание кошелька")
+    @DisplayName("unlinkWallet должен быть идемпотентным (можно вызывать многократно)")
+    void unlinkWallet_shouldBeIdempotent() {
+        // Arrange - первый вызов с активным кошельком
+        UserWalletEntity activeWallet = new UserWalletEntity();
+        activeWallet.setId(1L);
+        activeWallet.setIsActive(true);
+
+        when(walletRepository.findByUser_IdAndIsActiveTrue(TEST_USER_ID))
+                .thenReturn(List.of(activeWallet))
+                .thenReturn(new ArrayList<>()); // второй вызов - кошелька уже нет
+        when(walletRepository.save(any(UserWalletEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act - вызываем дважды
+        walletService.unlinkWallet(TEST_USER_ID);
+        walletService.unlinkWallet(TEST_USER_ID);
+
+        // Assert - не должно быть исключений, кошелёк деактивирован
+        assertThat(activeWallet.getIsActive()).isFalse();
+        verify(walletRepository, times(2)).findByUser_IdAndIsActiveTrue(TEST_USER_ID);
+        verify(walletRepository, times(1)).save(activeWallet); // сохраняется только при первом вызове
+    }
+
+    @Test
+    @Story("Отвязывание кошелька")
+    @DisplayName("unlinkWallet должен корректно обрабатывать случай когда активного кошелька нет")
+    void unlinkWallet_shouldLogWhenNoActiveWallet() {
+        // Arrange
+        when(walletRepository.findByUser_IdAndIsActiveTrue(TEST_USER_ID))
+                .thenReturn(new ArrayList<>());
+
+        // Act
+        walletService.unlinkWallet(TEST_USER_ID);
+
+        // Assert - не должно быть исключений, ничего не сохраняется
+        verify(walletRepository).findByUser_IdAndIsActiveTrue(TEST_USER_ID);
+        verify(walletRepository, never()).save(any(UserWalletEntity.class));
+    }
 }
 

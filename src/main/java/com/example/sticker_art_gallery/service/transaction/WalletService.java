@@ -155,18 +155,21 @@ public class WalletService {
      */
     @Transactional
     public void unlinkWallet(Long userId) {
+        LOGGER.info("Unlink wallet requested: userId={}", userId);
+        
         List<UserWalletEntity> activeWallets =
             walletRepository.findByUser_IdAndIsActiveTrue(userId);
 
         if (activeWallets.isEmpty()) {
+            LOGGER.info("No active wallet to unlink: userId={}", userId);
             return; // idempotent
         }
 
         for (UserWalletEntity wallet : activeWallets) {
             wallet.setIsActive(false);
+            walletRepository.save(wallet);
+            LOGGER.info("Wallet unlinked: walletId={}, userId={}", wallet.getId(), userId);
         }
-
-        walletRepository.saveAll(activeWallets);
     }
 
     /**

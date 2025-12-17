@@ -156,5 +156,78 @@ class WalletControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    @Story("Отвязывание кошелька")
+    @DisplayName("unlinkWallet должен деактивировать кошелёк")
+    void unlinkWallet_shouldDeactivateWallet() throws Exception {
+        // Arrange - привязываем кошелёк
+        LinkWalletRequest linkRequest = new LinkWalletRequest();
+        linkRequest.setWalletAddress(VALID_WALLET_ADDRESS);
+
+        mockMvc.perform(post("/api/wallets/link")
+                        .header("X-Telegram-Init-Data", initData)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(linkRequest)))
+                .andExpect(status().isOk());
+
+        // Проверяем, что кошелёк активен
+        long activeWalletsBefore = walletRepository.findByUser_IdAndIsActiveTrue(TEST_USER_ID).size();
+        assertThat(activeWalletsBefore).isEqualTo(1);
+
+        // Act - отвязываем кошелёк
+        mockMvc.perform(post("/api/wallets/unlink")
+                        .header("X-Telegram-Init-Data", initData))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        // Assert - проверяем, что кошелёк деактивирован
+        long activeWalletsAfter = walletRepository.findByUser_IdAndIsActiveTrue(TEST_USER_ID).size();
+        assertThat(activeWalletsAfter).isEqualTo(0);
+    }
+
+    @Test
+    @Story("Отвязывание кошелька")
+    @DisplayName("unlinkWallet должен вернуть 200 когда кошелёк уже отвязан (идемпотентность)")
+    void unlinkWallet_shouldReturn200WhenWalletAlreadyUnlinked() throws Exception {
+        // Arrange - привязываем и сразу отвязываем кошелёк
+        LinkWalletRequest linkRequest = new LinkWalletRequest();
+        linkRequest.setWalletAddress(VALID_WALLET_ADDRESS);
+
+        mockMvc.perform(post("/api/wallets/link")
+                        .header("X-Telegram-Init-Data", initData)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(linkRequest)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/wallets/unlink")
+                        .header("X-Telegram-Init-Data", initData))
+                .andExpect(status().isOk());
+
+        // Act - вызываем unlink второй раз
+        mockMvc.perform(post("/api/wallets/unlink")
+                        .header("X-Telegram-Init-Data", initData))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        // Assert - кошельков всё ещё нет
+        long activeWallets = walletRepository.findByUser_IdAndIsActiveTrue(TEST_USER_ID).size();
+        assertThat(activeWallets).isEqualTo(0);
+    }
+
+    @Test
+    @Story("Отвязывание кошелька")
+    @DisplayName("unlinkWallet должен вернуть 200 когда кошелёк не привязан")
+    void unlinkWallet_shouldReturn200WhenNoWallet() throws Exception {
+        // Act & Assert - вызываем unlink без привязки кошелька
+        mockMvc.perform(post("/api/wallets/unlink")
+                        .header("X-Telegram-Init-Data", initData))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        // Проверяем, что активных кошельков нет
+        long activeWallets = walletRepository.findByUser_IdAndIsActiveTrue(TEST_USER_ID).size();
+        assertThat(activeWallets).isEqualTo(0);
+    }
 }
 
