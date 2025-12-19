@@ -430,3 +430,4 @@ X-Language: ru
 # Ответ: 200 OK с PageResponse<StickerSetDto>
 ```
 
+
