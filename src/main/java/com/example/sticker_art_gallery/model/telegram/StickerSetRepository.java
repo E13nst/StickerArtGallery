@@ -238,7 +238,7 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
            "ORDER BY private_count DESC, ss.user_id ASC",
            nativeQuery = true)
     Page<Object[]> findTopUsersByPrivateStickerSetCount(Pageable pageable);
-
+    
     /**
      * Получить топ авторов по количеству созданных стикерсетов (общая статистика)
      * Сортировка по totalCount
@@ -259,9 +259,9 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
      * Сортировка по количеству публичных стикерсетов
      */
     @Query(value = "SELECT ss.author_id, " +
-           "(SELECT COUNT(s2.id) FROM stickersets s2 WHERE s2.author_id = ss.author_id AND s2.state = 'ACTIVE' AND s2.author_id IS NOT NULL) as total_count, " +
+           "(SELECT COUNT(s2.id) FROM stickersets s2 WHERE s2.author_id = ss.author_id AND s2.state = 'ACTIVE') as total_count, " +
            "COUNT(ss.id) as public_count, " +
-           "(SELECT COUNT(s3.id) FROM stickersets s3 WHERE s3.author_id = ss.author_id AND s3.state = 'ACTIVE' AND s3.visibility = 'PRIVATE' AND s3.author_id IS NOT NULL) as private_count " +
+           "(SELECT COUNT(s3.id) FROM stickersets s3 WHERE s3.author_id = ss.author_id AND s3.state = 'ACTIVE' AND s3.visibility = 'PRIVATE') as private_count " +
            "FROM stickersets ss " +
            "WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PUBLIC' AND ss.author_id IS NOT NULL " +
            "GROUP BY ss.author_id " +
@@ -274,8 +274,8 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
      * Сортировка по количеству приватных стикерсетов
      */
     @Query(value = "SELECT ss.author_id, " +
-           "(SELECT COUNT(s2.id) FROM stickersets s2 WHERE s2.author_id = ss.author_id AND s2.state = 'ACTIVE' AND s2.author_id IS NOT NULL) as total_count, " +
-           "(SELECT COUNT(s3.id) FROM stickersets s3 WHERE s3.author_id = ss.author_id AND s3.state = 'ACTIVE' AND s3.visibility = 'PUBLIC' AND s3.author_id IS NOT NULL) as public_count, " +
+           "(SELECT COUNT(s2.id) FROM stickersets s2 WHERE s2.author_id = ss.author_id AND s2.state = 'ACTIVE') as total_count, " +
+           "(SELECT COUNT(s3.id) FROM stickersets s3 WHERE s3.author_id = ss.author_id AND s3.state = 'ACTIVE' AND s3.visibility = 'PUBLIC') as public_count, " +
            "COUNT(ss.id) as private_count " +
            "FROM stickersets ss " +
            "WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PRIVATE' AND ss.author_id IS NOT NULL " +
