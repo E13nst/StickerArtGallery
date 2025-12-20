@@ -251,6 +251,8 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
            "WHERE ss.state = 'ACTIVE' AND ss.author_id IS NOT NULL " +
            "GROUP BY ss.author_id " +
            "ORDER BY total_count DESC, ss.author_id ASC",
+           countQuery = "SELECT COUNT(DISTINCT ss.author_id) FROM stickersets ss " +
+                        "WHERE ss.state = 'ACTIVE' AND ss.author_id IS NOT NULL",
            nativeQuery = true)
     Page<Object[]> findTopAuthorsByTotalStickerSetCount(Pageable pageable);
 
@@ -266,6 +268,8 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
            "WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PUBLIC' AND ss.author_id IS NOT NULL " +
            "GROUP BY ss.author_id " +
            "ORDER BY public_count DESC, ss.author_id ASC",
+           countQuery = "SELECT COUNT(DISTINCT ss.author_id) FROM stickersets ss " +
+                        "WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PUBLIC' AND ss.author_id IS NOT NULL",
            nativeQuery = true)
     Page<Object[]> findTopAuthorsByPublicStickerSetCount(Pageable pageable);
 
@@ -281,6 +285,8 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
            "WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PRIVATE' AND ss.author_id IS NOT NULL " +
            "GROUP BY ss.author_id " +
            "ORDER BY private_count DESC, ss.author_id ASC",
+           countQuery = "SELECT COUNT(DISTINCT ss.author_id) FROM stickersets ss " +
+                        "WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PRIVATE' AND ss.author_id IS NOT NULL",
            nativeQuery = true)
     Page<Object[]> findTopAuthorsByPrivateStickerSetCount(Pageable pageable);
     
