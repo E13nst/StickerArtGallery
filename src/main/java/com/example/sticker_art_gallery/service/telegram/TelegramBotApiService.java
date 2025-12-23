@@ -322,4 +322,34 @@ public class TelegramBotApiService {
             return null;
         }
     }
+    
+    /**
+     * Извлекает количество стикеров из информации о стикерсете, полученной от Telegram API
+     * 
+     * @param stickerSetInfo информация о стикерсете от Telegram API
+     * @return количество стикеров или 0 если массив отсутствует или пуст
+     */
+    public Integer extractStickersCountFromStickerSetInfo(Object stickerSetInfo) {
+        if (stickerSetInfo == null) {
+            return 0;
+        }
+        
+        try {
+            // Преобразуем в JsonNode для удобного доступа к полям
+            JsonNode jsonNode = objectMapper.valueToTree(stickerSetInfo);
+            
+            if (jsonNode.has("stickers") && jsonNode.get("stickers").isArray()) {
+                int count = jsonNode.get("stickers").size();
+                LOGGER.debug("📊 Извлечено количество стикеров из Telegram API: {}", count);
+                return count;
+            } else {
+                LOGGER.warn("⚠️ Поле 'stickers' не найдено или не является массивом в информации о стикерсете");
+                return 0;
+            }
+            
+        } catch (Exception e) {
+            LOGGER.warn("⚠️ Ошибка при извлечении количества стикеров из информации о стикерсете: {}", e.getMessage());
+            return 0;
+        }
+    }
 }

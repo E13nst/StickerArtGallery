@@ -56,6 +56,9 @@ public class StickerSetDto {
     @Schema(description = "Количество лайков стикерсета", example = "42")
     private Long likesCount;
     
+    @Schema(description = "Количество стикеров в стикерсете", example = "24", nullable = true)
+    private Integer stickersCount;
+    
     @Schema(description = "Лайкнул ли текущий пользователь этот стикерсет", example = "true")
     private boolean isLikedByCurrentUser;
     
@@ -192,6 +195,14 @@ public class StickerSetDto {
     
     public void setLikesCount(Long likesCount) {
         this.likesCount = likesCount;
+    }
+    
+    public Integer getStickersCount() {
+        return stickersCount;
+    }
+    
+    public void setStickersCount(Integer stickersCount) {
+        this.stickersCount = stickersCount;
     }
     
     @JsonProperty("isLikedByCurrentUser")
@@ -474,6 +485,9 @@ public class StickerSetDto {
         } else {
             dto.setLikesCount(0L);
         }
+        
+        // Добавляем количество стикеров
+        dto.setStickersCount(entity.getStickersCount());
         
         // Добавляем категории с локализацией
         if (entity.getCategories() != null && !entity.getCategories().isEmpty()) {

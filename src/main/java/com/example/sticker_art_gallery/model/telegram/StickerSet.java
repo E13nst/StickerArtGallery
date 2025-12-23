@@ -72,6 +72,9 @@ public class StickerSet {
     @Column(name = "likes_count", nullable = false)
     private Integer likesCount = 0;
     
+    @Column(name = "stickers_count")
+    private Integer stickersCount; // Количество стикеров в стикерсете (обновляется при обогащении данных из Telegram API)
+    
     /**
      * Категории стикерсета (many-to-many)
      */

@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 @Service
 public class StickerSetService {
@@ -197,7 +198,11 @@ public class StickerSetService {
             LOGGER.debug("📝 Получен title из Telegram API: '{}'", title);
         }
 
-        // 4. Обрабатываем категории
+        // 4. Извлекаем количество стикеров
+        Integer stickersCount = telegramBotApiService.extractStickersCountFromStickerSetInfo(telegramStickerSetInfo);
+        LOGGER.debug("📊 Получено количество стикеров из Telegram API: {}", stickersCount);
+
+        // 5. Обрабатываем категории
         List<Category> categories = null;
         if (createDto.getCategoryKeys() != null && !createDto.getCategoryKeys().isEmpty()) {
             try {
@@ -213,8 +218,8 @@ public class StickerSetService {
             }
         }
 
-        // 5. Создаем стикерсет
-        return createStickerSetInternal(userId, title, stickerSetName, createDto.getDescription(), createDto.getVisibility(), categories, authorId, false);
+        // 6. Создаем стикерсет
+        return createStickerSetInternal(userId, title, stickerSetName, createDto.getDescription(), createDto.getVisibility(), categories, authorId, false, stickersCount);
     }
     
     /**
@@ -263,6 +268,11 @@ public class StickerSetService {
             }
         }
         
+        // Обновляем количество стикеров
+        Integer stickersCount = telegramBotApiService.extractStickersCountFromStickerSetInfo(telegramStickerSetInfo);
+        existing.setStickersCount(stickersCount);
+        LOGGER.debug("📊 Обновлено количество стикеров при восстановлении: {}", stickersCount);
+        
         // Обновляем description если указан
         if (createDto.getDescription() != null) {
             existing.setDescription(createDto.getDescription().trim().isEmpty() ? null : createDto.getDescription());
@@ -289,6 +299,7 @@ public class StickerSetService {
     /**
      * Внутренний метод для создания стикерсета без валидации
      * @param isRestored флаг, указывающий что это восстановление (не начислять ART)
+     * @param stickersCount количество стикеров в стикерсете
      */
     private StickerSet createStickerSetInternal(Long userId,
                                                String title,
@@ -297,7 +308,8 @@ public class StickerSetService {
                                                StickerSetVisibility visibility,
                                                List<Category> categories,
                                                Long authorId,
-                                               boolean isRestored) {
+                                               boolean isRestored,
+                                               Integer stickersCount) {
         // Профиль пользователя создается автоматически при аутентификации
         LOGGER.debug("Создание стикерсета для пользователя {}", userId);
         
@@ -309,6 +321,7 @@ public class StickerSetService {
         stickerSet.setState(StickerSetState.ACTIVE);
         stickerSet.setVisibility(visibility != null ? visibility : StickerSetVisibility.PRIVATE);
         stickerSet.setType(StickerSetType.USER);
+        stickerSet.setStickersCount(stickersCount);
         
         if (authorId != null) {
             stickerSet.setAuthorId(authorId);
@@ -702,7 +715,24 @@ public class StickerSetService {
         }
         
         String lang = normalizeLanguage(language);
+        
+        // Обогащаем данными Telegram API
         StickerSetDto dto = enrichSingleStickerSetSafelyWithCategories(stickerSet, lang, currentUserId, shortInfo, false, true);
+        
+        // Обновляем title и stickers_count в БД, если данные Telegram API получены
+        // Обновление выполняется только если shortInfo == false (данные Telegram API получены)
+        if (!shortInfo && dto != null && dto.getTelegramStickerSetInfo() != null) {
+            try {
+                // Получаем оригинальные данные из кэша (не отфильтрованные для preview)
+                // Кэш уже использован при обогащении, поэтому это не создаст дополнительного запроса
+                Object botApiData = telegramBotApiService.getStickerSetInfo(stickerSet.getName());
+                updateTitleAndStickersCount(stickerSet, botApiData);
+            } catch (Exception e) {
+                LOGGER.warn("⚠️ Ошибка при обновлении title и stickers_count для стикерсета {}: {} - продолжаем выполнение", 
+                        id, e.getMessage());
+                // Не прерываем выполнение - ошибка обновления не должна влиять на возврат DTO
+            }
+        }
         
         LOGGER.debug("🔍 Стикерсет ID {}: userId={}, currentUserId={}, state={}, visibility={}, availableActions={}", 
                 id, stickerSet.getUserId(), currentUserId, stickerSet.getState(), stickerSet.getVisibility(), 
@@ -1099,8 +1129,9 @@ public class StickerSetService {
             return dto;
         }
         
+        Object botApiData = null;
         try {
-            Object botApiData = telegramBotApiService.getStickerSetInfo(stickerSet.getName());
+            botApiData = telegramBotApiService.getStickerSetInfo(stickerSet.getName());
             
             // Применяем фильтрацию для режима превью
             if (preview && botApiData != null) {
@@ -1117,6 +1148,63 @@ public class StickerSetService {
         }
         
         return dto;
+    }
+    
+    /**
+     * Обновляет title и количество стикеров в БД используя данные Telegram API
+     * Вызывается только для одного стикерсета после обогащения
+     * 
+     * @param stickerSet стикерсет для обновления
+     * @param botApiData данные Telegram API, уже полученные при обогащении
+     */
+    @org.springframework.transaction.annotation.Transactional(propagation = Propagation.REQUIRES_NEW)
+    private void updateTitleAndStickersCount(StickerSet stickerSet, Object botApiData) {
+        if (botApiData == null) {
+            LOGGER.debug("⚠️ botApiData == null, пропускаем обновление title и stickers_count для стикерсета {}", stickerSet.getId());
+            return;
+        }
+        
+        try {
+            // Извлекаем актуальные данные из Telegram API
+            String newTitle = telegramBotApiService.extractTitleFromStickerSetInfo(botApiData);
+            Integer newStickersCount = telegramBotApiService.extractStickersCountFromStickerSetInfo(botApiData);
+            
+            if (newTitle == null && newStickersCount == null) {
+                LOGGER.warn("⚠️ Не удалось извлечь title и stickers_count из botApiData для стикерсета {}", stickerSet.getId());
+                return;
+            }
+            
+            boolean needsUpdate = false;
+            
+            // Проверяем и обновляем title
+            if (newTitle != null && !newTitle.equals(stickerSet.getTitle())) {
+                LOGGER.debug("📝 Обновление title для стикерсета {}: '{}' -> '{}'", 
+                        stickerSet.getId(), stickerSet.getTitle(), newTitle);
+                stickerSet.setTitle(newTitle);
+                needsUpdate = true;
+            }
+            
+            // Проверяем и обновляем stickers_count
+            if (newStickersCount != null && !newStickersCount.equals(stickerSet.getStickersCount())) {
+                LOGGER.debug("📊 Обновление stickers_count для стикерсета {}: {} -> {}", 
+                        stickerSet.getId(), stickerSet.getStickersCount(), newStickersCount);
+                stickerSet.setStickersCount(newStickersCount);
+                needsUpdate = true;
+            }
+            
+            // Обновляем в БД только если что-то изменилось
+            if (needsUpdate) {
+                stickerSetRepository.save(stickerSet);
+                LOGGER.info("✅ Обновлены title и/или stickers_count для стикерсета {}", stickerSet.getId());
+            } else {
+                LOGGER.debug("✓ Данные title и stickers_count актуальны для стикерсета {}", stickerSet.getId());
+            }
+            
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при обновлении title и stickers_count для стикерсета {}: {}", 
+                    stickerSet.getId(), e.getMessage(), e);
+            // Не прерываем выполнение - ошибка обновления не должна влиять на возврат DTO
+        }
     }
     
     /**
