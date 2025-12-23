@@ -23,7 +23,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Min;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -283,86 +282,6 @@ public class UserProfileController {
             }
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при получении профиля текущего пользователя: {}", e.getMessage(), e);
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-    
-    /**
-     * Обновить баланс пользователя
-     */
-    @PutMapping("/{userId}/balance")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(
-        summary = "Обновить баланс пользователя",
-        description = "Обновляет баланс арт-кредитов пользователя (только для ADMIN)"
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Баланс обновлен"),
-        @ApiResponse(responseCode = "404", description = "Профиль не найден"),
-        @ApiResponse(responseCode = "403", description = "Доступ запрещен"),
-        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
-    })
-    public ResponseEntity<UserProfileDto> updateUserBalance(
-            @Parameter(description = "Telegram ID пользователя", required = true, example = "123456789")
-            @PathVariable Long userId,
-            @Parameter(description = "Новый баланс", required = true, example = "100")
-            @Valid @RequestBody @Min(value = 0, message = "Баланс не может быть отрицательным") Long newBalance) {
-        try {
-            LOGGER.info("💰 Обновление баланса пользователя {}: {}", userId, newBalance);
-            UserProfileEntity updatedProfile = userProfileService.updateArtBalance(userId, newBalance);
-            UserProfileDto profileDto = UserProfileDto.fromEntity(updatedProfile);
-            
-            // Загружаем информацию о пользователе из Telegram
-            Optional<UserEntity> userOpt = userService.findById(userId);
-            if (userOpt.isPresent()) {
-                profileDto.setUser(UserDto.fromEntity(userOpt.get()));
-            }
-            
-            LOGGER.info("✅ Баланс обновлен для пользователя: userId={}, newBalance={}", 
-                       profileDto.getUserId(), profileDto.getArtBalance());
-            return ResponseEntity.ok(profileDto);
-        } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при обновлении баланса пользователя {}: {}", userId, e.getMessage(), e);
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-    
-    /**
-     * Добавить к балансу пользователя
-     */
-    @PostMapping("/{userId}/balance/add")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(
-        summary = "Добавить к балансу пользователя",
-        description = "Добавляет указанное количество арт-кредитов к балансу пользователя (только для ADMIN)"
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Баланс обновлен"),
-        @ApiResponse(responseCode = "404", description = "Профиль не найден"),
-        @ApiResponse(responseCode = "403", description = "Доступ запрещен"),
-        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
-    })
-    public ResponseEntity<UserProfileDto> addToUserBalance(
-            @Parameter(description = "Telegram ID пользователя", required = true, example = "123456789")
-            @PathVariable Long userId,
-            @Parameter(description = "Количество для добавления", required = true, example = "50")
-            @RequestBody Long amount) {
-        try {
-            LOGGER.info("💰 Добавление к балансу пользователя {}: {}", userId, amount);
-            UserProfileEntity updatedProfile = userProfileService.addToArtBalance(userId, amount);
-            UserProfileDto profileDto = UserProfileDto.fromEntity(updatedProfile);
-            
-            // Загружаем информацию о пользователе из Telegram
-            Optional<UserEntity> userOpt = userService.findById(userId);
-            if (userOpt.isPresent()) {
-                profileDto.setUser(UserDto.fromEntity(userOpt.get()));
-            }
-            
-            LOGGER.info("✅ Баланс обновлен для пользователя: userId={}, newBalance={}", 
-                       profileDto.getUserId(), profileDto.getArtBalance());
-            return ResponseEntity.ok(profileDto);
-        } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при добавлении к балансу пользователя {}: {}", userId, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }

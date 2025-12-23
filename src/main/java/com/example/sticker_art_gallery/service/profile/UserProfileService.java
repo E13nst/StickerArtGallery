@@ -60,18 +60,6 @@ public class UserProfileService {
         return repository.save(profile);
     }
 
-    public UserProfileEntity updateArtBalance(Long userId, Long newBalance) {
-        UserProfileEntity profile = getOrCreateDefaultForUpdate(userId);
-        profile.setArtBalance(newBalance);
-        return repository.save(profile);
-    }
-
-    public UserProfileEntity addToArtBalance(Long userId, Long amount) {
-        UserProfileEntity profile = getOrCreateDefaultForUpdate(userId);
-        profile.setArtBalance(profile.getArtBalance() + amount);
-        return repository.save(profile);
-    }
-
     /**
      * Атомарно создает или обновляет пользователя и его профиль в одной транзакции.
      * Гарантирует целостность данных: если создание профиля не удастся, 
