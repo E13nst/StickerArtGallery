@@ -3,7 +3,6 @@ package com.example.sticker_art_gallery.security;
 import com.example.sticker_art_gallery.dto.TelegramInitData;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
-import com.example.sticker_art_gallery.service.user.UserService;
 import com.example.sticker_art_gallery.util.TelegramInitDataValidator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -28,17 +27,14 @@ public class TelegramAuthenticationProvider implements AuthenticationProvider {
     
     private final TelegramInitDataValidator validator;
     private final UserProfileService userProfileService;
-    private final UserService userService;
     private final ObjectMapper objectMapper;
     
     @Autowired
     public TelegramAuthenticationProvider(TelegramInitDataValidator validator, 
                                          UserProfileService userProfileService,
-                                         UserService userService,
                                          ObjectMapper objectMapper) {
         this.validator = validator;
         this.userProfileService = userProfileService;
-        this.userService = userService;
         this.objectMapper = objectMapper;
     }
     
@@ -76,8 +72,9 @@ public class TelegramAuthenticationProvider implements AuthenticationProvider {
             LOGGER.debug("✅ Извлечены данные пользователя: id={}, username={}, firstName={}, lastName={}", 
                     telegramUser.getId(), telegramUser.getUsername(), telegramUser.getFirstName(), telegramUser.getLastName());
             
-            // Создаем или обновляем пользователя из данных Telegram
-            userService.upsertFromTelegramData(
+            // Атомарно создаем или обновляем пользователя и его профиль в одной транзакции
+            LOGGER.debug("🔍 Атомарно создаем/обновляем пользователя и профиль в базе данных");
+            UserProfileEntity profile = userProfileService.ensureUserAndProfileExists(
                 telegramUser.getId(),
                 telegramUser.getFirstName(),
                 telegramUser.getLastName(),
@@ -85,11 +82,7 @@ public class TelegramAuthenticationProvider implements AuthenticationProvider {
                 telegramUser.getLanguageCode(),
                 telegramUser.getIsPremium()
             );
-            
-            // Создаем или получаем профиль пользователя (лениво)
-            LOGGER.debug("🔍 Ищем или создаем профиль пользователя в базе данных");
-            UserProfileEntity profile = userProfileService.getOrCreateDefault(telegramUser.getId());
-            LOGGER.debug("✅ Профиль найден/создан: userId={}, role={}, artBalance={}", 
+            LOGGER.debug("✅ Пользователь и профиль найдены/созданы: userId={}, role={}, artBalance={}", 
                     profile.getUserId(), profile.getRole(), profile.getArtBalance());
 
             if (Boolean.TRUE.equals(profile.getIsBlocked())) {
