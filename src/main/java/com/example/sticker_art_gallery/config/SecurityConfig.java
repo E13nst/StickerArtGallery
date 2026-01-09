@@ -102,10 +102,6 @@ public class SecurityConfig {
                 
                 // Auth эндпоинты (фильтр применяется, но аутентификация не требуется)
                 .requestMatchers(mvc.pattern("/api/auth/**")).permitAll()
-                
-                // API прокси стикеров - временно запрещаем доступ к stickers
-                .requestMatchers(mvc.pattern("/api/proxy/stickers/**")).denyAll()
-                .requestMatchers(mvc.pattern("/api/proxy/**")).permitAll()
 
                 // API стикерсетов - публичный доступ для тестирования
                 .requestMatchers(mvc.pattern("/api/stickersets/**")).permitAll()

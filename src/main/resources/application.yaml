@@ -8,18 +8,6 @@ app:
   internal:
     service-tokens:
       sticker-bot: ${STICKERBOT_SERVICE_TOKEN:}
-  sticker-cache:
-    enabled: ${STICKER_CACHE_ENABLED:true}        # Включить/выключить кеширование стикеров
-    ttl-days: ${STICKER_CACHE_TTL_DAYS:7}         # Время жизни кеша в днях
-    min-size-bytes: ${STICKER_CACHE_MIN_SIZE:1024} # Минимальный размер файла для кеширования (байты)
-    compress:
-      enabled: ${STICKER_CACHE_COMPRESS_ENABLED:false}  # Включить сжатие
-      compress-by-size: ${STICKER_CACHE_COMPRESS_BY_SIZE:100000}  # Сжимать файлы больше N байт
-      format-settings:
-        # Можно настроить сжатие для конкретных типов (опционально)
-        # "application/x-tgsticker": true   # Сжимать TGS файлы
-        # "video/mp4": true                  # Сжимать видео
-        # "image/webp": false               # НЕ сжимать маленькие изображения
   ai:
     context-length: ${AI_CONTEXT_LENGTH:10}  # Длина контекста для InMemoryChatMemory (количество сообщений)
     auto-category:
