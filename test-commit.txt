@@ -1,0 +1,2 @@
+Test commit file
+Created for testing git commit functionality
