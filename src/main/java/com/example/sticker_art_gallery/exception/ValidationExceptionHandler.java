@@ -13,6 +13,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -188,6 +189,30 @@ public class ValidationExceptionHandler {
         body.put("rootCause", getRootCauseMessage(ex));
         body.put("timestamp", java.time.OffsetDateTime.now());
         return ResponseEntity.status(org.springframework.http.HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    /**
+     * Обработка отсутствующих статических ресурсов (404)
+     * Например, favicon.ico - браузеры автоматически запрашивают его
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNoResourceFound(NoResourceFoundException ex) {
+        String resourcePath = ex.getResourcePath();
+        
+        // Для favicon.ico логируем на уровне DEBUG, так как это нормальный запрос браузера
+        if (resourcePath != null && resourcePath.contains("favicon.ico")) {
+            LOGGER.debug("🔍 Запрос favicon.ico (ресурс не найден, это нормально)");
+            // Возвращаем пустой ответ с 404, браузер просто не покажет иконку
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        
+        // Для других отсутствующих ресурсов логируем на уровне WARN
+        LOGGER.warn("⚠️ Статический ресурс не найден: {}", resourcePath);
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "Not Found");
+        body.put("message", "Ресурс не найден: " + resourcePath);
+        body.put("timestamp", java.time.OffsetDateTime.now());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
     /**
