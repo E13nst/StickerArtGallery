@@ -18,6 +18,7 @@ public class ArtRewardService {
 
     public static final String RULE_UPLOAD_STICKERSET = "UPLOAD_STICKERSET";
     public static final String RULE_PUBLISH_STICKERSET = "PUBLISH_STICKERSET";
+    public static final String RULE_GENERATE_STICKER = "GENERATE_STICKER";
 
     private final UserProfileService userProfileService;
     private final ArtRuleService artRuleService;

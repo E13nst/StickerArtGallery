@@ -123,6 +123,16 @@ sticker:
       connect: 5000
       read: 10000
 
+# Конфигурация WaveSpeed API
+wavespeed:
+  api-key: ${WAVESPEED_API_KEY:}
+  base-url: ${WAVESPEED_BASE_URL:https://api.wavespeed.ai/api/v3}
+  max-poll-seconds: ${WAVESPEED_MAX_POLL_SECONDS:300}
+  bg-remove-enabled: ${WAVESPEED_BG_REMOVE_ENABLED:true}
+  timeout:
+    connect: 5000
+    read: 20000
+
 # Подробное логирование для диагностики
 logging:
   level:
