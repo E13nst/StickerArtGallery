@@ -17,6 +17,11 @@ app:
       batch-size: ${AI_AUTO_CATEGORY_BATCH_SIZE:50}  # Для анализа всех стикерсетов
       min-stickerset-count: ${AI_AUTO_CATEGORY_MIN_COUNT:5}  # Минимум стикерсетов для новой категории
       max-new-categories: ${AI_AUTO_CATEGORY_MAX_NEW:0}  # 0 = без ограничений
+  # Локальное хранилище изображений
+  image-storage:
+    path: ${IMAGE_STORAGE_PATH:./data/images}  # Amvera: /data/images
+    retention-days: ${IMAGE_STORAGE_RETENTION_DAYS:7}  # Срок хранения в днях
+    base-url: ${IMAGE_STORAGE_BASE_URL:${app.url}/api/images}  # Базовый URL для публичного доступа
 
 spring:
   application:

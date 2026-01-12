@@ -13,8 +13,11 @@ public class GenerationStatusResponse {
     @Schema(description = "Статус задачи", example = "COMPLETED", allowableValues = {"PENDING", "GENERATING", "REMOVING_BACKGROUND", "COMPLETED", "FAILED", "TIMEOUT"})
     private String status;
 
-    @Schema(description = "URL сгенерированного изображения (если статус COMPLETED)", example = "https://wavespeed.ai/.../image.png")
+    @Schema(description = "URL изображения в локальном хранилище (если статус COMPLETED)", example = "https://example.com/api/images/550e8400-e29b-41d4-a716-446655440000.png")
     private String imageUrl;
+
+    @Schema(description = "Оригинальный URL изображения (CloudFront)", example = "https://d2p7pge43lyniu.cloudfront.net/output/image.png")
+    private String originalImageUrl;
 
     @Schema(description = "Информация о стикере в Telegram (если сохранен в стикерсет)")
     private TelegramStickerInfo telegramSticker;
@@ -56,6 +59,14 @@ public class GenerationStatusResponse {
 
     public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
+    }
+
+    public String getOriginalImageUrl() {
+        return originalImageUrl;
+    }
+
+    public void setOriginalImageUrl(String originalImageUrl) {
+        this.originalImageUrl = originalImageUrl;
     }
 
     public TelegramStickerInfo getTelegramSticker() {

@@ -98,6 +98,9 @@ Thumbs.db
 # Application specific
 StickerArtWeb
 
+# Local image storage
+data/
+
 # AspectJ core dumps
 ajcore.*.txt
 

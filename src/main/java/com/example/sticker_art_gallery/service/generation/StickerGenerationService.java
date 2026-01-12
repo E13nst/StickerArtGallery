@@ -11,7 +11,9 @@ import com.example.sticker_art_gallery.model.user.UserEntity;
 import com.example.sticker_art_gallery.model.user.UserRepository;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
+import com.example.sticker_art_gallery.service.storage.ImageStorageService;
 import com.example.sticker_art_gallery.service.telegram.TelegramApiService;
+import com.example.sticker_art_gallery.model.storage.CachedImageEntity;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +45,7 @@ public class StickerGenerationService {
     private final UserProfileService userProfileService;
     private final TelegramApiService telegramApiService;
     private final UserRepository userRepository;
+    private final ImageStorageService imageStorageService;
     private final ObjectMapper objectMapper;
 
     @Value("${wavespeed.max-poll-seconds:300}")
@@ -61,13 +64,15 @@ public class StickerGenerationService {
             ArtRewardService artRewardService,
             UserProfileService userProfileService,
             TelegramApiService telegramApiService,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            ImageStorageService imageStorageService) {
         this.taskRepository = taskRepository;
         this.waveSpeedClient = waveSpeedClient;
         this.artRewardService = artRewardService;
         this.userProfileService = userProfileService;
         this.telegramApiService = telegramApiService;
         this.userRepository = userRepository;
+        this.imageStorageService = imageStorageService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -335,9 +340,30 @@ public class StickerGenerationService {
                 }
             }
 
+            // Сохраняем изображение в локальное хранилище
+            String localImageUrl = finalImageUrl;
+            String originalImageUrl = finalImageUrl;
+            try {
+                CachedImageEntity cachedImage = imageStorageService.downloadAndStore(finalImageUrl);
+                localImageUrl = imageStorageService.getPublicUrl(cachedImage);
+                LOGGER.info("Generation: Image cached locally: {}", localImageUrl);
+            } catch (Exception e) {
+                LOGGER.warn("Generation: Failed to cache image locally, using original URL: {}", e.getMessage());
+                // В случае ошибки используем оригинальный URL
+            }
+
+            // Сохраняем originalImageUrl в metadata
+            Map<String, Object> updatedMetadata = parseMetadata(task.getMetadata());
+            updatedMetadata.put("originalImageUrl", originalImageUrl);
+            try {
+                task.setMetadata(objectMapper.writeValueAsString(updatedMetadata));
+            } catch (Exception e) {
+                LOGGER.warn("Failed to update metadata with originalImageUrl", e);
+            }
+
             // Обновляем задачу с результатом
             task.setStatus(GenerationTaskStatus.COMPLETED);
-            task.setImageUrl(finalImageUrl);
+            task.setImageUrl(localImageUrl);
             task.setCompletedAt(OffsetDateTime.now());
             task = taskRepository.save(task);
             LOGGER.info("Generation: Task {} completed successfully", taskId);
@@ -368,8 +394,14 @@ public class StickerGenerationService {
                 return;
             }
 
+            // Получаем оригинальный URL для скачивания (не локальный)
+            Map<String, Object> metadata = parseMetadata(task.getMetadata());
+            String imageUrlToDownload = metadata.containsKey("originalImageUrl") 
+                    ? metadata.get("originalImageUrl").toString() 
+                    : task.getImageUrl();
+
             // Скачиваем изображение
-            byte[] pngBytes = waveSpeedClient.downloadImage(task.getImageUrl(), 8 * 1024 * 1024);
+            byte[] pngBytes = waveSpeedClient.downloadImage(imageUrlToDownload, 8 * 1024 * 1024);
             if (pngBytes == null) {
                 LOGGER.warn("Failed to download image for task {}", task.getTaskId());
                 return;
@@ -446,6 +478,12 @@ public class StickerGenerationService {
         response.setCreatedAt(task.getCreatedAt());
         response.setCompletedAt(task.getCompletedAt());
         response.setErrorMessage(task.getErrorMessage());
+
+        // Извлекаем originalImageUrl из metadata
+        Map<String, Object> metadata = parseMetadata(task.getMetadata());
+        if (metadata.containsKey("originalImageUrl")) {
+            response.setOriginalImageUrl(metadata.get("originalImageUrl").toString());
+        }
 
         if (task.getTelegramFileId() != null) {
             GenerationStatusResponse.TelegramStickerInfo stickerInfo = 
