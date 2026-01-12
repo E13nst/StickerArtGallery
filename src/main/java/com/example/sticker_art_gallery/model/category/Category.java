@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -13,9 +15,11 @@ import java.util.Set;
 /**
  * Entity для категорий стикерсетов
  * Поддерживает мультиязычность (русский, английский)
+ * Кешируется в L2 cache (справочные данные, редко меняются)
  */
 @Entity
 @Table(name = "categories")
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = "categories")
 @Data
 public class Category {
 

@@ -10,7 +10,7 @@ import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "art_rules")
-@Cache(usage = CacheConcurrencyStrategy.READ_ONLY, region = "artRules")
+@Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "artRules")
 public class ArtRuleEntity {
 
     @Id

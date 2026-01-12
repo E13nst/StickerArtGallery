@@ -44,6 +44,11 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-cache'
     implementation 'com.github.ben-manes.caffeine:caffeine'
+    
+    // Hibernate L2 Cache с Caffeine через JCache
+    implementation 'org.hibernate.orm:hibernate-jcache'
+    implementation 'javax.cache:cache-api:1.1.1'
+    implementation 'com.github.ben-manes.caffeine:jcache:3.1.8'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.telegram:telegrambots:6.9.7.1'

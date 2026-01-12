@@ -70,16 +70,16 @@ spring:
           time_zone: UTC
         connection:
           provider_disables_autocommit: true
-        # Second-level cache для часто запрашиваемых entities
+        # Second-level cache с Caffeine через JCache
         cache:
           use_second_level_cache: true
-          use_query_cache: true
+          use_query_cache: false  # Query cache отключён - контрпродуктивен при частых записях
           region:
-            factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+            factory_class: org.hibernate.cache.jcache.internal.JCacheRegionFactory
         javax:
           cache:
             provider: com.github.benmanes.caffeine.jcache.spi.CaffeineCachingProvider
-            uri: classpath:ehcache.xml
+            uri: classpath:caffeine-hibernate.conf
   
   # Настройки Flyway для автоматических миграций
   flyway:
