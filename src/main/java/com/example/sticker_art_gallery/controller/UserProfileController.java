@@ -98,7 +98,7 @@ public class UserProfileController {
             @Parameter(description = "Telegram ID пользователя", required = true, example = "123456789")
             @PathVariable Long userId) {
         try {
-            LOGGER.info("🔍 Поиск профиля пользователя по ID: {}", userId);
+            LOGGER.debug("🔍 Поиск профиля пользователя по ID: {}", userId);
             Optional<UserProfileEntity> profileOpt = userProfileService.findByTelegramId(userId);
             
             if (profileOpt.isPresent()) {
@@ -110,7 +110,7 @@ public class UserProfileController {
                     profileDto.setUser(UserDto.fromEntity(userOpt.get()));
                 }
                 
-                LOGGER.info("✅ Профиль найден: userId={}, role={}, balance={}", 
+                LOGGER.debug("✅ Профиль найден: userId={}, role={}, balance={}", 
                            profileDto.getUserId(), profileDto.getRole(), profileDto.getArtBalance());
                 return ResponseEntity.ok(profileDto);
             } else {
@@ -261,7 +261,7 @@ public class UserProfileController {
                 return ResponseEntity.badRequest().build();
             }
             
-            LOGGER.info("🔍 Получение профиля текущего пользователя: {}", currentUserId);
+            LOGGER.debug("🔍 Получение профиля текущего пользователя: {}", currentUserId);
             Optional<UserProfileEntity> profileOpt = userProfileService.findByTelegramId(currentUserId);
             
             if (profileOpt.isPresent()) {
@@ -273,7 +273,7 @@ public class UserProfileController {
                     profileDto.setUser(UserDto.fromEntity(userOpt.get()));
                 }
                 
-                LOGGER.info("✅ Профиль найден: userId={}, role={}, balance={}", 
+                LOGGER.debug("✅ Профиль найден: userId={}, role={}, balance={}", 
                            profileDto.getUserId(), profileDto.getRole(), profileDto.getArtBalance());
                 return ResponseEntity.ok(profileDto);
             } else {
@@ -334,7 +334,7 @@ public class UserProfileController {
                     .toList();
 
             PageResponse<ArtTransactionDto> response = PageResponse.of(page, dtos);
-            LOGGER.info("🔍 Найдено {} транзакций ART для пользователя {}", response.getContent().size(), targetUserId);
+            LOGGER.debug("🔍 Найдено {} транзакций ART для пользователя {}", response.getContent().size(), targetUserId);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при получении транзакций ART для пользователя {}: {}", targetUserId, e.getMessage(), e);

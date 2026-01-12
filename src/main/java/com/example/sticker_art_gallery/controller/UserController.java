@@ -76,7 +76,7 @@ public class UserController {
             @Parameter(description = "Telegram ID пользователя", required = true, example = "123456789")
             @PathVariable Long id) {
         try {
-            LOGGER.info("🔍 Получение данных пользователя по ID: {}", id);
+            LOGGER.debug("🔍 Получение данных пользователя по ID: {}", id);
             
             Optional<UserEntity> userOpt = userService.findById(id);
             if (userOpt.isEmpty()) {
@@ -86,7 +86,7 @@ public class UserController {
             
             UserDto userDto = UserDto.fromEntity(userOpt.get());
             
-            LOGGER.info("✅ Данные пользователя получены: {}", userDto.getUsername());
+            LOGGER.debug("✅ Данные пользователя получены: {}", userDto.getUsername());
             return ResponseEntity.ok(userDto);
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при получении данных пользователя с ID {}: {}", id, e.getMessage(), e);
@@ -122,7 +122,7 @@ public class UserController {
             @Parameter(description = "Telegram ID пользователя", required = true, example = "123456789")
             @PathVariable Long id) {
         try {
-            LOGGER.info("📷 Получение фото профиля пользователя: {}", id);
+            LOGGER.debug("📷 Получение фото профиля пользователя: {}", id);
             
             java.util.Map<String, Object> photoData = userService.getUserProfilePhoto(id);
             if (photoData == null) {
@@ -130,7 +130,7 @@ public class UserController {
                 return ResponseEntity.notFound().build();
             }
             
-            LOGGER.info("✅ Фото профиля получено для пользователя: {}", id);
+            LOGGER.debug("✅ Фото профиля получено для пользователя: {}", id);
             return ResponseEntity.ok(photoData);
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при получении фото профиля пользователя {}: {}", id, e.getMessage(), e);
@@ -163,7 +163,7 @@ public class UserController {
     })
     public ResponseEntity<UserStatisticsDto> getUserStatistics() {
         try {
-            LOGGER.info("📊 Запрос статистики по пользователям");
+            LOGGER.debug("📊 Запрос статистики по пользователям");
             UserStatisticsDto statistics = statisticsService.getUserStatistics();
             return ResponseEntity.ok(statistics);
         } catch (Exception e) {
@@ -224,7 +224,7 @@ public class UserController {
         try {
             // Если visibility не передан (null), используем null для общей статистики
             // Если передан PUBLIC или PRIVATE, используем его для соответствующей сортировки
-            LOGGER.info("🏆 Запрос рейтинга пользователей: page={}, size={}, visibility={}", page, size, visibility);
+            LOGGER.debug("🏆 Запрос рейтинга пользователей: page={}, size={}, visibility={}", page, size, visibility);
             PageResponse<UserLeaderboardDto> leaderboard = statisticsService.getUserLeaderboard(page, size, visibility);
             return ResponseEntity.ok(leaderboard);
         } catch (Exception e) {

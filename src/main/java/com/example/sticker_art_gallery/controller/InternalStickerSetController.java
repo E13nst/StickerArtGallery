@@ -84,7 +84,7 @@ public class InternalStickerSetController {
             HttpServletRequest request) {
         try {
             String language = resolveLanguage(request);
-            LOGGER.info("🔍 [internal] Получение стикерсета по ID {} (shortInfo={}, language={})", id, shortInfo, language);
+            LOGGER.debug("🔍 [internal] Получение стикерсета по ID {} (shortInfo={}, language={})", id, shortInfo, language);
 
             StickerSetDto dto = stickerSetService.findByIdWithBotApiData(id, language, null, shortInfo);
             if (dto == null) {
@@ -376,7 +376,7 @@ public class InternalStickerSetController {
                         ));
             }
 
-            LOGGER.info("🔍 [internal] Проверка наличия стикерсета '{}' в галерее", stickerSetName);
+            LOGGER.debug("🔍 [internal] Проверка наличия стикерсета '{}' в галерее", stickerSetName);
 
             // Проверяем наличие в базе данных
             var stickerSetOpt = stickerSetRepository.findByNameIgnoreCase(stickerSetName);
@@ -447,7 +447,7 @@ public class InternalStickerSetController {
             HttpServletRequest request) {
         try {
             String language = resolveLanguage(request);
-            LOGGER.info("🔍 [internal] Поиск авторских стикерсетов: authorId={}, page={}, size={}, sort={}, direction={}, categoryKeys={}, shortInfo={}, preview={}, language={}",
+            LOGGER.debug("🔍 [internal] Поиск авторских стикерсетов: authorId={}, page={}, size={}, sort={}, direction={}, categoryKeys={}, shortInfo={}, preview={}, language={}",
                     authorId, page, size, sort, direction, categoryKeys, shortInfo, preview, language);
 
             PageRequest pageRequest = new PageRequest();

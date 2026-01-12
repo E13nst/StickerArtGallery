@@ -273,7 +273,7 @@ public class StickerSetController {
                 authorId, hasAuthorOnly, userId, likedOnly, shortInfo, preview, request
             );
             
-            LOGGER.info("📋 Получение стикерсетов: {}", filter);
+            LOGGER.debug("📋 Получение стикерсетов: {}", filter);
             
             // Выполнение запроса через единый сервис
             PageResponse<StickerSetDto> result = stickerSetQueryService.findStickerSets(filter);
@@ -363,7 +363,7 @@ public class StickerSetController {
                 }
             }
             
-            LOGGER.info("👤 Получение стикерсетов пользователя {}: visibility={}, effectiveVisibility={}, includeBlocked={}", 
+            LOGGER.debug("👤 Получение стикерсетов пользователя {}: visibility={}, effectiveVisibility={}, includeBlocked={}", 
                 userId, visibility, effectiveVisibility, includeBlocked);
             
             // Построение параметров запроса
@@ -470,7 +470,7 @@ public class StickerSetController {
                 }
             }
             
-            LOGGER.info("✍️ Получение стикерсетов автора {}: visibility={}, effectiveVisibility={}", 
+            LOGGER.debug("✍️ Получение стикерсетов автора {}: visibility={}, effectiveVisibility={}", 
                 authorId, visibility, effectiveVisibility);
             
             // Построение параметров запроса
@@ -560,7 +560,7 @@ public class StickerSetController {
             @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
             @RequestParam(defaultValue = "false") boolean shortInfo) {
         try {
-            LOGGER.info("🔍 Поиск стикерсета по ID: {} с данными Bot API (shortInfo={})", id, shortInfo);
+            LOGGER.debug("🔍 Поиск стикерсета по ID: {} с данными Bot API (shortInfo={})", id, shortInfo);
             
             Long currentUserId = getCurrentUserIdOrNull();
             LOGGER.debug("🔍 getCurrentUserIdOrNull() вернул: {}", currentUserId);
@@ -581,7 +581,7 @@ public class StickerSetController {
                 return ResponseEntity.notFound().build();
             }
             
-            LOGGER.info("✅ Стикерсет найден: {}", dto.getTitle());
+            LOGGER.debug("✅ Стикерсет найден: {}", dto.getTitle());
             return ResponseEntity.ok(dto);
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при поиске стикерсета с ID: {}", id, e);
@@ -632,7 +632,7 @@ public class StickerSetController {
             @RequestParam(defaultValue = "false") boolean preview,
             HttpServletRequest request) {
         try {
-            LOGGER.info("🔍 Поиск стикерсетов по запросу: '{}', page={}, size={}", query, page, size);
+            LOGGER.debug("🔍 Поиск стикерсетов по запросу: '{}', page={}, size={}", query, page, size);
             
             Long currentUserId = getCurrentUserIdOrNull();
             
@@ -1854,7 +1854,7 @@ public class StickerSetController {
     })
     public ResponseEntity<StickerSetStatisticsDto> getStickerSetStatistics() {
         try {
-            LOGGER.info("📊 Запрос статистики по стикерсетам");
+            LOGGER.debug("📊 Запрос статистики по стикерсетам");
             StickerSetStatisticsDto statistics = statisticsService.getStickerSetStatistics();
             return ResponseEntity.ok(statistics);
         } catch (Exception e) {

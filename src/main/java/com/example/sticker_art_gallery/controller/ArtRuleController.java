@@ -68,7 +68,7 @@ public class ArtRuleController {
         List<ArtRuleDto> rules = artRuleService.getAllRules().stream()
                 .map(ArtRuleDto::fromEntity)
                 .collect(Collectors.toList());
-        LOGGER.info("🔍 Получено {} правил ART", rules.size());
+        LOGGER.debug("🔍 Получено {} правил ART", rules.size());
         return ResponseEntity.ok(rules);
     }
 

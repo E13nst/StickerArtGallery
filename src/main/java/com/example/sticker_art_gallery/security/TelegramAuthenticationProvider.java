@@ -49,7 +49,7 @@ public class TelegramAuthenticationProvider implements AuthenticationProvider {
         String initData = token.getInitData();
         Long telegramId = token.getTelegramId();
         
-        LOGGER.info("🔐 Аутентификация пользователя с telegram_id: {}", telegramId);
+        LOGGER.debug("🔐 Аутентификация пользователя с telegram_id: {}", telegramId);
         LOGGER.debug("🔍 Детали токена: initData length={}, telegramId={}", 
                 initData != null ? initData.length() : 0, telegramId);
         
@@ -102,7 +102,7 @@ public class TelegramAuthenticationProvider implements AuthenticationProvider {
             );
             LOGGER.debug("✅ Создан аутентифицированный токен");
             
-            LOGGER.info("✅ Пользователь успешно аутентифицирован: {} (роль: {})", 
+            LOGGER.debug("✅ Пользователь успешно аутентифицирован: {} (роль: {})", 
                     telegramUser.getUsername(), profile.getRole());
             
             return authenticatedToken;

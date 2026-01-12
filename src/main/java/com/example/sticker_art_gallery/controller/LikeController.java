@@ -236,7 +236,7 @@ public class LikeController {
             HttpServletRequest request) {
         try {
             Long userId = getCurrentUserId();
-            LOGGER.info("📋 Получение лайкнутых стикерсетов пользователя {} (shortInfo={})", userId, shortInfo);
+            LOGGER.debug("📋 Получение лайкнутых стикерсетов пользователя {} (shortInfo={})", userId, shortInfo);
             
             PageRequest pageRequest = new PageRequest();
             pageRequest.setPage(page);
@@ -299,7 +299,7 @@ public class LikeController {
             @RequestParam(defaultValue = "20") int size,
             HttpServletRequest request) {
         try {
-            LOGGER.info("🏆 Получение топ стикерсетов по лайкам");
+            LOGGER.debug("🏆 Получение топ стикерсетов по лайкам");
             
             PageRequest pageRequest = new PageRequest();
             pageRequest.setPage(page);
@@ -341,7 +341,7 @@ public class LikeController {
             @Parameter(description = "Уникальный ID стикерсета", example = "5")
             @PathVariable @Positive(message = "ID стикерсета должен быть положительным числом") Long stickerSetId) {
         try {
-            LOGGER.info("📊 Получение количества лайков для стикерсета {}", stickerSetId);
+            LOGGER.debug("📊 Получение количества лайков для стикерсета {}", stickerSetId);
             
             // Проверяем существование стикерсета
             if (!likeService.stickerSetExists(stickerSetId)) {
@@ -406,7 +406,7 @@ public class LikeController {
             @RequestParam(defaultValue = "20") int size) {
         try {
             Long userId = getCurrentUserId();
-            LOGGER.info("📋 Получение лайков пользователя {}", userId);
+            LOGGER.debug("📋 Получение лайков пользователя {}", userId);
             
             PageRequest pageRequest = new PageRequest();
             pageRequest.setPage(page);
@@ -538,7 +538,7 @@ public class LikeController {
     })
     public ResponseEntity<LikeStatisticsDto> getLikeStatistics() {
         try {
-            LOGGER.info("📊 Запрос статистики по лайкам");
+            LOGGER.debug("📊 Запрос статистики по лайкам");
             LikeStatisticsDto statistics = statisticsService.getLikeStatistics();
             return ResponseEntity.ok(statistics);
         } catch (Exception e) {

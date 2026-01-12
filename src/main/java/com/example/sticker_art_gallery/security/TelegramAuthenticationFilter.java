@@ -47,7 +47,7 @@ public class TelegramAuthenticationFilter extends OncePerRequestFilter {
                 initData != null && !initData.trim().isEmpty() ? "present" : "null");
         
         if (initData != null && !initData.trim().isEmpty()) {
-            LOGGER.info("🔍 Обнаружен заголовок X-Telegram-Init-Data. Используется настроенный токен бота");
+            LOGGER.debug("🔍 Обнаружен заголовок X-Telegram-Init-Data. Используется настроенный токен бота");
             LOGGER.debug("🔍 InitData (первые 50 символов): {}", 
                     initData.length() > 50 ? initData.substring(0, 50) + "..." : initData);
             
@@ -66,7 +66,7 @@ public class TelegramAuthenticationFilter extends OncePerRequestFilter {
                 LOGGER.debug("🔍 Извлечен telegram_id: {}", telegramId);
                 
                 if (telegramId != null) {
-                    LOGGER.info("🔐 Попытка аутентификации для telegram_id: {}", telegramId);
+                    LOGGER.debug("🔐 Попытка аутентификации для telegram_id: {}", telegramId);
                     
                     // Создаем неаутентифицированный токен
                     TelegramAuthenticationToken token = new TelegramAuthenticationToken(initData, telegramId);
@@ -80,7 +80,7 @@ public class TelegramAuthenticationFilter extends OncePerRequestFilter {
                     if (authentication != null && authentication.isAuthenticated()) {
                         // Устанавливаем аутентификацию в контекст
                         SecurityContextHolder.getContext().setAuthentication(authentication);
-                        LOGGER.info("✅ Аутентификация успешна для telegram_id: {}", telegramId);
+                        LOGGER.debug("✅ Аутентификация успешна для telegram_id: {}", telegramId);
                     } else {
                         LOGGER.warn("❌ Аутентификация не удалась для telegram_id: {}", telegramId);
                     }

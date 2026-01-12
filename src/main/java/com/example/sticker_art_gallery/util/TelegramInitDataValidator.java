@@ -33,7 +33,7 @@ public class TelegramInitDataValidator {
     }
 
     public boolean validateInitData(String initData) {
-        LOGGER.info("🔍 Начинаем валидацию initData");
+        LOGGER.debug("🔍 Начинаем валидацию initData");
         
         if (initData == null || initData.trim().isEmpty()) {
             LOGGER.warn("❌ InitData пустая или null");
@@ -90,7 +90,7 @@ public class TelegramInitDataValidator {
             }
             
             if (signatureValid) {
-                LOGGER.info("✅ InitData валидна");
+                LOGGER.debug("✅ InitData валидна");
             }
             
             return signatureValid;

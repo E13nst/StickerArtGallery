@@ -90,7 +90,7 @@ public class AuthorController {
         try {
             // Если visibility не передан (null), используем null для общей статистики
             // Если передан PUBLIC или PRIVATE, используем его для соответствующей сортировки
-            LOGGER.info("🏆 Запрос рейтинга авторов: page={}, size={}, visibility={}", page, size, visibility);
+            LOGGER.debug("🏆 Запрос рейтинга авторов: page={}, size={}, visibility={}", page, size, visibility);
             PageResponse<AuthorLeaderboardDto> leaderboard = statisticsService.getAuthorLeaderboard(page, size, visibility);
             return ResponseEntity.ok(leaderboard);
         } catch (Exception e) {
