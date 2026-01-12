@@ -2,11 +2,11 @@ package com.example.sticker_art_gallery.service.telegram;
 
 import com.example.sticker_art_gallery.dto.CreateStickerSetDto;
 import com.example.sticker_art_gallery.model.profile.ArtTransactionEntity;
-import com.example.sticker_art_gallery.model.profile.ArtTransactionRepository;
+import com.example.sticker_art_gallery.repository.ArtTransactionRepository;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
-import com.example.sticker_art_gallery.model.profile.UserProfileRepository;
+import com.example.sticker_art_gallery.repository.UserProfileRepository;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
-import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
+import com.example.sticker_art_gallery.repository.StickerSetRepository;
 import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import io.qameta.allure.Step;

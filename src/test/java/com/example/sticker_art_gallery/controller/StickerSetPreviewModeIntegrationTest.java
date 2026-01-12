@@ -1,7 +1,7 @@
 package com.example.sticker_art_gallery.controller;
 
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
-import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
+import com.example.sticker_art_gallery.repository.StickerSetRepository;
 import com.example.sticker_art_gallery.model.telegram.StickerSetState;
 import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
 import com.example.sticker_art_gallery.model.telegram.StickerSetType;
@@ -39,7 +39,7 @@ class StickerSetPreviewModeIntegrationTest {
     private StickerSetRepository stickerSetRepository;
     
     @Autowired
-    private com.example.sticker_art_gallery.model.user.UserRepository userRepository;
+    private com.example.sticker_art_gallery.repository.UserRepository userRepository;
     
     @Autowired
     private com.example.sticker_art_gallery.repository.LikeRepository likeRepository;

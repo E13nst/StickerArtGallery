@@ -1,8 +1,8 @@
 package com.example.sticker_art_gallery.controller;
 
 import com.example.sticker_art_gallery.dto.wallet.LinkWalletRequest;
-import com.example.sticker_art_gallery.model.transaction.UserWalletRepository;
-import com.example.sticker_art_gallery.model.user.UserRepository;
+import com.example.sticker_art_gallery.repository.transaction.UserWalletRepository;
+import com.example.sticker_art_gallery.repository.UserRepository;
 import com.example.sticker_art_gallery.teststeps.StickerSetTestSteps;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.qameta.allure.Epic;
@@ -54,7 +54,7 @@ class WalletControllerIntegrationTest {
     private com.example.sticker_art_gallery.config.AppConfig appConfig;
     
     @Autowired
-    private com.example.sticker_art_gallery.model.profile.UserProfileRepository userProfileRepository;
+    private com.example.sticker_art_gallery.repository.UserProfileRepository userProfileRepository;
 
     private StickerSetTestSteps testSteps;
     private String initData;

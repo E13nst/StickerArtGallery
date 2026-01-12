@@ -1,7 +1,7 @@
 package com.example.sticker_art_gallery.controller;
 
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
-import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
+import com.example.sticker_art_gallery.repository.StickerSetRepository;
 import com.example.sticker_art_gallery.testdata.TestConstants;
 import com.example.sticker_art_gallery.testdata.TestDataBuilder;
 import com.example.sticker_art_gallery.testdata.StickerSetTestBuilder;

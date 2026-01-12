@@ -1,9 +1,9 @@
 package com.example.sticker_art_gallery.controller;
 
 import com.example.sticker_art_gallery.config.AppConfig;
-import com.example.sticker_art_gallery.model.profile.UserProfileRepository;
-import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
-import com.example.sticker_art_gallery.model.user.UserRepository;
+import com.example.sticker_art_gallery.repository.UserProfileRepository;
+import com.example.sticker_art_gallery.repository.StickerSetRepository;
+import com.example.sticker_art_gallery.repository.UserRepository;
 import com.example.sticker_art_gallery.testdata.TestDataBuilder;
 import com.example.sticker_art_gallery.teststeps.StickerSetTestSteps;
 import com.fasterxml.jackson.databind.JsonNode;
