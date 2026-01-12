@@ -19,8 +19,14 @@ class StickerSetPreviewFilterTest {
     @Mock
     private TelegramBotApiService telegramBotApiService;
 
+    @Mock
+    private com.example.sticker_art_gallery.repository.StickerSetRepository stickerSetRepository;
+
+    @Mock
+    private com.example.sticker_art_gallery.service.transaction.WalletService walletService;
+
     @InjectMocks
-    private StickerSetService stickerSetService;
+    private StickerSetEnrichmentService enrichmentService;
 
     @Test
     @DisplayName("filterStickersForPreview должен оставить только 1 стикер из 10")
@@ -31,10 +37,10 @@ class StickerSetPreviewFilterTest {
         // When: применяем фильтрацию через рефлексию (метод приватный)
         // Для тестирования приватного метода используем рефлексию
         try {
-            java.lang.reflect.Method method = StickerSetService.class.getDeclaredMethod(
+            java.lang.reflect.Method method = StickerSetEnrichmentService.class.getDeclaredMethod(
                 "filterStickersForPreview", Object.class);
             method.setAccessible(true);
-            Object result = method.invoke(stickerSetService, telegramInfo);
+            Object result = method.invoke(enrichmentService, telegramInfo);
             
             // Then: проверяем результат
             assertNotNull(result);
@@ -65,10 +71,10 @@ class StickerSetPreviewFilterTest {
         
         // When: применяем фильтрацию
         try {
-            java.lang.reflect.Method method = StickerSetService.class.getDeclaredMethod(
+            java.lang.reflect.Method method = StickerSetEnrichmentService.class.getDeclaredMethod(
                 "filterStickersForPreview", Object.class);
             method.setAccessible(true);
-            Object result = method.invoke(stickerSetService, telegramInfo);
+            Object result = method.invoke(enrichmentService, telegramInfo);
             
             // Then: проверяем результат
             assertNotNull(result);
@@ -95,10 +101,10 @@ class StickerSetPreviewFilterTest {
         
         // When: применяем фильтрацию
         try {
-            java.lang.reflect.Method method = StickerSetService.class.getDeclaredMethod(
+            java.lang.reflect.Method method = StickerSetEnrichmentService.class.getDeclaredMethod(
                 "filterStickersForPreview", Object.class);
             method.setAccessible(true);
-            Object result = method.invoke(stickerSetService, nonMapObject);
+            Object result = method.invoke(enrichmentService, nonMapObject);
             
             // Then: проверяем, что объект не изменился
             assertEquals(nonMapObject, result);
@@ -116,7 +122,7 @@ class StickerSetPreviewFilterTest {
         
         // When: применяем фильтрацию несколько раз
         try {
-            java.lang.reflect.Method method = StickerSetService.class.getDeclaredMethod(
+            java.lang.reflect.Method method = StickerSetEnrichmentService.class.getDeclaredMethod(
                 "filterStickersForPreview", Object.class);
             method.setAccessible(true);
             
@@ -124,7 +130,7 @@ class StickerSetPreviewFilterTest {
             Set<String> secondResultStickerIds = new HashSet<>();
             
             // Первый вызов
-            Object result1 = method.invoke(stickerSetService, deepCopy(telegramInfo));
+            Object result1 = method.invoke(enrichmentService, deepCopy(telegramInfo));
             @SuppressWarnings("unchecked")
             List<Object> stickers1 = (List<Object>) ((Map<String, Object>) result1).get("stickers");
             for (Object sticker : stickers1) {
@@ -134,7 +140,7 @@ class StickerSetPreviewFilterTest {
             }
             
             // Второй вызов
-            Object result2 = method.invoke(stickerSetService, deepCopy(telegramInfo));
+            Object result2 = method.invoke(enrichmentService, deepCopy(telegramInfo));
             @SuppressWarnings("unchecked")
             List<Object> stickers2 = (List<Object>) ((Map<String, Object>) result2).get("stickers");
             for (Object sticker : stickers2) {

@@ -4,6 +4,7 @@ import com.example.sticker_art_gallery.dto.transaction.*;
 import com.example.sticker_art_gallery.exception.StickerSetNotFoundException;
 import com.example.sticker_art_gallery.exception.WalletNotFoundException;
 import com.example.sticker_art_gallery.model.transaction.*;
+import com.example.sticker_art_gallery.repository.transaction.BlockchainTransactionRepository;
 import com.example.sticker_art_gallery.service.transaction.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;

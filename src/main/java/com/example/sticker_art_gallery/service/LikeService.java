@@ -10,7 +10,7 @@ import com.example.sticker_art_gallery.dto.StickerSetWithLikesDto;
 import com.example.sticker_art_gallery.model.Like;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.repository.LikeRepository;
-import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
+import com.example.sticker_art_gallery.repository.StickerSetRepository;
 import com.example.sticker_art_gallery.service.telegram.StickerSetService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

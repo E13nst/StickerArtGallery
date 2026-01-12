@@ -3,7 +3,7 @@ package com.example.sticker_art_gallery.service.telegram;
 import com.example.sticker_art_gallery.dto.StickerSetAction;
 import com.example.sticker_art_gallery.dto.StickerSetDto;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
-import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
+import com.example.sticker_art_gallery.repository.StickerSetRepository;
 import com.example.sticker_art_gallery.model.telegram.StickerSetState;
 import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
 import com.example.sticker_art_gallery.model.telegram.StickerSetType;
@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,12 +49,23 @@ class StickerSetServiceAvailableActionsTest {
     private ArtRewardService artRewardService;
 
     @Mock
+    private StickerSetCrudService crudService;
+
+    @Mock
+    private StickerSetVisibilityService visibilityService;
+
+    @Mock
+    private StickerSetEnrichmentService enrichmentService;
+
+    @Mock
+    private com.example.sticker_art_gallery.service.transaction.WalletService walletService;
+
+    @Mock
     private SecurityContext securityContext;
 
     @Mock
     private Authentication authentication;
 
-    @InjectMocks
     private StickerSetService stickerSetService;
 
     private static final Long OWNER_USER_ID = 123L;
@@ -65,6 +77,17 @@ class StickerSetServiceAvailableActionsTest {
     void setUp() {
         // Очищаем SecurityContext перед каждым тестом
         SecurityContextHolder.clearContext();
+        
+        // Создаем StickerSetService вручную с моками
+        stickerSetService = new StickerSetService(
+            stickerSetRepository,
+            telegramBotApiService,
+            categoryService,
+            artRewardService,
+            crudService,
+            visibilityService,
+            enrichmentService
+        );
     }
 
     @Test
@@ -75,7 +98,12 @@ class StickerSetServiceAvailableActionsTest {
     void findByIdWithBotApiData_ForOwnerAuthor_ShouldCalculateOwnerAuthorActions() {
         // Given
         StickerSet entity = createStickerSet(OWNER_USER_ID, OWNER_USER_ID, true, false);
-        when(stickerSetRepository.findById(1L)).thenReturn(java.util.Optional.of(entity));
+        when(crudService.findById(1L)).thenReturn(entity);
+        lenient().when(walletService.hasActiveWallet(OWNER_USER_ID)).thenReturn(false);
+        
+        StickerSetDto mockDto = StickerSetDto.fromEntity(entity, "en", OWNER_USER_ID, false, true, false);
+        doReturn(mockDto).when(enrichmentService).enrichSingleStickerSetSafelyWithCategories(
+            any(StickerSet.class), anyString(), any(), anyBoolean(), anyBoolean(), anyBoolean());
         
         // Мокаем SecurityContext для неадмина
         setupSecurityContext(OWNER_USER_ID, false);
@@ -84,7 +112,10 @@ class StickerSetServiceAvailableActionsTest {
         StickerSetDto dto = stickerSetService.findByIdWithBotApiData(1L, "en", OWNER_USER_ID, false);
 
         // Then
-        assertNotNull(dto);
+        // Проверяем, что метод обогащения был вызван
+        verify(enrichmentService, atLeastOnce()).enrichSingleStickerSetSafelyWithCategories(
+            any(StickerSet.class), anyString(), any(), anyBoolean(), anyBoolean(), anyBoolean());
+        assertNotNull(dto, "DTO не должен быть null");
         assertNotNull(dto.getAvailableActions());
         assertEquals(3, dto.getAvailableActions().size());
         assertTrue(dto.getAvailableActions().contains(StickerSetAction.DELETE));
@@ -100,7 +131,12 @@ class StickerSetServiceAvailableActionsTest {
     void findByIdWithBotApiData_ForAdmin_ShouldCalculateAdminActions() {
         // Given
         StickerSet entity = createStickerSet(OWNER_USER_ID, AUTHOR_USER_ID, true, false);
-        when(stickerSetRepository.findById(1L)).thenReturn(java.util.Optional.of(entity));
+        when(crudService.findById(1L)).thenReturn(entity);
+        lenient().when(walletService.hasActiveWallet(ADMIN_USER_ID)).thenReturn(false);
+        
+        StickerSetDto mockDto = StickerSetDto.fromEntity(entity, "en", ADMIN_USER_ID, true, true, false);
+        doReturn(mockDto).when(enrichmentService).enrichSingleStickerSetSafelyWithCategories(
+            any(StickerSet.class), anyString(), any(), anyBoolean(), anyBoolean(), anyBoolean());
         
         // Мокаем SecurityContext для админа
         setupSecurityContext(ADMIN_USER_ID, true);
@@ -124,7 +160,13 @@ class StickerSetServiceAvailableActionsTest {
     void findByIdWithBotApiData_ForAdminOwnerAuthor_ShouldCalculateAllActions() {
         // Given
         StickerSet entity = createStickerSet(ADMIN_USER_ID, ADMIN_USER_ID, true, false);
-        when(stickerSetRepository.findById(1L)).thenReturn(java.util.Optional.of(entity));
+        when(crudService.findById(1L)).thenReturn(entity);
+        lenient().when(walletService.hasActiveWallet(ADMIN_USER_ID)).thenReturn(false);
+        
+        StickerSetDto mockDto = StickerSetDto.fromEntity(entity, "en", ADMIN_USER_ID, true, true, false);
+        lenient().when(enrichmentService.enrichSingleStickerSetSafelyWithCategories(
+            any(StickerSet.class), anyString(), any(), anyBoolean(), anyBoolean(), anyBoolean()))
+            .thenReturn(mockDto);
         
         // Мокаем SecurityContext для админа
         setupSecurityContext(ADMIN_USER_ID, true);
@@ -150,7 +192,13 @@ class StickerSetServiceAvailableActionsTest {
     void findByIdWithBotApiData_ForOtherUser_ShouldReturnEmptyActions() {
         // Given
         StickerSet entity = createStickerSet(OWNER_USER_ID, AUTHOR_USER_ID, true, false);
-        when(stickerSetRepository.findById(1L)).thenReturn(java.util.Optional.of(entity));
+        when(crudService.findById(1L)).thenReturn(entity);
+        lenient().when(walletService.hasActiveWallet(OTHER_USER_ID)).thenReturn(false);
+        
+        StickerSetDto mockDto = StickerSetDto.fromEntity(entity, "en", OTHER_USER_ID, false, true, false);
+        lenient().when(enrichmentService.enrichSingleStickerSetSafelyWithCategories(
+            any(StickerSet.class), anyString(), any(), anyBoolean(), anyBoolean(), anyBoolean()))
+            .thenReturn(mockDto);
         
         // Мокаем SecurityContext для обычного пользователя
         setupSecurityContext(OTHER_USER_ID, false);
@@ -172,7 +220,13 @@ class StickerSetServiceAvailableActionsTest {
     void findByIdWithBotApiData_ForBlockedStickerSet_ShouldShowUnblockForAdmin() {
         // Given
         StickerSet entity = createStickerSet(OWNER_USER_ID, AUTHOR_USER_ID, true, true);
-        when(stickerSetRepository.findById(1L)).thenReturn(java.util.Optional.of(entity));
+        when(crudService.findById(1L)).thenReturn(entity);
+        lenient().when(walletService.hasActiveWallet(ADMIN_USER_ID)).thenReturn(false);
+        
+        StickerSetDto mockDto = StickerSetDto.fromEntity(entity, "en", ADMIN_USER_ID, true, true, false);
+        lenient().when(enrichmentService.enrichSingleStickerSetSafelyWithCategories(
+            any(StickerSet.class), anyString(), any(), anyBoolean(), anyBoolean(), anyBoolean()))
+            .thenReturn(mockDto);
         
         // Мокаем SecurityContext для админа
         setupSecurityContext(ADMIN_USER_ID, true);
@@ -197,7 +251,12 @@ class StickerSetServiceAvailableActionsTest {
     void findByIdWithBotApiData_ForPrivateStickerSet_ShouldShowPublishForAuthor() {
         // Given
         StickerSet entity = createStickerSet(OWNER_USER_ID, OWNER_USER_ID, false, false);
-        when(stickerSetRepository.findById(1L)).thenReturn(java.util.Optional.of(entity));
+        when(crudService.findById(1L)).thenReturn(entity);
+        lenient().when(walletService.hasActiveWallet(OWNER_USER_ID)).thenReturn(false);
+        
+        StickerSetDto mockDto = StickerSetDto.fromEntity(entity, "en", OWNER_USER_ID, false, true, false);
+        doReturn(mockDto).when(enrichmentService).enrichSingleStickerSetSafelyWithCategories(
+            any(StickerSet.class), anyString(), any(), anyBoolean(), anyBoolean(), anyBoolean());
         
         // Мокаем SecurityContext для владельца-автора
         setupSecurityContext(OWNER_USER_ID, false);
@@ -223,7 +282,12 @@ class StickerSetServiceAvailableActionsTest {
     void findByIdWithBotApiData_WithoutCurrentUserId_ShouldReturnEmptyActions() {
         // Given
         StickerSet entity = createStickerSet(OWNER_USER_ID, AUTHOR_USER_ID, true, false);
-        when(stickerSetRepository.findById(1L)).thenReturn(java.util.Optional.of(entity));
+        when(crudService.findById(1L)).thenReturn(entity);
+        
+        StickerSetDto mockDto = StickerSetDto.fromEntity(entity, "en", null, false, true, false);
+        lenient().when(enrichmentService.enrichSingleStickerSetSafelyWithCategories(
+            any(StickerSet.class), anyString(), any(), anyBoolean(), anyBoolean(), anyBoolean()))
+            .thenReturn(mockDto);
         
         // Не устанавливаем SecurityContext
 

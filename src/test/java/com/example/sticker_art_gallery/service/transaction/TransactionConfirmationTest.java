@@ -2,7 +2,9 @@ package com.example.sticker_art_gallery.service.transaction;
 
 import com.example.sticker_art_gallery.model.transaction.*;
 import com.example.sticker_art_gallery.model.user.UserEntity;
-import com.example.sticker_art_gallery.model.user.UserRepository;
+import com.example.sticker_art_gallery.repository.UserRepository;
+import com.example.sticker_art_gallery.repository.transaction.TransactionIntentRepository;
+import com.example.sticker_art_gallery.repository.transaction.TransactionLegRepository;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;

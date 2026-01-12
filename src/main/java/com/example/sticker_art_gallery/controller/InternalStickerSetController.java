@@ -5,7 +5,7 @@ import com.example.sticker_art_gallery.dto.PageRequest;
 import com.example.sticker_art_gallery.dto.PageResponse;
 import com.example.sticker_art_gallery.dto.StickerSetDto;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
-import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
+import com.example.sticker_art_gallery.repository.StickerSetRepository;
 import com.example.sticker_art_gallery.service.telegram.StickerSetService;
 import jakarta.servlet.http.HttpServletRequest;
 import io.swagger.v3.oas.annotations.Operation;

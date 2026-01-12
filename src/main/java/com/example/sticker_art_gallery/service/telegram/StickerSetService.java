@@ -6,15 +6,13 @@ import com.example.sticker_art_gallery.dto.StickerSetDto;
 import com.example.sticker_art_gallery.dto.CreateStickerSetDto;
 import com.example.sticker_art_gallery.model.category.Category;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
-import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
+import com.example.sticker_art_gallery.repository.StickerSetRepository;
 import com.example.sticker_art_gallery.model.telegram.StickerSetState;
 import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
 import com.example.sticker_art_gallery.model.telegram.StickerSetType;
-import com.example.sticker_art_gallery.model.profile.ArtTransactionRepository;
 import com.example.sticker_art_gallery.service.category.CategoryService;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.LikeService;
-import com.example.sticker_art_gallery.service.transaction.WalletService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.slf4j.Logger;
@@ -26,9 +24,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 import jakarta.transaction.Transactional;
-import org.springframework.transaction.annotation.Propagation;
 
 @Service
 public class StickerSetService {
@@ -38,8 +34,9 @@ public class StickerSetService {
     private final TelegramBotApiService telegramBotApiService;
     private final CategoryService categoryService;
     private final ArtRewardService artRewardService;
-    private final ArtTransactionRepository artTransactionRepository;
-    private final WalletService walletService;
+    private final StickerSetCrudService crudService;
+    private final StickerSetVisibilityService visibilityService;
+    private final StickerSetEnrichmentService enrichmentService;
     private LikeService likeService; // Lazy injection to avoid circular dependency
     
     @Autowired
@@ -47,14 +44,16 @@ public class StickerSetService {
                              TelegramBotApiService telegramBotApiService,
                              CategoryService categoryService,
                              ArtRewardService artRewardService,
-                             ArtTransactionRepository artTransactionRepository,
-                             WalletService walletService) {
+                             StickerSetCrudService crudService,
+                             StickerSetVisibilityService visibilityService,
+                             StickerSetEnrichmentService enrichmentService) {
         this.stickerSetRepository = stickerSetRepository;
         this.telegramBotApiService = telegramBotApiService;
         this.categoryService = categoryService;
         this.artRewardService = artRewardService;
-        this.artTransactionRepository = artTransactionRepository;
-        this.walletService = walletService;
+        this.crudService = crudService;
+        this.visibilityService = visibilityService;
+        this.enrichmentService = enrichmentService;
     }
     
     @Autowired(required = false)
@@ -382,22 +381,6 @@ public class StickerSetService {
         }
     }
     
-    /**
-     * Проверяет, является ли текущий пользователь администратором
-     */
-    private boolean isCurrentUserAdmin() {
-        try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            if (authentication != null && authentication.isAuthenticated()) {
-                return authentication.getAuthorities().stream()
-                        .anyMatch(auth -> "ROLE_ADMIN".equals(auth.getAuthority()));
-            }
-            return false;
-        } catch (Exception e) {
-            LOGGER.warn("⚠️ Ошибка при проверке роли администратора: {}", e.getMessage());
-            return false;
-        }
-    }
 
     private String normalizeLanguage(String language) {
         if (language == null) {
@@ -412,30 +395,27 @@ public class StickerSetService {
     }
 
     public StickerSet findByName(String name) {
-        return stickerSetRepository.findByName(name).orElse(null);
+        return crudService.findByName(name);
     }
 
     public StickerSet findByTitle(String title) {
-        return stickerSetRepository.findByTitle(title);
+        return crudService.findByTitle(title);
     }
 
     public List<StickerSet> findByUserId(Long userId) {
-        return stickerSetRepository.findByUserId(userId);
+        return crudService.findByUserId(userId);
     }
 
     public StickerSet findById(Long id) {
-        return stickerSetRepository.findById(id).orElse(null);
+        return crudService.findById(id);
     }
     
     public List<StickerSet> findAll() {
-        return stickerSetRepository.findAll();
+        return crudService.findAll();
     }
     
     public StickerSet save(StickerSet stickerSet) {
-        // Профиль пользователя создается автоматически при аутентификации
-        LOGGER.debug("Сохранение стикерсета для пользователя {}", stickerSet.getUserId());
-        
-        return stickerSetRepository.save(stickerSet);
+        return crudService.save(stickerSet);
     }
     
     /**
@@ -443,12 +423,7 @@ public class StickerSetService {
      */
     @Transactional
     public void deleteById(Long id) {
-        StickerSet stickerSet = findById(id);
-        if (stickerSet != null && stickerSet.isActive()) {
-            stickerSet.markAsDeleted(); // state -> DELETED, deletedAt -> now
-            stickerSetRepository.save(stickerSet);
-            LOGGER.info("🗑️ Стикерсет ID={} помечен как DELETED", id);
-        }
+        crudService.deleteById(id);
     }
     
     /**
@@ -709,7 +684,7 @@ public class StickerSetService {
     public StickerSetDto findByIdWithBotApiData(Long id, String language, Long currentUserId, boolean shortInfo) {
         LOGGER.debug("🔍 Получение стикерсета по ID {} с данными Bot API (language={}, currentUserId={}, shortInfo={})", id, language, currentUserId, shortInfo);
         
-        StickerSet stickerSet = stickerSetRepository.findById(id).orElse(null);
+        StickerSet stickerSet = crudService.findById(id);
         if (stickerSet == null) {
             return null;
         }
@@ -726,7 +701,7 @@ public class StickerSetService {
                 // Получаем оригинальные данные из кэша (не отфильтрованные для preview)
                 // Кэш уже использован при обогащении, поэтому это не создаст дополнительного запроса
                 Object botApiData = telegramBotApiService.getStickerSetInfo(stickerSet.getName());
-                updateTitleAndStickersCount(stickerSet, botApiData);
+                enrichmentService.updateTitleAndStickersCount(stickerSet, botApiData);
             } catch (Exception e) {
                 LOGGER.warn("⚠️ Ошибка при обновлении title и stickers_count для стикерсета {}: {} - продолжаем выполнение", 
                         id, e.getMessage());
@@ -819,45 +794,7 @@ public class StickerSetService {
      */
     @Transactional
     public StickerSet publishStickerSet(Long id) {
-        StickerSet stickerSet = findById(id);
-        if (stickerSet == null) {
-            throw new IllegalArgumentException("Стикерсет не найден");
-        }
-        
-        // Проверяем, не публичный ли уже
-        if (stickerSet.isPublic()) {
-            LOGGER.debug("Стикерсет ID={} уже публичный", id);
-            return stickerSet; // Уже публичный, ничего не делаем
-        }
-        
-        // Меняем видимость
-        stickerSet.setVisibility(StickerSetVisibility.PUBLIC);
-        StickerSet saved = stickerSetRepository.save(stickerSet);
-        
-        // Начисляем ART за ПЕРВУЮ публикацию этого name
-        String stickerName = stickerSet.getName();
-        if (!hasAnyArtTransactionForName(stickerName)) {
-            try {
-                String metadata = String.format("{\"stickerSetId\":%d,\"name\":\"%s\"}", 
-                                              id, stickerName);
-                String externalId = "sticker-publish:" + stickerName; // по name!
-                artRewardService.award(
-                    stickerSet.getUserId(),
-                    ArtRewardService.RULE_PUBLISH_STICKERSET,
-                    null,
-                    metadata,
-                    externalId,
-                    stickerSet.getUserId()
-                );
-                LOGGER.info("💎 Начислено 10 ART за публикацию стикерсета: name={}, userId={}", stickerName, stickerSet.getUserId());
-            } catch (Exception e) {
-                LOGGER.warn("⚠️ Не удалось начислить ART за публикацию: {}", e.getMessage());
-            }
-        } else {
-            LOGGER.info("♻️ ART уже начислялись за стикерсет с name={}, пропускаем", stickerName);
-        }
-        
-        return saved;
+        return visibilityService.publishStickerSet(id);
     }
     
     /**
@@ -865,30 +802,7 @@ public class StickerSetService {
      */
     @Transactional
     public StickerSet unpublishStickerSet(Long id) {
-        StickerSet stickerSet = findById(id);
-        if (stickerSet == null) {
-            throw new IllegalArgumentException("Стикерсет не найден");
-        }
-        
-        // Проверяем, не приватный ли уже
-        if (stickerSet.isPrivate()) {
-            LOGGER.debug("Стикерсет ID={} уже приватный", id);
-            return stickerSet; // Уже приватный, ничего не делаем
-        }
-        
-        // Меняем видимость
-        stickerSet.setVisibility(StickerSetVisibility.PRIVATE);
-        StickerSet saved = stickerSetRepository.save(stickerSet);
-        LOGGER.info("✅ Стикерсет ID={} сделан приватным", id);
-        
-        return saved;
-    }
-    
-    /**
-     * Проверяет, есть ли транзакции ART для стикерсета с указанным name
-     */
-    private boolean hasAnyArtTransactionForName(String name) {
-        return artTransactionRepository.existsByNameInMetadata(name);
+        return visibilityService.unpublishStickerSet(id);
     }
     
     /**
@@ -896,17 +810,7 @@ public class StickerSetService {
      */
     @Transactional
     public StickerSet blockStickerSet(Long stickerSetId, String reason) {
-        LOGGER.info("🚫 Блокировка стикерсета ID: {}, причина: {}", stickerSetId, reason);
-        
-        StickerSet stickerSet = stickerSetRepository.findById(stickerSetId)
-            .orElseThrow(() -> new IllegalArgumentException("Стикерсет с ID " + stickerSetId + " не найден"));
-        
-        stickerSet.markAsBlocked(reason); // state -> BLOCKED, blockReason -> reason
-        
-        StickerSet savedStickerSet = stickerSetRepository.save(stickerSet);
-        LOGGER.info("✅ Стикерсет {} успешно заблокирован", stickerSetId);
-        
-        return savedStickerSet;
+        return visibilityService.blockStickerSet(stickerSetId, reason);
     }
     
     /**
@@ -914,22 +818,7 @@ public class StickerSetService {
      */
     @Transactional
     public StickerSet unblockStickerSet(Long stickerSetId) {
-        LOGGER.info("✅ Разблокировка стикерсета ID: {}", stickerSetId);
-        
-        StickerSet stickerSet = stickerSetRepository.findById(stickerSetId)
-            .orElseThrow(() -> new IllegalArgumentException("Стикерсет с ID " + stickerSetId + " не найден"));
-        
-        if (stickerSet.isBlocked()) {
-            stickerSet.setState(StickerSetState.ACTIVE);
-            stickerSet.setBlockReason(null);
-            
-            StickerSet savedStickerSet = stickerSetRepository.save(stickerSet);
-            LOGGER.info("✅ Стикерсет {} успешно разблокирован", stickerSetId);
-            
-            return savedStickerSet;
-        }
-        
-        return stickerSet;
+        return visibilityService.unblockStickerSet(stickerSetId);
     }
     
     /**
@@ -937,15 +826,7 @@ public class StickerSetService {
      */
     @Transactional
     public StickerSet setOfficial(Long stickerSetId) {
-        LOGGER.info("🏅 Установка статуса ОФИЦИАЛЬНЫЙ для стикерсета ID: {}", stickerSetId);
-        
-        StickerSet stickerSet = stickerSetRepository.findById(stickerSetId)
-            .orElseThrow(() -> new IllegalArgumentException("Стикерсет с ID " + stickerSetId + " не найден"));
-        
-        stickerSet.setType(StickerSetType.OFFICIAL);
-        StickerSet saved = stickerSetRepository.save(stickerSet);
-        LOGGER.info("✅ Стикерсет {} отмечен как официальный", stickerSetId);
-        return saved;
+        return visibilityService.setOfficial(stickerSetId);
     }
     
     /**
@@ -953,15 +834,7 @@ public class StickerSetService {
      */
     @Transactional
     public StickerSet unsetOfficial(Long stickerSetId) {
-        LOGGER.info("🏷️ Снятие статуса ОФИЦИАЛЬНЫЙ для стикерсета ID: {}", stickerSetId);
-        
-        StickerSet stickerSet = stickerSetRepository.findById(stickerSetId)
-            .orElseThrow(() -> new IllegalArgumentException("Стикерсет с ID " + stickerSetId + " не найден"));
-        
-        stickerSet.setType(StickerSetType.USER);
-        StickerSet saved = stickerSetRepository.save(stickerSet);
-        LOGGER.info("✅ Стикерсет {} отмечен как неофициальный", stickerSetId);
-        return saved;
+        return visibilityService.unsetOfficial(stickerSetId);
     }
     
     /**
@@ -969,14 +842,7 @@ public class StickerSetService {
      */
     @Transactional
     public StickerSet setAuthor(Long stickerSetId, Long authorId) {
-        if (authorId == null || authorId <= 0) {
-            throw new IllegalArgumentException("authorId должен быть положительным числом");
-        }
-        LOGGER.info("✍️ Установка автора {} для стикерсета {}", authorId, stickerSetId);
-        StickerSet stickerSet = stickerSetRepository.findById(stickerSetId)
-            .orElseThrow(() -> new IllegalArgumentException("Стикерсет с ID " + stickerSetId + " не найден"));
-        stickerSet.setAuthorId(authorId);
-        return stickerSetRepository.save(stickerSet);
+        return visibilityService.setAuthor(stickerSetId, authorId);
     }
     
     /**
@@ -984,11 +850,7 @@ public class StickerSetService {
      */
     @Transactional
     public StickerSet clearAuthor(Long stickerSetId) {
-        LOGGER.info("🧹 Очистка автора для стикерсета {}", stickerSetId);
-        StickerSet stickerSet = stickerSetRepository.findById(stickerSetId)
-            .orElseThrow(() -> new IllegalArgumentException("Стикерсет с ID " + stickerSetId + " не найден"));
-        stickerSet.setAuthorId(null);
-        return stickerSetRepository.save(stickerSet);
+        return visibilityService.clearAuthor(stickerSetId);
     }
     
     /**
@@ -996,39 +858,7 @@ public class StickerSetService {
      */
     @Transactional
     public StickerSet updateCategories(Long stickerSetId, Set<String> categoryKeys) {
-        LOGGER.info("🏷️ Обновление категорий стикерсета ID: {}, категории: {}", stickerSetId, categoryKeys);
-        
-        StickerSet stickerSet = stickerSetRepository.findById(stickerSetId)
-            .orElseThrow(() -> new IllegalArgumentException("Стикерсет с ID " + stickerSetId + " не найден"));
-        
-        // Очищаем существующие категории
-        stickerSet.clearCategories();
-        
-        // Добавляем новые категории, если они указаны
-        if (categoryKeys != null && !categoryKeys.isEmpty()) {
-            try {
-                List<Category> categories = categoryService.getCategoriesByKeys(categoryKeys);
-                for (Category category : categories) {
-                    stickerSet.addCategory(category);
-                }
-                LOGGER.info("✅ Добавлено {} категорий к стикерсету {}", categories.size(), stickerSetId);
-            } catch (IllegalArgumentException e) {
-                LOGGER.warn("⚠️ Ошибка при получении категорий: {}", e.getMessage());
-                throw e;
-            }
-        }
-        
-        StickerSet savedStickerSet = stickerSetRepository.save(stickerSet);
-        LOGGER.info("✅ Категории стикерсета {} успешно обновлены", stickerSetId);
-        
-        return savedStickerSet;
-    }
-    
-    /**
-     * Обогащает список стикерсетов данными из Bot API и категориями (последовательно для Hibernate)
-     */
-    private List<StickerSetDto> enrichWithBotApiDataAndCategories(List<StickerSet> stickerSets, String language, Long currentUserId) {
-        return enrichWithBotApiDataAndCategories(stickerSets, language, currentUserId, false, false, false);
+        return crudService.updateCategories(stickerSetId, categoryKeys);
     }
     
     public List<StickerSetDto> enrichWithBotApiDataAndCategories(List<StickerSet> stickerSets, String language, Long currentUserId, boolean shortInfo) {
@@ -1040,60 +870,7 @@ public class StickerSetService {
     }
     
     public List<StickerSetDto> enrichWithBotApiDataAndCategories(List<StickerSet> stickerSets, String language, Long currentUserId, boolean shortInfo, boolean preview, boolean includeAvailableActions) {
-        if (stickerSets.isEmpty()) {
-            return List.of();
-        }
-        
-        LOGGER.debug("🚀 Обогащение {} стикерсетов данными Bot API и категориями (последовательно, shortInfo={}, preview={}, includeAvailableActions={})", stickerSets.size(), shortInfo, preview, includeAvailableActions);
-        
-        // Обрабатываем последовательно, чтобы избежать проблем с Hibernate Session
-        List<StickerSetDto> result = stickerSets.stream()
-                .map(stickerSet -> enrichSingleStickerSetSafelyWithCategories(stickerSet, language, currentUserId, shortInfo, preview, includeAvailableActions))
-                .collect(Collectors.toList());
-        
-        LOGGER.debug("✅ Обогащение завершено для {} стикерсетов", result.size());
-        return result;
-    }
-    
-    /**
-     * Обогащает один стикерсет данными из Bot API и категориями (безопасно)
-     */
-    private StickerSetDto enrichSingleStickerSetSafelyWithCategories(StickerSet stickerSet, String language) {
-        return enrichSingleStickerSetSafelyWithCategories(stickerSet, language, null, false, false, true);
-    }
-    
-    /**
-     * Обогащает один стикерсет данными из Bot API и категориями (безопасно)
-     */
-    private StickerSetDto enrichSingleStickerSetSafelyWithCategories(StickerSet stickerSet, String language, Long currentUserId) {
-        return enrichSingleStickerSetSafelyWithCategories(stickerSet, language, currentUserId, false, false, true);
-    }
-    
-    /**
-     * Фильтрует стикеры в telegramStickerSetInfo для режима превью.
-     * Оставляет только 1 случайный стикер из полного списка.
-     */
-    private Object filterStickersForPreview(Object telegramStickerSetInfo) {
-        if (telegramStickerSetInfo instanceof java.util.Map) {
-            @SuppressWarnings("unchecked")
-            java.util.Map<String, Object> infoMap = new java.util.LinkedHashMap<>((java.util.Map<String, Object>) telegramStickerSetInfo);
-            
-            Object stickersObj = infoMap.get("stickers");
-            if (stickersObj instanceof java.util.List) {
-                @SuppressWarnings("unchecked")
-                java.util.List<Object> stickers = (java.util.List<Object>) stickersObj;
-                
-                if (stickers.size() > 1) {
-                    // Выбираем 1 случайный стикер
-                    java.util.List<Object> shuffled = new java.util.ArrayList<>(stickers);
-                    java.util.Collections.shuffle(shuffled);
-                    infoMap.put("stickers", shuffled.subList(0, 1));
-                    LOGGER.debug("🎲 Фильтрация стикеров для превью: {} -> 1 случайный", stickers.size());
-                }
-            }
-            return infoMap;
-        }
-        return telegramStickerSetInfo;
+        return enrichmentService.enrichWithBotApiDataAndCategories(stickerSets, language, currentUserId, shortInfo, preview, includeAvailableActions);
     }
     
     /**
@@ -1102,121 +879,7 @@ public class StickerSetService {
      * @param includeAvailableActions если true, вычисляет доступные действия для стикерсета
      */
     private StickerSetDto enrichSingleStickerSetSafelyWithCategories(StickerSet stickerSet, String language, Long currentUserId, boolean shortInfo, boolean preview, boolean includeAvailableActions) {
-        boolean isAdmin = isCurrentUserAdmin();
-        boolean hasTonWallet = false;
-        if (currentUserId != null && includeAvailableActions) {
-            try {
-                hasTonWallet = walletService.hasActiveWallet(currentUserId);
-            } catch (Exception e) {
-                LOGGER.debug("⚠️ Ошибка при проверке наличия кошелька для пользователя {}: {}", currentUserId, e.getMessage());
-                hasTonWallet = false;
-            }
-        }
-        LOGGER.debug("🔍 Обогащение стикерсета {}: currentUserId={}, stickerSetUserId={}, isAdmin={}, preview={}, includeAvailableActions={}, hasTonWallet={}", 
-                stickerSet.getId(), currentUserId, stickerSet.getUserId(), isAdmin, preview, includeAvailableActions, hasTonWallet);
-        StickerSetDto dto = StickerSetDto.fromEntity(stickerSet, language, currentUserId, isAdmin, includeAvailableActions, hasTonWallet);
-        
-        if (dto == null) {
-            LOGGER.warn("⚠️ Не удалось создать DTO для стикерсета {}", stickerSet.getId());
-            return null;
-        }
-        
-        LOGGER.debug("🔍 Результат обогащения стикерсета {}: availableActions={}", 
-                stickerSet.getId(), dto.getAvailableActions());
-        
-        if (shortInfo) {
-            dto.setTelegramStickerSetInfo(null);
-            return dto;
-        }
-        
-        Object botApiData = null;
-        try {
-            botApiData = telegramBotApiService.getStickerSetInfo(stickerSet.getName());
-            
-            // Применяем фильтрацию для режима превью
-            if (preview && botApiData != null) {
-                botApiData = filterStickersForPreview(botApiData);
-            }
-            
-            dto.setTelegramStickerSetInfo(botApiData);
-            LOGGER.debug("✅ Стикерсет '{}' обогащен данными Bot API (preview={})", stickerSet.getName(), preview);
-        } catch (Exception e) {
-            LOGGER.warn("⚠️ Не удалось получить данные Bot API для стикерсета '{}': {} - пропускаем обогащение", 
-                    stickerSet.getName(), e.getMessage());
-            // Оставляем telegramStickerSetInfo = null, продолжаем обработку
-            dto.setTelegramStickerSetInfo(null);
-        }
-        
-        return dto;
-    }
-    
-    /**
-     * Обновляет title и количество стикеров в БД используя данные Telegram API
-     * Вызывается только для одного стикерсета после обогащения
-     * 
-     * @param stickerSet стикерсет для обновления
-     * @param botApiData данные Telegram API, уже полученные при обогащении
-     */
-    @org.springframework.transaction.annotation.Transactional(propagation = Propagation.REQUIRES_NEW)
-    private void updateTitleAndStickersCount(StickerSet stickerSet, Object botApiData) {
-        if (botApiData == null) {
-            LOGGER.debug("⚠️ botApiData == null, пропускаем обновление title и stickers_count для стикерсета {}", stickerSet.getId());
-            return;
-        }
-        
-        try {
-            // Извлекаем актуальные данные из Telegram API
-            String newTitle = telegramBotApiService.extractTitleFromStickerSetInfo(botApiData);
-            Integer newStickersCount = telegramBotApiService.extractStickersCountFromStickerSetInfo(botApiData);
-            
-            if (newTitle == null && newStickersCount == null) {
-                LOGGER.warn("⚠️ Не удалось извлечь title и stickers_count из botApiData для стикерсета {}", stickerSet.getId());
-                return;
-            }
-            
-            boolean needsUpdate = false;
-            
-            // Проверяем и обновляем title
-            if (newTitle != null && !newTitle.equals(stickerSet.getTitle())) {
-                LOGGER.debug("📝 Обновление title для стикерсета {}: '{}' -> '{}'", 
-                        stickerSet.getId(), stickerSet.getTitle(), newTitle);
-                stickerSet.setTitle(newTitle);
-                needsUpdate = true;
-            }
-            
-            // Проверяем и обновляем stickers_count
-            if (newStickersCount != null && !newStickersCount.equals(stickerSet.getStickersCount())) {
-                LOGGER.debug("📊 Обновление stickers_count для стикерсета {}: {} -> {}", 
-                        stickerSet.getId(), stickerSet.getStickersCount(), newStickersCount);
-                stickerSet.setStickersCount(newStickersCount);
-                needsUpdate = true;
-            }
-            
-            // Обновляем в БД только если что-то изменилось
-            if (needsUpdate) {
-                stickerSetRepository.save(stickerSet);
-                LOGGER.info("✅ Обновлены title и/или stickers_count для стикерсета {}", stickerSet.getId());
-            } else {
-                LOGGER.debug("✓ Данные title и stickers_count актуальны для стикерсета {}", stickerSet.getId());
-            }
-            
-        } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при обновлении title и stickers_count для стикерсета {}: {}", 
-                    stickerSet.getId(), e.getMessage(), e);
-            // Не прерываем выполнение - ошибка обновления не должна влиять на возврат DTO
-        }
-    }
-    
-    /**
-     * Обогащает один стикерсет данными из Bot API (безопасно)
-     * Если данные Bot API недоступны, возвращает DTO без обогащения, но не выбрасывает исключение
-     */
-    private StickerSetDto enrichSingleStickerSetSafely(StickerSet stickerSet) {
-        return enrichSingleStickerSetSafelyWithCategories(stickerSet, "en", null, false, false, true);
-    }
-    
-    private StickerSetDto enrichSingleStickerSetSafely(StickerSet stickerSet, boolean shortInfo) {
-        return enrichSingleStickerSetSafelyWithCategories(stickerSet, "en", null, shortInfo, false, true);
+        return enrichmentService.enrichSingleStickerSetSafelyWithCategories(stickerSet, language, currentUserId, shortInfo, preview, includeAvailableActions);
     }
     public PageResponse<StickerSetDto> searchStickerSets(String query,
                                                           PageRequest pageRequest,

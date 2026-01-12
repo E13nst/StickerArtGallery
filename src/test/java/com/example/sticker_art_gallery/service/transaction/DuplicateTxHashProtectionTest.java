@@ -1,6 +1,7 @@
 package com.example.sticker_art_gallery.service.transaction;
 
 import com.example.sticker_art_gallery.model.transaction.*;
+import com.example.sticker_art_gallery.repository.transaction.BlockchainTransactionRepository;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;

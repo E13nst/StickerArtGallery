@@ -1,5 +1,6 @@
 package com.example.sticker_art_gallery.service.memory;
 
+import com.example.sticker_art_gallery.repository.ChatMemoryRepository;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;

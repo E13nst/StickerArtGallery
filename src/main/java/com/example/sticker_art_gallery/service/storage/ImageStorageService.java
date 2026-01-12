@@ -1,7 +1,7 @@
 package com.example.sticker_art_gallery.service.storage;
 
 import com.example.sticker_art_gallery.model.storage.CachedImageEntity;
-import com.example.sticker_art_gallery.model.storage.CachedImageRepository;
+import com.example.sticker_art_gallery.repository.CachedImageRepository;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

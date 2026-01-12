@@ -2,11 +2,11 @@ package com.example.sticker_art_gallery.service.statistics;
 
 import com.example.sticker_art_gallery.dto.*;
 import com.example.sticker_art_gallery.model.profile.ArtTransactionDirection;
-import com.example.sticker_art_gallery.model.profile.ArtTransactionRepository;
-import com.example.sticker_art_gallery.model.telegram.StickerSetRepository;
+import com.example.sticker_art_gallery.repository.ArtTransactionRepository;
+import com.example.sticker_art_gallery.repository.StickerSetRepository;
 import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
 import com.example.sticker_art_gallery.model.user.UserEntity;
-import com.example.sticker_art_gallery.model.user.UserRepository;
+import com.example.sticker_art_gallery.repository.UserRepository;
 import com.example.sticker_art_gallery.repository.LikeRepository;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;

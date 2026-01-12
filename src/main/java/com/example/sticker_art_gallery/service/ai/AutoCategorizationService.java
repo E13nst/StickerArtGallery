@@ -2,7 +2,7 @@ package com.example.sticker_art_gallery.service.ai;
 
 import com.example.sticker_art_gallery.dto.*;
 import com.example.sticker_art_gallery.model.category.Category;
-import com.example.sticker_art_gallery.model.category.CategoryRepository;
+import com.example.sticker_art_gallery.repository.CategoryRepository;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.service.telegram.StickerSetService;
 import com.fasterxml.jackson.databind.ObjectMapper;

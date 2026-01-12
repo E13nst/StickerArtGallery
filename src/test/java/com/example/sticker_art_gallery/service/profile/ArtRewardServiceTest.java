@@ -1,6 +1,9 @@
 package com.example.sticker_art_gallery.service.profile;
 
 import com.example.sticker_art_gallery.model.profile.*;
+import com.example.sticker_art_gallery.repository.ArtRuleRepository;
+import com.example.sticker_art_gallery.repository.ArtTransactionRepository;
+import com.example.sticker_art_gallery.repository.UserProfileRepository;
 import com.example.sticker_art_gallery.testdata.TestDataBuilder;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.BeforeEach;

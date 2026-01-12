@@ -1,7 +1,7 @@
 package com.example.sticker_art_gallery.service.profile;
 
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
-import com.example.sticker_art_gallery.model.profile.UserProfileRepository;
+import com.example.sticker_art_gallery.repository.UserProfileRepository;
 import com.example.sticker_art_gallery.service.user.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

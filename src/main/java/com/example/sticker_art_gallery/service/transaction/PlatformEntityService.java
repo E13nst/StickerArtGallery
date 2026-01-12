@@ -2,9 +2,9 @@ package com.example.sticker_art_gallery.service.transaction;
 
 import com.example.sticker_art_gallery.model.transaction.EntityType;
 import com.example.sticker_art_gallery.model.transaction.PlatformEntityEntity;
-import com.example.sticker_art_gallery.model.transaction.PlatformEntityRepository;
+import com.example.sticker_art_gallery.repository.transaction.PlatformEntityRepository;
 import com.example.sticker_art_gallery.model.user.UserEntity;
-import com.example.sticker_art_gallery.model.user.UserRepository;
+import com.example.sticker_art_gallery.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;

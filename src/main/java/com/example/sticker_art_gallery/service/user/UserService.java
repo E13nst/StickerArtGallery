@@ -2,7 +2,7 @@ package com.example.sticker_art_gallery.service.user;
 
 import com.example.sticker_art_gallery.dto.UserDto;
 import com.example.sticker_art_gallery.model.user.UserEntity;
-import com.example.sticker_art_gallery.model.user.UserRepository;
+import com.example.sticker_art_gallery.repository.UserRepository;
 import com.example.sticker_art_gallery.service.telegram.TelegramBotApiService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

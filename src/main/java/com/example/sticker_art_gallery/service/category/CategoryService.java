@@ -5,7 +5,7 @@ import com.example.sticker_art_gallery.dto.CreateCategoryDto;
 import com.example.sticker_art_gallery.dto.CategoryWithCountDto;
 import com.example.sticker_art_gallery.dto.UpdateCategoryDto;
 import com.example.sticker_art_gallery.model.category.Category;
-import com.example.sticker_art_gallery.model.category.CategoryRepository;
+import com.example.sticker_art_gallery.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

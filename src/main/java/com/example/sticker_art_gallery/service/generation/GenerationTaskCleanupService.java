@@ -1,7 +1,7 @@
 package com.example.sticker_art_gallery.service.generation;
 
 import com.example.sticker_art_gallery.model.generation.GenerationTaskEntity;
-import com.example.sticker_art_gallery.model.generation.GenerationTaskRepository;
+import com.example.sticker_art_gallery.repository.GenerationTaskRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
