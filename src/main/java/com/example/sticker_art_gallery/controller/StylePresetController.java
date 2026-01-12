@@ -27,7 +27,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/generation/style-presets")
 @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
-@Tag(name = "Пресеты стилей", description = "API для управления пресетами стилей генерации")
+@Tag(name = "Пресеты стилей", description = "API для управления пресетами стилей генерации (пользовательские и глобальные)")
 @SecurityRequirement(name = "TelegramInitData")
 public class StylePresetController {
 
@@ -86,6 +86,26 @@ public class StylePresetController {
         return ResponseEntity.ok(presets);
     }
 
+    @GetMapping("/global")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+        summary = "Получить все глобальные пресеты",
+        description = "Возвращает список всех глобальных пресетов (только для админа)"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Список глобальных пресетов получен",
+            content = @Content(schema = @Schema(implementation = StylePresetDto.class))
+        ),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен")
+    })
+    public ResponseEntity<List<StylePresetDto>> getAllGlobalPresets() {
+        List<StylePresetDto> presets = presetService.getAllGlobalPresets();
+        LOGGER.info("Returning {} global presets", presets.size());
+        return ResponseEntity.ok(presets);
+    }
+
     @PostMapping
     @Operation(
         summary = "Создать персональный пресет",
@@ -115,10 +135,36 @@ public class StylePresetController {
         }
     }
 
+    @PostMapping("/global")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+        summary = "Создать глобальный пресет",
+        description = "Создает новый глобальный пресет стиля (только для админа)"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Глобальный пресет создан",
+            content = @Content(schema = @Schema(implementation = StylePresetDto.class))
+        ),
+        @ApiResponse(responseCode = "400", description = "Неверные входные данные или пресет с таким кодом уже существует"),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен")
+    })
+    public ResponseEntity<StylePresetDto> createGlobalPreset(@Valid @RequestBody CreateStylePresetRequest request) {
+        try {
+            StylePresetDto preset = presetService.createGlobalPreset(request);
+            LOGGER.info("Created global preset: id={}, code={}", preset.getId(), preset.getCode());
+            return ResponseEntity.ok(preset);
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Failed to create global preset: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
     @PutMapping("/{id}")
     @Operation(
         summary = "Обновить пресет",
-        description = "Обновляет персональный пресет пользователя"
+        description = "Обновляет пресет (пользователь может обновлять только свои пресеты, админ - любые)"
     )
     @ApiResponses(value = {
         @ApiResponse(
@@ -154,10 +200,42 @@ public class StylePresetController {
         }
     }
 
+    @PutMapping("/{id}/toggle")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+        summary = "Включить/выключить пресет",
+        description = "Включает или выключает пресет (только для админа)"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Статус пресета изменен",
+            content = @Content(schema = @Schema(implementation = StylePresetDto.class))
+        ),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен"),
+        @ApiResponse(responseCode = "404", description = "Пресет не найден")
+    })
+    public ResponseEntity<StylePresetDto> togglePresetEnabled(
+            @Parameter(description = "ID пресета", required = true)
+            @PathVariable Long id,
+            @Parameter(description = "Включить пресет", example = "true")
+            @RequestParam boolean enabled) {
+        try {
+            StylePresetDto preset = presetService.togglePresetEnabled(id, enabled);
+            LOGGER.info("Toggled preset enabled: id={}, enabled={}", id, enabled);
+            return ResponseEntity.ok(preset);
+        } catch (IllegalArgumentException e) {
+            if (e.getMessage().contains("not found")) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
     @DeleteMapping("/{id}")
     @Operation(
         summary = "Удалить пресет",
-        description = "Удаляет персональный пресет пользователя"
+        description = "Удаляет пресет (пользователь может удалять только свои пресеты, админ - любые)"
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Пресет удален"),
