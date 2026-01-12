@@ -1,6 +1,8 @@
 package com.example.sticker_art_gallery.model.user;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 import java.time.OffsetDateTime;
 
 /**
@@ -9,6 +11,7 @@ import java.time.OffsetDateTime;
  */
 @Entity
 @Table(name = "users")
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = "users")
 public class UserEntity {
     
     @Id

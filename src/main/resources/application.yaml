@@ -45,10 +45,13 @@ spring:
     hikari:
       connection-timeout: 10000
       maximum-pool-size: 5
-      minimum-idle: 2
+      minimum-idle: 1  # Уменьшено с 2 до 1 для экономии памяти
       leak-detection-threshold: 30000
       connection-test-query: SELECT 1
       auto-commit: false
+      # Дополнительные настройки для оптимизации памяти
+      idle-timeout: 300000  # 5 минут - закрывать неиспользуемые connections
+      max-lifetime: 1800000  # 30 минут - максимальное время жизни connection
   jpa:
     hibernate:
       ddl-auto: validate  # Flyway управляет схемой, Hibernate только валидирует
@@ -62,6 +65,16 @@ spring:
           time_zone: UTC
         connection:
           provider_disables_autocommit: true
+        # Second-level cache для часто запрашиваемых entities
+        cache:
+          use_second_level_cache: true
+          use_query_cache: true
+          region:
+            factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+        javax:
+          cache:
+            provider: com.github.benmanes.caffeine.jcache.spi.CaffeineCachingProvider
+            uri: classpath:ehcache.xml
   
   # Настройки Flyway для автоматических миграций
   flyway:
@@ -82,13 +95,14 @@ spring:
       connect-timeout: 3000ms # Timeout для подключения (3 сек)
       ssl:
         enabled: ${REDIS_SSL_ENABLED:false}
-      # Connection pool settings
+      # Connection pool settings - оптимизировано для экономии памяти
       lettuce:
         pool:
-          max-active: 20    # Максимум соединений
-          max-idle: 10      # Макс простаивающих
-          min-idle: 5       # Мин простаивающих
+          max-active: 8     # Уменьшено с 20 до 8
+          max-idle: 4       # Уменьшено с 10 до 4
+          min-idle: 2       # Уменьшено с 5 до 2
           max-wait: 3000ms  # Ожидание соединения
+        shutdown-timeout: 100ms  # Быстрое завершение при shutdown
 
 # Swagger/OpenAPI конфигурация
 springdoc:

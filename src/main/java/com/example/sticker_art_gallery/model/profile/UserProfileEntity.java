@@ -1,10 +1,13 @@
 package com.example.sticker_art_gallery.model.profile;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "user_profiles")
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = "userProfiles")
 public class UserProfileEntity {
 
     @Id

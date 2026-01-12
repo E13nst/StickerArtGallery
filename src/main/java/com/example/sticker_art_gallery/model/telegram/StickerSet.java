@@ -98,8 +98,9 @@ public class StickerSet {
     
     /**
      * Многоязычные описания стикерсета (one-to-many)
+     * LAZY fetch для предотвращения избыточной загрузки данных
      */
-    @OneToMany(mappedBy = "stickerSet", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "stickerSet", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private Set<StickerSetDescription> descriptions = new HashSet<>();

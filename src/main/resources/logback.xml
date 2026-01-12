@@ -6,16 +6,41 @@
         </encoder>
     </appender>
 
-    <!-- File Appender for production -->
+    <!-- File Appender for production with optimized rotation -->
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>logs/telegram-bot.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>logs/telegram-bot.%d{yyyy-MM-dd}.log</fileNamePattern>
-            <maxHistory>30</maxHistory>
+            <!-- Уменьшено с 30 до 3 дней для экономии памяти -->
+            <maxHistory>3</maxHistory>
+            <!-- Максимальный размер всех логов - 100MB -->
+            <totalSizeCap>100MB</totalSizeCap>
         </rollingPolicy>
         <encoder>
             <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</pattern>
         </encoder>
+    </appender>
+    
+    <!-- Async Console Appender для неблокирующего логирования -->
+    <appender name="ASYNC_STDOUT" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="STDOUT" />
+        <!-- Размер очереди для async логирования -->
+        <queueSize>512</queueSize>
+        <!-- Отбрасывать события при переполнении очереди -->
+        <discardingThreshold>0</discardingThreshold>
+        <!-- Не блокировать при переполнении -->
+        <neverBlock>true</neverBlock>
+    </appender>
+    
+    <!-- Async File Appender для неблокирующего логирования -->
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="FILE" />
+        <!-- Размер очереди для async логирования -->
+        <queueSize>512</queueSize>
+        <!-- Отбрасывать события при переполнении очереди -->
+        <discardingThreshold>0</discardingThreshold>
+        <!-- Не блокировать при переполнении -->
+        <neverBlock>true</neverBlock>
     </appender>
 
     <!-- Application specific loggers -->
@@ -36,9 +61,9 @@
     <!-- AI/OpenAI loggers -->
     <logger name="org.springframework.ai" level="info" />
     
-    <!-- Root logger -->
+    <!-- Root logger with async appenders -->
     <root level="warn">
-        <appender-ref ref="STDOUT" />
-        <appender-ref ref="FILE" />
+        <appender-ref ref="ASYNC_STDOUT" />
+        <appender-ref ref="ASYNC_FILE" />
     </root>
 </configuration>
