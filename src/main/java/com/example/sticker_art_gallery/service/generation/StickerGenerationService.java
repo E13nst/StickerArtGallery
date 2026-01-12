@@ -46,6 +46,7 @@ public class StickerGenerationService {
     private final TelegramApiService telegramApiService;
     private final UserRepository userRepository;
     private final ImageStorageService imageStorageService;
+    private final PromptProcessingService promptProcessingService;
     private final ObjectMapper objectMapper;
 
     @Value("${wavespeed.max-poll-seconds:300}")
@@ -65,7 +66,8 @@ public class StickerGenerationService {
             UserProfileService userProfileService,
             TelegramApiService telegramApiService,
             UserRepository userRepository,
-            ImageStorageService imageStorageService) {
+            ImageStorageService imageStorageService,
+            PromptProcessingService promptProcessingService) {
         this.taskRepository = taskRepository;
         this.waveSpeedClient = waveSpeedClient;
         this.artRewardService = artRewardService;
@@ -73,24 +75,25 @@ public class StickerGenerationService {
         this.telegramApiService = telegramApiService;
         this.userRepository = userRepository;
         this.imageStorageService = imageStorageService;
+        this.promptProcessingService = promptProcessingService;
         this.objectMapper = new ObjectMapper();
     }
 
     @Transactional
     public String startGeneration(Long userId, GenerateStickerRequest request) {
-        LOGGER.info("Starting generation for user {}: prompt_length={}, seed={}, saveToStickerSet={}",
-                userId, request.getPrompt().length(), request.getSeed(), request.getSaveToStickerSet());
+        LOGGER.info("Starting generation for user {}: prompt_length={}, seed={}, saveToStickerSet={}, stylePresetId={}",
+                userId, request.getPrompt().length(), request.getSeed(), request.getSaveToStickerSet(), request.getStylePresetId());
 
         // 1. Получаем профиль пользователя для проверки баланса
         UserProfileEntity profile = userProfileService.getOrCreateDefaultForUpdate(userId);
         
-        // 2. Создаем задачу в БД со статусом PENDING
+        // 2. Создаем задачу в БД сразу со статусом PROCESSING_PROMPT
         String taskId = UUID.randomUUID().toString();
         GenerationTaskEntity task = new GenerationTaskEntity();
         task.setTaskId(taskId);
         task.setUserProfile(profile);
-        task.setPrompt(request.getPrompt());
-        task.setStatus(GenerationTaskStatus.PENDING);
+        task.setPrompt(request.getPrompt()); // Сохраняем исходный промпт
+        task.setStatus(GenerationTaskStatus.PROCESSING_PROMPT);
         
         // Метаданные
         Map<String, Object> metadata = new HashMap<>();
@@ -98,6 +101,9 @@ public class StickerGenerationService {
         metadata.put("size", "512*512");
         metadata.put("outputFormat", "png");
         metadata.put("saveToStickerSet", request.getSaveToStickerSet());
+        metadata.put("originalPrompt", request.getPrompt()); // Сохраняем оригинальный промпт
+        metadata.put("stylePresetId", request.getStylePresetId());
+        metadata.put("removeBackground", request.getRemoveBackground() != null ? request.getRemoveBackground() : bgRemoveEnabled);
         try {
             task.setMetadata(objectMapper.writeValueAsString(metadata));
         } catch (Exception e) {
@@ -107,7 +113,7 @@ public class StickerGenerationService {
         // Устанавливаем expires_at (например, через 24 часа)
         task.setExpiresAt(OffsetDateTime.now().plusHours(24));
         task = taskRepository.save(task);
-        LOGGER.info("Created generation task: taskId={}, userId={}", taskId, userId);
+        LOGGER.info("Created generation task: taskId={}, userId={}, status=PROCESSING_PROMPT", taskId, userId);
 
         // 3. Списываем ART-баллы
         try {
@@ -132,9 +138,9 @@ public class StickerGenerationService {
             throw new IllegalStateException("Недостаточно ART-баллов для генерации: " + e.getMessage(), e);
         }
 
-        // 4. Запускаем асинхронную задачу генерации
-        runGenerationAsync(taskId);
-        LOGGER.info("Async generation started for task: {}", taskId);
+        // 4. Запускаем асинхронную обработку промпта
+        processPromptAsync(taskId, userId, request.getStylePresetId());
+        LOGGER.info("Async prompt processing started for task: {}", taskId);
 
         return taskId;
     }
@@ -156,6 +162,57 @@ public class StickerGenerationService {
     public Page<GenerationStatusResponse> getGenerationHistory(Long userId, Pageable pageable) {
         Page<GenerationTaskEntity> tasks = taskRepository.findByUserProfile_UserIdOrderByCreatedAtDesc(userId, pageable);
         return tasks.map(this::toStatusResponse);
+    }
+
+    @Async("generationTaskExecutor")
+    @Transactional
+    public CompletableFuture<Void> processPromptAsync(String taskId, Long userId, Long stylePresetId) {
+        try {
+            GenerationTaskEntity task = taskRepository.findByTaskId(taskId)
+                    .orElseThrow(() -> new IllegalArgumentException("Task not found: " + taskId));
+
+            LOGGER.info("Processing prompt for task: {}", taskId);
+            
+            String originalPrompt = task.getPrompt();
+            String processedPrompt = promptProcessingService.processPrompt(
+                    originalPrompt,
+                    userId,
+                    stylePresetId
+            );
+            
+            LOGGER.info("Prompt processed for task {}: original_length={}, processed_length={}",
+                    taskId, originalPrompt.length(), processedPrompt.length());
+
+            // Обновляем задачу с обработанным промптом
+            task.setPrompt(processedPrompt); // Заменяем на обработанный
+            task.setStatus(GenerationTaskStatus.PENDING); // Готов к генерации
+            
+            // Обновляем метаданные
+            Map<String, Object> metadata = parseMetadata(task.getMetadata());
+            metadata.put("originalPrompt", originalPrompt); // Сохраняем исходный
+            metadata.put("processedPrompt", processedPrompt); // Сохраняем обработанный
+            try {
+                task.setMetadata(objectMapper.writeValueAsString(metadata));
+            } catch (Exception e) {
+                LOGGER.warn("Failed to update metadata with processed prompt", e);
+            }
+            
+            task = taskRepository.save(task);
+            LOGGER.info("Prompt processing completed for task: {}", taskId);
+
+            // Запускаем генерацию
+            runGenerationAsync(taskId);
+            
+        } catch (Exception e) {
+            LOGGER.error("Error processing prompt for task {}: {}", taskId, e.getMessage(), e);
+            GenerationTaskEntity task = taskRepository.findByTaskId(taskId).orElse(null);
+            if (task != null) {
+                task.setStatus(GenerationTaskStatus.FAILED);
+                task.setErrorMessage("Prompt processing failed: " + e.getMessage());
+                taskRepository.save(task);
+            }
+        }
+        return CompletableFuture.completedFuture(null);
     }
 
     @Async("generationTaskExecutor")
@@ -268,7 +325,12 @@ public class StickerGenerationService {
             String finalImageUrl = fluxImageUrl;
             boolean bgRemovalSuccess = false;
 
-            if (bgRemoveEnabled) {
+            // Проверяем настройку removeBackground из метаданных
+            // Используем уже загруженный metadataMap из Stage 1
+            boolean shouldRemoveBg = metadataMap.containsKey("removeBackground") ?
+                    Boolean.TRUE.equals(metadataMap.get("removeBackground")) : bgRemoveEnabled;
+
+            if (shouldRemoveBg) {
                 LOGGER.info("Generation: Starting background removal for image: {}...",
                         fluxImageUrl.substring(0, Math.min(80, fluxImageUrl.length())));
                 
