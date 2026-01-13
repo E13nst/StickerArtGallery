@@ -7,12 +7,10 @@ import com.example.sticker_art_gallery.repository.GenerationTaskRepository;
 import com.example.sticker_art_gallery.model.generation.GenerationTaskStatus;
 import com.example.sticker_art_gallery.model.profile.ArtTransactionEntity;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
-import com.example.sticker_art_gallery.model.user.UserEntity;
 import com.example.sticker_art_gallery.repository.UserRepository;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
 import com.example.sticker_art_gallery.service.storage.ImageStorageService;
-import com.example.sticker_art_gallery.service.telegram.TelegramApiService;
 import com.example.sticker_art_gallery.model.storage.CachedImageEntity;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -25,9 +23,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -43,7 +38,6 @@ public class StickerGenerationService {
     private final WaveSpeedClient waveSpeedClient;
     private final ArtRewardService artRewardService;
     private final UserProfileService userProfileService;
-    private final TelegramApiService telegramApiService;
     private final UserRepository userRepository;
     private final ImageStorageService imageStorageService;
     private final PromptProcessingService promptProcessingService;
@@ -55,8 +49,6 @@ public class StickerGenerationService {
     @Value("${wavespeed.bg-remove-enabled:true}")
     private boolean bgRemoveEnabled;
 
-    @Value("${app.telegram.bot-token}")
-    private String botToken;
 
     @Autowired
     public StickerGenerationService(
@@ -64,7 +56,6 @@ public class StickerGenerationService {
             WaveSpeedClient waveSpeedClient,
             ArtRewardService artRewardService,
             UserProfileService userProfileService,
-            TelegramApiService telegramApiService,
             UserRepository userRepository,
             ImageStorageService imageStorageService,
             PromptProcessingService promptProcessingService) {
@@ -72,7 +63,6 @@ public class StickerGenerationService {
         this.waveSpeedClient = waveSpeedClient;
         this.artRewardService = artRewardService;
         this.userProfileService = userProfileService;
-        this.telegramApiService = telegramApiService;
         this.userRepository = userRepository;
         this.imageStorageService = imageStorageService;
         this.promptProcessingService = promptProcessingService;
@@ -441,93 +431,6 @@ public class StickerGenerationService {
         }
     }
 
-    private void saveStickerToUserSet(GenerationTaskEntity task) {
-        try {
-            Long userId = task.getUserProfile().getUserId();
-            UserEntity user = userRepository.findById(userId).orElse(null);
-            String userUsername = user != null ? user.getUsername() : null;
-            
-            // Получаем username бота из токена (упрощенная версия)
-            String botUsername = extractBotUsernameFromToken(botToken);
-            if (botUsername == null) {
-                LOGGER.warn("Cannot extract bot username from token, skipping sticker save");
-                return;
-            }
-
-            // Получаем оригинальный URL для скачивания (не локальный)
-            Map<String, Object> metadata = parseMetadata(task.getMetadata());
-            String imageUrlToDownload = metadata.containsKey("originalImageUrl") 
-                    ? metadata.get("originalImageUrl").toString() 
-                    : task.getImageUrl();
-
-            // Скачиваем изображение
-            byte[] pngBytes = waveSpeedClient.downloadImage(imageUrlToDownload, 8 * 1024 * 1024);
-            if (pngBytes == null) {
-                LOGGER.warn("Failed to download image for task {}", task.getTaskId());
-                return;
-            }
-
-            // Формируем имя стикерсета
-            String shortName = userUsername != null ? userUsername : ("user_" + userId);
-            String fullName = shortName + "_by_" + botUsername;
-
-            // Создаем временный файл
-            Path tempFile = Files.createTempFile("sticker_", ".png");
-            try {
-                Files.write(tempFile, pngBytes);
-                File file = tempFile.toFile();
-
-                // Проверяем существование стикерсета
-                var stickerSetInfo = telegramApiService.getStickerSetInfo(fullName);
-                boolean exists = stickerSetInfo != null;
-                
-                boolean success;
-                if (!exists) {
-                    // Стикерсет не существует - создаем новый
-                    LOGGER.info("Creating new sticker set: {}", fullName);
-                    success = telegramApiService.createNewStickerSet(
-                            userId, file, fullName, "STIXLY Generated", "🎨");
-                } else {
-                    // Стикерсет существует - добавляем стикер
-                    LOGGER.info("Adding sticker to existing set: {}", fullName);
-                    success = telegramApiService.addStickerToSet(
-                            userId, file, fullName, "🎨");
-                }
-
-                if (success) {
-                    // Получаем file_id последнего стикера
-                    // Обновляем информацию о стикерсете, чтобы узнать актуальное количество стикеров
-                    stickerSetInfo = telegramApiService.getStickerSetInfo(fullName);
-                    if (stickerSetInfo != null && stickerSetInfo.getStickerCount() > 0) {
-                        int lastIndex = stickerSetInfo.getStickerCount() - 1;
-                        String fileId = telegramApiService.getStickerFileId(fullName, lastIndex);
-                        if (fileId != null) {
-                            task.setTelegramFileId(fileId);
-                            taskRepository.save(task);
-                            LOGGER.info("Sticker saved to user set {}. File ID: {}...", fullName, fileId.substring(0, Math.min(20, fileId.length())));
-                        }
-                    }
-                } else {
-                    LOGGER.warn("Failed to save sticker to set {}", fullName);
-                }
-            } finally {
-                Files.deleteIfExists(tempFile);
-            }
-        } catch (Exception e) {
-            LOGGER.error("Error saving sticker to user set for task {}: {}", task.getTaskId(), e.getMessage(), e);
-        }
-    }
-
-    private String extractBotUsernameFromToken(String token) {
-        // Упрощенная версия - в реальности нужно получать через getMe
-        // Для начала возвращаем значение из переменной окружения или конфига
-        String botUsername = System.getenv("TELEGRAM_BOT_USERNAME");
-        if (botUsername != null && !botUsername.isBlank()) {
-            return botUsername;
-        }
-        // Fallback - можно попробовать получить через API, но пока возвращаем null
-        return null;
-    }
 
     private GenerationStatusResponse toStatusResponse(GenerationTaskEntity task) {
         GenerationStatusResponse response = new GenerationStatusResponse();

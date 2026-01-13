@@ -58,6 +58,8 @@ public class AppConfig {
     
     public static class Telegram {
         private String botToken;
+        private String botUsername;
+        private String defaultStickerSetTitle;
         
         public String getBotToken() {
             return botToken;
@@ -65,6 +67,22 @@ public class AppConfig {
         
         public void setBotToken(String botToken) {
             this.botToken = botToken;
+        }
+
+        public String getBotUsername() {
+            return botUsername;
+        }
+
+        public void setBotUsername(String botUsername) {
+            this.botUsername = botUsername;
+        }
+
+        public String getDefaultStickerSetTitle() {
+            return defaultStickerSetTitle;
+        }
+
+        public void setDefaultStickerSetTitle(String defaultStickerSetTitle) {
+            this.defaultStickerSetTitle = defaultStickerSetTitle;
         }
     }
 

@@ -3,6 +3,8 @@ package com.example.sticker_art_gallery.controller;
 import com.example.sticker_art_gallery.dto.*;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.service.telegram.StickerSetService;
+import com.example.sticker_art_gallery.service.telegram.StickerSetCreationService;
+import com.example.sticker_art_gallery.service.telegram.TelegramBotApiService;
 import com.example.sticker_art_gallery.service.ai.AutoCategorizationService;
 import com.example.sticker_art_gallery.service.ai.StickerSetDescriptionService;
 import com.example.sticker_art_gallery.service.StickerSetQueryService;
@@ -52,6 +54,8 @@ public class StickerSetController {
     private final StatisticsService statisticsService;
     private final WalletService walletService;
     private final StickerSetControllerHelper helper;
+    private final StickerSetCreationService stickerSetCreationService;
+    private final TelegramBotApiService telegramBotApiService;
     
     @Autowired
     public StickerSetController(StickerSetService stickerSetService,
@@ -60,7 +64,9 @@ public class StickerSetController {
                                StickerSetQueryService stickerSetQueryService,
                                StatisticsService statisticsService,
                                WalletService walletService,
-                               StickerSetControllerHelper helper) {
+                               StickerSetControllerHelper helper,
+                               StickerSetCreationService stickerSetCreationService,
+                               TelegramBotApiService telegramBotApiService) {
         this.stickerSetService = stickerSetService;
         this.autoCategorizationService = autoCategorizationService;
         this.stickerSetDescriptionService = stickerSetDescriptionService;
@@ -68,6 +74,8 @@ public class StickerSetController {
         this.statisticsService = statisticsService;
         this.walletService = walletService;
         this.helper = helper;
+        this.stickerSetCreationService = stickerSetCreationService;
+        this.telegramBotApiService = telegramBotApiService;
     }
     
     /**
@@ -848,6 +856,228 @@ public class StickerSetController {
     /**
      * Установить автора стикерсета (только для админа)
      */
+
+    // ============================================================================
+    // Новые эндпоинты для создания и управления стикерсетами через Telegram Bot API
+    // ============================================================================
+
+    /**
+     * Создает новый стикерсет в Telegram с первым стикером и регистрирует его в БД
+     */
+    @PostMapping("/create")
+    @Operation(
+        summary = "Создать новый стикерсет с первым стикером",
+        description = """
+            Создает новый стикерсет в Telegram через Bot API и регистрирует его в БД.
+            Если имя стикерсета не указано, генерируется автоматически: {username}_by_{botUsername} или user_{userId}_by_{botUsername}.
+            """
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Стикерсет успешно создан"),
+        @ApiResponse(responseCode = "400", description = "Неверные входные данные"),
+        @ApiResponse(responseCode = "401", description = "Пользователь не авторизован"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<StickerSetDto> createStickerSetWithSticker(
+            @Valid @RequestBody CreateStickerSetWithStickerDto createDto,
+            HttpServletRequest request) {
+        try {
+            Long userId = helper.getCurrentUserId();
+            String language = helper.getLanguageFromHeaderOrUser(request);
+            
+            LOGGER.info("🎯 Создание стикерсета с первым стикером: userId={}, imageUuid={}", 
+                    userId, createDto.getImageUuid());
+            
+            StickerSet stickerSet = stickerSetCreationService.createWithSticker(
+                userId,
+                createDto.getImageUuid(),
+                createDto.getTitle(),
+                createDto.getName(),
+                createDto.getEmoji(),
+                createDto.getCategoryKeys(),
+                createDto.getVisibility()
+            );
+            
+            if (stickerSet == null) {
+                LOGGER.warn("⚠️ Стикерсет создан в Telegram, но не зарегистрирован в БД");
+                return ResponseEntity.status(HttpStatus.ACCEPTED)
+                    .body(null); // 202 Accepted - создан в Telegram, но не в БД
+            }
+            
+            StickerSetDto dto = stickerSetService.findByIdWithBotApiData(
+                stickerSet.getId(), language, userId, false
+            );
+            
+            return ResponseEntity.ok(dto);
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("⚠️ Ошибка валидации при создании стикерсета: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при создании стикерсета: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Добавляет стикер в существующий стикерсет
+     */
+    @PostMapping("/{id}/stickers")
+    @Operation(
+        summary = "Добавить стикер в стикерсет",
+        description = """
+            Добавляет стикер в существующий стикерсет.
+            Проверяет права доступа (только владелец) и лимит 120 стикеров.
+            """
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Стикер успешно добавлен"),
+        @ApiResponse(responseCode = "400", description = "Неверные входные данные или стикерсет полон"),
+        @ApiResponse(responseCode = "401", description = "Пользователь не авторизован"),
+        @ApiResponse(responseCode = "403", description = "Нет прав доступа"),
+        @ApiResponse(responseCode = "404", description = "Стикерсет не найден"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<?> addStickerToSet(
+            @Parameter(description = "ID стикерсета", required = true, example = "1")
+            @PathVariable @Positive Long id,
+            @Valid @RequestBody AddStickerDto addDto) {
+        try {
+            Long userId = helper.getCurrentUserId();
+            
+            // Проверка прав доступа
+            StickerSet stickerSet = stickerSetService.findById(id);
+            if (stickerSet == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            if (!helper.isOwnerOrAdmin(stickerSet.getUserId(), userId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            
+            LOGGER.info("➕ Добавление стикера в стикерсет: id={}, userId={}, imageUuid={}", 
+                    id, userId, addDto.getImageUuid());
+            
+            stickerSetCreationService.saveImageToStickerSet(
+                userId,
+                addDto.getImageUuid(),
+                stickerSet.getName(),
+                addDto.getEmoji()
+            );
+            
+            return ResponseEntity.ok().build();
+        } catch (IllegalStateException e) {
+            LOGGER.warn("⚠️ Ошибка при добавлении стикера: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("⚠️ Ошибка валидации: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при добавлении стикера: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Удаляет стикер из стикерсета
+     */
+    @DeleteMapping("/{id}/stickers/{stickerFileId}")
+    @Operation(
+        summary = "Удалить стикер из стикерсета",
+        description = "Удаляет стикер из стикерсета по file_id. Проверяет права доступа (только владелец)."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Стикер успешно удален"),
+        @ApiResponse(responseCode = "401", description = "Пользователь не авторизован"),
+        @ApiResponse(responseCode = "403", description = "Нет прав доступа"),
+        @ApiResponse(responseCode = "404", description = "Стикерсет не найден"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<?> deleteStickerFromSet(
+            @Parameter(description = "ID стикерсета", required = true, example = "1")
+            @PathVariable @Positive Long id,
+            @Parameter(description = "file_id стикера в Telegram", required = true)
+            @PathVariable String stickerFileId) {
+        try {
+            Long userId = helper.getCurrentUserId();
+            
+            // Проверка прав доступа
+            StickerSet stickerSet = stickerSetService.findById(id);
+            if (stickerSet == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            if (!helper.isOwnerOrAdmin(stickerSet.getUserId(), userId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            
+            LOGGER.info("🗑️ Удаление стикера из стикерсета: id={}, userId={}, fileId={}", 
+                    id, userId, stickerFileId);
+            
+            boolean success = telegramBotApiService.deleteStickerFromSet(userId, stickerFileId);
+            
+            if (!success) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to delete sticker from Telegram"));
+            }
+            
+            return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("⚠️ Ошибка валидации: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при удалении стикера: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Универсальный метод: сохраняет изображение из /data/images в стикерсет
+     */
+    @PostMapping("/save-image")
+    @Operation(
+        summary = "Сохранить изображение в стикерсет",
+        description = """
+            Универсальный метод для сохранения любого изображения из /data/images в стикерсет.
+            Если stickerSetName не указан, используется дефолтный стикерсет пользователя.
+            Если указан stickerSetName, проверяется что имя заканчивается на _by_{botUsername}.
+            """
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Изображение успешно сохранено"),
+        @ApiResponse(responseCode = "400", description = "Неверные входные данные или стикерсет полон"),
+        @ApiResponse(responseCode = "401", description = "Пользователь не авторизован"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<?> saveImageToStickerSet(
+            @Valid @RequestBody SaveImageToStickerSetDto saveDto) {
+        try {
+            Long userId = helper.getCurrentUserId();
+            
+            LOGGER.info("💾 Сохранение изображения в стикерсет: userId={}, imageUuid={}, stickerSetName={}", 
+                    userId, saveDto.getImageUuid(), saveDto.getStickerSetName());
+            
+            stickerSetCreationService.saveImageToStickerSet(
+                userId,
+                saveDto.getImageUuid(),
+                saveDto.getStickerSetName(),
+                saveDto.getEmoji()
+            );
+            
+            return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("⚠️ Ошибка валидации: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", e.getMessage()));
+        } catch (IllegalStateException e) {
+            LOGGER.warn("⚠️ Ошибка при сохранении: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при сохранении изображения: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 
     /**
      * Очистить автора стикерсета (только для админа)

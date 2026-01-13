@@ -5,6 +5,8 @@ app:
     url: ${MINI_APP_URL:${app.url}/mini-app/}
   telegram:
     bot-token: ${TELEGRAM_BOT_TOKEN}
+    bot-username: ${TELEGRAM_BOT_USERNAME:stixlybot}
+    default-sticker-set-title: ${STICKER_SET_DEFAULT_TITLE:Styxly Generated}
   internal:
     service-tokens:
       sticker-bot: ${STICKERBOT_SERVICE_TOKEN:}

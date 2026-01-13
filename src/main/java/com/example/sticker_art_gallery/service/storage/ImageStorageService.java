@@ -222,6 +222,46 @@ public class ImageStorageService {
     }
 
     /**
+     * Получает File по UUID для использования в Telegram Bot API.
+     * Выполняет проверку существования файла и срока истечения.
+     *
+     * @param uuid UUID файла в /data/images
+     * @return File если существует и не просрочен
+     * @throws IllegalArgumentException если файл не найден или просрочен
+     */
+    @Transactional
+    public java.io.File getFileByUuid(UUID uuid) {
+        Optional<CachedImageEntity> optionalEntity = cachedImageRepository.findById(uuid);
+        
+        if (optionalEntity.isEmpty()) {
+            LOGGER.warn("⚠️ Изображение не найдено в БД: {}", uuid);
+            throw new IllegalArgumentException("Image not found: " + uuid);
+        }
+        
+        CachedImageEntity entity = optionalEntity.get();
+        
+        // Проверка истечения срока
+        if (entity.isExpired()) {
+            LOGGER.info("⏰ Изображение просрочено, удаляем: {}", entity.getFileName());
+            deleteImage(entity);
+            throw new IllegalArgumentException("Image expired: " + uuid);
+        }
+        
+        Path filePath = Paths.get(storagePath, entity.getFilePath());
+        
+        // Проверка существования файла
+        if (!Files.exists(filePath)) {
+            LOGGER.warn("⚠️ Файл не найден на диске, удаляем запись: {}", filePath);
+            cachedImageRepository.delete(entity);
+            throw new IllegalArgumentException("Image file not found: " + uuid);
+        }
+        
+        java.io.File file = filePath.toFile();
+        LOGGER.debug("✅ Файл найден: {} (size: {} bytes)", file.getAbsolutePath(), file.length());
+        return file;
+    }
+
+    /**
      * Формирует публичный URL для изображения.
      *
      * @param entity кэшированное изображение

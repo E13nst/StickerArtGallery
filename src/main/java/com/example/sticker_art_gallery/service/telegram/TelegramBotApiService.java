@@ -8,10 +8,19 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.RestClientException;
+
+import java.io.File;
 
 /**
  * Сервис для работы с Telegram Bot API
@@ -351,5 +360,308 @@ public class TelegramBotApiService {
             LOGGER.warn("⚠️ Ошибка при извлечении количества стикеров из информации о стикерсете: {}", e.getMessage());
             return 0;
         }
+    }
+
+    /**
+     * Создает новый стикерсет в Telegram
+     * 
+     * @param userId ID пользователя в Telegram
+     * @param stickerFile файл стикера (PNG)
+     * @param name имя стикерсета
+     * @param title название стикерсета
+     * @param emoji эмодзи для стикера
+     * @return true если успешно создан
+     */
+    @CacheEvict(value = "stickerSetInfo", key = "#name")
+    public boolean createNewStickerSet(Long userId, File stickerFile, String name, String title, String emoji) {
+        try {
+            String botToken = appConfig.getTelegram().getBotToken();
+            if (botToken == null || botToken.trim().isEmpty()) {
+                LOGGER.warn("⚠️ Токен бота не настроен в конфигурации");
+                throw new IllegalArgumentException("Токен бота не настроен");
+            }
+
+            String url = TELEGRAM_API_URL + botToken + "/createNewStickerSet";
+            
+            LOGGER.info("🎯 Создаем стикерсет: {} | Title: {} | UserId: {} | Emoji: {}", name, title, userId, emoji);
+            LOGGER.info("📁 Файл стикера: {} | Размер: {} bytes | Существует: {}", 
+                    stickerFile.getAbsolutePath(), stickerFile.length(), stickerFile.exists());
+            
+            // Подготавливаем данные для отправки
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("user_id", userId.toString());
+            body.add("name", name);
+            body.add("title", title);
+            
+            // Используем PNG формат (стабильное решение)
+            body.add("png_sticker", new FileSystemResource(stickerFile));
+            LOGGER.info("📎 Используем PNG формат для стикера");
+            
+            body.add("emojis", emoji);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+            
+            LOGGER.info("🚀 Отправляем запрос к Telegram API: createNewStickerSet | Body keys: {}", body.keySet());
+            
+            ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
+            
+            String responseBody = response.getBody();
+            LOGGER.info("🚀 Отправлен запрос к Telegram API: createNewStickerSet | Status: {} | Response length: {}", 
+                    response.getStatusCode(), responseBody != null ? responseBody.length() : 0);
+            
+            LOGGER.info("📦 Ответ от Telegram (createNewStickerSet): {}", responseBody);
+            
+            boolean success = responseBody != null && responseBody.contains("\"ok\":true");
+            if (success) {
+                // Очищаем кэш для этого стикерсета
+                evictStickerSetCache(name);
+            }
+            return success;
+            
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при создании стикерсета: {}", e.getMessage(), e);
+            return false;
+        }
+    }
+    
+    /**
+     * Добавляет стикер к существующему стикерсету
+     * 
+     * @param userId ID пользователя в Telegram
+     * @param stickerFile файл стикера (PNG)
+     * @param name имя стикерсета
+     * @param emoji эмодзи для стикера
+     * @return true если успешно добавлен
+     */
+    @CacheEvict(value = "stickerSetInfo", key = "#name")
+    public boolean addStickerToSet(Long userId, File stickerFile, String name, String emoji) {
+        try {
+            String botToken = appConfig.getTelegram().getBotToken();
+            if (botToken == null || botToken.trim().isEmpty()) {
+                LOGGER.warn("⚠️ Токен бота не настроен в конфигурации");
+                throw new IllegalArgumentException("Токен бота не настроен");
+            }
+
+            String url = TELEGRAM_API_URL + botToken + "/addStickerToSet";
+            
+            LOGGER.info("➕ Добавляем стикер к стикерсету: {} | UserId: {} | Emoji: {}", name, userId, emoji);
+            
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("user_id", userId.toString());
+            body.add("name", name);
+            
+            // Используем PNG формат (стабильное решение)
+            body.add("png_sticker", new FileSystemResource(stickerFile));
+            LOGGER.info("📎 Используем PNG формат для добавления стикера");
+            
+            body.add("emojis", emoji);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+            
+            LOGGER.info("🚀 Отправляем запрос к Telegram API: addStickerToSet | Body keys: {}", body.keySet());
+            
+            ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
+            
+            String responseBody = response.getBody();
+            LOGGER.info("🚀 Отправлен запрос к Telegram API: addStickerToSet | Status: {} | Response length: {}", 
+                    response.getStatusCode(), responseBody != null ? responseBody.length() : 0);
+            
+            LOGGER.info("📦 Ответ от Telegram (addStickerToSet): {}", responseBody);
+            
+            boolean success = responseBody != null && responseBody.contains("\"ok\":true");
+            if (success) {
+                // Очищаем кэш для этого стикерсета
+                evictStickerSetCache(name);
+            }
+            return success;
+            
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при добавлении стикера: {}", e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * Удаляет стикер из стикерсета
+     * 
+     * @param userId ID пользователя в Telegram
+     * @param stickerFileId file_id стикера для удаления
+     * @return true если успешно удален
+     */
+    @CacheEvict(value = "stickerSetInfo", allEntries = true)
+    public boolean deleteStickerFromSet(Long userId, String stickerFileId) {
+        try {
+            String botToken = appConfig.getTelegram().getBotToken();
+            if (botToken == null || botToken.trim().isEmpty()) {
+                LOGGER.warn("⚠️ Токен бота не настроен в конфигурации");
+                throw new IllegalArgumentException("Токен бота не настроен");
+            }
+
+            String url = TELEGRAM_API_URL + botToken + "/deleteStickerFromSet";
+            
+            LOGGER.info("🗑️ Удаляем стикер из стикерсета: fileId={} | UserId: {}", stickerFileId, userId);
+            
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("user_id", userId.toString());
+            body.add("sticker", stickerFileId);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+            
+            LOGGER.info("🚀 Отправляем запрос к Telegram API: deleteStickerFromSet");
+            
+            ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
+            
+            String responseBody = response.getBody();
+            if (responseBody != null) {
+                LOGGER.info("📦 Ответ от Telegram (deleteStickerFromSet): {}", responseBody);
+            } else {
+                LOGGER.warn("⚠️ Пустой ответ от Telegram API при удалении стикера");
+            }
+            
+            boolean success = responseBody != null && responseBody.contains("\"ok\":true");
+            if (success) {
+                // Очищаем весь кэш стикерсетов, так как мы не знаем имя стикерсета
+                evictAllStickerSetCache();
+            }
+            return success;
+            
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при удалении стикера: {}", e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * Получает информацию о стикерсете и возвращает упрощенный объект StickerSetInfo
+     * Используется для проверки существования и получения количества стикеров
+     * 
+     * @param stickerSetName имя стикерсета
+     * @return StickerSetInfo с информацией о стикерсете или null если не найден
+     */
+    public StickerSetInfo getStickerSetInfoSimple(String stickerSetName) {
+        try {
+            Object stickerSetInfo = getStickerSetInfo(stickerSetName);
+            if (stickerSetInfo == null) {
+                return null;
+            }
+            
+            Integer stickerCount = extractStickersCountFromStickerSetInfo(stickerSetInfo);
+            return new StickerSetInfo(stickerSetName, stickerCount, true);
+            
+        } catch (HttpClientErrorException.NotFound e) {
+            LOGGER.info("📦 Стикерсет {} не найден в Telegram (404)", stickerSetName);
+            return null;
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при получении информации о стикерсете {}: {}", stickerSetName, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Получает file_id стикера по индексу из стикерсета
+     * 
+     * @param stickerSetName имя стикерсета
+     * @param stickerIndex индекс стикера (0-based)
+     * @return file_id стикера или null если не найден
+     */
+    public String getStickerFileId(String stickerSetName, int stickerIndex) {
+        try {
+            LOGGER.info("🔍 Получаем file_id стикера из стикерсета: '{}' | Индекс: {}", stickerSetName, stickerIndex);
+            
+            String botToken = appConfig.getTelegram().getBotToken();
+            if (botToken == null || botToken.trim().isEmpty()) {
+                LOGGER.warn("⚠️ Токен бота не настроен в конфигурации");
+                throw new IllegalArgumentException("Токен бота не настроен");
+            }
+
+            String url = TELEGRAM_API_URL + botToken + "/getStickerSet?name=" + stickerSetName;
+            LOGGER.info("🌐 Запрос к Telegram API: {}", url.replace(botToken, "***"));
+            
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            
+            LOGGER.info("📬 Ответ от Telegram API: Status={} | Body={}", 
+                    response.getStatusCode(), 
+                    response.getBody() != null ? response.getBody().substring(0, Math.min(200, response.getBody().length())) + "..." : "null");
+            
+            if (response.getStatusCode().is2xxSuccessful() && 
+                response.getBody() != null && 
+                response.getBody().contains("\"ok\":true")) {
+                
+                String responseBody = response.getBody();
+                if (responseBody.contains("\"stickers\":")) {
+                    int stickersStart = responseBody.indexOf("\"stickers\":[");
+                    if (stickersStart != -1) {
+                        int stickersEnd = responseBody.indexOf("]", stickersStart);
+                        if (stickersEnd != -1) {
+                            String stickersSection = responseBody.substring(stickersStart, stickersEnd + 1);
+                            
+                            // Ищем стикер по индексу - учитываем что у каждого стикера есть file_id и thumbnail.file_id
+                            String[] stickers = stickersSection.split("\\{\"width\":");
+                            if (stickers.length > stickerIndex + 1) { // +1 потому что первый элемент пустой
+                                String targetSticker = stickers[stickerIndex + 1];
+                                
+                                // Ищем основной file_id стикера (НЕ thumbnail.file_id)
+                                // Ищем первый file_id, который НЕ находится внутри блока thumbnail
+                                int thumbnailStart = targetSticker.indexOf("\"thumbnail\":");
+                                
+                                int fileIdStart = targetSticker.indexOf("\"file_id\":\"");
+                                
+                                // Если file_id находится внутри thumbnail блока, ищем следующий
+                                while (fileIdStart != -1) {
+                                    // Проверяем, находится ли этот file_id внутри thumbnail
+                                    if (thumbnailStart == -1 || fileIdStart < thumbnailStart || 
+                                        fileIdStart > targetSticker.indexOf("}", thumbnailStart)) {
+                                        // Это основной file_id, не thumbnail
+                                        int fileIdEnd = targetSticker.indexOf("\"", fileIdStart + 11);
+                                        if (fileIdEnd != -1) {
+                                            String fileId = targetSticker.substring(fileIdStart + 11, fileIdEnd);
+                                            LOGGER.info("✅ Найден основной file_id стикера: {}", fileId);
+                                            return fileId;
+                                        }
+                                    }
+                                    // Ищем следующий file_id
+                                    fileIdStart = targetSticker.indexOf("\"file_id\":\"", fileIdStart + 1);
+                                }
+                            }
+                            
+                            LOGGER.warn("⚠️ Стикер с индексом {} не найден в ответе", stickerIndex);
+                        }
+                    }
+                }
+            }
+            return null;
+            
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при получении file_id стикера: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * Информация о стикерсете (упрощенная версия)
+     */
+    public static class StickerSetInfo {
+        private final String name;
+        private final int stickerCount;
+        private final boolean exists;
+        
+        public StickerSetInfo(String name, int stickerCount, boolean exists) {
+            this.name = name;
+            this.stickerCount = stickerCount;
+            this.exists = exists;
+        }
+        
+        public String getName() { return name; }
+        public int getStickerCount() { return stickerCount; }
+        public boolean exists() { return exists; }
     }
 }
