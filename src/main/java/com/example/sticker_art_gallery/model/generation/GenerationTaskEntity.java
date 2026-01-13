@@ -7,6 +7,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "generation_tasks")
@@ -55,6 +56,9 @@ public class GenerationTaskEntity {
 
     @Column(name = "expires_at", nullable = false)
     private OffsetDateTime expiresAt;
+
+    @Column(name = "cached_image_id")
+    private UUID cachedImageId;
 
     @PrePersist
     public void prePersist() {
@@ -171,5 +175,13 @@ public class GenerationTaskEntity {
 
     public void setExpiresAt(OffsetDateTime expiresAt) {
         this.expiresAt = expiresAt;
+    }
+
+    public UUID getCachedImageId() {
+        return cachedImageId;
+    }
+
+    public void setCachedImageId(UUID cachedImageId) {
+        this.cachedImageId = cachedImageId;
     }
 }

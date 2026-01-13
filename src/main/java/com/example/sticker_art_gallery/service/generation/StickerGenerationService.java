@@ -81,8 +81,8 @@ public class StickerGenerationService {
 
     @Transactional
     public String startGeneration(Long userId, GenerateStickerRequest request) {
-        LOGGER.info("Starting generation for user {}: prompt_length={}, seed={}, saveToStickerSet={}, stylePresetId={}",
-                userId, request.getPrompt().length(), request.getSeed(), request.getSaveToStickerSet(), request.getStylePresetId());
+        LOGGER.info("Starting generation for user {}: prompt_length={}, seed={}, stylePresetId={}",
+                userId, request.getPrompt().length(), request.getSeed(), request.getStylePresetId());
 
         // 1. Получаем профиль пользователя для проверки баланса
         UserProfileEntity profile = userProfileService.getOrCreateDefaultForUpdate(userId);
@@ -100,7 +100,6 @@ public class StickerGenerationService {
         metadata.put("seed", request.getSeed() != null ? request.getSeed() : -1);
         metadata.put("size", "512*512");
         metadata.put("outputFormat", "png");
-        metadata.put("saveToStickerSet", request.getSaveToStickerSet());
         metadata.put("originalPrompt", request.getPrompt()); // Сохраняем оригинальный промпт
         metadata.put("stylePresetId", request.getStylePresetId());
         metadata.put("removeBackground", request.getRemoveBackground() != null ? request.getRemoveBackground() : bgRemoveEnabled);
@@ -408,6 +407,10 @@ public class StickerGenerationService {
             try {
                 CachedImageEntity cachedImage = imageStorageService.downloadAndStore(finalImageUrl);
                 localImageUrl = imageStorageService.getPublicUrl(cachedImage);
+                
+                // Сохраняем UUID кешированного изображения
+                task.setCachedImageId(cachedImage.getId());
+                
                 LOGGER.info("Generation: Image cached locally: {}", localImageUrl);
             } catch (Exception e) {
                 LOGGER.warn("Generation: Failed to cache image locally, using original URL: {}", e.getMessage());
@@ -429,11 +432,6 @@ public class StickerGenerationService {
             task.setCompletedAt(OffsetDateTime.now());
             task = taskRepository.save(task);
             LOGGER.info("Generation: Task {} completed successfully", taskId);
-
-            // Если нужно сохранить в стикерсет
-            if (Boolean.TRUE.equals(parseMetadata(task.getMetadata()).get("saveToStickerSet"))) {
-                saveStickerToUserSet(task);
-            }
 
         } catch (Exception e) {
             LOGGER.error("Generation: Exception in generation task for {}: {}", taskId, e.getMessage(), e);
@@ -545,6 +543,21 @@ public class StickerGenerationService {
         Map<String, Object> metadata = parseMetadata(task.getMetadata());
         if (metadata.containsKey("originalImageUrl")) {
             response.setOriginalImageUrl(metadata.get("originalImageUrl").toString());
+        }
+
+        // Устанавливаем imageId и imageFormat из сохраненного UUID
+        if (task.getCachedImageId() != null) {
+            response.setImageId(task.getCachedImageId().toString());
+            
+            // Извлекаем формат из URL
+            String imageUrl = task.getImageUrl();
+            if (imageUrl != null) {
+                String fileName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
+                int dotIndex = fileName.lastIndexOf(".");
+                if (dotIndex > 0) {
+                    response.setImageFormat(fileName.substring(dotIndex + 1));
+                }
+            }
         }
 
         if (task.getTelegramFileId() != null) {

@@ -15,9 +15,6 @@ public class GenerateStickerRequest {
     @Schema(description = "Seed для генерации (опционально, -1 = случайный)", example = "42")
     private Integer seed;
 
-    @Schema(description = "Сохранить стикер в стикерсет пользователя после генерации", example = "true", defaultValue = "false")
-    private Boolean saveToStickerSet = false;
-
     @Schema(description = "ID пресета стиля (опционально)", example = "1")
     private Long stylePresetId;
 
@@ -45,14 +42,6 @@ public class GenerateStickerRequest {
 
     public void setSeed(Integer seed) {
         this.seed = seed;
-    }
-
-    public Boolean getSaveToStickerSet() {
-        return saveToStickerSet;
-    }
-
-    public void setSaveToStickerSet(Boolean saveToStickerSet) {
-        this.saveToStickerSet = saveToStickerSet != null ? saveToStickerSet : false;
     }
 
     public Long getStylePresetId() {
