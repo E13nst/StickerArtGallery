@@ -137,6 +137,26 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
            "WHERE s.id = :id", nativeQuery = true)
     int recalculateLikesCount(@Param("id") Long id);
 
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update StickerSet ss set ss.dislikesCount = ss.dislikesCount + 1 where ss.id = :id")
+    int incrementDislikesCount(@Param("id") Long id);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update StickerSet ss set ss.dislikesCount = CASE WHEN ss.dislikesCount > 0 THEN ss.dislikesCount - 1 ELSE 0 END where ss.id = :id")
+    int decrementDislikesCount(@Param("id") Long id);
+
+    /**
+     * Пересчитать dislikes_count на основе реального количества записей в таблице dislikes
+     * Используется для исправления расхождений между денормализованным полем и реальными данными
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "UPDATE stickersets s " +
+           "SET dislikes_count = COALESCE((" +
+           "  SELECT COUNT(*) FROM dislikes d WHERE d.stickerset_id = s.id" +
+           "), 0) " +
+           "WHERE s.id = :id", nativeQuery = true)
+    int recalculateDislikesCount(@Param("id") Long id);
+
     /**
      * Поиск стикерсетов пользователя с дополнительными фильтрами
      * @param includeBlocked если true, включает заблокированные стикерсеты (state = 'BLOCKED')

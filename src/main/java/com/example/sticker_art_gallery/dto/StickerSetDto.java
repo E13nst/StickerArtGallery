@@ -56,11 +56,17 @@ public class StickerSetDto {
     @Schema(description = "Количество лайков стикерсета", example = "42")
     private Long likesCount;
     
+    @Schema(description = "Количество дизлайков стикерсета", example = "5")
+    private Long dislikesCount;
+    
     @Schema(description = "Количество стикеров в стикерсете", example = "24", nullable = true)
     private Integer stickersCount;
     
     @Schema(description = "Лайкнул ли текущий пользователь этот стикерсет", example = "true")
     private boolean isLikedByCurrentUser;
+    
+    @Schema(description = "Дизлайкнул ли текущий пользователь этот стикерсет", example = "false")
+    private boolean isDislikedByCurrentUser;
     
     @Schema(description = "Состояние стикерсета в жизненном цикле", example = "ACTIVE", 
             allowableValues = {"ACTIVE", "DELETED", "BLOCKED"})
@@ -212,6 +218,23 @@ public class StickerSetDto {
     
     public void setLikedByCurrentUser(boolean likedByCurrentUser) {
         isLikedByCurrentUser = likedByCurrentUser;
+    }
+    
+    public Long getDislikesCount() {
+        return dislikesCount;
+    }
+    
+    public void setDislikesCount(Long dislikesCount) {
+        this.dislikesCount = dislikesCount;
+    }
+    
+    @JsonProperty("isDislikedByCurrentUser")
+    public boolean isDislikedByCurrentUser() {
+        return isDislikedByCurrentUser;
+    }
+    
+    public void setDislikedByCurrentUser(boolean dislikedByCurrentUser) {
+        isDislikedByCurrentUser = dislikedByCurrentUser;
     }
     
     public StickerSetState getState() {
@@ -445,6 +468,12 @@ public class StickerSetDto {
             dto.setLikesCount(0L);
         }
         
+        if (entity.getDislikesCount() != null) {
+            dto.setDislikesCount(entity.getDislikesCount().longValue());
+        } else {
+            dto.setDislikesCount(0L);
+        }
+        
         // Устанавливаем пустой список действий, если не передан currentUserId
         dto.setAvailableActions(new ArrayList<>());
         
@@ -486,6 +515,13 @@ public class StickerSetDto {
             dto.setLikesCount(0L);
         }
         
+        // Добавляем количество дизлайков из денормализованного поля
+        if (entity.getDislikesCount() != null) {
+            dto.setDislikesCount(entity.getDislikesCount().longValue());
+        } else {
+            dto.setDislikesCount(0L);
+        }
+        
         // Добавляем количество стикеров
         dto.setStickersCount(entity.getStickersCount());
         
@@ -507,8 +543,9 @@ public class StickerSetDto {
             dto.setDescriptions(descriptionsMap);
         }
         
-        // Устанавливаем isLikedByCurrentUser по умолчанию в false (будет переопределено, если передан currentUserId)
+        // Устанавливаем isLikedByCurrentUser и isDislikedByCurrentUser по умолчанию в false (будет переопределено, если передан currentUserId)
         dto.setLikedByCurrentUser(false);
+        dto.setDislikedByCurrentUser(false);
         
         // Устанавливаем пустой список действий, если не передан currentUserId и isAdmin
         dto.setAvailableActions(new ArrayList<>());
@@ -537,6 +574,7 @@ public class StickerSetDto {
         
         if (dto != null && currentUserId != null) {
             dto.setLikedByCurrentUser(entity.isLikedByUser(currentUserId));
+            dto.setDislikedByCurrentUser(entity.isDislikedByUser(currentUserId));
         }
         
         // Вычисляем доступные действия только если требуется

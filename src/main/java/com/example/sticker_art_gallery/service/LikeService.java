@@ -11,6 +11,7 @@ import com.example.sticker_art_gallery.model.Like;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.repository.LikeRepository;
 import com.example.sticker_art_gallery.repository.StickerSetRepository;
+import com.example.sticker_art_gallery.repository.DislikeRepository;
 import com.example.sticker_art_gallery.service.telegram.StickerSetService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,16 +40,23 @@ public class LikeService {
     private final StickerSetRepository stickerSetRepository;
     private final CacheManager cacheManager;
     private final StickerSetService stickerSetService;
+    private final DislikeRepository dislikeRepository;
     
-    public LikeService(LikeRepository likeRepository, StickerSetRepository stickerSetRepository, CacheManager cacheManager, @Lazy StickerSetService stickerSetService) {
+    public LikeService(LikeRepository likeRepository, 
+                      StickerSetRepository stickerSetRepository, 
+                      CacheManager cacheManager, 
+                      @Lazy StickerSetService stickerSetService,
+                      DislikeRepository dislikeRepository) {
         this.likeRepository = likeRepository;
         this.stickerSetRepository = stickerSetRepository;
         this.cacheManager = cacheManager;
         this.stickerSetService = stickerSetService;
+        this.dislikeRepository = dislikeRepository;
     }
     
     /**
      * Поставить лайк стикерсету
+     * Если у пользователя уже есть дизлайк, он будет удален
      */
     public LikeResponseDto likeStickerSet(Long userId, Long stickerSetId) {
         LOGGER.info("❤️ Пользователь {} лайкает стикерсет {}", userId, stickerSetId);
@@ -60,6 +68,15 @@ public class LikeService {
         // Проверяем, не лайкнул ли уже пользователь
         if (likeRepository.existsByUserIdAndStickerSetId(userId, stickerSetId)) {
             throw new IllegalArgumentException("Вы уже лайкнули этот стикерсет");
+        }
+        
+        // Взаимоисключающая логика: если есть дизлайк, удаляем его
+        if (dislikeRepository.existsByUserIdAndStickerSetId(userId, stickerSetId)) {
+            LOGGER.info("🔄 Удаление дизлайка перед постановкой лайка для пользователя {} и стикерсета {}", userId, stickerSetId);
+            dislikeRepository.deleteByUserIdAndStickerSetId(userId, stickerSetId);
+            // Обновляем счетчик дизлайков
+            stickerSetRepository.decrementDislikesCount(stickerSetId);
+            stickerSetRepository.recalculateDislikesCount(stickerSetId);
         }
         
         // Создаем лайк
@@ -144,12 +161,15 @@ public class LikeService {
         
         if (exists) {
             LikeResponseDto result = unlikeStickerSet(userId, stickerSetId);
+            long totalDislikes = dislikeRepository.existsByUserIdAndStickerSetId(userId, stickerSetId) 
+                ? getDislikesCountFromStickerSet(stickerSetId) : 0;
             LOGGER.info("✅ Лайк убран, всего лайков: {}", result.getTotalLikes());
-            return new LikeToggleResult(result.isLiked(), result.getTotalLikes());
+            return new LikeToggleResult(result.isLiked(), result.getTotalLikes(), totalDislikes);
         } else {
             LikeResponseDto result = likeStickerSet(userId, stickerSetId);
+            long totalDislikes = getDislikesCountFromStickerSet(stickerSetId);
             LOGGER.info("✅ Лайк поставлен, всего лайков: {}", result.getTotalLikes());
-            return new LikeToggleResult(result.isLiked(), result.getTotalLikes());
+            return new LikeToggleResult(result.isLiked(), result.getTotalLikes(), totalDislikes);
         }
     }
     
@@ -160,6 +180,16 @@ public class LikeService {
     public long getLikesCount(Long stickerSetId) {
         return stickerSetRepository.findById(stickerSetId)
                 .map(ss -> ss.getLikesCount() == null ? 0 : ss.getLikesCount().longValue())
+                .orElse(0L);
+    }
+    
+    /**
+     * Получить количество дизлайков стикерсета (вспомогательный метод)
+     */
+    @Transactional(readOnly = true)
+    public long getDislikesCountFromStickerSet(Long stickerSetId) {
+        return stickerSetRepository.findById(stickerSetId)
+                .map(ss -> ss.getDislikesCount() == null ? 0 : ss.getDislikesCount().longValue())
                 .orElse(0L);
     }
     

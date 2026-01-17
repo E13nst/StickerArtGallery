@@ -1,6 +1,7 @@
 package com.example.sticker_art_gallery.model.telegram;
 
 import com.example.sticker_art_gallery.model.Like;
+import com.example.sticker_art_gallery.model.Dislike;
 import com.example.sticker_art_gallery.model.category.Category;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -72,6 +73,9 @@ public class StickerSet {
     @Column(name = "likes_count", nullable = false)
     private Integer likesCount = 0;
     
+    @Column(name = "dislikes_count", nullable = false)
+    private Integer dislikesCount = 0;
+    
     @Column(name = "stickers_count")
     private Integer stickersCount; // Количество стикеров в стикерсете (обновляется при обогащении данных из Telegram API)
     
@@ -95,6 +99,14 @@ public class StickerSet {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private Set<Like> likes = new HashSet<>();
+    
+    /**
+     * Дизлайки стикерсета (one-to-many)
+     */
+    @OneToMany(mappedBy = "stickerSet", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Set<Dislike> dislikes = new HashSet<>();
     
     /**
      * Многоязычные описания стикерсета (one-to-many)
@@ -164,6 +176,37 @@ public class StickerSet {
     public boolean isLikedByUser(Long userId) {
         return likes.stream()
             .anyMatch(like -> like.getUserId().equals(userId));
+    }
+    
+    /**
+     * Добавить дизлайк к стикерсету
+     */
+    public void addDislike(Dislike dislike) {
+        dislikes.add(dislike);
+        dislike.setStickerSet(this);
+    }
+    
+    /**
+     * Удалить дизлайк из стикерсета
+     */
+    public void removeDislike(Dislike dislike) {
+        dislikes.remove(dislike);
+        dislike.setStickerSet(null);
+    }
+    
+    /**
+     * Количество дизлайков из денормализованного поля
+     */
+    public Integer getDislikesCount() {
+        return dislikesCount == null ? 0 : dislikesCount;
+    }
+    
+    /**
+     * Проверить, дизлайкнул ли пользователь стикерсет
+     */
+    public boolean isDislikedByUser(Long userId) {
+        return dislikes.stream()
+            .anyMatch(dislike -> dislike.getUserId().equals(userId));
     }
     
     // ============ State checks ============

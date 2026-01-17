@@ -16,6 +16,9 @@ public class LikeToggleResult {
     @Schema(description = "Общее количество лайков стикерсета", example = "42")
     private long totalLikes;
     
+    @Schema(description = "Общее количество дизлайков стикерсета", example = "5")
+    private long totalDislikes;
+    
     // Конструкторы
     public LikeToggleResult() {
     }
@@ -23,6 +26,13 @@ public class LikeToggleResult {
     public LikeToggleResult(boolean isLiked, long totalLikes) {
         this.isLiked = isLiked;
         this.totalLikes = totalLikes;
+        this.totalDislikes = 0;
+    }
+    
+    public LikeToggleResult(boolean isLiked, long totalLikes, long totalDislikes) {
+        this.isLiked = isLiked;
+        this.totalLikes = totalLikes;
+        this.totalDislikes = totalDislikes;
     }
     
     // Геттеры и сеттеры
@@ -42,11 +52,20 @@ public class LikeToggleResult {
         this.totalLikes = totalLikes;
     }
     
+    public long getTotalDislikes() {
+        return totalDislikes;
+    }
+    
+    public void setTotalDislikes(long totalDislikes) {
+        this.totalDislikes = totalDislikes;
+    }
+    
     @Override
     public String toString() {
         return "LikeToggleResult{" +
                 "isLiked=" + isLiked +
                 ", totalLikes=" + totalLikes +
+                ", totalDislikes=" + totalDislikes +
                 '}';
     }
 }

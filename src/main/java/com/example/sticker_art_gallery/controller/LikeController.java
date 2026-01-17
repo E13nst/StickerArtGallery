@@ -350,6 +350,7 @@ public class LikeController {
             }
             
             long totalLikes = likeService.getLikesCount(stickerSetId);
+            long totalDislikes = likeService.getDislikesCountFromStickerSet(stickerSetId);
             
             // Проверяем, авторизован ли пользователь
             Long userId = getCurrentUserIdOrNull();
@@ -358,7 +359,7 @@ public class LikeController {
                 liked = likeService.isLikedByUser(userId, stickerSetId);
             }
             
-            LikeToggleResult result = new LikeToggleResult(liked, totalLikes);
+            LikeToggleResult result = new LikeToggleResult(liked, totalLikes, totalDislikes);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             LOGGER.error("❌ Непредвиденная ошибка при получении количества лайков: {}", e.getMessage(), e);
