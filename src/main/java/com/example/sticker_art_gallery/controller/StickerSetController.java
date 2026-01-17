@@ -476,6 +476,86 @@ public class StickerSetController {
     }
     
     /**
+     * Получить случайный стикерсет, который пользователь еще не лайкал и не дизлайкал
+     */
+    @GetMapping("/random")
+    @Operation(
+        summary = "Получить случайный стикерсет",
+        description = "Возвращает случайный публичный и активный стикерсет, который пользователь еще не оценивал " +
+                     "(не ставил лайк или дизлайк). Требует авторизации через Telegram Web App. " +
+                     "Если все доступные стикерсеты уже оценены пользователем, возвращает 404."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Случайный стикерсет успешно получен",
+            content = @Content(schema = @Schema(implementation = StickerSetDto.class),
+                examples = @ExampleObject(value = """
+                    {
+                        "id": 42,
+                        "userId": 987654321,
+                        "title": "Случайный стикерсет",
+                        "name": "random_stickers_by_StickerGalleryBot",
+                        "createdAt": "2025-01-10T15:30:00",
+                        "likesCount": 25,
+                        "dislikesCount": 3,
+                        "isLikedByCurrentUser": false,
+                        "isDislikedByCurrentUser": false,
+                        "telegramStickerSetInfo": "{\\"name\\":\\"random_stickers_by_StickerGalleryBot\\",\\"title\\":\\"Случайный стикерсет\\",\\"sticker_type\\":\\"regular\\",\\"is_animated\\":false,\\"stickers\\":[...]}",
+                        "categories": [
+                            {
+                                "id": 3,
+                                "key": "memes",
+                                "name": "Мемы",
+                                "description": "Мемные стикеры",
+                                "iconUrl": null,
+                                "displayOrder": 50,
+                                "isActive": true
+                            }
+                        ],
+                        "isPublic": true,
+                        "isBlocked": false,
+                        "blockReason": null
+                    }
+                    """))),
+        @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
+        @ApiResponse(responseCode = "404", description = "Нет доступных стикерсетов, которые пользователь еще не оценил"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<StickerSetDto> getRandomStickerSet(
+            @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
+            @RequestParam(defaultValue = "false") boolean shortInfo,
+            HttpServletRequest request) {
+        try {
+            Long currentUserId = helper.getCurrentUserIdOrNull();
+            
+            if (currentUserId == null) {
+                LOGGER.warn("⚠️ Попытка получить случайный стикерсет без авторизации");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            
+            LOGGER.debug("🎲 Получение случайного стикерсета для пользователя {} (shortInfo={})", currentUserId, shortInfo);
+            
+            String language = helper.getLanguageFromHeaderOrUser(request);
+            StickerSetDto randomStickerSet = stickerSetService.findRandomStickerSetNotRatedByUser(
+                    currentUserId, language, shortInfo);
+            
+            if (randomStickerSet == null) {
+                LOGGER.debug("⚠️ Для пользователя {} не найдено стикерсетов, которые он еще не оценивал", currentUserId);
+                return ResponseEntity.notFound().build();
+            }
+            
+            LOGGER.debug("✅ Найден случайный стикерсет: {} (id={})", randomStickerSet.getTitle(), randomStickerSet.getId());
+            return ResponseEntity.ok(randomStickerSet);
+            
+        } catch (UnauthorizedException e) {
+            LOGGER.warn("⚠️ {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при получении случайного стикерсета: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    /**
      * Создать новый стикерсет
      */
     @PostMapping

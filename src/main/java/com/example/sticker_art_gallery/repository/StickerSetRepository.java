@@ -1,7 +1,6 @@
 package com.example.sticker_art_gallery.repository;
 
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
-import com.example.sticker_art_gallery.model.telegram.StickerSetState;
 import com.example.sticker_art_gallery.model.telegram.StickerSetType;
 import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
 import org.springframework.data.domain.Page;
@@ -339,4 +338,22 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
                                              @Param("hasAuthorOnly") boolean hasAuthorOnly,
                                              @Param("userId") Long userId,
                                              Pageable pageable);
+    
+    /**
+     * Получить случайный стикерсет, который пользователь еще не лайкал и не дизлайкал
+     * Исключает стикерсеты, на которые пользователь уже поставил лайк или дизлайк
+     */
+    @Query(value = "SELECT ss.* FROM stickersets ss " +
+           "WHERE ss.state = 'ACTIVE' " +
+           "AND ss.visibility = 'PUBLIC' " +
+           "AND ss.id NOT IN (" +
+           "  SELECT l.stickerset_id FROM likes l WHERE l.user_id = :userId" +
+           ") " +
+           "AND ss.id NOT IN (" +
+           "  SELECT d.stickerset_id FROM dislikes d WHERE d.user_id = :userId" +
+           ") " +
+           "ORDER BY RANDOM() " +
+           "LIMIT 1",
+           nativeQuery = true)
+    Optional<StickerSet> findRandomStickerSetNotRatedByUser(@Param("userId") Long userId);
 }

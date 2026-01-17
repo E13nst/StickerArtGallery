@@ -925,4 +925,33 @@ public class StickerSetService {
                 stickerSetsPage.getContent(), lang, currentUserId, shortInfo, preview, false);
         return PageResponse.of(stickerSetsPage, enrichedDtos);
     }
+    
+    /**
+     * Получить случайный стикерсет, который пользователь еще не лайкал и не дизлайкал
+     * @param userId ID пользователя
+     * @param language язык для локализации
+     * @param shortInfo если true, не обогащать данными из Telegram Bot API
+     * @return случайный стикерсет или null, если нет доступных стикерсетов
+     */
+    public StickerSetDto findRandomStickerSetNotRatedByUser(Long userId, String language, boolean shortInfo) {
+        LOGGER.debug("🎲 Поиск случайного стикерсета для пользователя {} (shortInfo={})", userId, shortInfo);
+        
+        Optional<StickerSet> randomStickerSet = stickerSetRepository.findRandomStickerSetNotRatedByUser(userId);
+        
+        if (randomStickerSet.isEmpty()) {
+            LOGGER.debug("⚠️ Не найдено стикерсетов, которые пользователь {} еще не оценивал", userId);
+            return null;
+        }
+        
+        StickerSet stickerSet = randomStickerSet.get();
+        LOGGER.debug("✅ Найден случайный стикерсет: {} (id={})", stickerSet.getName(), stickerSet.getId());
+        
+        // Обогащаем данными из Bot API если нужно
+        if (shortInfo) {
+            String lang = normalizeLanguage(language);
+            return StickerSetDto.fromEntity(stickerSet, lang, userId);
+        } else {
+            return findByIdWithBotApiData(stickerSet.getId(), language, userId, false);
+        }
+    }
 } 
