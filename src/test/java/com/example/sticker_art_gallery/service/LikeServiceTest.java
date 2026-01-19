@@ -57,7 +57,7 @@ class LikeServiceTest {
         StickerSet before = stickerSetRepository.findById(stickerSetId).orElseThrow();
         int initial = before.getLikesCount();
 
-        likeService.likeStickerSet(userId, stickerSetId);
+        likeService.likeStickerSet(userId, stickerSetId, false);
         entityManager.flush();
         entityManager.clear();
         StickerSet afterLike = stickerSetRepository.findById(stickerSetId).orElseThrow();
@@ -73,12 +73,12 @@ class LikeServiceTest {
     @Test
     @Story("Идемпотентность: повторный like не увеличивает счётчик")
     void duplicateLike_shouldNotIncreaseCount() {
-        likeService.likeStickerSet(userId, stickerSetId);
+        likeService.likeStickerSet(userId, stickerSetId, false);
         int afterFirst = stickerSetRepository.findById(stickerSetId).orElseThrow().getLikesCount();
 
         // Ожидаем IllegalArgumentException на повторном лайке
         Assertions.assertThrows(IllegalArgumentException.class, () ->
-            likeService.likeStickerSet(userId, stickerSetId)
+            likeService.likeStickerSet(userId, stickerSetId, false)
         );
 
         int afterSecond = stickerSetRepository.findById(stickerSetId).orElseThrow().getLikesCount();
