@@ -1139,7 +1139,7 @@ public class StickerSetController {
             """
     )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Изображение успешно сохранено"),
+        @ApiResponse(responseCode = "200", description = "Изображение успешно сохранено (возвращает stickerFileId)"),
         @ApiResponse(responseCode = "400", description = "Неверные входные данные или стикерсет полон"),
         @ApiResponse(responseCode = "401", description = "Пользователь не авторизован"),
         @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
@@ -1152,14 +1152,14 @@ public class StickerSetController {
             LOGGER.info("💾 Сохранение изображения в стикерсет: userId={}, imageUuid={}, stickerSetName={}", 
                     userId, saveDto.getImageUuid(), saveDto.getStickerSetName());
             
-            stickerSetCreationService.saveImageToStickerSet(
+            SaveImageToStickerSetResponseDto result = stickerSetCreationService.saveImageToStickerSet(
                 userId,
                 saveDto.getImageUuid(),
                 saveDto.getStickerSetName(),
                 saveDto.getEmoji()
             );
             
-            return ResponseEntity.ok().build();
+            return ResponseEntity.ok(result);
         } catch (IllegalArgumentException e) {
             LOGGER.warn("⚠️ Ошибка валидации: {}", e.getMessage());
             return ResponseEntity.badRequest()

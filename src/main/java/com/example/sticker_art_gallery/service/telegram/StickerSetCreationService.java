@@ -2,6 +2,7 @@ package com.example.sticker_art_gallery.service.telegram;
 
 import com.example.sticker_art_gallery.config.AppConfig;
 import com.example.sticker_art_gallery.dto.CreateStickerSetDto;
+import com.example.sticker_art_gallery.dto.SaveImageToStickerSetResponseDto;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
 import com.example.sticker_art_gallery.repository.UserRepository;
@@ -139,7 +140,7 @@ public class StickerSetCreationService {
      * @param emoji эмодзи для стикера (опционально, по умолчанию "🎨")
      */
     @Transactional
-    public void saveImageToStickerSet(
+    public SaveImageToStickerSetResponseDto saveImageToStickerSet(
             Long userId,
             java.util.UUID imageUuid,
             String stickerSetName,
@@ -178,7 +179,14 @@ public class StickerSetCreationService {
                 }
                 
                 LOGGER.info("✅ Дефолтный стикерсет создан: {}", stickerSetName);
-                return; // Стикер уже добавлен при создании
+                
+                // Стикер уже добавлен при создании, индекс будет 0
+                String stickerFileId = telegramBotApiService.getStickerFileId(stickerSetName, 0);
+                if (stickerFileId == null || stickerFileId.isBlank()) {
+                    throw new RuntimeException("Failed to resolve sticker file_id after creating set: " + stickerSetName);
+                }
+                
+                return new SaveImageToStickerSetResponseDto(stickerSetName, 0, stickerFileId);
             }
         } else {
             // Валидация владения
@@ -209,6 +217,20 @@ public class StickerSetCreationService {
         }
         
         LOGGER.info("✅ Стикер добавлен в стикерсет: {}", stickerSetName);
+
+        // 4. Получить file_id добавленного стикера (обычно последний)
+        TelegramBotApiService.StickerSetInfo updatedInfo = telegramBotApiService.getStickerSetInfoSimple(stickerSetName);
+        if (updatedInfo == null || !updatedInfo.exists() || updatedInfo.getStickerCount() <= 0) {
+            throw new RuntimeException("Failed to fetch updated sticker set info: " + stickerSetName);
+        }
+
+        int stickerIndex = updatedInfo.getStickerCount() - 1;
+        String stickerFileId = telegramBotApiService.getStickerFileId(stickerSetName, stickerIndex);
+        if (stickerFileId == null || stickerFileId.isBlank()) {
+            throw new RuntimeException("Failed to resolve sticker file_id for set: " + stickerSetName + ", index: " + stickerIndex);
+        }
+
+        return new SaveImageToStickerSetResponseDto(stickerSetName, stickerIndex, stickerFileId);
     }
     
     /**
