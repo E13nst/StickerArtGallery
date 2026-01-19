@@ -80,12 +80,14 @@ public class LikeController {
     })
     public ResponseEntity<LikeResponseDto> likeStickerSet(
             @Parameter(description = "Уникальный ID стикерсета", example = "5")
-            @PathVariable @Positive(message = "ID стикерсета должен быть положительным числом") Long stickerSetId) {
+            @PathVariable @Positive(message = "ID стикерсета должен быть положительным числом") Long stickerSetId,
+            @Parameter(description = "Флаг, что это свайп (для отслеживания и начисления наград)", example = "false")
+            @RequestParam(defaultValue = "false") boolean isSwipe) {
         try {
             Long userId = getCurrentUserId();
-            LOGGER.info("❤️ Пользователь {} ставит лайк стикерсету {}", userId, stickerSetId);
+            LOGGER.info("❤️ Пользователь {} ставит лайк стикерсету {} (isSwipe={})", userId, stickerSetId, isSwipe);
             
-            LikeResponseDto result = likeService.likeStickerSet(userId, stickerSetId);
+            LikeResponseDto result = likeService.likeStickerSet(userId, stickerSetId, isSwipe);
             return ResponseEntity.ok(result);
         } catch (IllegalStateException e) {
             LOGGER.warn("⚠️ Пользователь не авторизован: {}", e.getMessage());

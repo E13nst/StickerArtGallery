@@ -178,6 +178,25 @@ public class ValidationExceptionHandler {
     }
 
     /**
+     * Обработка SwipeLimitExceededException (429 Too Many Requests)
+     */
+    @ExceptionHandler(SwipeLimitExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleSwipeLimitExceeded(SwipeLimitExceededException ex) {
+        LOGGER.warn("⚠️ Достигнут лимит свайпов: limit={}, current={}, resetType={}", 
+                   ex.getDailyLimit(), ex.getCurrentSwipes(), ex.getResetType());
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "Swipe Limit Exceeded");
+        body.put("message", ex.getMessage());
+        body.put("dailyLimit", ex.getDailyLimit());
+        body.put("currentSwipes", ex.getCurrentSwipes());
+        body.put("remainingSwipes", Math.max(0, ex.getDailyLimit() - ex.getCurrentSwipes()));
+        body.put("resetType", ex.getResetType().name());
+        body.put("resetDescription", ex.getResetTypeDescription());
+        body.put("timestamp", java.time.OffsetDateTime.now());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(body);
+    }
+
+    /**
      * Обработка IllegalArgumentException (400)
      */
     @ExceptionHandler(IllegalArgumentException.class)
@@ -217,9 +236,14 @@ public class ValidationExceptionHandler {
 
     /**
      * Обработка RuntimeException (500)
+     * Исключает SwipeLimitExceededException, так как он обрабатывается отдельно
      */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleRuntime(RuntimeException ex) {
+        // Пропускаем SwipeLimitExceededException, он обрабатывается отдельно
+        if (ex instanceof SwipeLimitExceededException) {
+            return handleSwipeLimitExceeded((SwipeLimitExceededException) ex);
+        }
         LOGGER.error("❌ Внутренняя ошибка: {}", ex.getMessage(), ex);
         Map<String, Object> body = new HashMap<>();
         body.put("error", "Internal Server Error");

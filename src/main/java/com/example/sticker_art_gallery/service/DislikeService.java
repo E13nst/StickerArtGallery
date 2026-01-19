@@ -9,6 +9,7 @@ import com.example.sticker_art_gallery.model.Dislike;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.repository.DislikeRepository;
 import com.example.sticker_art_gallery.repository.StickerSetRepository;
+import com.example.sticker_art_gallery.service.swipe.SwipeTrackingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
@@ -34,22 +35,29 @@ public class DislikeService {
     private final StickerSetRepository stickerSetRepository;
     private final CacheManager cacheManager;
     private final LikeService likeService;
+    private final SwipeTrackingService swipeTrackingService;
     
     public DislikeService(DislikeRepository dislikeRepository, 
                          StickerSetRepository stickerSetRepository, 
                          CacheManager cacheManager,
-                         LikeService likeService) {
+                         LikeService likeService,
+                         SwipeTrackingService swipeTrackingService) {
         this.dislikeRepository = dislikeRepository;
         this.stickerSetRepository = stickerSetRepository;
         this.cacheManager = cacheManager;
         this.likeService = likeService;
+        this.swipeTrackingService = swipeTrackingService;
     }
     
     /**
      * Поставить дизлайк стикерсету
      * Если у пользователя уже есть лайк, он будет удален
+     * 
+     * @param userId ID пользователя
+     * @param stickerSetId ID стикерсета
+     * @param isSwipe флаг, что это свайп (для отслеживания и начисления наград)
      */
-    public DislikeResponseDto dislikeStickerSet(Long userId, Long stickerSetId) {
+    public DislikeResponseDto dislikeStickerSet(Long userId, Long stickerSetId, boolean isSwipe) {
         LOGGER.info("👎 Пользователь {} дизлайкает стикерсет {}", userId, stickerSetId);
         
         // Проверяем существование стикерсета
@@ -82,6 +90,22 @@ public class DislikeService {
         long totalDislikes = getDislikesCount(stickerSetId);
         LOGGER.info("✅ Дизлайк успешно поставлен: {}, всего дизлайков: {}", savedDislike.getId(), totalDislikes);
         
+        // Если это свайп, записываем его для отслеживания и начисления наград
+        if (isSwipe) {
+            try {
+                swipeTrackingService.recordSwipe(
+                    userId,
+                    com.example.sticker_art_gallery.model.swipe.UserSwipeEntity.ActionType.DISLIKE,
+                    null,
+                    savedDislike
+                );
+                LOGGER.debug("✅ Свайп (дизлайк) записан: userId={}, stickerSetId={}", userId, stickerSetId);
+            } catch (Exception e) {
+                LOGGER.error("❌ Ошибка при записи свайпа: {}", e.getMessage(), e);
+                // Не прерываем транзакцию - дизлайк уже поставлен
+            }
+        }
+
         DislikeResponseDto response = new DislikeResponseDto();
         response.setId(savedDislike.getId());
         response.setUserId(savedDislike.getUserId());
@@ -89,6 +113,7 @@ public class DislikeService {
         response.setCreatedAt(savedDislike.getCreatedAt());
         response.setDisliked(true);
         response.setTotalDislikes(totalDislikes);
+        response.setSwipe(isSwipe);
         
         return response;
     }
@@ -152,7 +177,7 @@ public class DislikeService {
             LOGGER.info("✅ Дизлайк убран, всего дизлайков: {}", result.getTotalDislikes());
             return new DislikeToggleResult(result.isDisliked(), result.getTotalDislikes());
         } else {
-            DislikeResponseDto result = dislikeStickerSet(userId, stickerSetId);
+            DislikeResponseDto result = dislikeStickerSet(userId, stickerSetId, false);
             LOGGER.info("✅ Дизлайк поставлен, всего дизлайков: {}", result.getTotalDislikes());
             return new DislikeToggleResult(result.isDisliked(), result.getTotalDislikes());
         }

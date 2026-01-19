@@ -12,6 +12,7 @@ import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.repository.LikeRepository;
 import com.example.sticker_art_gallery.repository.StickerSetRepository;
 import com.example.sticker_art_gallery.repository.DislikeRepository;
+import com.example.sticker_art_gallery.service.swipe.SwipeTrackingService;
 import com.example.sticker_art_gallery.service.telegram.StickerSetService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,24 +42,31 @@ public class LikeService {
     private final CacheManager cacheManager;
     private final StickerSetService stickerSetService;
     private final DislikeRepository dislikeRepository;
+    private final SwipeTrackingService swipeTrackingService;
     
     public LikeService(LikeRepository likeRepository, 
                       StickerSetRepository stickerSetRepository, 
                       CacheManager cacheManager, 
                       @Lazy StickerSetService stickerSetService,
-                      DislikeRepository dislikeRepository) {
+                      DislikeRepository dislikeRepository,
+                      SwipeTrackingService swipeTrackingService) {
         this.likeRepository = likeRepository;
         this.stickerSetRepository = stickerSetRepository;
         this.cacheManager = cacheManager;
         this.stickerSetService = stickerSetService;
         this.dislikeRepository = dislikeRepository;
+        this.swipeTrackingService = swipeTrackingService;
     }
     
     /**
      * Поставить лайк стикерсету
      * Если у пользователя уже есть дизлайк, он будет удален
+     * 
+     * @param userId ID пользователя
+     * @param stickerSetId ID стикерсета
+     * @param isSwipe флаг, что это свайп (для отслеживания и начисления наград)
      */
-    public LikeResponseDto likeStickerSet(Long userId, Long stickerSetId) {
+    public LikeResponseDto likeStickerSet(Long userId, Long stickerSetId, boolean isSwipe) {
         LOGGER.info("❤️ Пользователь {} лайкает стикерсет {}", userId, stickerSetId);
         
         // Проверяем существование стикерсета
@@ -94,6 +102,22 @@ public class LikeService {
         long totalLikes = getLikesCount(stickerSetId);
         LOGGER.info("✅ Лайк успешно поставлен: {}, всего лайков: {}", savedLike.getId(), totalLikes);
         
+        // Если это свайп, записываем его для отслеживания и начисления наград
+        if (isSwipe) {
+            try {
+                swipeTrackingService.recordSwipe(
+                    userId,
+                    com.example.sticker_art_gallery.model.swipe.UserSwipeEntity.ActionType.LIKE,
+                    savedLike,
+                    null
+                );
+                LOGGER.debug("✅ Свайп (лайк) записан: userId={}, stickerSetId={}", userId, stickerSetId);
+            } catch (Exception e) {
+                LOGGER.error("❌ Ошибка при записи свайпа: {}", e.getMessage(), e);
+                // Не прерываем транзакцию - лайк уже поставлен
+            }
+        }
+
         LikeResponseDto response = new LikeResponseDto();
         response.setId(savedLike.getId());
         response.setUserId(savedLike.getUserId());
@@ -101,6 +125,7 @@ public class LikeService {
         response.setCreatedAt(savedLike.getCreatedAt());
         response.setLiked(true);
         response.setTotalLikes(totalLikes);
+        response.setSwipe(isSwipe);
         
         return response;
     }
@@ -166,7 +191,7 @@ public class LikeService {
             LOGGER.info("✅ Лайк убран, всего лайков: {}", result.getTotalLikes());
             return new LikeToggleResult(result.isLiked(), result.getTotalLikes(), totalDislikes);
         } else {
-            LikeResponseDto result = likeStickerSet(userId, stickerSetId);
+            LikeResponseDto result = likeStickerSet(userId, stickerSetId, false);
             long totalDislikes = getDislikesCountFromStickerSet(stickerSetId);
             LOGGER.info("✅ Лайк поставлен, всего лайков: {}", result.getTotalLikes());
             return new LikeToggleResult(result.isLiked(), result.getTotalLikes(), totalDislikes);

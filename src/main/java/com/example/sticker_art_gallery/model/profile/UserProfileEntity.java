@@ -27,6 +27,13 @@ public class UserProfileEntity {
     @Column(name = "is_blocked", nullable = false)
     private Boolean isBlocked = false;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "subscription_status", length = 16, nullable = false)
+    private SubscriptionStatus subscriptionStatus = SubscriptionStatus.NONE;
+
+    @Column(name = "subscription_expires_at")
+    private OffsetDateTime subscriptionExpiresAt;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
@@ -36,6 +43,13 @@ public class UserProfileEntity {
     public enum UserRole {
         USER,
         ADMIN
+    }
+
+    public enum SubscriptionStatus {
+        NONE,
+        ACTIVE,
+        EXPIRED,
+        CANCELLED
     }
 
     public Long getId() {
@@ -92,6 +106,34 @@ public class UserProfileEntity {
 
     public void setUpdatedAt(OffsetDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public SubscriptionStatus getSubscriptionStatus() {
+        return subscriptionStatus;
+    }
+
+    public void setSubscriptionStatus(SubscriptionStatus subscriptionStatus) {
+        this.subscriptionStatus = subscriptionStatus;
+    }
+
+    public OffsetDateTime getSubscriptionExpiresAt() {
+        return subscriptionExpiresAt;
+    }
+
+    public void setSubscriptionExpiresAt(OffsetDateTime subscriptionExpiresAt) {
+        this.subscriptionExpiresAt = subscriptionExpiresAt;
+    }
+
+    /**
+     * Проверяет, есть ли у пользователя активная подписка.
+     * Подписка считается активной, если:
+     * - статус = ACTIVE
+     * - дата окончания не null и не истекла
+     */
+    public boolean hasActiveSubscription() {
+        return subscriptionStatus == SubscriptionStatus.ACTIVE
+            && subscriptionExpiresAt != null
+            && subscriptionExpiresAt.isAfter(OffsetDateTime.now());
     }
 
     @PreUpdate

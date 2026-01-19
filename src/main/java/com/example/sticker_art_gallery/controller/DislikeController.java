@@ -69,12 +69,14 @@ public class DislikeController {
     })
     public ResponseEntity<DislikeResponseDto> dislikeStickerSet(
             @Parameter(description = "Уникальный ID стикерсета", example = "5")
-            @PathVariable @Positive(message = "ID стикерсета должен быть положительным числом") Long stickerSetId) {
+            @PathVariable @Positive(message = "ID стикерсета должен быть положительным числом") Long stickerSetId,
+            @Parameter(description = "Флаг, что это свайп (для отслеживания и начисления наград)", example = "false")
+            @RequestParam(defaultValue = "false") boolean isSwipe) {
         try {
             Long userId = getCurrentUserId();
-            LOGGER.info("👎 Пользователь {} ставит дизлайк стикерсету {}", userId, stickerSetId);
+            LOGGER.info("👎 Пользователь {} ставит дизлайк стикерсету {} (isSwipe={})", userId, stickerSetId, isSwipe);
             
-            DislikeResponseDto result = dislikeService.dislikeStickerSet(userId, stickerSetId);
+            DislikeResponseDto result = dislikeService.dislikeStickerSet(userId, stickerSetId, isSwipe);
             return ResponseEntity.ok(result);
         } catch (IllegalStateException e) {
             LOGGER.warn("⚠️ Пользователь не авторизован: {}", e.getMessage());

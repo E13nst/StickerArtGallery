@@ -29,6 +29,9 @@ public class DislikeResponseDto {
     
     @Schema(description = "Общее количество дизлайков стикерсета", example = "42")
     private long totalDislikes;
+
+    @Schema(description = "Флаг, что это свайп (для отслеживания и начисления наград)", example = "true")
+    private boolean isSwipe;
     
     // Конструкторы
     public DislikeResponseDto() {
@@ -90,6 +93,14 @@ public class DislikeResponseDto {
     
     public void setTotalDislikes(long totalDislikes) {
         this.totalDislikes = totalDislikes;
+    }
+
+    public boolean isSwipe() {
+        return isSwipe;
+    }
+
+    public void setSwipe(boolean swipe) {
+        isSwipe = swipe;
     }
     
     @Override

@@ -10,6 +10,7 @@ import com.example.sticker_art_gallery.service.ai.StickerSetDescriptionService;
 import com.example.sticker_art_gallery.service.StickerSetQueryService;
 import com.example.sticker_art_gallery.service.statistics.StatisticsService;
 import com.example.sticker_art_gallery.service.transaction.WalletService;
+import com.example.sticker_art_gallery.service.swipe.SwipeTrackingService;
 import com.example.sticker_art_gallery.exception.UnauthorizedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +57,7 @@ public class StickerSetController {
     private final StickerSetControllerHelper helper;
     private final StickerSetCreationService stickerSetCreationService;
     private final TelegramBotApiService telegramBotApiService;
+    private final SwipeTrackingService swipeTrackingService;
     
     @Autowired
     public StickerSetController(StickerSetService stickerSetService,
@@ -66,7 +68,8 @@ public class StickerSetController {
                                WalletService walletService,
                                StickerSetControllerHelper helper,
                                StickerSetCreationService stickerSetCreationService,
-                               TelegramBotApiService telegramBotApiService) {
+                               TelegramBotApiService telegramBotApiService,
+                               SwipeTrackingService swipeTrackingService) {
         this.stickerSetService = stickerSetService;
         this.autoCategorizationService = autoCategorizationService;
         this.stickerSetDescriptionService = stickerSetDescriptionService;
@@ -76,6 +79,7 @@ public class StickerSetController {
         this.helper = helper;
         this.stickerSetCreationService = stickerSetCreationService;
         this.telegramBotApiService = telegramBotApiService;
+        this.swipeTrackingService = swipeTrackingService;
     }
     
     /**
@@ -534,6 +538,14 @@ public class StickerSetController {
             
             LOGGER.debug("🎲 Получение случайного стикерсета для пользователя {} (shortInfo={})", currentUserId, shortInfo);
             
+            // Проверяем лимит свайпов перед возвратом случайного стикерсета
+            try {
+                swipeTrackingService.checkDailyLimit(currentUserId);
+            } catch (com.example.sticker_art_gallery.exception.SwipeLimitExceededException e) {
+                LOGGER.warn("⚠️ Достигнут лимит свайпов для пользователя {}: {}", currentUserId, e.getMessage());
+                throw e; // Пробрасываем исключение для обработки в exception handler
+            }
+            
             String language = helper.getLanguageFromHeaderOrUser(request);
             StickerSetDto randomStickerSet = stickerSetService.findRandomStickerSetNotRatedByUser(
                     currentUserId, language, shortInfo);
@@ -546,6 +558,9 @@ public class StickerSetController {
             LOGGER.debug("✅ Найден случайный стикерсет: {} (id={})", randomStickerSet.getTitle(), randomStickerSet.getId());
             return ResponseEntity.ok(randomStickerSet);
             
+        } catch (com.example.sticker_art_gallery.exception.SwipeLimitExceededException e) {
+            // Исключение обрабатывается в ValidationExceptionHandler и возвращает 429
+            throw e;
         } catch (UnauthorizedException e) {
             LOGGER.warn("⚠️ {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
