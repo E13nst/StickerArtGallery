@@ -356,4 +356,30 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
            "LIMIT 1",
            nativeQuery = true)
     Optional<StickerSet> findRandomStickerSetNotRatedByUser(@Param("userId") Long userId);
+    
+    /**
+     * Получить страницу случайных стикерсетов, которые пользователь еще не лайкал и не дизлайкал
+     * Исключает стикерсеты, на которые пользователь уже поставил лайк или дизлайк
+     */
+    @Query(value = "SELECT ss.* FROM stickersets ss " +
+           "WHERE ss.state = 'ACTIVE' " +
+           "AND ss.visibility = 'PUBLIC' " +
+           "AND ss.id NOT IN (" +
+           "  SELECT l.stickerset_id FROM likes l WHERE l.user_id = :userId" +
+           ") " +
+           "AND ss.id NOT IN (" +
+           "  SELECT d.stickerset_id FROM dislikes d WHERE d.user_id = :userId" +
+           ") " +
+           "ORDER BY RANDOM()",
+           countQuery = "SELECT COUNT(ss.id) FROM stickersets ss " +
+           "WHERE ss.state = 'ACTIVE' " +
+           "AND ss.visibility = 'PUBLIC' " +
+           "AND ss.id NOT IN (" +
+           "  SELECT l.stickerset_id FROM likes l WHERE l.user_id = :userId" +
+           ") " +
+           "AND ss.id NOT IN (" +
+           "  SELECT d.stickerset_id FROM dislikes d WHERE d.user_id = :userId" +
+           ")",
+           nativeQuery = true)
+    Page<StickerSet> findRandomStickerSetsNotRatedByUser(@Param("userId") Long userId, Pageable pageable);
 }

@@ -571,6 +571,83 @@ public class StickerSetController {
     }
     
     /**
+     * Получить батч случайных стикерсетов, которые пользователь еще не лайкал и не дизлайкал
+     */
+    @GetMapping("/random/batch")
+    @Operation(
+        summary = "Получить батч случайных стикерсетов",
+        description = "Возвращает страницу случайных публичных и активных стикерсетов, которые пользователь еще не оценивал " +
+                     "(не ставил лайк или дизлайк). Поддерживает пагинацию. Требует авторизации через Telegram Web App. " +
+                     "Если все доступные стикерсеты уже оценены пользователем, возвращает пустую страницу."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Батч случайных стикерсетов успешно получен",
+            content = @Content(schema = @Schema(implementation = PageResponse.class))),
+        @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
+        @ApiResponse(responseCode = "429", description = "Достигнут дневной лимит свайпов"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<PageResponse<StickerSetDto>> getRandomStickerSetsBatch(
+            @Parameter(description = "Номер страницы (начиная с 0)", example = "0")
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @Parameter(description = "Количество элементов на странице (1-100)", example = "20")
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            @Parameter(description = "Поле для сортировки (игнорируется, используется RANDOM())", example = "createdAt")
+            @RequestParam(defaultValue = "createdAt") String sort,
+            @Parameter(description = "Направление сортировки (игнорируется, используется RANDOM())", example = "DESC")
+            @RequestParam(defaultValue = "DESC") @Pattern(regexp = "ASC|DESC") String direction,
+            @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
+            @RequestParam(defaultValue = "false") boolean shortInfo,
+            @Parameter(description = "Режим превью: возвращать только 1 случайный стикер в telegramStickerSetInfo", example = "false")
+            @RequestParam(defaultValue = "false") boolean preview,
+            HttpServletRequest request) {
+        try {
+            Long currentUserId = helper.getCurrentUserIdOrNull();
+            
+            if (currentUserId == null) {
+                LOGGER.warn("⚠️ Попытка получить батч случайных стикерсетов без авторизации");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            
+            LOGGER.debug("🎲 Получение батча случайных стикерсетов для пользователя {}: page={}, size={}, shortInfo={}, preview={}", 
+                    currentUserId, page, size, shortInfo, preview);
+            
+            // Проверяем лимит свайпов перед возвратом случайных стикерсетов
+            try {
+                swipeTrackingService.checkDailyLimit(currentUserId);
+            } catch (com.example.sticker_art_gallery.exception.SwipeLimitExceededException e) {
+                LOGGER.warn("⚠️ Достигнут лимит свайпов для пользователя {}: {}", currentUserId, e.getMessage());
+                throw e; // Пробрасываем исключение для обработки в exception handler
+            }
+            
+            // Построение параметров запроса
+            PageRequest pageRequest = new PageRequest();
+            pageRequest.setPage(page);
+            pageRequest.setSize(size);
+            pageRequest.setSort(sort);
+            pageRequest.setDirection(direction);
+            
+            String language = helper.getLanguageFromHeaderOrUser(request);
+            PageResponse<StickerSetDto> result = stickerSetService.findRandomStickerSetsNotRatedByUser(
+                    currentUserId, pageRequest, language, shortInfo, preview);
+            
+            LOGGER.debug("✅ Найдено {} случайных стикерсетов для пользователя {} на странице {} из {}", 
+                    result.getContent().size(), currentUserId, result.getPage() + 1, result.getTotalPages());
+            return ResponseEntity.ok(result);
+            
+        } catch (com.example.sticker_art_gallery.exception.SwipeLimitExceededException e) {
+            // Исключение обрабатывается в ValidationExceptionHandler и возвращает 429
+            throw e;
+        } catch (UnauthorizedException e) {
+            LOGGER.warn("⚠️ {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при получении батча случайных стикерсетов: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    /**
      * Создать новый стикерсет
      */
     @PostMapping

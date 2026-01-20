@@ -954,4 +954,35 @@ public class StickerSetService {
             return findByIdWithBotApiData(stickerSet.getId(), language, userId, false);
         }
     }
+    
+    /**
+     * Получить батч случайных стикерсетов, которые пользователь еще не лайкал и не дизлайкал
+     * @param userId ID пользователя
+     * @param pageRequest параметры пагинации
+     * @param language язык для локализации
+     * @param shortInfo если true, не обогащать данными из Telegram Bot API
+     * @param preview если true, возвращает только 1 случайный стикер вместо полного списка
+     * @return страница случайных стикерсетов
+     */
+    public PageResponse<StickerSetDto> findRandomStickerSetsNotRatedByUser(
+            Long userId, 
+            PageRequest pageRequest, 
+            String language, 
+            boolean shortInfo, 
+            boolean preview) {
+        LOGGER.debug("🎲 Поиск батча случайных стикерсетов для пользователя {}: page={}, size={}, shortInfo={}, preview={}", 
+                userId, pageRequest.getPage(), pageRequest.getSize(), shortInfo, preview);
+        
+        Page<StickerSet> stickerSetsPage = stickerSetRepository.findRandomStickerSetsNotRatedByUser(
+                userId, pageRequest.toPageable());
+        
+        String lang = normalizeLanguage(language);
+        List<StickerSetDto> enrichedDtos = enrichWithBotApiDataAndCategories(
+                stickerSetsPage.getContent(), lang, userId, shortInfo, preview, false);
+        
+        LOGGER.debug("✅ Найдено {} случайных стикерсетов для пользователя {} на странице {} из {}", 
+                enrichedDtos.size(), userId, stickerSetsPage.getNumber() + 1, stickerSetsPage.getTotalPages());
+        
+        return PageResponse.of(stickerSetsPage, enrichedDtos);
+    }
 } 
