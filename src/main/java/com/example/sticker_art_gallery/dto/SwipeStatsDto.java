@@ -31,13 +31,20 @@ public class SwipeStatsDto {
     @Schema(description = "Сколько свайпов осталось до следующей награды", example = "25")
     private int swipesUntilReward;
 
+    @Schema(description = "Размер награды в ART за достижение milestone", example = "50")
+    private long rewardAmount;
+
+    @Schema(description = "Есть ли безлимитный доступ к свайпам (dailyLimit=0)", example = "false")
+    private boolean isUnlimited;
+
     // Конструкторы
     public SwipeStatsDto() {
     }
 
     public SwipeStatsDto(int dailySwipes, int dailyLimit, int remainingSwipes,
                         boolean hasSubscription, OffsetDateTime subscriptionExpiresAt,
-                        int swipesPerReward, int swipesUntilReward) {
+                        int swipesPerReward, int swipesUntilReward,
+                        long rewardAmount, boolean isUnlimited) {
         this.dailySwipes = dailySwipes;
         this.dailyLimit = dailyLimit;
         this.remainingSwipes = remainingSwipes;
@@ -45,6 +52,8 @@ public class SwipeStatsDto {
         this.subscriptionExpiresAt = subscriptionExpiresAt;
         this.swipesPerReward = swipesPerReward;
         this.swipesUntilReward = swipesUntilReward;
+        this.rewardAmount = rewardAmount;
+        this.isUnlimited = isUnlimited;
     }
 
     // Геттеры и сеттеры
@@ -104,6 +113,22 @@ public class SwipeStatsDto {
         this.swipesUntilReward = swipesUntilReward;
     }
 
+    public long getRewardAmount() {
+        return rewardAmount;
+    }
+
+    public void setRewardAmount(long rewardAmount) {
+        this.rewardAmount = rewardAmount;
+    }
+
+    public boolean isUnlimited() {
+        return isUnlimited;
+    }
+
+    public void setUnlimited(boolean unlimited) {
+        isUnlimited = unlimited;
+    }
+
     @Override
     public String toString() {
         return "SwipeStatsDto{" +
@@ -114,6 +139,8 @@ public class SwipeStatsDto {
                 ", subscriptionExpiresAt=" + subscriptionExpiresAt +
                 ", swipesPerReward=" + swipesPerReward +
                 ", swipesUntilReward=" + swipesUntilReward +
+                ", rewardAmount=" + rewardAmount +
+                ", isUnlimited=" + isUnlimited +
                 '}';
     }
 }

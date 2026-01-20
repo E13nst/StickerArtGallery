@@ -143,16 +143,23 @@ public class SwipeTrackingService {
         LocalDate today = LocalDate.now(ZoneId.systemDefault());
         int dailySwipes = (int) userSwipeRepository.countByUserIdAndSwipeDate(userId, today);
         int dailyLimit = getDailyLimitForUser(userId, config);
-        int remainingSwipes = dailyLimit > 0 ? Math.max(0, dailyLimit - dailySwipes) : Integer.MAX_VALUE;
 
         UserProfileEntity profile = userProfileService.findByUserId(userId)
                 .orElseGet(() -> userProfileService.getOrCreateDefault(userId));
         boolean hasSubscription = profile.hasActiveSubscription();
 
-        // Подсчитываем сколько свайпов нужно до следующей награды
+        // Определяем размер награды с учетом подписки
+        long rewardAmount = hasSubscription 
+            ? config.getRewardAmountPremium() 
+            : config.getRewardAmount();
+
+        // Обрабатываем безлимитный случай
+        boolean isUnlimited = dailyLimit == 0;
+        int remainingSwipes = isUnlimited ? 0 : Math.max(0, dailyLimit - dailySwipes);
+
+        // Подсчитываем сколько свайпов нужно до следующей награды (используем dailySwipes вместо повторного count)
         int swipesPerReward = config.getSwipesPerReward();
-        int totalSwipes = (int) userSwipeRepository.countByUserIdAndSwipeDate(userId, today);
-        int swipesUntilReward = swipesPerReward - (totalSwipes % swipesPerReward);
+        int swipesUntilReward = swipesPerReward - (dailySwipes % swipesPerReward);
         if (swipesUntilReward == swipesPerReward) {
             swipesUntilReward = 0; // Уже на пороге награды
         }
@@ -164,7 +171,9 @@ public class SwipeTrackingService {
             hasSubscription,
             profile.getSubscriptionExpiresAt(),
             swipesPerReward,
-            swipesUntilReward
+            swipesUntilReward,
+            rewardAmount,
+            isUnlimited
         );
     }
 
@@ -232,10 +241,13 @@ public class SwipeTrackingService {
         private final OffsetDateTime subscriptionExpiresAt;
         private final int swipesPerReward;
         private final int swipesUntilReward;
+        private final long rewardAmount;
+        private final boolean isUnlimited;
 
         public SwipeStats(int dailySwipes, int dailyLimit, int remainingSwipes,
                          boolean hasSubscription, OffsetDateTime subscriptionExpiresAt,
-                         int swipesPerReward, int swipesUntilReward) {
+                         int swipesPerReward, int swipesUntilReward,
+                         long rewardAmount, boolean isUnlimited) {
             this.dailySwipes = dailySwipes;
             this.dailyLimit = dailyLimit;
             this.remainingSwipes = remainingSwipes;
@@ -243,6 +255,8 @@ public class SwipeTrackingService {
             this.subscriptionExpiresAt = subscriptionExpiresAt;
             this.swipesPerReward = swipesPerReward;
             this.swipesUntilReward = swipesUntilReward;
+            this.rewardAmount = rewardAmount;
+            this.isUnlimited = isUnlimited;
         }
 
         public int getDailySwipes() { return dailySwipes; }
@@ -252,5 +266,7 @@ public class SwipeTrackingService {
         public OffsetDateTime getSubscriptionExpiresAt() { return subscriptionExpiresAt; }
         public int getSwipesPerReward() { return swipesPerReward; }
         public int getSwipesUntilReward() { return swipesUntilReward; }
+        public long getRewardAmount() { return rewardAmount; }
+        public boolean isUnlimited() { return isUnlimited; }
     }
 }

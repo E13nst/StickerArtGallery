@@ -62,7 +62,9 @@ public class SwipeController {
                         "hasSubscription": false,
                         "subscriptionExpiresAt": null,
                         "swipesPerReward": 50,
-                        "swipesUntilReward": 25
+                        "swipesUntilReward": 25,
+                        "rewardAmount": 50,
+                        "isUnlimited": false
                     }
                     """))),
         @ApiResponse(responseCode = "401", description = "Не авторизован"),
@@ -81,7 +83,9 @@ public class SwipeController {
                 stats.isHasSubscription(),
                 stats.getSubscriptionExpiresAt(),
                 stats.getSwipesPerReward(),
-                stats.getSwipesUntilReward()
+                stats.getSwipesUntilReward(),
+                stats.getRewardAmount(),
+                stats.isUnlimited()
             );
 
             return ResponseEntity.ok(dto);
