@@ -91,7 +91,7 @@ public class StickerSetService {
             }
         }
         
-        return createStickerSetForUser(createDto, userId, lang, null);
+        return createStickerSetForUser(createDto, userId, lang, userId);
     }
 
     /**
