@@ -21,6 +21,10 @@ public class SaveImageToStickerSetResponseDto {
             example = "CAACAgIAAxkBAAE... (file_id)")
     private String stickerFileId;
 
+    @Schema(description = "Название (title) стикерсета",
+            example = "Мои стикеры")
+    private String title;
+
     public SaveImageToStickerSetResponseDto() {
     }
 
@@ -28,6 +32,13 @@ public class SaveImageToStickerSetResponseDto {
         this.stickerSetName = stickerSetName;
         this.stickerIndex = stickerIndex;
         this.stickerFileId = stickerFileId;
+    }
+
+    public SaveImageToStickerSetResponseDto(String stickerSetName, Integer stickerIndex, String stickerFileId, String title) {
+        this.stickerSetName = stickerSetName;
+        this.stickerIndex = stickerIndex;
+        this.stickerFileId = stickerFileId;
+        this.title = title;
     }
 
     public String getStickerSetName() {
@@ -52,6 +63,14 @@ public class SaveImageToStickerSetResponseDto {
 
     public void setStickerFileId(String stickerFileId) {
         this.stickerFileId = stickerFileId;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
     }
 }
 

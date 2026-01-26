@@ -230,7 +230,11 @@ public class StickerSetCreationService {
             throw new RuntimeException("Failed to resolve sticker file_id for set: " + stickerSetName + ", index: " + stickerIndex);
         }
 
-        return new SaveImageToStickerSetResponseDto(stickerSetName, stickerIndex, stickerFileId);
+        // 5. Получить title стикерсета
+        Object fullStickerSetInfo = telegramBotApiService.getStickerSetInfo(stickerSetName);
+        String title = telegramBotApiService.extractTitleFromStickerSetInfo(fullStickerSetInfo);
+
+        return new SaveImageToStickerSetResponseDto(stickerSetName, stickerIndex, stickerFileId, title);
     }
     
     /**

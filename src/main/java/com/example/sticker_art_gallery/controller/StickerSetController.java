@@ -1216,7 +1216,11 @@ public class StickerSetController {
             """
     )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Изображение успешно сохранено (возвращает stickerFileId)"),
+        @ApiResponse(
+            responseCode = "200", 
+            description = "Изображение успешно сохранено. Возвращает объект SaveImageToStickerSetResponseDto с полями: stickerSetName (имя стикерсета), stickerIndex (индекс стикера в стикерсете, 0-based), stickerFileId (Telegram file_id стикера), title (название стикерсета)",
+            content = @Content(schema = @Schema(implementation = SaveImageToStickerSetResponseDto.class))
+        ),
         @ApiResponse(responseCode = "400", description = "Неверные входные данные или стикерсет полон"),
         @ApiResponse(responseCode = "401", description = "Пользователь не авторизован"),
         @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
