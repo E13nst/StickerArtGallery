@@ -201,6 +201,9 @@ public class StickerSetCreationService {
             );
         }
         
+        // 2.1. Получить предыдущее состояние набора (file_id в порядке Telegram)
+        java.util.List<String> previousFileIds = telegramBotApiService.getStickerFileIdsInOrder(stickerSetName);
+        
         // 3. Получить файл и добавить
         File stickerFile = imageStorageService.getFileByUuid(imageUuid);
         
@@ -218,23 +221,43 @@ public class StickerSetCreationService {
         
         LOGGER.info("✅ Стикер добавлен в стикерсет: {}", stickerSetName);
 
-        // 4. Получить file_id добавленного стикера (обычно последний)
-        TelegramBotApiService.StickerSetInfo updatedInfo = telegramBotApiService.getStickerSetInfoSimple(stickerSetName);
-        if (updatedInfo == null || !updatedInfo.exists() || updatedInfo.getStickerCount() <= 0) {
-            throw new RuntimeException("Failed to fetch updated sticker set info: " + stickerSetName);
+        // 4. Получить новое состояние набора и найти добавленный стикер по сравнению с предыдущим
+        java.util.List<String> updatedFileIds = telegramBotApiService.getStickerFileIdsInOrder(stickerSetName);
+        if (updatedFileIds == null || updatedFileIds.isEmpty()) {
+            throw new RuntimeException("Failed to fetch updated sticker set file_ids: " + stickerSetName);
         }
 
-        int stickerIndex = updatedInfo.getStickerCount() - 1;
-        String stickerFileId = telegramBotApiService.getStickerFileId(stickerSetName, stickerIndex);
-        if (stickerFileId == null || stickerFileId.isBlank()) {
-            throw new RuntimeException("Failed to resolve sticker file_id for set: " + stickerSetName + ", index: " + stickerIndex);
+        java.util.Set<String> previousSet = previousFileIds != null
+            ? new java.util.HashSet<>(previousFileIds)
+            : java.util.Collections.emptySet();
+
+        String newStickerFileId = null;
+        int stickerIndex = -1;
+        for (int i = 0; i < updatedFileIds.size(); i++) {
+            String fileId = updatedFileIds.get(i);
+            if (!previousSet.contains(fileId)) {
+                newStickerFileId = fileId;
+                stickerIndex = i;
+                break;
+            }
+        }
+
+        // Фоллбек: если не нашли отличия, но размер увеличился на 1 — берём последний
+        if (newStickerFileId == null && previousFileIds != null 
+                && updatedFileIds.size() == previousFileIds.size() + 1) {
+            stickerIndex = updatedFileIds.size() - 1;
+            newStickerFileId = updatedFileIds.get(stickerIndex);
+        }
+
+        if (newStickerFileId == null || stickerIndex < 0) {
+            throw new RuntimeException("Failed to determine new sticker file_id for set: " + stickerSetName);
         }
 
         // 5. Получить title стикерсета
         Object fullStickerSetInfo = telegramBotApiService.getStickerSetInfo(stickerSetName);
         String title = telegramBotApiService.extractTitleFromStickerSetInfo(fullStickerSetInfo);
 
-        return new SaveImageToStickerSetResponseDto(stickerSetName, stickerIndex, stickerFileId, title);
+        return new SaveImageToStickerSetResponseDto(stickerSetName, stickerIndex, newStickerFileId, title);
     }
     
     /**

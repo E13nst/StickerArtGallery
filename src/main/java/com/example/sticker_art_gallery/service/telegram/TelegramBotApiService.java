@@ -567,16 +567,52 @@ public class TelegramBotApiService {
     }
 
     /**
-     * Получает file_id стикера по индексу из стикерсета
-     * 
+     * Возвращает список file_id всех стикеров в стикерсете в порядке, который приходит от Telegram.
+     *
      * @param stickerSetName имя стикерсета
-     * @param stickerIndex индекс стикера (0-based)
+     * @return список file_id или null, если набор не найден / ошибка
+     */
+    public java.util.List<String> getStickerFileIdsInOrder(String stickerSetName) {
+        try {
+            Object stickerSetInfo = getStickerSetInfo(stickerSetName);
+            if (stickerSetInfo == null) {
+                return null;
+            }
+
+            JsonNode root = objectMapper.valueToTree(stickerSetInfo);
+            if (!root.has("stickers") || !root.get("stickers").isArray()) {
+                return null;
+            }
+
+            JsonNode stickers = root.get("stickers");
+            java.util.List<String> result = new java.util.ArrayList<>();
+            for (JsonNode sticker : stickers) {
+                JsonNode fileIdNode = sticker.get("file_id");
+                if (fileIdNode != null && !fileIdNode.isNull()) {
+                    result.add(fileIdNode.asText());
+                }
+            }
+
+            return result;
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при получении списка file_id стикеров: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * Получает file_id стикера по индексу из стикерсета.
+     * Берёт именно основной field result.stickers[stickerIndex].file_id,
+     * игнорируя thumbnail/thumb и другие вложенные file_id.
+     *
+     * @param stickerSetName имя стикерсета
+     * @param stickerIndex   индекс стикера (0-based)
      * @return file_id стикера или null если не найден
      */
     public String getStickerFileId(String stickerSetName, int stickerIndex) {
         try {
             LOGGER.info("🔍 Получаем file_id стикера из стикерсета: '{}' | Индекс: {}", stickerSetName, stickerIndex);
-            
+
             String botToken = appConfig.getTelegram().getBotToken();
             if (botToken == null || botToken.trim().isEmpty()) {
                 LOGGER.warn("⚠️ Токен бота не настроен в конфигурации");
@@ -585,64 +621,159 @@ public class TelegramBotApiService {
 
             String url = TELEGRAM_API_URL + botToken + "/getStickerSet?name=" + stickerSetName;
             LOGGER.info("🌐 Запрос к Telegram API: {}", url.replace(botToken, "***"));
-            
+
             ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
-            
-            LOGGER.info("📬 Ответ от Telegram API: Status={} | Body={}", 
-                    response.getStatusCode(), 
-                    response.getBody() != null ? response.getBody().substring(0, Math.min(200, response.getBody().length())) + "..." : "null");
-            
-            if (response.getStatusCode().is2xxSuccessful() && 
-                response.getBody() != null && 
-                response.getBody().contains("\"ok\":true")) {
-                
-                String responseBody = response.getBody();
-                if (responseBody.contains("\"stickers\":")) {
-                    int stickersStart = responseBody.indexOf("\"stickers\":[");
-                    if (stickersStart != -1) {
-                        int stickersEnd = responseBody.indexOf("]", stickersStart);
-                        if (stickersEnd != -1) {
-                            String stickersSection = responseBody.substring(stickersStart, stickersEnd + 1);
-                            
-                            // Ищем стикер по индексу - учитываем что у каждого стикера есть file_id и thumbnail.file_id
-                            String[] stickers = stickersSection.split("\\{\"width\":");
-                            if (stickers.length > stickerIndex + 1) { // +1 потому что первый элемент пустой
-                                String targetSticker = stickers[stickerIndex + 1];
-                                
-                                // Ищем основной file_id стикера (НЕ thumbnail.file_id)
-                                // Ищем первый file_id, который НЕ находится внутри блока thumbnail
-                                int thumbnailStart = targetSticker.indexOf("\"thumbnail\":");
-                                
-                                int fileIdStart = targetSticker.indexOf("\"file_id\":\"");
-                                
-                                // Если file_id находится внутри thumbnail блока, ищем следующий
-                                while (fileIdStart != -1) {
-                                    // Проверяем, находится ли этот file_id внутри thumbnail
-                                    if (thumbnailStart == -1 || fileIdStart < thumbnailStart || 
-                                        fileIdStart > targetSticker.indexOf("}", thumbnailStart)) {
-                                        // Это основной file_id, не thumbnail
-                                        int fileIdEnd = targetSticker.indexOf("\"", fileIdStart + 11);
-                                        if (fileIdEnd != -1) {
-                                            String fileId = targetSticker.substring(fileIdStart + 11, fileIdEnd);
-                                            LOGGER.info("✅ Найден основной file_id стикера: {}", fileId);
-                                            return fileId;
-                                        }
-                                    }
-                                    // Ищем следующий file_id
-                                    fileIdStart = targetSticker.indexOf("\"file_id\":\"", fileIdStart + 1);
-                                }
-                            }
-                            
-                            LOGGER.warn("⚠️ Стикер с индексом {} не найден в ответе", stickerIndex);
-                        }
-                    }
-                }
+
+            String responseBody = response.getBody();
+            LOGGER.info("📬 Ответ от Telegram API: Status={} | Body={}",
+                    response.getStatusCode(),
+                    responseBody != null ? responseBody.substring(0, Math.min(200, responseBody.length())) + "..." : "null");
+
+            if (!response.getStatusCode().is2xxSuccessful() || responseBody == null) {
+                return null;
             }
-            return null;
-            
+
+            JsonNode root = objectMapper.readTree(responseBody);
+            if (!root.has("ok") || !root.get("ok").asBoolean()) {
+                return null;
+            }
+
+            JsonNode result = root.get("result");
+            if (result == null || !result.has("stickers")) {
+                return null;
+            }
+
+            JsonNode stickers = result.get("stickers");
+            if (!stickers.isArray() || stickers.size() <= stickerIndex) {
+                LOGGER.warn("⚠️ Стикер с индексом {} не найден в массиве stickers", stickerIndex);
+                return null;
+            }
+
+            JsonNode sticker = stickers.get(stickerIndex);
+            JsonNode fileIdNode = sticker.get("file_id");
+            if (fileIdNode == null || fileIdNode.isNull()) {
+                LOGGER.warn("⚠️ Поле file_id у стикера с индексом {} отсутствует", stickerIndex);
+                return null;
+            }
+
+            String fileId = fileIdNode.asText();
+            LOGGER.info("✅ Найден основной file_id стикера: {}", fileId);
+            return fileId;
+
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при получении file_id стикера: {}", e.getMessage(), e);
             return null;
+        }
+    }
+
+    /**
+     * Создает invoice link для оплаты Telegram Stars
+     * 
+     * @param title название товара
+     * @param description описание товара
+     * @param payload уникальный payload для связи invoice с заказом
+     * @param currency валюта (для Stars используется "XTR")
+     * @param prices список цен (обычно один элемент с label и amount)
+     * @return URL invoice для оплаты или null при ошибке
+     */
+    public String createInvoiceLink(String title, String description, String payload, String currency, java.util.List<LabeledPrice> prices) {
+        try {
+            String botToken = appConfig.getTelegram().getBotToken();
+            if (botToken == null || botToken.trim().isEmpty()) {
+                LOGGER.warn("⚠️ Токен бота не настроен в конфигурации");
+                throw new IllegalArgumentException("Токен бота не настроен");
+            }
+
+            String url = TELEGRAM_API_URL + botToken + "/createInvoiceLink";
+            
+            LOGGER.info("💳 Создаем invoice link: title={}, payload={}, currency={}, prices={}", 
+                    title, payload, currency, prices.size());
+            
+            // Формируем JSON body
+            java.util.Map<String, Object> requestBody = new java.util.HashMap<>();
+            requestBody.put("title", title);
+            requestBody.put("description", description);
+            requestBody.put("payload", payload);
+            requestBody.put("currency", currency);
+            
+            // Преобразуем prices в список Map
+            java.util.List<java.util.Map<String, Object>> pricesList = new java.util.ArrayList<>();
+            for (LabeledPrice price : prices) {
+                java.util.Map<String, Object> priceMap = new java.util.HashMap<>();
+                priceMap.put("label", price.getLabel());
+                priceMap.put("amount", price.getAmount());
+                pricesList.add(priceMap);
+            }
+            requestBody.put("prices", pricesList);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            
+            String jsonBody = objectMapper.writeValueAsString(requestBody);
+            HttpEntity<String> requestEntity = new HttpEntity<>(jsonBody, headers);
+            
+            LOGGER.debug("🌐 Отправляем запрос к Telegram API: createInvoiceLink | Body: {}", jsonBody);
+            
+            ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
+            
+            String responseBody = response.getBody();
+            LOGGER.info("📦 Ответ от Telegram (createInvoiceLink): Status={}, Response length={}", 
+                    response.getStatusCode(), responseBody != null ? responseBody.length() : 0);
+            
+            if (response.getStatusCode().is2xxSuccessful() && responseBody != null) {
+                JsonNode responseJson = objectMapper.readTree(responseBody);
+                
+                if (responseJson.has("ok") && responseJson.get("ok").asBoolean()) {
+                    String invoiceUrl = responseJson.get("result").asText();
+                    LOGGER.info("✅ Invoice link создан успешно: {}", invoiceUrl);
+                    return invoiceUrl;
+                } else {
+                    String errorDescription = responseJson.has("description") 
+                        ? responseJson.get("description").asText() 
+                        : "Unknown error";
+                    LOGGER.error("❌ Ошибка от Telegram Bot API при создании invoice: {}", errorDescription);
+                    throw new RuntimeException("Telegram API error: " + errorDescription);
+                }
+            } else {
+                LOGGER.error("❌ Неуспешный HTTP ответ: {}", response.getStatusCode());
+                throw new RuntimeException("HTTP error: " + response.getStatusCode());
+            }
+            
+        } catch (RestClientException e) {
+            LOGGER.error("❌ Ошибка сетевого запроса к Telegram Bot API при создании invoice: {}", e.getMessage());
+            throw new RuntimeException("Network error while creating invoice link", e);
+        } catch (Exception e) {
+            LOGGER.error("❌ Неожиданная ошибка при создании invoice link: {}", e.getMessage(), e);
+            throw new RuntimeException("Unexpected error while creating invoice link", e);
+        }
+    }
+    
+    /**
+     * Класс для представления цены в invoice
+     */
+    public static class LabeledPrice {
+        private String label;
+        private Integer amount;
+        
+        public LabeledPrice(String label, Integer amount) {
+            this.label = label;
+            this.amount = amount;
+        }
+        
+        public String getLabel() {
+            return label;
+        }
+        
+        public void setLabel(String label) {
+            this.label = label;
+        }
+        
+        public Integer getAmount() {
+            return amount;
+        }
+        
+        public void setAmount(Integer amount) {
+            this.amount = amount;
         }
     }
 
