@@ -11,6 +11,7 @@ public class AppConfig {
     private MiniApp miniApp = new MiniApp();
     private Telegram telegram = new Telegram();
     private Internal internal = new Internal();
+    private Referral referral = new Referral();
     
     public String getUrl() {
         return url;
@@ -42,6 +43,14 @@ public class AppConfig {
 
     public void setInternal(Internal internal) {
         this.internal = internal;
+    }
+    
+    public Referral getReferral() {
+        return referral;
+    }
+    
+    public void setReferral(Referral referral) {
+        this.referral = referral;
     }
     
     public static class MiniApp {
@@ -107,6 +116,36 @@ public class AppConfig {
 
         public void setStickerBot(String stickerBot) {
             this.stickerBot = stickerBot;
+        }
+    }
+    
+    public static class Referral {
+        private int dailyReferrerRewardCap = 50;
+        private int attributionWindowDays = 7;
+        private int codeLength = 12;
+        
+        public int getDailyReferrerRewardCap() {
+            return dailyReferrerRewardCap;
+        }
+        
+        public void setDailyReferrerRewardCap(int dailyReferrerRewardCap) {
+            this.dailyReferrerRewardCap = dailyReferrerRewardCap;
+        }
+        
+        public int getAttributionWindowDays() {
+            return attributionWindowDays;
+        }
+        
+        public void setAttributionWindowDays(int attributionWindowDays) {
+            this.attributionWindowDays = attributionWindowDays;
+        }
+        
+        public int getCodeLength() {
+            return codeLength;
+        }
+        
+        public void setCodeLength(int codeLength) {
+            this.codeLength = codeLength;
         }
     }
 }

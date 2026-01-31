@@ -311,4 +311,28 @@ public class TelegramInitDataValidator {
             return null;
         }
     }
+    
+    /**
+     * Извлекает start_param из initData
+     * 
+     * @param initData строка initData от Telegram
+     * @return значение start_param или null если не найден
+     */
+    public String extractStartParam(String initData) {
+        try {
+            Map<String, String> params = parseInitData(initData);
+            String startParam = params.get("start_param");
+            
+            if (startParam != null && !startParam.isEmpty()) {
+                LOGGER.debug("🔍 Извлечен start_param: {}", startParam);
+                return startParam;
+            }
+            
+            return null;
+            
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка извлечения start_param: {}", e.getMessage(), e);
+            return null;
+        }
+    }
 }

@@ -3,6 +3,7 @@ package com.example.sticker_art_gallery.security;
 import com.example.sticker_art_gallery.dto.TelegramInitData;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
+import com.example.sticker_art_gallery.service.referral.ReferralService;
 import com.example.sticker_art_gallery.util.TelegramInitDataValidator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -28,14 +29,17 @@ public class TelegramAuthenticationProvider implements AuthenticationProvider {
     private final TelegramInitDataValidator validator;
     private final UserProfileService userProfileService;
     private final ObjectMapper objectMapper;
+    private final ReferralService referralService;
     
     @Autowired
     public TelegramAuthenticationProvider(TelegramInitDataValidator validator, 
                                          UserProfileService userProfileService,
-                                         ObjectMapper objectMapper) {
+                                         ObjectMapper objectMapper,
+                                         ReferralService referralService) {
         this.validator = validator;
         this.userProfileService = userProfileService;
         this.objectMapper = objectMapper;
+        this.referralService = referralService;
     }
     
     @Override
@@ -88,6 +92,20 @@ public class TelegramAuthenticationProvider implements AuthenticationProvider {
             if (Boolean.TRUE.equals(profile.getIsBlocked())) {
                 LOGGER.warn("❌ Пользователь {} заблокирован. Аутентификация отклонена.", telegramUser.getId());
                 throw new DisabledException("User is blocked");
+            }
+            
+            // Обработка реферальной атрибуции
+            try {
+                String startParam = validator.extractStartParam(initData);
+                if (startParam != null && !startParam.isEmpty()) {
+                    LOGGER.debug("🎁 Обнаружен startParam, запускаем реферальную обработку");
+                    String metadata = buildReferralMetadata(initData);
+                    referralService.onFirstAuthentication(telegramUser.getId(), startParam, metadata);
+                }
+            } catch (Exception e) {
+                // Не блокируем аутентификацию при ошибке реферальной обработки
+                LOGGER.warn("⚠️ Ошибка обработки реферала для пользователя {}: {}", 
+                        telegramUser.getId(), e.getMessage());
             }
 
             // Создаем authorities на основе роли профиля
@@ -155,6 +173,22 @@ public class TelegramAuthenticationProvider implements AuthenticationProvider {
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка извлечения данных пользователя: {}", e.getMessage(), e);
             return null;
+        }
+    }
+    
+    /**
+     * Строит JSON с метаданными для реферальной программы
+     */
+    private String buildReferralMetadata(String initData) {
+        try {
+            java.util.Map<String, String> metadata = new java.util.HashMap<>();
+            metadata.put("source", "startapp");
+            // В реальном продакшене можно добавить user_agent_hash, ip_hash
+            // из HTTP headers, но в текущей архитектуре это не доступно в Provider
+            return objectMapper.writeValueAsString(metadata);
+        } catch (Exception e) {
+            LOGGER.warn("⚠️ Не удалось создать metadata для реферала: {}", e.getMessage());
+            return "{}";
         }
     }
 }

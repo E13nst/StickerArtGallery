@@ -10,6 +10,7 @@ import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.repository.UserRepository;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
+import com.example.sticker_art_gallery.service.referral.ReferralService;
 import com.example.sticker_art_gallery.service.storage.ImageStorageService;
 import com.example.sticker_art_gallery.model.storage.CachedImageEntity;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -41,6 +42,7 @@ public class StickerGenerationService {
     private final UserRepository userRepository;
     private final ImageStorageService imageStorageService;
     private final PromptProcessingService promptProcessingService;
+    private final ReferralService referralService;
     private final ObjectMapper objectMapper;
 
     @Value("${wavespeed.max-poll-seconds:300}")
@@ -58,7 +60,8 @@ public class StickerGenerationService {
             UserProfileService userProfileService,
             UserRepository userRepository,
             ImageStorageService imageStorageService,
-            PromptProcessingService promptProcessingService) {
+            PromptProcessingService promptProcessingService,
+            ReferralService referralService) {
         this.taskRepository = taskRepository;
         this.waveSpeedClient = waveSpeedClient;
         this.artRewardService = artRewardService;
@@ -66,6 +69,7 @@ public class StickerGenerationService {
         this.userRepository = userRepository;
         this.imageStorageService = imageStorageService;
         this.promptProcessingService = promptProcessingService;
+        this.referralService = referralService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -130,6 +134,15 @@ public class StickerGenerationService {
         // 4. Запускаем асинхронную обработку промпта
         processPromptAsync(taskId, userId, request.getStylePresetId());
         LOGGER.info("Async prompt processing started for task: {}", taskId);
+        
+        // 5. Обработка реферальной программы (начисление бонуса рефереру за первую генерацию)
+        try {
+            referralService.onFirstGeneration(userId, taskId);
+        } catch (Exception e) {
+            // Не блокируем генерацию при ошибке реферальной обработки
+            LOGGER.warn("⚠️ Ошибка обработки реферального бонуса для пользователя {}: {}", 
+                    userId, e.getMessage());
+        }
 
         return taskId;
     }

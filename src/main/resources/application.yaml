@@ -7,6 +7,10 @@ app:
     bot-token: ${TELEGRAM_BOT_TOKEN}
     bot-username: ${TELEGRAM_BOT_USERNAME:stixlybot}
     default-sticker-set-title: ${STICKER_SET_DEFAULT_TITLE:Styxly Generated}
+  referral:
+    daily-referrer-reward-cap: ${REFERRAL_DAILY_CAP:50}
+    attribution-window-days: ${REFERRAL_ATTRIBUTION_WINDOW_DAYS:7}
+    code-length: ${REFERRAL_CODE_LENGTH:12}
   internal:
     service-tokens:
       sticker-bot: ${STICKERBOT_SERVICE_TOKEN:}
