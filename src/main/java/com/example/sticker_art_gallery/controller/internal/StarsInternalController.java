@@ -2,7 +2,6 @@ package com.example.sticker_art_gallery.controller.internal;
 
 import com.example.sticker_art_gallery.dto.payment.ProcessPaymentResponse;
 import com.example.sticker_art_gallery.dto.payment.TelegramWebhookRequest;
-import com.example.sticker_art_gallery.security.WebhookSignatureValidator;
 import com.example.sticker_art_gallery.service.payment.StarsPaymentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,26 +18,24 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * Internal API контроллер для обработки webhook'ов платежей
+ * Internal API контроллер для обработки webhook'ов платежей от StickerBot API.
+ * Авторизация: X-Service-Token (проверяется ServiceTokenAuthenticationFilter)
  */
 @RestController
 @RequestMapping("/api/internal/webhooks")
 @PreAuthorize("hasRole('INTERNAL')")
-@Tag(name = "Internal Webhooks API", description = "Internal API для обработки webhook'ов от внешних сервисов (только для внутренних сервисов)")
+@Tag(name = "Internal Webhooks API", description = "Internal API для обработки webhook'ов от StickerBot API (авторизация через X-Service-Token)")
 public class StarsInternalController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StarsInternalController.class);
 
     private final StarsPaymentService starsPaymentService;
-    private final WebhookSignatureValidator webhookSignatureValidator;
     private final ObjectMapper objectMapper;
 
     @Autowired
     public StarsInternalController(StarsPaymentService starsPaymentService,
-                                   WebhookSignatureValidator webhookSignatureValidator,
                                    ObjectMapper objectMapper) {
         this.starsPaymentService = starsPaymentService;
-        this.webhookSignatureValidator = webhookSignatureValidator;
         this.objectMapper = objectMapper;
     }
 
@@ -48,7 +45,7 @@ public class StarsInternalController {
     @PostMapping("/stars-payment")
     @Operation(
             summary = "Webhook от StickerBot API о платеже Telegram Stars",
-            description = "Принимает уведомление от StickerBot API о successful_payment. Проверяет HMAC подпись и обрабатывает платеж."
+            description = "Принимает уведомление от StickerBot API о successful_payment. Авторизация через X-Service-Token."
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -67,25 +64,15 @@ public class StarsInternalController {
                     )
             ),
             @ApiResponse(responseCode = "400", description = "Неверный формат запроса"),
-            @ApiResponse(responseCode = "401", description = "Невалидная HMAC подпись или service token"),
+            @ApiResponse(responseCode = "401", description = "Невалидный service token"),
             @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
     })
-    public ResponseEntity<?> handleTelegramWebhook(
-            @RequestBody String requestBody,
-            @RequestHeader(value = "X-Webhook-Signature", required = false) String signature) {
+    public ResponseEntity<?> handleTelegramWebhook(@RequestBody String requestBody) {
         
-        LOGGER.info("📨 Получен webhook от Python сервиса");
+        LOGGER.info("📨 Получен webhook от StickerBot API");
         
         try {
-            // 1. Проверка HMAC подписи
-            if (!webhookSignatureValidator.validateSignature(signature, requestBody)) {
-                LOGGER.error("❌ Невалидная HMAC подпись");
-                return ResponseEntity.status(401).body("{\"error\":\"Invalid signature\"}");
-            }
-            
-            LOGGER.debug("✅ HMAC подпись валидна");
-            
-            // 2. Парсинг JSON → DTO
+            // Парсинг JSON → DTO
             TelegramWebhookRequest request;
             try {
                 request = objectMapper.readValue(requestBody, TelegramWebhookRequest.class);
@@ -98,7 +85,7 @@ public class StarsInternalController {
             LOGGER.info("🔍 Webhook данные: event={}, userId={}, chargeId={}, amountStars={}",
                     request.getEvent(), request.getUserId(), request.getTelegramChargeId(), request.getAmountStars());
             
-            // 3. Обработка платежа
+            // Обработка платежа
             ProcessPaymentResponse response = starsPaymentService.processWebhookPayment(request);
             
             if (response.getSuccess()) {

@@ -62,8 +62,8 @@ sequenceDiagram
     BotAPI->>Telegram: answer(ok=true)
     Telegram->>Telegram: Списание Stars
     Telegram->>BotAPI: SuccessfulPayment
-    BotAPI->>JavaBackend: POST /api/internal/webhooks/stars-payment<br/>+ HMAC подпись
-    JavaBackend->>JavaBackend: Проверка HMAC
+    BotAPI->>JavaBackend: POST /api/internal/webhooks/stars-payment<br/>+ X-Service-Token
+    JavaBackend->>JavaBackend: Проверка Service Token
     JavaBackend->>JavaBackend: Начисление ART баллов
     JavaBackend-->>BotAPI: 200 OK {success: true}
     
@@ -85,9 +85,6 @@ sequenceDiagram
 ```bash
 # URL вашего Java backend
 APP_URL=https://your-backend.com
-
-# Секрет для HMAC проверки webhook от StickerBot API
-BACKEND_WEBHOOK_SECRET=db5aa85012491cdb6f0d4e8093f53a00deb048bfcb6d89541d5d6a7309aee365
 ```
 
 ### 2. URL внешних сервисов
@@ -718,7 +715,7 @@ try {
 
 **Причина:** 
 - Backend недоступен
-- HMAC подпись невалидна
+- Service Token невалиден
 - Ошибка в обработке webhook
 
 **Решение:**

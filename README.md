@@ -211,15 +211,12 @@ docker compose up --build
 - `POST /api/internal/webhooks/stars-payment` - webhook от StickerBot API (internal)
 
 ### Конфигурация
-```bash
-# В .env.app
-BACKEND_WEBHOOK_SECRET=your_hmac_secret_here  # Секрет для HMAC проверки webhook
-```
+Webhook от StickerBot API использует ту же авторизацию, что и все `/api/internal/**` endpoints - через `X-Service-Token`.
 
 ### Тестирование
 ```bash
-# Запустить тесты webhook
-./scripts/test-stars-payment.sh http://localhost:8080 your_webhook_secret
+# Запустить тесты webhook (требуется X-Service-Token)
+./scripts/test-stars-payment.sh http://localhost:8080 your_service_token
 ```
 
 ### Документация

@@ -17,9 +17,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
 
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -31,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @Tag("integration")
 @Epic("Платежи Telegram Stars")
-@Feature("Webhook от Python сервиса")
+@Feature("Webhook от StickerBot API")
 @DisplayName("Integration тесты для Telegram Stars webhook")
 class TelegramWebhookIntegrationTest {
 
@@ -49,9 +46,6 @@ class TelegramWebhookIntegrationTest {
 
     @Value("${app.internal.service-tokens.sticker-bot:}")
     private String serviceToken;
-
-    @Value("${app.telegram.webhook.secret:test_secret}")
-    private String webhookSecret;
 
     private static final String WEBHOOK_URL = "/api/internal/webhooks/stars-payment";
     private static final Long TEST_USER_ID = 999999991L;
@@ -102,7 +96,7 @@ class TelegramWebhookIntegrationTest {
     @Test
     @Story("Успешная обработка webhook")
     @DisplayName("Должен успешно обработать валидный webhook платеж")
-    @Description("Проверяет полный flow обработки webhook: проверка подписи, создание purchase, начисление ART")
+    @Description("Проверяет полный flow обработки webhook: проверка service token, создание purchase, начисление ART")
     @Severity(SeverityLevel.BLOCKER)
     void shouldProcessValidWebhook() throws Exception {
         // Given
@@ -116,12 +110,9 @@ class TelegramWebhookIntegrationTest {
                 System.currentTimeMillis() / 1000
         );
 
-        String signature = generateHmacSignature(requestBody);
-
         // When & Then
         mockMvc.perform(post(WEBHOOK_URL)
                         .header("X-Service-Token", serviceToken)
-                        .header("X-Webhook-Signature", signature)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
@@ -142,28 +133,27 @@ class TelegramWebhookIntegrationTest {
     }
 
     @Test
-    @Story("Отклонение невалидной подписи")
-    @DisplayName("Должен отклонить запрос с невалидной HMAC подписью")
-    @Description("Проверяет защиту от подделки webhook через проверку HMAC подписи")
+    @Story("Отклонение невалидного токена")
+    @DisplayName("Должен отклонить запрос с невалидным service token")
+    @Description("Проверяет защиту от подделки webhook через проверку service token")
     @Severity(SeverityLevel.CRITICAL)
-    void shouldRejectInvalidSignature() throws Exception {
+    void shouldRejectInvalidServiceToken() throws Exception {
         // Given
         String requestBody = createWebhookPayload(
                 "telegram_stars_payment_succeeded",
                 TEST_USER_ID,
                 50,
                 "XTR",
-                "test_charge_invalid_sig",
+                "test_charge_invalid_token",
                 String.format("{\"package_id\":%d}", testPackage.getId()),
                 System.currentTimeMillis() / 1000
         );
 
-        String invalidSignature = "invalid_signature_12345";
+        String invalidToken = "invalid_service_token_12345";
 
         // When & Then
         mockMvc.perform(post(WEBHOOK_URL)
-                        .header("X-Service-Token", serviceToken)
-                        .header("X-Webhook-Signature", invalidSignature)
+                        .header("X-Service-Token", invalidToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isUnauthorized());
@@ -186,12 +176,9 @@ class TelegramWebhookIntegrationTest {
                 System.currentTimeMillis() / 1000
         );
 
-        String signature = generateHmacSignature(requestBody);
-
         // When - первый запрос
         var firstResponse = mockMvc.perform(post(WEBHOOK_URL)
                         .header("X-Service-Token", serviceToken)
-                        .header("X-Webhook-Signature", signature)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
@@ -204,7 +191,6 @@ class TelegramWebhookIntegrationTest {
         // When - второй запрос (дубликат)
         var secondResponse = mockMvc.perform(post(WEBHOOK_URL)
                         .header("X-Service-Token", serviceToken)
-                        .header("X-Webhook-Signature", signature)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
@@ -241,12 +227,9 @@ class TelegramWebhookIntegrationTest {
                 System.currentTimeMillis() / 1000
         );
 
-        String signature = generateHmacSignature(requestBody);
-
         // When & Then
         mockMvc.perform(post(WEBHOOK_URL)
                         .header("X-Service-Token", serviceToken)
-                        .header("X-Webhook-Signature", signature)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
@@ -271,12 +254,9 @@ class TelegramWebhookIntegrationTest {
                 System.currentTimeMillis() / 1000
         );
 
-        String signature = generateHmacSignature(requestBody);
-
         // When & Then
         mockMvc.perform(post(WEBHOOK_URL)
                         .header("X-Service-Token", serviceToken)
-                        .header("X-Webhook-Signature", signature)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
@@ -301,12 +281,9 @@ class TelegramWebhookIntegrationTest {
                 System.currentTimeMillis() / 1000
         );
 
-        String signature = generateHmacSignature(requestBody);
-
         // When & Then
         mockMvc.perform(post(WEBHOOK_URL)
                         // НЕ передаем X-Service-Token
-                        .header("X-Webhook-Signature", signature)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isUnauthorized());
@@ -326,29 +303,6 @@ class TelegramWebhookIntegrationTest {
         payload.put("telegram_charge_id", chargeId);
         payload.put("invoice_payload", invoicePayload);
         payload.put("timestamp", timestamp);
-        return payload.toString();  // Canonical JSON (sorted keys)
-    }
-
-    /**
-     * Генерирует HMAC-SHA256 подпись для webhook
-     */
-    private String generateHmacSignature(String requestBody) throws Exception {
-        JSONObject json = new JSONObject(requestBody);
-        String canonicalJson = json.toString();
-
-        Mac mac = Mac.getInstance("HmacSHA256");
-        SecretKeySpec secretKeySpec = new SecretKeySpec(
-                webhookSecret.getBytes(StandardCharsets.UTF_8),
-                "HmacSHA256"
-        );
-        mac.init(secretKeySpec);
-
-        byte[] hash = mac.doFinal(canonicalJson.getBytes(StandardCharsets.UTF_8));
-
-        StringBuilder result = new StringBuilder();
-        for (byte b : hash) {
-            result.append(String.format("%02x", b));
-        }
-        return result.toString();
+        return payload.toString();
     }
 }
