@@ -44,7 +44,7 @@ class TelegramWebhookIntegrationTest {
     @Autowired
     private StarsPurchaseRepository starsPurchaseRepository;
 
-    @Value("${app.internal.service-tokens.sticker-bot:}")
+    @Value("${app.stickerbot.service-token:}")
     private String serviceToken;
 
     private static final String WEBHOOK_URL = "/api/internal/webhooks/stars-payment";

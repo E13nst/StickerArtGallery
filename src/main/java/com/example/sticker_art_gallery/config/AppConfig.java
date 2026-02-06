@@ -10,8 +10,8 @@ public class AppConfig {
     private String url;
     private MiniApp miniApp = new MiniApp();
     private Telegram telegram = new Telegram();
-    private Internal internal = new Internal();
     private Referral referral = new Referral();
+    private StickerBot stickerbot = new StickerBot();
     
     public String getUrl() {
         return url;
@@ -36,14 +36,6 @@ public class AppConfig {
     public void setTelegram(Telegram telegram) {
         this.telegram = telegram;
     }
-
-    public Internal getInternal() {
-        return internal;
-    }
-
-    public void setInternal(Internal internal) {
-        this.internal = internal;
-    }
     
     public Referral getReferral() {
         return referral;
@@ -51,6 +43,14 @@ public class AppConfig {
     
     public void setReferral(Referral referral) {
         this.referral = referral;
+    }
+    
+    public StickerBot getStickerbot() {
+        return stickerbot;
+    }
+    
+    public void setStickerbot(StickerBot stickerbot) {
+        this.stickerbot = stickerbot;
     }
     
     public static class MiniApp {
@@ -94,30 +94,6 @@ public class AppConfig {
             this.defaultStickerSetTitle = defaultStickerSetTitle;
         }
     }
-
-    public static class Internal {
-        private ServiceTokens serviceTokens = new ServiceTokens();
-
-        public ServiceTokens getServiceTokens() {
-            return serviceTokens;
-        }
-
-        public void setServiceTokens(ServiceTokens serviceTokens) {
-            this.serviceTokens = serviceTokens;
-        }
-    }
-
-    public static class ServiceTokens {
-        private String stickerBot;
-
-        public String getStickerBot() {
-            return stickerBot;
-        }
-
-        public void setStickerBot(String stickerBot) {
-            this.stickerBot = stickerBot;
-        }
-    }
     
     public static class Referral {
         private int dailyReferrerRewardCap = 50;
@@ -146,6 +122,27 @@ public class AppConfig {
         
         public void setCodeLength(int codeLength) {
             this.codeLength = codeLength;
+        }
+    }
+    
+    public static class StickerBot {
+        private String apiUrl;
+        private String serviceToken;
+        
+        public String getApiUrl() {
+            return apiUrl;
+        }
+        
+        public void setApiUrl(String apiUrl) {
+            this.apiUrl = apiUrl;
+        }
+        
+        public String getServiceToken() {
+            return serviceToken;
+        }
+        
+        public void setServiceToken(String serviceToken) {
+            this.serviceToken = serviceToken;
         }
     }
 }

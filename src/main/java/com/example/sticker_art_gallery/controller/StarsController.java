@@ -43,6 +43,9 @@ public class StarsController {
 
     @Value("${app.url}")
     private String appUrl;
+    
+    @Value("${app.stickerbot.api-url}")
+    private String stickerBotApiUrl;
 
     @Autowired
     public StarsController(StarsPaymentService starsPaymentService) {
@@ -225,12 +228,11 @@ public class StarsController {
     })
     public ResponseEntity<StarsConfigDto> getConfig() {
         try {
-            String botApiUrl = "https://stixly-e13nst.amvera.io";
             String webhookUrl = appUrl + "/api/internal/webhooks/stars-payment";
             
-            StarsConfigDto config = StarsConfigDto.of(botApiUrl, webhookUrl);
+            StarsConfigDto config = StarsConfigDto.of(stickerBotApiUrl, webhookUrl);
             LOGGER.debug("⚙️ Возвращена конфигурация Stars: botApiUrl={}, webhookUrl={}", 
-                    botApiUrl, webhookUrl);
+                    stickerBotApiUrl, webhookUrl);
             
             return ResponseEntity.ok(config);
         } catch (Exception e) {

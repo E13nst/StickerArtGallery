@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
-@org.springframework.test.context.TestPropertySource(properties = "app.internal.service-tokens.sticker-bot=test-internal-token")
+@org.springframework.test.context.TestPropertySource(properties = "app.stickerbot.service-token=test-internal-token")
 @Epic("API для стикерсетов")
 @Feature("Поиск стикерсетов")
 @DisplayName("Интеграционные тесты поиска стикерсетов")

@@ -56,15 +56,16 @@ X-Service-Token: your_service_token_here
 
 ### Backend (.env.app)
 ```bash
+STICKERBOT_API_URL=https://stixly-e13nst.amvera.io
 STICKERBOT_SERVICE_TOKEN=your_service_token_here
 ```
 
 ### application.yaml
 ```yaml
 app:
-  internal:
-    service-tokens:
-      sticker-bot: ${STICKERBOT_SERVICE_TOKEN:}
+  stickerbot:
+    api-url: ${STICKERBOT_API_URL:https://stixly-e13nst.amvera.io}
+    service-token: ${STICKERBOT_SERVICE_TOKEN:}
 ```
 
 ---

@@ -11,9 +11,9 @@ app:
     daily-referrer-reward-cap: ${REFERRAL_DAILY_CAP:50}
     attribution-window-days: ${REFERRAL_ATTRIBUTION_WINDOW_DAYS:7}
     code-length: ${REFERRAL_CODE_LENGTH:12}
-  internal:
-    service-tokens:
-      sticker-bot: ${STICKERBOT_SERVICE_TOKEN:}
+  stickerbot:
+    api-url: ${STICKERBOT_API_URL:https://stixly-e13nst.amvera.io}
+    service-token: ${STICKERBOT_SERVICE_TOKEN:}
   ai:
     context-length: ${AI_CONTEXT_LENGTH:10}  # Длина контекста для InMemoryChatMemory (количество сообщений)
     auto-category:
