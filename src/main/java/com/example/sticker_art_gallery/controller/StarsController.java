@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -25,6 +26,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Контроллер для работы с покупками ART за Telegram Stars
@@ -38,6 +40,9 @@ public class StarsController {
     private static final Logger LOGGER = LoggerFactory.getLogger(StarsController.class);
 
     private final StarsPaymentService starsPaymentService;
+
+    @Value("${app.url}")
+    private String appUrl;
 
     @Autowired
     public StarsController(StarsPaymentService starsPaymentService) {
@@ -92,62 +97,6 @@ public class StarsController {
             return ResponseEntity.ok(packages);
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при получении списка пакетов: {}", e.getMessage(), e);
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    /**
-     * Создать invoice для покупки ART
-     */
-    @PostMapping("/create-invoice")
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
-    @Operation(
-            summary = "Создать invoice для покупки ART",
-            description = "Создает invoice для оплаты ART за Telegram Stars. Требует авторизации."
-    )
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Invoice создан успешно",
-                    content = @Content(
-                            schema = @Schema(implementation = CreateInvoiceResponse.class),
-                            examples = @ExampleObject(value = """
-                                    {
-                                      "invoiceUrl": "https://t.me/invoice/...",
-                                      "intentId": 123,
-                                      "starsPackage": {
-                                        "id": 1,
-                                        "code": "STARTER",
-                                        "name": "Starter Pack",
-                                        "description": "100 ART баллов",
-                                        "starsPrice": 50,
-                                        "artAmount": 100
-                                      }
-                                    }
-                                    """)
-                    )
-            ),
-            @ApiResponse(responseCode = "400", description = "Неверный запрос (пакет не найден)"),
-            @ApiResponse(responseCode = "403", description = "Доступ запрещен"),
-            @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
-    })
-    public ResponseEntity<CreateInvoiceResponse> createInvoice(
-            @Valid @RequestBody CreateInvoiceRequest request) {
-        try {
-            Long userId = getCurrentUserId();
-            if (userId == null) {
-                LOGGER.warn("⚠️ Попытка создать invoice без авторизации");
-                return ResponseEntity.status(403).build();
-            }
-
-            LOGGER.info("💳 Создание invoice для пользователя {} и пакета {}", userId, request.getPackageCode());
-            CreateInvoiceResponse response = starsPaymentService.createInvoice(userId, request.getPackageCode());
-            return ResponseEntity.ok(response);
-        } catch (IllegalArgumentException e) {
-            LOGGER.warn("⚠️ Ошибка валидации при создании invoice: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при создании invoice: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -246,6 +195,102 @@ public class StarsController {
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при получении покупки {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Получить конфигурацию для интеграции Stars payments в frontend
+     */
+    @GetMapping("/config")
+    @Operation(
+            summary = "Получить конфигурацию для оплаты Stars",
+            description = "Возвращает URL внешнего StickerBot API и URL webhook для backend. " +
+                    "Используется frontend для динамического получения конфигурации."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Конфигурация получена",
+                    content = @Content(
+                            schema = @Schema(implementation = StarsConfigDto.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "botApiUrl": "https://stixly-e13nst.amvera.io",
+                                      "webhookUrl": "https://your-backend.com/api/internal/webhooks/stars-payment"
+                                    }
+                                    """)
+                    )
+            )
+    })
+    public ResponseEntity<StarsConfigDto> getConfig() {
+        try {
+            String botApiUrl = "https://stixly-e13nst.amvera.io";
+            String webhookUrl = appUrl + "/api/internal/webhooks/stars-payment";
+            
+            StarsConfigDto config = StarsConfigDto.of(botApiUrl, webhookUrl);
+            LOGGER.debug("⚙️ Возвращена конфигурация Stars: botApiUrl={}, webhookUrl={}", 
+                    botApiUrl, webhookUrl);
+            
+            return ResponseEntity.ok(config);
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при получении конфигурации: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Получить последнюю покупку текущего пользователя
+     */
+    @GetMapping("/purchases/recent")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    @Operation(
+            summary = "Получить последнюю покупку",
+            description = "Возвращает последнюю покупку ART за Stars текущего пользователя. " +
+                    "Используется для проверки статуса после оплаты."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Последняя покупка получена",
+                    content = @Content(
+                            schema = @Schema(implementation = StarsPurchaseDto.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "id": 123,
+                                      "packageCode": "BASIC",
+                                      "packageName": "Basic Pack",
+                                      "starsPaid": 100,
+                                      "artCredited": 250,
+                                      "createdAt": "2025-02-06T12:00:00Z"
+                                    }
+                                    """)
+                    )
+            ),
+            @ApiResponse(responseCode = "404", description = "Покупок не найдено"),
+            @ApiResponse(responseCode = "403", description = "Доступ запрещен"),
+            @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<StarsPurchaseDto> getRecentPurchase() {
+        try {
+            Long userId = getCurrentUserId();
+            if (userId == null) {
+                LOGGER.warn("⚠️ Попытка получить последнюю покупку без авторизации");
+                return ResponseEntity.status(403).build();
+            }
+
+            Optional<StarsPurchaseDto> recentPurchase = starsPaymentService.getRecentPurchase(userId);
+            
+            if (recentPurchase.isEmpty()) {
+                LOGGER.debug("📭 Нет покупок для пользователя {}", userId);
+                return ResponseEntity.notFound().build();
+            }
+            
+            LOGGER.info("📦 Возвращена последняя покупка для пользователя {}: purchaseId={}", 
+                    userId, recentPurchase.get().getId());
+            return ResponseEntity.ok(recentPurchase.get());
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при получении последней покупки: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }

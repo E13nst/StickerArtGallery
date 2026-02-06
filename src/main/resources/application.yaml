@@ -7,6 +7,8 @@ app:
     bot-token: ${TELEGRAM_BOT_TOKEN}
     bot-username: ${TELEGRAM_BOT_USERNAME:stixlybot}
     default-sticker-set-title: ${STICKER_SET_DEFAULT_TITLE:Styxly Generated}
+    webhook:
+      secret: ${BACKEND_WEBHOOK_SECRET:}  # Секрет для HMAC проверки webhook от Python сервиса
   referral:
     daily-referrer-reward-cap: ${REFERRAL_DAILY_CAP:50}
     attribution-window-days: ${REFERRAL_ATTRIBUTION_WINDOW_DAYS:7}

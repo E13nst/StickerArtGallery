@@ -115,6 +115,7 @@ public class SecurityConfig {
                 
                 // Межсервисные эндпоинты
                 .requestMatchers(mvc.pattern("/internal/**")).hasRole("INTERNAL")
+                .requestMatchers(mvc.pattern("/api/internal/**")).hasRole("INTERNAL")
                 
                 // API только для ADMIN
                 .requestMatchers(mvc.pattern("/api/bots/**")).hasRole("ADMIN")

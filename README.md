@@ -113,6 +113,7 @@ docker compose up --build
 | `MINI_APP_URL` | ❌ | URL мини-приложения (по умолчанию: `${APP_URL}/mini-app/`) |
 | `STICKER_PROCESSOR_URL` | ✅ | URL сервиса обработки стикеров |
 | `STICKERBOT_SERVICE_TOKEN` | ❌ | Межсервисный токен StickerBot для доступа к `/internal/**` |
+| `BACKEND_WEBHOOK_SECRET` | ❌ | Секрет для HMAC проверки webhook от StickerBot API (Stars payments) |
 | `OPENAI_API_KEY` | ❌ | API ключ OpenAI (опционально) |
 
 ### Профили
@@ -160,6 +161,7 @@ docker compose up --build
 - ✅ Проксирование стикеров
 - ✅ Кэширование данных
 - ✅ Внутренняя система ART-баллов
+- ✅ ⭐ **Telegram Stars Payments** - покупка ART-баллов за Telegram Stars
 - ✅ 💎 TON Donations - донаты авторам стикерсетов через блокчейн TON
 
 ### Mini App
@@ -167,6 +169,7 @@ docker compose up --build
 - ✅ Адаптивный дизайн
 - ✅ Анимации и интерактивность
 - ✅ Авторизация пользователей
+- ✅ ⭐ Интеграция оплаты через Telegram Stars
 
 ## 🔒 Безопасность
 
@@ -182,6 +185,46 @@ docker compose up --build
 - История операций хранится в `art_transactions` и доступна через `GET /api/profiles/me/transactions`
 - За загрузку нового стикерсета автоматически начисляется `UPLOAD_STICKERSET` (+10 ART)
 - Метаданные транзакций сохраняются в формате JSON для аудита и идемпотентности
+
+## ⭐ Telegram Stars Payments
+
+Система оплаты через Telegram Stars позволяет пользователям покупать ART-баллы прямо в Mini App:
+
+### Доступные пакеты
+- **Starter Pack** - 50 ⭐ → 100 ART
+- **Basic Pack** - 100 ⭐ → 250 ART
+- **Pro Pack** - 200 ⭐ → 600 ART
+- **Premium Pack** - 450 ⭐ → 1500 ART
+
+### Архитектура
+1. **Frontend** получает список пакетов из Java backend (`GET /api/stars/packages`)
+2. **Frontend** создает invoice через внешний **StickerBot API** (`https://stixly-e13nst.amvera.io`)
+3. **Telegram** обрабатывает платеж и уведомляет StickerBot API
+4. **StickerBot API** отправляет webhook на Java backend с HMAC подписью
+5. **Backend** проверяет подпись и начисляет ART-баллы пользователю
+
+### API Endpoints
+- `GET /api/stars/packages` - список доступных пакетов
+- `GET /api/stars/config` - конфигурация для frontend (URLs)
+- `GET /api/stars/purchases` - история покупок
+- `GET /api/stars/purchases/recent` - последняя покупка
+- `POST /api/internal/webhooks/stars-payment` - webhook от StickerBot API (internal)
+
+### Конфигурация
+```bash
+# В .env.app
+BACKEND_WEBHOOK_SECRET=your_hmac_secret_here  # Секрет для HMAC проверки webhook
+```
+
+### Тестирование
+```bash
+# Запустить тесты webhook
+./scripts/test-stars-payment.sh http://localhost:8080 your_webhook_secret
+```
+
+### Документация
+- **[STARS_PAYMENT_FRONTEND_GUIDE.md](docs/STARS_PAYMENT_FRONTEND_GUIDE.md)** - полное руководство по интеграции для frontend разработчиков
+- **[STARS_PAYMENT_INTEGRATION.md](docs/STARS_PAYMENT_INTEGRATION.md)** - техническая документация backend
 
 ## 📦 Docker
 
@@ -229,6 +272,9 @@ git push origin main
 - **[LOGGING_CONFIG.md](LOGGING_CONFIG.md)** - Настройка логирования через переменные окружения
 - **[doc/](doc/)** - API документация и спецификации
   - **[TON_DONATIONS.md](doc/TON_DONATIONS.md)** - 💎 Система донатов авторам стикерсетов через TON
+- **[docs/](docs/)** - Техническая документация
+  - **[STARS_PAYMENT_FRONTEND_GUIDE.md](docs/STARS_PAYMENT_FRONTEND_GUIDE.md)** - ⭐ Интеграция Telegram Stars для frontend
+  - **[STARS_PAYMENT_INTEGRATION.md](docs/STARS_PAYMENT_INTEGRATION.md)** - ⭐ Backend документация Stars payments
 
 ## 📞 Поддержка
 

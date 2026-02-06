@@ -17,7 +17,7 @@ import java.util.Optional;
 
 /**
  * Фильтр для аутентификации внутренних сервисов по токену.
- * Ожидает заголовок X-Service-Token для всех запросов к /internal/**
+ * Ожидает заголовок X-Service-Token для всех запросов к /internal/** и /api/internal/**
  */
 @Component
 public class ServiceTokenAuthenticationFilter extends OncePerRequestFilter {
@@ -25,6 +25,7 @@ public class ServiceTokenAuthenticationFilter extends OncePerRequestFilter {
     private static final Logger LOGGER = LoggerFactory.getLogger(ServiceTokenAuthenticationFilter.class);
     private static final String SERVICE_TOKEN_HEADER = "X-Service-Token";
     private static final String INTERNAL_PATH_PREFIX = "/internal/";
+    private static final String API_INTERNAL_PATH_PREFIX = "/api/internal/";
 
     private final ServiceTokenService serviceTokenService;
 
@@ -72,7 +73,7 @@ public class ServiceTokenAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private boolean shouldFilterPath(String path) {
-        return path != null && path.startsWith(INTERNAL_PATH_PREFIX);
+        return path != null && (path.startsWith(INTERNAL_PATH_PREFIX) || path.startsWith(API_INTERNAL_PATH_PREFIX));
     }
 
     private void writeUnauthorized(HttpServletResponse response, String message) throws IOException {
