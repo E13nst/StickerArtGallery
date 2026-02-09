@@ -420,6 +420,9 @@ public class StickerSetService {
     
     /**
      * Удалить стикерсет (soft delete)
+     * 
+     * @param id ID стикерсета
+     * @throws IllegalArgumentException если стикерсет не найден
      */
     @Transactional
     public void deleteById(Long id) {

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пользователи - Админ панель</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/admin/css/admin.css">
+</head>
+<body class="bg-gray-100">
+    <!-- Layout with Sidebar -->
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white shadow-md sidebar">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-gray-800">Admin Panel</h1>
+                <p class="text-sm text-gray-600">Sticker Gallery</p>
+            </div>
+            
+            <nav class="mt-6">
+                <a href="/admin/index.html" class="flex items-center px-6 py-3 text-gray-700 bg-gray-100 border-l-4 border-blue-500">
+                    <span class="mx-3">Пользователи</span>
+                </a>
+                <a href="/admin/stickers.html" class="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-100 hover:text-gray-700">
+                    <span class="mx-3">Стикерсеты</span>
+                </a>
+            </nav>
+            
+            <div class="absolute bottom-0 w-64 p-6 border-t">
+                <div class="flex items-center">
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-gray-700" id="current-user-name">Admin</p>
+                        <p class="text-xs text-gray-500" id="current-user-role">ADMIN</p>
+                    </div>
+                </div>
+                <button onclick="logout()" class="mt-4 w-full px-4 py-2 text-sm text-white bg-red-600 rounded-md hover:bg-red-700">
+                    Выйти
+                </button>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-3xl font-bold text-gray-800">Пользователи</h2>
+                    <div class="flex items-center space-x-4">
+                        <input 
+                            type="text" 
+                            id="search-input" 
+                            placeholder="Поиск по User ID..." 
+                            class="px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                        <button id="column-config-btn" class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">
+                            Колонки
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Filters -->
+                <div id="filters-container"></div>
+                
+                <!-- Bulk Actions -->
+                <div id="bulk-actions" class="hidden bg-blue-50 p-4 rounded-lg mb-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-700">
+                            Выбрано: <span id="selected-count">0</span>
+                        </span>
+                        <div class="space-x-2">
+                            <button onclick="bulkBlock()" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+                                Заблокировать
+                            </button>
+                            <button onclick="bulkUnblock()" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                                Разблокировать
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Table -->
+                <div id="users-table"></div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Edit User Modal -->
+    <div id="edit-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal-backdrop z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full modal-content">
+                <div class="p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Редактировать пользователя</h3>
+                    <form id="edit-form" class="space-y-4">
+                        <input type="hidden" id="edit-user-id">
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Роль</label>
+                            <select id="edit-role" class="mt-1 block w-full px-3 py-2 border rounded-md">
+                                <option value="USER">USER</option>
+                                <option value="ADMIN">ADMIN</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Баланс ART</label>
+                            <input type="number" id="edit-balance" class="mt-1 block w-full px-3 py-2 border rounded-md">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Статус подписки</label>
+                            <select id="edit-subscription" class="mt-1 block w-full px-3 py-2 border rounded-md">
+                                <option value="NONE">NONE</option>
+                                <option value="ACTIVE">ACTIVE</option>
+                                <option value="EXPIRED">EXPIRED</option>
+                                <option value="CANCELLED">CANCELLED</option>
+                            </select>
+                        </div>
+                        
+                        <div class="flex items-center">
+                            <input type="checkbox" id="edit-blocked" class="rounded border-gray-300">
+                            <label for="edit-blocked" class="ml-2 text-sm text-gray-700">Заблокирован</label>
+                        </div>
+                        
+                        <div class="flex justify-end space-x-2 pt-4">
+                            <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">
+                                Отмена
+                            </button>
+                            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                                Сохранить
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/admin/js/utils.js"></script>
+    <script src="/admin/js/api.js"></script>
+    <script src="/admin/js/auth.js"></script>
+    <script src="/admin/js/table.js"></script>
+    <script src="/admin/js/filters.js"></script>
+    <script src="/admin/js/users.js"></script>
+</body>
+</html>

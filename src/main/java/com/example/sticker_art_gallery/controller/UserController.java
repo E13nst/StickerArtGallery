@@ -30,7 +30,6 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/api/users")
-@PreAuthorize("hasAnyRole('USER', 'ADMIN')")
 @Tag(name = "Пользователи", description = "Данные пользователей из Telegram")
 @SecurityRequirement(name = "TelegramInitData")
 public class UserController {
@@ -41,7 +40,8 @@ public class UserController {
     private final StatisticsService statisticsService;
     
     @Autowired
-    public UserController(UserService userService, StatisticsService statisticsService) {
+    public UserController(UserService userService, 
+                         StatisticsService statisticsService) {
         this.userService = userService;
         this.statisticsService = statisticsService;
     }
@@ -50,6 +50,7 @@ public class UserController {
      * Получить данные пользователя из Telegram по ID
      */
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @Operation(
         summary = "Получить данные пользователя из Telegram",
         description = "Возвращает данные пользователя из Telegram Bot API по его ID"

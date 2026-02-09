@@ -75,14 +75,23 @@ public class StickerSetCrudService {
     
     /**
      * Удалить стикерсет (soft delete)
+     * 
+     * @param id ID стикерсета
+     * @throws IllegalArgumentException если стикерсет не найден
      */
     @Transactional
     public void deleteById(Long id) {
-        StickerSet stickerSet = findById(id);
-        if (stickerSet != null && stickerSet.isActive()) {
+        LOGGER.info("🗑️ Запрос на удаление стикерсета ID: {}", id);
+        
+        StickerSet stickerSet = stickerSetRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Стикерсет с ID " + id + " не найден"));
+        
+        if (stickerSet.isActive()) {
             stickerSet.markAsDeleted(); // state -> DELETED, deletedAt -> now
             stickerSetRepository.save(stickerSet);
-            LOGGER.info("🗑️ Стикерсет ID={} помечен как DELETED", id);
+            LOGGER.info("✅ Стикерсет ID={} успешно помечен как DELETED", id);
+        } else {
+            LOGGER.warn("⚠️ Стикерсет ID={} уже удален или заблокирован (state={})", id, stickerSet.getState());
         }
     }
     

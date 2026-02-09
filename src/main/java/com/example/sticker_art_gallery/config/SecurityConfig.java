@@ -6,6 +6,7 @@ import com.example.sticker_art_gallery.security.TelegramAuthenticationProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -108,6 +109,12 @@ public class SecurityConfig {
                 
                 // Публичный доступ к фото профиля пользователя
                 .requestMatchers(mvc.pattern("/api/users/*/photo")).permitAll()
+                
+                // Админская панель - статические ресурсы
+                .requestMatchers(mvc.pattern("/admin/**")).permitAll()
+                
+                // API профилей - GET /api/profiles (список) только для ADMIN
+                .requestMatchers(mvc.pattern(HttpMethod.GET, "/api/profiles")).hasRole("ADMIN")
                 
                 // API для авторизованных пользователей (USER или ADMIN)
                 .requestMatchers(mvc.pattern("/api/users/**")).hasAnyRole("USER", "ADMIN")

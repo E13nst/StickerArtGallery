@@ -3,6 +3,7 @@ package com.example.sticker_art_gallery.controller;
 import com.example.sticker_art_gallery.dto.ArtTransactionDto;
 import com.example.sticker_art_gallery.dto.PageRequest;
 import com.example.sticker_art_gallery.dto.PageResponse;
+import com.example.sticker_art_gallery.dto.UpdateUserProfileRequest;
 import com.example.sticker_art_gallery.dto.UserDto;
 import com.example.sticker_art_gallery.dto.UserProfileDto;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
@@ -23,6 +24,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -241,6 +244,72 @@ public class UserProfileController {
     }
     
     /**
+     * Обновить профиль пользователя (только для админа)
+     */
+    @PatchMapping("/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+        summary = "Обновить профиль пользователя (ADMIN)",
+        description = "Обновляет профиль пользователя по его Telegram ID. Доступно только администраторам. Можно обновлять роль, баланс, статус блокировки и статус подписки."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Профиль успешно обновлен",
+            content = @Content(schema = @Schema(implementation = UserProfileDto.class),
+                examples = @ExampleObject(value = """
+                    {
+                        "id": 1,
+                        "userId": 123456789,
+                        "role": "ADMIN",
+                        "artBalance": 500,
+                        "isBlocked": false,
+                        "subscriptionStatus": "ACTIVE",
+                        "user": {
+                            "id": 123456789,
+                            "username": "testuser",
+                            "firstName": "Test",
+                            "lastName": "User"
+                        },
+                        "createdAt": "2025-01-15T10:30:00Z",
+                        "updatedAt": "2025-02-09T12:00:00Z"
+                    }
+                    """))),
+        @ApiResponse(responseCode = "400", description = "Некорректные данные запроса"),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен (требуется роль ADMIN)"),
+        @ApiResponse(responseCode = "404", description = "Профиль не найден"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<UserProfileDto> updateUserProfile(
+            @Parameter(description = "Telegram ID пользователя", required = true, example = "123456789")
+            @PathVariable Long userId,
+            @Parameter(description = "Данные для обновления профиля", required = true)
+            @RequestBody @Valid UpdateUserProfileRequest request) {
+        try {
+            LOGGER.info("🔧 Запрос на обновление профиля пользователя {}: {}", userId, request);
+            
+            // Обновляем профиль
+            UserProfileEntity updatedProfile = userProfileService.updateProfile(userId, request);
+            
+            // Формируем DTO с данными пользователя
+            UserProfileDto profileDto = UserProfileDto.fromEntity(updatedProfile);
+            
+            // Загружаем информацию о пользователе из Telegram
+            Optional<UserEntity> userOpt = userService.findById(userId);
+            if (userOpt.isPresent()) {
+                profileDto.setUser(UserDto.fromEntity(userOpt.get()));
+            }
+            
+            LOGGER.info("✅ Профиль пользователя {} успешно обновлен", userId);
+            return ResponseEntity.ok(profileDto);
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("⚠️ Профиль не найден: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при обновлении профиля пользователя {}: {}", userId, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    /**
      * Получить мой профиль
      */
     @GetMapping("/me")
@@ -338,6 +407,135 @@ public class UserProfileController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при получении транзакций ART для пользователя {}: {}", targetUserId, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    /**
+     * Получить список всех профилей с фильтрами и пагинацией (только для админа)
+     */
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+        summary = "Получить список всех профилей (ADMIN)",
+        description = "Возвращает список профилей с фильтрацией, пагинацией и сортировкой. Доступно только администраторам."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Список профилей получен",
+            content = @Content(schema = @Schema(implementation = PageResponse.class),
+                examples = @ExampleObject(value = """
+                    {
+                        "content": [{
+                            "id": 1,
+                            "userId": 123456789,
+                            "role": "USER",
+                            "artBalance": 100,
+                            "isBlocked": false,
+                            "subscriptionStatus": "ACTIVE",
+                            "createdAt": "2025-01-15T10:00:00Z"
+                        }],
+                        "page": 0,
+                        "size": 20,
+                        "totalElements": 150,
+                        "totalPages": 8
+                    }
+                    """))),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен (требуется роль ADMIN)"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<PageResponse<UserProfileDto>> getAllProfiles(
+            @Parameter(description = "Номер страницы (начиная с 0)", example = "0")
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @Parameter(description = "Количество элементов на странице (1-100)", example = "20")
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            @Parameter(description = "Поле для сортировки", example = "createdAt")
+            @RequestParam(defaultValue = "createdAt") String sort,
+            @Parameter(description = "Направление сортировки (ASC/DESC)", example = "DESC")
+            @RequestParam(defaultValue = "DESC") String direction,
+            @Parameter(description = "Фильтр по роли (USER/ADMIN)", example = "USER")
+            @RequestParam(required = false) String role,
+            @Parameter(description = "Фильтр по статусу блокировки", example = "false")
+            @RequestParam(required = false) Boolean isBlocked,
+            @Parameter(description = "Фильтр по статусу подписки (NONE/ACTIVE/EXPIRED/CANCELLED)", example = "ACTIVE")
+            @RequestParam(required = false) String subscriptionStatus,
+            @Parameter(description = "Минимальный баланс ART", example = "0")
+            @RequestParam(required = false) Long minBalance,
+            @Parameter(description = "Максимальный баланс ART", example = "1000")
+            @RequestParam(required = false) Long maxBalance,
+            @Parameter(description = "Дата создания после (ISO 8601)", example = "2025-01-01T00:00:00Z")
+            @RequestParam(required = false) String createdAfter,
+            @Parameter(description = "Дата создания до (ISO 8601)", example = "2025-12-31T23:59:59Z")
+            @RequestParam(required = false) String createdBefore,
+            @Parameter(description = "Поиск по User ID", example = "123456789")
+            @RequestParam(required = false) String search) {
+        try {
+            LOGGER.debug("🔍 Получение списка профилей: page={}, size={}, sort={}, direction={}, " +
+                        "role={}, isBlocked={}, subscriptionStatus={}, search={}",
+                        page, size, sort, direction, role, isBlocked, subscriptionStatus, search);
+            
+            // Парсим параметры фильтров
+            UserProfileEntity.UserRole roleEnum = null;
+            if (role != null && !role.trim().isEmpty()) {
+                try {
+                    roleEnum = UserProfileEntity.UserRole.valueOf(role.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    LOGGER.warn("⚠️ Некорректное значение роли: {}", role);
+                }
+            }
+            
+            UserProfileEntity.SubscriptionStatus subscriptionStatusEnum = null;
+            if (subscriptionStatus != null && !subscriptionStatus.trim().isEmpty()) {
+                try {
+                    subscriptionStatusEnum = UserProfileEntity.SubscriptionStatus.valueOf(subscriptionStatus.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    LOGGER.warn("⚠️ Некорректное значение статуса подписки: {}", subscriptionStatus);
+                }
+            }
+            
+            java.time.OffsetDateTime createdAfterDate = null;
+            if (createdAfter != null && !createdAfter.trim().isEmpty()) {
+                try {
+                    createdAfterDate = java.time.OffsetDateTime.parse(createdAfter);
+                } catch (java.time.format.DateTimeParseException e) {
+                    LOGGER.warn("⚠️ Некорректный формат даты createdAfter: {}", createdAfter);
+                }
+            }
+            
+            java.time.OffsetDateTime createdBeforeDate = null;
+            if (createdBefore != null && !createdBefore.trim().isEmpty()) {
+                try {
+                    createdBeforeDate = java.time.OffsetDateTime.parse(createdBefore);
+                } catch (java.time.format.DateTimeParseException e) {
+                    LOGGER.warn("⚠️ Некорректный формат даты createdBefore: {}", createdBefore);
+                }
+            }
+            
+            // Для нативного запроса используем фиксированную сортировку по created_at в SQL
+            org.springframework.data.domain.PageRequest pageRequest =
+                org.springframework.data.domain.PageRequest.of(page, size);
+            
+            // Получаем профили с фильтрами
+            org.springframework.data.domain.Page<UserProfileEntity> profilesPage = 
+                userProfileService.findAllWithFilters(
+                    roleEnum, isBlocked, subscriptionStatusEnum,
+                    minBalance, maxBalance,
+                    createdAfterDate, createdBeforeDate,
+                    search, pageRequest
+                );
+            
+            // Преобразуем в DTO (только данные профиля без загрузки UserEntity)
+            List<UserProfileDto> profileDtos = profilesPage.getContent().stream()
+                    .map(UserProfileDto::fromEntity)
+                    .collect(java.util.stream.Collectors.toList());
+            
+            PageResponse<UserProfileDto> response = PageResponse.of(profilesPage, profileDtos);
+            
+            LOGGER.debug("✅ Найдено {} профилей (страница {}/{})",
+                        response.getTotalElements(), page + 1, response.getTotalPages());
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при получении списка профилей: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
