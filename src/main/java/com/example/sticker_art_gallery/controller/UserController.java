@@ -1,8 +1,10 @@
 package com.example.sticker_art_gallery.controller;
 
 import com.example.sticker_art_gallery.dto.*;
+import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
 import com.example.sticker_art_gallery.model.user.UserEntity;
+import com.example.sticker_art_gallery.service.profile.UserProfileService;
 import com.example.sticker_art_gallery.service.statistics.StatisticsService;
 import com.example.sticker_art_gallery.service.user.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,12 +40,15 @@ public class UserController {
     
     private final UserService userService;
     private final StatisticsService statisticsService;
+    private final UserProfileService userProfileService;
     
     @Autowired
-    public UserController(UserService userService, 
-                         StatisticsService statisticsService) {
+    public UserController(UserService userService,
+                         StatisticsService statisticsService,
+                         UserProfileService userProfileService) {
         this.userService = userService;
         this.statisticsService = statisticsService;
+        this.userProfileService = userProfileService;
     }
     
     /**
@@ -91,6 +96,69 @@ public class UserController {
             return ResponseEntity.ok(userDto);
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при получении данных пользователя с ID {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Получить профиль пользователя по Telegram ID
+     */
+    @GetMapping("/{id}/profile")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    @Operation(
+        summary = "Получить профиль пользователя",
+        description = "Возвращает профиль пользователя по его Telegram ID"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Профиль найден",
+            content = @Content(schema = @Schema(implementation = UserProfileDto.class),
+                examples = @ExampleObject(value = """
+                    {
+                        "id": 1,
+                        "userId": 123456789,
+                        "role": "USER",
+                        "artBalance": 100,
+                        "user": {
+                            "id": 123456789,
+                            "username": "testuser",
+                            "firstName": "Test",
+                            "lastName": "User",
+                            "languageCode": "ru",
+                            "isPremium": true,
+                            "createdAt": "2025-10-20T10:00:00Z",
+                            "updatedAt": "2025-10-20T10:00:00Z"
+                        },
+                        "createdAt": "2025-01-15T10:30:00Z",
+                        "updatedAt": "2025-01-15T14:30:00Z"
+                    }
+                    """))),
+        @ApiResponse(responseCode = "404", description = "Профиль не найден"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<UserProfileDto> getUserProfile(
+            @Parameter(description = "Telegram ID пользователя", required = true, example = "123456789")
+            @PathVariable Long id) {
+        try {
+            LOGGER.debug("🔍 Получение профиля пользователя по Telegram ID: {}", id);
+            Optional<UserProfileEntity> profileOpt = userProfileService.findByTelegramId(id);
+
+            if (profileOpt.isPresent()) {
+                UserProfileDto profileDto = UserProfileDto.fromEntity(profileOpt.get());
+
+                Optional<UserEntity> userOpt = userService.findById(id);
+                if (userOpt.isPresent()) {
+                    profileDto.setUser(UserDto.fromEntity(userOpt.get()));
+                }
+
+                LOGGER.debug("✅ Профиль найден: userId={}, role={}, balance={}",
+                    profileDto.getUserId(), profileDto.getRole(), profileDto.getArtBalance());
+                return ResponseEntity.ok(profileDto);
+            } else {
+                LOGGER.warn("⚠️ Профиль пользователя с ID {} не найден", id);
+                return ResponseEntity.notFound().build();
+            }
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при поиске профиля пользователя с ID {}: {}", id, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }

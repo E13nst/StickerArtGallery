@@ -64,12 +64,12 @@ public class UserProfileController {
     }
     
     /**
-     * Получить профиль пользователя по ID
+     * Получить профиль пользователя по ID профиля
      */
-    @GetMapping("/{userId}")
+    @GetMapping("/{profileId}")
     @Operation(
-        summary = "Получить профиль пользователя по ID",
-        description = "Возвращает профиль пользователя по его Telegram ID"
+        summary = "Получить профиль по ID профиля",
+        description = "Возвращает профиль пользователя по ID профиля"
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Профиль найден",
@@ -98,30 +98,31 @@ public class UserProfileController {
         @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
     })
     public ResponseEntity<UserProfileDto> getProfileById(
-            @Parameter(description = "Telegram ID пользователя", required = true, example = "123456789")
-            @PathVariable Long userId) {
+            @Parameter(description = "ID профиля", required = true, example = "1")
+            @PathVariable Long profileId) {
         try {
-            LOGGER.debug("🔍 Поиск профиля пользователя по ID: {}", userId);
-            Optional<UserProfileEntity> profileOpt = userProfileService.findByTelegramId(userId);
+            LOGGER.debug("🔍 Поиск профиля по ID профиля: {}", profileId);
+            Optional<UserProfileEntity> profileOpt = userProfileService.findById(profileId);
             
             if (profileOpt.isPresent()) {
-                UserProfileDto profileDto = UserProfileDto.fromEntity(profileOpt.get());
+                UserProfileEntity profile = profileOpt.get();
+                UserProfileDto profileDto = UserProfileDto.fromEntity(profile);
                 
                 // Загружаем информацию о пользователе из Telegram
-                Optional<UserEntity> userOpt = userService.findById(userId);
+                Optional<UserEntity> userOpt = userService.findById(profile.getUserId());
                 if (userOpt.isPresent()) {
                     profileDto.setUser(UserDto.fromEntity(userOpt.get()));
                 }
                 
-                LOGGER.debug("✅ Профиль найден: userId={}, role={}, balance={}", 
-                           profileDto.getUserId(), profileDto.getRole(), profileDto.getArtBalance());
+                LOGGER.debug("✅ Профиль найден: id={}, userId={}, role={}, balance={}", 
+                           profileDto.getId(), profileDto.getUserId(), profileDto.getRole(), profileDto.getArtBalance());
                 return ResponseEntity.ok(profileDto);
             } else {
-                LOGGER.warn("⚠️ Профиль пользователя с ID {} не найден", userId);
+                LOGGER.warn("⚠️ Профиль с ID {} не найден", profileId);
                 return ResponseEntity.notFound().build();
             }
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при поиске профиля пользователя с ID {}: {}", userId, e.getMessage(), e);
+            LOGGER.error("❌ Ошибка при поиске профиля с ID {}: {}", profileId, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
