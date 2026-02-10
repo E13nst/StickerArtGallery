@@ -21,6 +21,29 @@ const tableColumns = [
         render: (row) => `<span class="font-mono text-sm">${row.userId}</span>` || '-'
     },
     {
+        field: 'user',
+        label: 'Пользователь',
+        render: (row) => {
+            if (!row.user) return '<span class="text-gray-400">-</span>';
+            const user = row.user;
+            const name = [user.firstName, user.lastName].filter(Boolean).join(' ') || '-';
+            const username = user.username ? `@${user.username}` : '';
+            const premium = user.isPremium ? '⭐' : '';
+            return `
+                <div class="flex flex-col">
+                    <span class="font-medium">${escapeHtml(name)}</span>
+                    ${username ? `<span class="text-sm text-gray-500">${escapeHtml(username)}</span>` : ''}
+                    ${premium ? `<span class="text-xs">${premium}</span>` : ''}
+                </div>
+            `;
+        }
+    },
+    {
+        field: 'user.languageCode',
+        label: 'Язык',
+        render: (row) => row.user?.languageCode || '-'
+    },
+    {
         field: 'role',
         label: 'Роль',
         render: (row) => createBadge(row.role, row.role)
@@ -60,9 +83,42 @@ const tableColumns = [
 const filterConfig = [
     {
         name: 'search',
-        label: 'Поиск',
+        label: 'Поиск по User ID',
         type: 'text',
-        placeholder: 'Username, имя, фамилия...'
+        placeholder: 'User ID...'
+    },
+    {
+        name: 'userUsername',
+        label: 'Username',
+        type: 'text',
+        placeholder: 'Поиск по username...'
+    },
+    {
+        name: 'userFirstName',
+        label: 'Имя',
+        type: 'text',
+        placeholder: 'Поиск по имени...'
+    },
+    {
+        name: 'userLastName',
+        label: 'Фамилия',
+        type: 'text',
+        placeholder: 'Поиск по фамилии...'
+    },
+    {
+        name: 'userLanguageCode',
+        label: 'Язык',
+        type: 'text',
+        placeholder: 'ru, en...'
+    },
+    {
+        name: 'userIsPremium',
+        label: 'Premium',
+        type: 'select',
+        options: [
+            { value: 'true', label: 'Да' },
+            { value: 'false', label: 'Нет' }
+        ]
     },
     {
         name: 'role',
