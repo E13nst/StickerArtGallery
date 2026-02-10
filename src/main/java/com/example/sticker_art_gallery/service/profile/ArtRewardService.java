@@ -75,7 +75,6 @@ public class ArtRewardService {
         profile.setArtBalance(newBalance);
 
         ArtTransactionEntity transaction = new ArtTransactionEntity();
-        transaction.setUserProfile(profile);
         transaction.setUserId(userId);
         transaction.setRule(rule);
         transaction.setRuleCode(rule.getCode());

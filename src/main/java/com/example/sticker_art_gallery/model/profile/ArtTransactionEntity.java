@@ -14,10 +14,6 @@ public class ArtTransactionEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_profile_id")
-    private UserProfileEntity userProfile;
-
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
@@ -62,14 +58,6 @@ public class ArtTransactionEntity {
 
     public void setId(Long id) {
         this.id = id;
-    }
-
-    public UserProfileEntity getUserProfile() {
-        return userProfile;
-    }
-
-    public void setUserProfile(UserProfileEntity userProfile) {
-        this.userProfile = userProfile;
     }
 
     public Long getUserId() {
