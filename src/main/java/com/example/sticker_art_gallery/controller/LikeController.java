@@ -6,7 +6,6 @@ import com.example.sticker_art_gallery.dto.LikeStatisticsDto;
 import com.example.sticker_art_gallery.dto.LikeToggleResult;
 import com.example.sticker_art_gallery.dto.PageRequest;
 import com.example.sticker_art_gallery.dto.PageResponse;
-import com.example.sticker_art_gallery.dto.StickerSetDto;
 import com.example.sticker_art_gallery.dto.StickerSetWithLikesDto;
 import com.example.sticker_art_gallery.service.LikeService;
 import com.example.sticker_art_gallery.service.user.UserService;
@@ -187,69 +186,6 @@ public class LikeController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             LOGGER.error("❌ Непредвиденная ошибка при переключении лайка: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-    
-    /**
-     * Получить лайкнутые стикерсеты текущего пользователя
-     */
-    @GetMapping("/stickersets")
-    @Operation(
-        summary = "Получить лайкнутые стикерсеты текущего пользователя",
-        description = "Возвращает список стикерсетов, которые лайкнул текущий пользователь, " +
-                     "отсортированных по дате лайка (новые сначала). " +
-                     "Поддерживает локализацию названий категорий через заголовок X-Language (ru/en) или автоматически из initData пользователя."
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Список лайкнутых стикерсетов успешно получен",
-            content = @Content(schema = @Schema(implementation = PageResponse.class),
-                examples = @ExampleObject(value = """
-                    {
-                        "content": [
-                            {
-                                "id": 5,
-                                "userId": 123456789,
-                                "title": "Мои стикеры",
-                                "name": "my_stickers_by_StickerGalleryBot",
-                                "createdAt": "2025-01-15T10:30:00",
-                                "categories": []
-                            }
-                        ],
-                        "totalElements": 1,
-                        "totalPages": 1,
-                        "size": 20,
-                        "number": 0,
-                        "first": true,
-                        "last": true,
-                        "numberOfElements": 1
-                    }
-                    """))),
-        @ApiResponse(responseCode = "401", description = "Не авторизован"),
-        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
-    })
-    public ResponseEntity<PageResponse<StickerSetDto>> getLikedStickerSets(
-            @Parameter(description = "Номер страницы (начиная с 0)", example = "0")
-            @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "Размер страницы", example = "20")
-            @RequestParam(defaultValue = "20") int size,
-            @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
-            @RequestParam(defaultValue = "false") boolean shortInfo,
-            HttpServletRequest request) {
-        try {
-            Long userId = getCurrentUserId();
-            LOGGER.debug("📋 Получение лайкнутых стикерсетов пользователя {} (shortInfo={})", userId, shortInfo);
-            
-            PageRequest pageRequest = new PageRequest();
-            pageRequest.setPage(page);
-            pageRequest.setSize(size);
-            pageRequest.setSort("createdAt");
-            pageRequest.setDirection("DESC");
-            String language = getLanguageFromHeaderOrUser(request);
-            PageResponse<StickerSetDto> result = likeService.getLikedStickerSets(userId, pageRequest, language, shortInfo);
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            LOGGER.error("❌ Непредвиденная ошибка при получении лайкнутых стикерсетов: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

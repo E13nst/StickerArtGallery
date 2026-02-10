@@ -130,6 +130,29 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
             @Param("userId") Long userId, 
             @Param("categoryKeys") List<String> categoryKeys, 
             Pageable pageable);
+    
+    /**
+     * Получить лайкнутые стикерсеты пользователя с полной поддержкой фильтров
+     * Сортировка управляется через Pageable
+     */
+    @Query("SELECT DISTINCT s FROM StickerSet s " +
+           "LEFT JOIN s.categories c " +
+           "WHERE s.id IN (SELECT l.stickerSet.id FROM Like l WHERE l.userId = :userId) " +
+           "AND s.state = com.example.sticker_art_gallery.model.telegram.StickerSetState.ACTIVE " +
+           "AND s.visibility = com.example.sticker_art_gallery.model.telegram.StickerSetVisibility.PUBLIC " +
+           "AND (:categoryKeys IS NULL OR c.key IN :categoryKeys) " +
+           "AND (:type IS NULL OR s.type = :type) " +
+           "AND (:authorId IS NULL OR s.authorId = :authorId) " +
+           "AND (:hasAuthorOnly = false OR s.authorId IS NOT NULL) " +
+           "AND (:filterUserId IS NULL OR s.userId = :filterUserId)")
+    Page<StickerSet> findLikedStickerSetsFiltered(
+            @Param("userId") Long userId,
+            @Param("categoryKeys") Set<String> categoryKeys,
+            @Param("type") com.example.sticker_art_gallery.model.telegram.StickerSetType type,
+            @Param("authorId") Long authorId,
+            @Param("hasAuthorOnly") boolean hasAuthorOnly,
+            @Param("filterUserId") Long filterUserId,
+            Pageable pageable);
 
     long countByCreatedAtAfter(LocalDateTime createdAfter);
 

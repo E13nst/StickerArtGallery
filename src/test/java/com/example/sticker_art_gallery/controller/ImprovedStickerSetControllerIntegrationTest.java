@@ -251,8 +251,8 @@ class ImprovedStickerSetControllerIntegrationTest {
     
     @Test
     @Story("Получение стикерсетов")
-    @DisplayName("GET /api/stickersets?likedOnly=true должен возвращать только лайкнутые стикерсеты")
-    @Description("Проверяет новую функциональность фильтрации по лайкам")
+    @DisplayName("GET /api/stickersets/liked должен возвращать только лайкнутые стикерсеты")
+    @Description("Проверяет новый эндпоинт для получения лайкнутых стикерсетов")
     @Severity(SeverityLevel.CRITICAL)
     void getLikedStickerSets_ShouldReturnOnlyLiked() throws Exception {
         // Given - создаем тестовый стикерсет
@@ -272,8 +272,8 @@ class ImprovedStickerSetControllerIntegrationTest {
     
     @Test
     @Story("Получение стикерсетов")
-    @DisplayName("GET /api/stickersets?likedOnly=true без авторизации должен возвращать 401")
-    @Description("Проверяет, что фильтрация по лайкам требует авторизации")
+    @DisplayName("GET /api/stickersets/liked без авторизации должен возвращать 401")
+    @Description("Проверяет, что получение лайкнутых стикерсетов требует авторизации")
     @Severity(SeverityLevel.CRITICAL)
     void getLikedStickerSets_WithoutAuth_ShouldReturn401() throws Exception {
         // When

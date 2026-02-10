@@ -324,6 +324,41 @@ public class LikeService {
     }
     
     /**
+     * Получить лайкнутые стикерсеты пользователя с полной поддержкой фильтров
+     * @param preview возвращать только 1 случайный стикер в telegramStickerSetInfo
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<StickerSetDto> getLikedStickerSetsFiltered(
+            Long userId,
+            Set<String> categoryKeys,
+            com.example.sticker_art_gallery.model.telegram.StickerSetType type,
+            Long authorId,
+            boolean hasAuthorOnly,
+            Long filterUserId,
+            PageRequest pageRequest,
+            String language,
+            boolean shortInfo,
+            boolean preview) {
+        LOGGER.debug("📋 Получение лайкнутых стикерсетов пользователя {} с фильтрами: categoryKeys={}, type={}, authorId={}, hasAuthorOnly={}, filterUserId={}, page={}, size={}, shortInfo={}, preview={}", 
+                userId, categoryKeys, type, authorId, hasAuthorOnly, filterUserId, pageRequest.getPage(), pageRequest.getSize(), shortInfo, preview);
+        
+        Page<StickerSet> likedStickerSets = likeRepository.findLikedStickerSetsFiltered(
+                userId,
+                categoryKeys,
+                type,
+                authorId,
+                hasAuthorOnly,
+                filterUserId,
+                pageRequest.toPageable());
+        
+        // Обогащаем данными из Telegram Bot API с учетом shortInfo и preview
+        List<StickerSetDto> dtos = stickerSetService.enrichWithBotApiDataAndCategories(
+            likedStickerSets.getContent(), language, userId, shortInfo, preview, false);
+        
+        return PageResponse.of(likedStickerSets, dtos);
+    }
+    
+    /**
      * Получить топ стикерсетов по лайкам
      */
     @Transactional(readOnly = true)

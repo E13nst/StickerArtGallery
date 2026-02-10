@@ -61,29 +61,22 @@ public class StickerSetQueryService {
      * Получить лайкнутые пользователем стикерсеты
      */
     private PageResponse<StickerSetDto> findLikedStickerSets(StickerSetFilterRequest filter) {
-        LOGGER.debug("❤️ Поиск лайкнутых стикерсетов пользователя {}", filter.getCurrentUserId());
+        LOGGER.debug("❤️ Поиск лайкнутых стикерсетов пользователя {} с фильтрами: {}", 
+                filter.getCurrentUserId(), filter);
         
-        if (filter.hasCategoryFilter()) {
-            // Комбинированная фильтрация: лайкнутые + категории
-            LOGGER.debug("🏷️ Применяется фильтр по категориям: {}", filter.getCategoryKeys());
-            return likeService.getLikedStickerSetsByCategories(
+        // Используем новый метод с полной поддержкой всех фильтров
+        return likeService.getLikedStickerSetsFiltered(
                 filter.getCurrentUserId(),
-                filter.getCategoryKeys().toArray(new String[0]),
+                filter.getCategoryKeys(),
+                filter.getType(),
+                filter.getAuthorId(),
+                filter.isHasAuthorOnly(),
+                filter.getUserId(),
                 filter.getPageRequest(),
                 filter.getLanguage(),
                 filter.isShortInfo(),
                 filter.isPreview()
-            );
-        } else {
-            // Только лайкнутые стикерсеты
-            return likeService.getLikedStickerSets(
-                filter.getCurrentUserId(),
-                filter.getPageRequest(),
-                filter.getLanguage(),
-                filter.isShortInfo(),
-                filter.isPreview()
-            );
-        }
+        );
     }
     
     /**

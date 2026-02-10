@@ -155,8 +155,7 @@ public class StickerSetTestSteps {
     
     @Step("Получить только лайкнутые стикерсеты через API")
     public ResultActions getLikedStickerSets(String initData) throws Exception {
-        return mockMvc.perform(get("/api/stickersets")
-                        .param("likedOnly", "true")
+        return mockMvc.perform(get("/api/stickersets/liked")
                         .header("X-Telegram-Init-Data", initData));
     }
 
