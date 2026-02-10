@@ -35,6 +35,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -437,9 +438,19 @@ public class UserProfileController {
                             "userId": 123456789,
                             "role": "USER",
                             "artBalance": 100,
+                            "user": {
+                                "id": 123456789,
+                                "username": "testuser",
+                                "firstName": "Test",
+                                "lastName": "User",
+                                "languageCode": "ru",
+                                "isPremium": true,
+                                "createdAt": "2025-10-20T10:00:00Z",
+                                "updatedAt": "2025-10-20T10:00:00Z"
+                            },
                             "isBlocked": false,
-                            "subscriptionStatus": "ACTIVE",
-                            "createdAt": "2025-01-15T10:00:00Z"
+                            "createdAt": "2025-01-15T10:00:00Z",
+                            "updatedAt": "2025-01-15T10:00:00Z"
                         }],
                         "page": 0,
                         "size": 20,
@@ -474,11 +485,23 @@ public class UserProfileController {
             @Parameter(description = "Дата создания до (ISO 8601)", example = "2025-12-31T23:59:59Z")
             @RequestParam(required = false) String createdBefore,
             @Parameter(description = "Поиск по User ID", example = "123456789")
-            @RequestParam(required = false) String search) {
+            @RequestParam(required = false) String search,
+            @Parameter(description = "Поиск по username пользователя (LIKE)", example = "test")
+            @RequestParam(required = false) String userUsername,
+            @Parameter(description = "Поиск по firstName пользователя (LIKE)", example = "Test")
+            @RequestParam(required = false) String userFirstName,
+            @Parameter(description = "Поиск по lastName пользователя (LIKE)", example = "User")
+            @RequestParam(required = false) String userLastName,
+            @Parameter(description = "Фильтр по languageCode пользователя (точное совпадение)", example = "ru")
+            @RequestParam(required = false) String userLanguageCode,
+            @Parameter(description = "Фильтр по Telegram Premium пользователя", example = "true")
+            @RequestParam(required = false) Boolean userIsPremium) {
         try {
             LOGGER.debug("🔍 Получение списка профилей: page={}, size={}, sort={}, direction={}, " +
-                        "role={}, isBlocked={}, subscriptionStatus={}, search={}",
-                        page, size, sort, direction, role, isBlocked, subscriptionStatus, search);
+                        "role={}, isBlocked={}, subscriptionStatus={}, search={}, userUsername={}, " +
+                        "userFirstName={}, userLastName={}, userLanguageCode={}, userIsPremium={}",
+                        page, size, sort, direction, role, isBlocked, subscriptionStatus, search,
+                        userUsername, userFirstName, userLastName, userLanguageCode, userIsPremium);
             
             // Парсим параметры фильтров
             UserProfileEntity.UserRole roleEnum = null;
@@ -527,13 +550,28 @@ public class UserProfileController {
                     roleEnum, isBlocked, subscriptionStatusEnum,
                     minBalance, maxBalance,
                     createdAfterDate, createdBeforeDate,
-                    search, pageRequest
+                    search, userUsername, userFirstName, userLastName, userLanguageCode, userIsPremium,
+                    pageRequest
                 );
             
-            // Преобразуем в DTO (только данные профиля без загрузки UserEntity)
+            // Пакетно загружаем пользователей, чтобы избежать N+1 запросов
+            List<Long> userIds = profilesPage.getContent().stream()
+                    .map(UserProfileEntity::getUserId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+            Map<Long, UserEntity> usersById = userService.findAllByIds(userIds);
+
             List<UserProfileDto> profileDtos = profilesPage.getContent().stream()
-                    .map(UserProfileDto::fromEntity)
-                    .collect(java.util.stream.Collectors.toList());
+                    .map(profile -> {
+                        UserProfileDto dto = UserProfileDto.fromEntity(profile);
+                        UserEntity user = usersById.get(profile.getUserId());
+                        if (user != null) {
+                            dto.setUser(UserDto.fromEntity(user));
+                        }
+                        return dto;
+                    })
+                    .toList();
             
             PageResponse<UserProfileDto> response = PageResponse.of(profilesPage, profileDtos);
             

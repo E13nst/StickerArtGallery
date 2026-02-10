@@ -108,6 +108,11 @@ public class UserProfileService {
      * @param createdAfter Дата создания после
      * @param createdBefore Дата создания до
      * @param search Поиск по User ID
+     * @param userUsername Поиск по username (LIKE)
+     * @param userFirstName Поиск по имени (LIKE)
+     * @param userLastName Поиск по фамилии (LIKE)
+     * @param userLanguageCode Фильтр по коду языка (точное совпадение)
+     * @param userIsPremium Фильтр по Telegram Premium (точное совпадение)
      * @param pageable Параметры пагинации и сортировки
      * @return Страница профилей пользователей
      */
@@ -121,10 +126,17 @@ public class UserProfileService {
             OffsetDateTime createdAfter,
             OffsetDateTime createdBefore,
             String search,
+            String userUsername,
+            String userFirstName,
+            String userLastName,
+            String userLanguageCode,
+            Boolean userIsPremium,
             Pageable pageable) {
         LOGGER.debug("🔍 Поиск профилей с фильтрами: role={}, isBlocked={}, subscriptionStatus={}, " +
-                     "minBalance={}, maxBalance={}, search={}, page={}, size={}",
+                     "minBalance={}, maxBalance={}, search={}, userUsername={}, userFirstName={}, userLastName={}, " +
+                     "userLanguageCode={}, userIsPremium={}, page={}, size={}",
                      role, isBlocked, subscriptionStatus, minBalance, maxBalance, search,
+                     userUsername, userFirstName, userLastName, userLanguageCode, userIsPremium,
                      pageable.getPageNumber(), pageable.getPageSize());
         
         // Преобразуем enum в строки для нативного SQL запроса
@@ -137,7 +149,9 @@ public class UserProfileService {
                 roleStr, isBlocked, subscriptionStatusStr,
                 minBalance, maxBalance,
                 createdAfterStr, createdBeforeStr,
-                search, pageable
+                search,
+                userUsername, userFirstName, userLastName, userLanguageCode, userIsPremium,
+                pageable
         );
     }
 

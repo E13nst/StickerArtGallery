@@ -1,6 +1,5 @@
 package com.example.sticker_art_gallery.service.user;
 
-import com.example.sticker_art_gallery.dto.UserDto;
 import com.example.sticker_art_gallery.model.user.UserEntity;
 import com.example.sticker_art_gallery.repository.UserRepository;
 import com.example.sticker_art_gallery.service.telegram.TelegramBotApiService;
@@ -14,6 +13,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Сервис для работы с пользователями (кэш данных из Telegram)
@@ -84,6 +85,19 @@ public class UserService {
      */
     public List<UserEntity> findAll() {
         return userRepository.findAll();
+    }
+
+    /**
+     * Пакетно загрузить пользователей по списку ID.
+     * Возвращает Map для быстрого доступа по userId.
+     */
+    public Map<Long, UserEntity> findAllByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Map.of();
+        }
+
+        return userRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(UserEntity::getId, Function.identity()));
     }
     
     /**

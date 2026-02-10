@@ -36,25 +36,37 @@ public interface UserProfileRepository extends JpaRepository<UserProfileEntity, 
      * Найти все профили с фильтрами и пагинацией (для админ-панели)
      * Показываем только данные из user_profiles без JOIN с users для упрощения
      */
-    @Query(value = "SELECT * FROM user_profiles " +
-           "WHERE (:role IS NULL OR CAST(role AS TEXT) = :role) " +
-           "AND (:isBlocked IS NULL OR is_blocked = :isBlocked) " +
-           "AND (:subscriptionStatus IS NULL OR CAST(subscription_status AS TEXT) = :subscriptionStatus) " +
-           "AND (:minBalance IS NULL OR art_balance >= :minBalance) " +
-           "AND (:maxBalance IS NULL OR art_balance <= :maxBalance) " +
-           "AND (:createdAfter IS NULL OR created_at >= CAST(:createdAfter AS timestamp)) " +
-           "AND (:createdBefore IS NULL OR created_at <= CAST(:createdBefore AS timestamp)) " +
-           "AND (:search IS NULL OR :search = '' OR CAST(user_id AS TEXT) LIKE CONCAT('%', :search, '%')) " +
-           "ORDER BY created_at DESC",
-           countQuery = "SELECT COUNT(*) FROM user_profiles " +
-           "WHERE (:role IS NULL OR CAST(role AS TEXT) = :role) " +
-           "AND (:isBlocked IS NULL OR is_blocked = :isBlocked) " +
-           "AND (:subscriptionStatus IS NULL OR CAST(subscription_status AS TEXT) = :subscriptionStatus) " +
-           "AND (:minBalance IS NULL OR art_balance >= :minBalance) " +
-           "AND (:maxBalance IS NULL OR art_balance <= :maxBalance) " +
-           "AND (:createdAfter IS NULL OR created_at >= CAST(:createdAfter AS timestamp)) " +
-           "AND (:createdBefore IS NULL OR created_at <= CAST(:createdBefore AS timestamp)) " +
-           "AND (:search IS NULL OR :search = '' OR CAST(user_id AS TEXT) LIKE CONCAT('%', :search, '%'))",
+    @Query(value = "SELECT up.* FROM user_profiles up " +
+           "LEFT JOIN users u ON up.user_id = u.id " +
+           "WHERE (:role IS NULL OR CAST(up.role AS TEXT) = :role) " +
+           "AND (:isBlocked IS NULL OR up.is_blocked = :isBlocked) " +
+           "AND (:subscriptionStatus IS NULL OR CAST(up.subscription_status AS TEXT) = :subscriptionStatus) " +
+           "AND (:minBalance IS NULL OR up.art_balance >= :minBalance) " +
+           "AND (:maxBalance IS NULL OR up.art_balance <= :maxBalance) " +
+           "AND (:createdAfter IS NULL OR up.created_at >= CAST(:createdAfter AS timestamp)) " +
+           "AND (:createdBefore IS NULL OR up.created_at <= CAST(:createdBefore AS timestamp)) " +
+           "AND (:search IS NULL OR :search = '' OR CAST(up.user_id AS TEXT) LIKE CONCAT('%', :search, '%')) " +
+           "AND (:userUsername IS NULL OR :userUsername = '' OR u.username LIKE CONCAT('%', :userUsername, '%')) " +
+           "AND (:userFirstName IS NULL OR :userFirstName = '' OR u.first_name LIKE CONCAT('%', :userFirstName, '%')) " +
+           "AND (:userLastName IS NULL OR :userLastName = '' OR u.last_name LIKE CONCAT('%', :userLastName, '%')) " +
+           "AND (:userLanguageCode IS NULL OR :userLanguageCode = '' OR u.language_code = :userLanguageCode) " +
+           "AND (:userIsPremium IS NULL OR u.is_premium = :userIsPremium) " +
+           "ORDER BY up.created_at DESC",
+           countQuery = "SELECT COUNT(*) FROM user_profiles up " +
+           "LEFT JOIN users u ON up.user_id = u.id " +
+           "WHERE (:role IS NULL OR CAST(up.role AS TEXT) = :role) " +
+           "AND (:isBlocked IS NULL OR up.is_blocked = :isBlocked) " +
+           "AND (:subscriptionStatus IS NULL OR CAST(up.subscription_status AS TEXT) = :subscriptionStatus) " +
+           "AND (:minBalance IS NULL OR up.art_balance >= :minBalance) " +
+           "AND (:maxBalance IS NULL OR up.art_balance <= :maxBalance) " +
+           "AND (:createdAfter IS NULL OR up.created_at >= CAST(:createdAfter AS timestamp)) " +
+           "AND (:createdBefore IS NULL OR up.created_at <= CAST(:createdBefore AS timestamp)) " +
+           "AND (:search IS NULL OR :search = '' OR CAST(up.user_id AS TEXT) LIKE CONCAT('%', :search, '%')) " +
+           "AND (:userUsername IS NULL OR :userUsername = '' OR u.username LIKE CONCAT('%', :userUsername, '%')) " +
+           "AND (:userFirstName IS NULL OR :userFirstName = '' OR u.first_name LIKE CONCAT('%', :userFirstName, '%')) " +
+           "AND (:userLastName IS NULL OR :userLastName = '' OR u.last_name LIKE CONCAT('%', :userLastName, '%')) " +
+           "AND (:userLanguageCode IS NULL OR :userLanguageCode = '' OR u.language_code = :userLanguageCode) " +
+           "AND (:userIsPremium IS NULL OR u.is_premium = :userIsPremium)",
            nativeQuery = true)
     Page<UserProfileEntity> findAllWithFilters(
             @Param("role") String role,
@@ -65,6 +77,11 @@ public interface UserProfileRepository extends JpaRepository<UserProfileEntity, 
             @Param("createdAfter") String createdAfter,
             @Param("createdBefore") String createdBefore,
             @Param("search") String search,
+            @Param("userUsername") String userUsername,
+            @Param("userFirstName") String userFirstName,
+            @Param("userLastName") String userLastName,
+            @Param("userLanguageCode") String userLanguageCode,
+            @Param("userIsPremium") Boolean userIsPremium,
             Pageable pageable
     );
 }
