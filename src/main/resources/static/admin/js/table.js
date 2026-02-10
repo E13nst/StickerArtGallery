@@ -37,9 +37,9 @@ class DataTable {
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            ${this.selectable ? '<th class="px-6 py-3 text-left"><input type="checkbox" id="select-all-checkbox" class="rounded border-gray-300"></th>' : ''}
+                            ${this.selectable ? '<th class="px-2 py-1.5 text-left"><input type="checkbox" id="select-all-checkbox" class="rounded border-gray-300"></th>' : ''}
                             ${this.columns.map(col => `
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th class="px-2 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     ${col.label}
                                 </th>
                             `).join('')}
@@ -48,19 +48,19 @@ class DataTable {
                     <tbody class="bg-white divide-y divide-gray-200">
                         ${this.data.length === 0 ? `
                             <tr>
-                                <td colspan="${this.columns.length + (this.selectable ? 1 : 0)}" class="px-6 py-4 text-center text-gray-500">
+                                <td colspan="${this.columns.length + (this.selectable ? 1 : 0)}" class="px-2 py-1.5 text-center text-gray-500">
                                     Нет данных
                                 </td>
                             </tr>
                         ` : this.data.map(row => `
                             <tr class="hover:bg-gray-50 ${this.onRowClick ? 'cursor-pointer' : ''}" data-row-id="${row.id || row.userId || ''}">
                                 ${this.selectable ? `
-                                    <td class="px-6 py-4" onclick="event.stopPropagation()">
+                                    <td class="px-2 py-1.5" onclick="event.stopPropagation()">
                                         <input type="checkbox" class="row-checkbox rounded border-gray-300" data-row-id="${row.id || row.userId || ''}">
                                     </td>
                                 ` : ''}
                                 ${this.columns.map(col => `
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm ${col.className || ''}">
+                                    <td class="px-2 py-1.5 whitespace-nowrap text-xs ${col.className || ''}">
                                         ${this.renderCell(row, col)}
                                     </td>
                                 `).join('')}
@@ -101,18 +101,18 @@ class DataTable {
         const endItem = Math.min((this.currentPage + 1) * this.pageSize, this.totalElements);
         
         return `
-            <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+            <div class="bg-white px-2 py-1.5 flex items-center justify-between border-t border-gray-200 sm:px-3">
                 <div class="flex-1 flex justify-between sm:hidden">
                     <button 
                         ${this.currentPage === 0 ? 'disabled' : ''}
-                        class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        class="relative inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         onclick="dataTable.goToPage(${this.currentPage - 1})"
                     >
                         Назад
                     </button>
                     <button 
                         ${this.currentPage >= this.totalPages - 1 ? 'disabled' : ''}
-                        class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        class="ml-2 relative inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         onclick="dataTable.goToPage(${this.currentPage + 1})"
                     >
                         Вперед
@@ -120,7 +120,7 @@ class DataTable {
                 </div>
                 <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                     <div>
-                        <p class="text-sm text-gray-700">
+                        <p class="text-xs text-gray-700">
                             Показано <span class="font-medium">${startItem}</span> - <span class="font-medium">${endItem}</span> из <span class="font-medium">${this.totalElements}</span> записей
                         </p>
                     </div>
@@ -148,7 +148,7 @@ class DataTable {
         buttons.push(`
             <button 
                 ${this.currentPage === 0 ? 'disabled' : ''}
-                class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="relative inline-flex items-center px-1.5 py-1 rounded-l-md border border-gray-300 bg-white text-xs font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 onclick="dataTable.goToPage(${this.currentPage - 1})"
             >
                 ‹
@@ -159,7 +159,7 @@ class DataTable {
         if (startPage > 0) {
             buttons.push(this.renderPageButton(0));
             if (startPage > 1) {
-                buttons.push('<span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">...</span>');
+                buttons.push('<span class="relative inline-flex items-center px-2 py-1 border border-gray-300 bg-white text-xs font-medium text-gray-700">...</span>');
             }
         }
         
@@ -171,7 +171,7 @@ class DataTable {
         // Последняя страница
         if (endPage < this.totalPages - 1) {
             if (endPage < this.totalPages - 2) {
-                buttons.push('<span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">...</span>');
+                buttons.push('<span class="relative inline-flex items-center px-2 py-1 border border-gray-300 bg-white text-xs font-medium text-gray-700">...</span>');
             }
             buttons.push(this.renderPageButton(this.totalPages - 1));
         }
@@ -180,7 +180,7 @@ class DataTable {
         buttons.push(`
             <button 
                 ${this.currentPage >= this.totalPages - 1 ? 'disabled' : ''}
-                class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="relative inline-flex items-center px-1.5 py-1 rounded-r-md border border-gray-300 bg-white text-xs font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 onclick="dataTable.goToPage(${this.currentPage + 1})"
             >
                 ›
@@ -194,7 +194,7 @@ class DataTable {
         const isCurrent = pageNum === this.currentPage;
         return `
             <button 
-                class="relative inline-flex items-center px-4 py-2 border ${isCurrent ? 'border-blue-500 bg-blue-50 text-blue-600 z-10' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'} text-sm font-medium"
+                class="relative inline-flex items-center px-2 py-1 border ${isCurrent ? 'border-blue-500 bg-blue-50 text-blue-600 z-10' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'} text-xs font-medium"
                 onclick="dataTable.goToPage(${pageNum})"
             >
                 ${pageNum + 1}

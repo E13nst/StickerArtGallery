@@ -16,25 +16,25 @@ class FiltersPanel {
         if (!this.container) return;
         
         this.container.innerHTML = `
-            <div class="bg-white p-4 rounded-lg shadow-md mb-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-medium text-gray-900">Фильтры</h3>
+            <div class="bg-white p-2 rounded-lg shadow-md mb-4">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-sm font-medium text-gray-900">Фильтры</h3>
                     <button 
                         id="reset-filters-btn"
-                        class="text-sm text-blue-600 hover:text-blue-800"
+                        class="text-xs text-blue-600 hover:text-blue-800"
                     >
                         Сбросить
                     </button>
                 </div>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
                     ${this.filters.map(filter => this.renderFilter(filter)).join('')}
                 </div>
                 
-                <div class="mt-4 flex justify-end">
+                <div class="mt-2 flex justify-end">
                     <button 
                         id="apply-filters-btn"
-                        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        class="px-2 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                         Применить
                     </button>
@@ -65,7 +65,7 @@ class FiltersPanel {
     renderTextFilter(filter) {
         return `
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
+                <label class="block text-xs font-medium text-gray-700 mb-0.5">
                     ${filter.label}
                 </label>
                 <input 
@@ -73,7 +73,7 @@ class FiltersPanel {
                     id="filter-${filter.name}"
                     name="${filter.name}"
                     placeholder="${filter.placeholder || ''}"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    class="w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
             </div>
         `;
@@ -82,13 +82,13 @@ class FiltersPanel {
     renderSelectFilter(filter) {
         return `
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
+                <label class="block text-xs font-medium text-gray-700 mb-0.5">
                     ${filter.label}
                 </label>
                 <select 
                     id="filter-${filter.name}"
                     name="${filter.name}"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    class="w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
                     <option value="">Все</option>
                     ${filter.options.map(opt => `
@@ -102,7 +102,7 @@ class FiltersPanel {
     renderNumberFilter(filter) {
         return `
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
+                <label class="block text-xs font-medium text-gray-700 mb-0.5">
                     ${filter.label}
                 </label>
                 <input 
@@ -112,7 +112,7 @@ class FiltersPanel {
                     placeholder="${filter.placeholder || ''}"
                     min="${filter.min || ''}"
                     max="${filter.max || ''}"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    class="w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
             </div>
         `;
@@ -121,14 +121,14 @@ class FiltersPanel {
     renderDateFilter(filter) {
         return `
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
+                <label class="block text-xs font-medium text-gray-700 mb-0.5">
                     ${filter.label}
                 </label>
                 <input 
                     type="date"
                     id="filter-${filter.name}"
                     name="${filter.name}"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    class="w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
             </div>
         `;
@@ -136,14 +136,14 @@ class FiltersPanel {
     
     renderCheckboxFilter(filter) {
         return `
-            <div class="flex items-center h-full pt-6">
+            <div class="flex items-center h-full pt-4">
                 <input 
                     type="checkbox"
                     id="filter-${filter.name}"
                     name="${filter.name}"
                     class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 >
-                <label for="filter-${filter.name}" class="ml-2 text-sm text-gray-700">
+                <label for="filter-${filter.name}" class="ml-2 text-xs text-gray-700">
                     ${filter.label}
                 </label>
             </div>

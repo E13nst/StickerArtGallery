@@ -18,22 +18,21 @@ const tableColumns = [
     {
         field: 'userId',
         label: 'User ID',
-        render: (row) => `<span class="font-mono text-sm">${row.userId}</span>` || '-'
+        render: (row) => `<span class="font-mono text-xs">${row.userId}</span>` || '-'
     },
     {
         field: 'user',
         label: 'Пользователь',
         render: (row) => {
-            if (!row.user) return '<span class="text-gray-400">-</span>';
+            if (!row.user) return '<span class="text-gray-400 text-xs">-</span>';
             const user = row.user;
             const name = [user.firstName, user.lastName].filter(Boolean).join(' ') || '-';
             const username = user.username ? `@${user.username}` : '';
             const premium = user.isPremium ? '⭐' : '';
             return `
-                <div class="flex flex-col">
-                    <span class="font-medium">${escapeHtml(name)}</span>
-                    ${username ? `<span class="text-sm text-gray-500">${escapeHtml(username)}</span>` : ''}
-                    ${premium ? `<span class="text-xs">${premium}</span>` : ''}
+                <div class="text-xs">
+                    <div class="font-medium">${escapeHtml(name)} ${premium}</div>
+                    ${username ? `<div class="text-gray-500">${escapeHtml(username)}</div>` : ''}
                 </div>
             `;
         }
@@ -72,7 +71,7 @@ const tableColumns = [
         field: 'actions',
         label: 'Действия',
         render: (row) => `
-            <button onclick="editUser(${row.userId})" class="text-blue-600 hover:text-blue-800">
+            <button onclick="editUser(${row.userId})" class="text-xs px-2 py-1 text-blue-600 hover:text-blue-800">
                 Редактировать
             </button>
         `

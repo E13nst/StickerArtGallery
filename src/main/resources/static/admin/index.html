@@ -41,17 +41,17 @@
         
         <!-- Main Content -->
         <main class="flex-1 overflow-y-auto">
-            <div class="p-6">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-3xl font-bold text-gray-800">Пользователи</h2>
-                    <div class="flex items-center space-x-4">
+            <div class="p-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-2xl font-bold text-gray-800">Пользователи</h2>
+                    <div class="flex items-center space-x-2">
                         <input 
                             type="text" 
                             id="search-input" 
                             placeholder="Поиск по User ID (быстрый поиск)..." 
-                            class="px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            class="px-2 py-1 text-xs border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
-                        <button id="column-config-btn" class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">
+                        <button id="column-config-btn" class="px-2 py-1 text-xs bg-gray-200 rounded-md hover:bg-gray-300">
                             Колонки
                         </button>
                     </div>
@@ -61,16 +61,16 @@
                 <div id="filters-container"></div>
                 
                 <!-- Bulk Actions -->
-                <div id="bulk-actions" class="hidden bg-blue-50 p-4 rounded-lg mb-4">
+                <div id="bulk-actions" class="hidden bg-blue-50 p-2 rounded-lg mb-2">
                     <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-700">
+                        <span class="text-xs text-gray-700">
                             Выбрано: <span id="selected-count">0</span>
                         </span>
-                        <div class="space-x-2">
-                            <button onclick="bulkBlock()" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+                        <div class="space-x-1">
+                            <button onclick="bulkBlock()" class="px-2 py-1 text-xs bg-red-600 text-white rounded-md hover:bg-red-700">
                                 Заблокировать
                             </button>
-                            <button onclick="bulkUnblock()" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                            <button onclick="bulkUnblock()" class="px-2 py-1 text-xs bg-green-600 text-white rounded-md hover:bg-green-700">
                                 Разблокировать
                             </button>
                         </div>
