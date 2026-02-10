@@ -93,9 +93,13 @@ class AdminApiClient {
     async getUserById(userId) {
         return this.request(`/users/${userId}`);
     }
+
+    async getUserProfileByUserId(userId) {
+        return this.request(`/users/${userId}/profile`);
+    }
     
     async updateUserProfile(userId, data) {
-        return this.request(`/profiles/${userId}`, {
+        return this.request(`/users/${userId}/profile`, {
             method: 'PATCH',
             body: JSON.stringify(data)
         });

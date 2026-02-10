@@ -56,9 +56,14 @@ http://localhost:8080/admin/
 ## Технические детали
 
 ### Backend API
-- `GET /api/users` - получение списка пользователей (только ADMIN)
-- `GET /api/users/{id}` - получение пользователя по ID
-- `PATCH /api/profiles/{userId}` - обновление профиля (только ADMIN)
+- `GET /api/profiles` - получение списка профилей пользователей (только ADMIN)
+- `GET /api/users/{id}` - получение пользователя по Telegram ID
+- `GET /api/users/{id}/profile` - получение профиля пользователя по Telegram ID
+- `PATCH /api/users/{id}/profile` - обновление профиля пользователя по Telegram ID (только ADMIN)
+- `GET /api/profiles/{profileId}` - получение профиля по ID профиля
+- `PATCH /api/profiles/{profileId}` - обновление профиля по ID профиля (только ADMIN)
+- `GET /api/profiles/{profileId}/transactions` - транзакции по ID профиля (только ADMIN)
+- `GET /api/users/{id}/transactions` - транзакции по Telegram ID пользователя (только ADMIN)
 - `GET /api/stickersets` - получение списка стикерсетов
 - `PUT /api/stickersets/{id}/block` - блокировка стикерсета
 - `PUT /api/stickersets/{id}/unblock` - разблокировка стикерсета

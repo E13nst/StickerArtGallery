@@ -178,8 +178,7 @@ async function loadUsers() {
 // Редактировать пользователя
 async function editUser(userId) {
     try {
-        const user = await api.getUserById(userId);
-        const profile = user; // API возвращает объединенный профиль
+        const profile = await api.getUserProfileByUserId(userId);
         
         document.getElementById('edit-user-id').value = userId;
         document.getElementById('edit-role').value = profile.role || 'USER';

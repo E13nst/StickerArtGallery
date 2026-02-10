@@ -31,15 +31,20 @@
 
 #### 1.4 Новые и обновленные Controller эндпоинты
 
-**UserController** (`controller/UserController.java`):
-- `GET /api/users` - список всех пользователей с фильтрами (ADMIN only)
+**UserProfileController** (`controller/UserProfileController.java`):
+- `GET /api/profiles` - список всех профилей с фильтрами (ADMIN only)
   - Параметры: page, size, sort, direction, role, isBlocked, subscriptionStatus, minBalance, maxBalance, createdAfter, createdBefore, search
   - Возвращает: PageResponse<UserProfileDto>
-
-**UserProfileController** (`controller/UserProfileController.java`):
-- `PATCH /api/profiles/{userId}` - обновление профиля (ADMIN only)
+- `PATCH /api/profiles/{profileId}` - обновление профиля по ID профиля (ADMIN only)
   - Body: UpdateUserProfileRequest
   - Возвращает: UserProfileDto
+- `GET /api/profiles/{profileId}/transactions` - транзакции по ID профиля (ADMIN only)
+
+**UserController** (`controller/UserController.java`):
+- `PATCH /api/users/{id}/profile` - обновление профиля по Telegram ID (ADMIN only)
+  - Body: UpdateUserProfileRequest
+  - Возвращает: UserProfileDto
+- `GET /api/users/{id}/transactions` - транзакции по Telegram ID (ADMIN only)
 
 **StickerSetController** (`controller/StickerSetController.java`):
 - `DELETE /api/stickersets/{id}` - обновлен для использования нового метода deleteStickerSet
@@ -47,7 +52,7 @@
 #### 1.5 Безопасность
 - **SecurityConfig** (`config/SecurityConfig.java`)
   - Добавлены правила для `/admin/**` - разрешен доступ к статическим файлам
-  - `GET /api/users` доступен только для роли ADMIN
+  - `GET /api/profiles` доступен только для роли ADMIN
   - Порядок правил исправлен для корректной работы
 
 ### 2. Frontend ✅
@@ -180,7 +185,7 @@ src/main/resources/static/admin/
 - Обработка ошибок 401 (редирект на login)
 - Обработка ошибок 403 (уведомление)
 - Методы для всех API операций:
-  - Users: getUsers, getUserById, updateUserProfile, bulkBlockUsers, bulkUnblockUsers
+  - Users: getUsers, getUserById, getUserProfileByUserId, updateUserProfile, bulkBlockUsers, bulkUnblockUsers
   - Stickersets: getStickersets, blockStickerset, unblockStickerset, deleteStickerset, setOfficial, unsetOfficial
   - Bulk operations для стикерсетов
 
@@ -255,9 +260,14 @@ src/main/resources/static/admin/
 ### 5. API Endpoints - Полный список
 
 **Users (ADMIN only)**:
-- `GET /api/users` - список пользователей с фильтрами
+- `GET /api/profiles` - список профилей пользователей с фильтрами
 - `GET /api/users/{id}` - получить пользователя
-- `PATCH /api/profiles/{userId}` - обновить профиль
+- `GET /api/users/{id}/profile` - получить профиль по Telegram ID
+- `PATCH /api/users/{id}/profile` - обновить профиль по Telegram ID
+- `GET /api/users/{id}/transactions` - получить транзакции по Telegram ID
+- `GET /api/profiles/{profileId}` - получить профиль по ID профиля
+- `PATCH /api/profiles/{profileId}` - обновить профиль по ID профиля
+- `GET /api/profiles/{profileId}/transactions` - получить транзакции по ID профиля
 
 **Stickersets**:
 - `GET /api/stickersets` - список стикерсетов с фильтрами

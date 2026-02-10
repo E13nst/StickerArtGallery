@@ -4,6 +4,7 @@ import com.example.sticker_art_gallery.dto.*;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
 import com.example.sticker_art_gallery.model.user.UserEntity;
+import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
 import com.example.sticker_art_gallery.service.statistics.StatisticsService;
 import com.example.sticker_art_gallery.service.user.UserService;
@@ -18,6 +19,8 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +28,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -41,14 +45,17 @@ public class UserController {
     private final UserService userService;
     private final StatisticsService statisticsService;
     private final UserProfileService userProfileService;
+    private final ArtRewardService artRewardService;
     
     @Autowired
     public UserController(UserService userService,
                          StatisticsService statisticsService,
-                         UserProfileService userProfileService) {
+                         UserProfileService userProfileService,
+                         ArtRewardService artRewardService) {
         this.userService = userService;
         this.statisticsService = statisticsService;
         this.userProfileService = userProfileService;
+        this.artRewardService = artRewardService;
     }
     
     /**
@@ -159,6 +166,88 @@ public class UserController {
             }
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при поиске профиля пользователя с ID {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Обновить профиль пользователя по Telegram ID (только для админа)
+     */
+    @PatchMapping("/{id}/profile")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+        summary = "Обновить профиль пользователя (ADMIN)",
+        description = "Обновляет профиль пользователя по его Telegram ID. Доступно только администраторам."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Профиль успешно обновлен",
+            content = @Content(schema = @Schema(implementation = UserProfileDto.class))),
+        @ApiResponse(responseCode = "400", description = "Некорректные данные запроса"),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен (требуется роль ADMIN)"),
+        @ApiResponse(responseCode = "404", description = "Профиль не найден"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<UserProfileDto> updateUserProfileByUserId(
+            @Parameter(description = "Telegram ID пользователя", required = true, example = "123456789")
+            @PathVariable Long id,
+            @Parameter(description = "Данные для обновления профиля", required = true)
+            @RequestBody @Valid UpdateUserProfileRequest request) {
+        try {
+            LOGGER.info("🔧 Запрос на обновление профиля пользователя {}: {}", id, request);
+
+            UserProfileEntity updatedProfile = userProfileService.updateProfileByUserId(id, request);
+            UserProfileDto profileDto = UserProfileDto.fromEntity(updatedProfile);
+
+            Optional<UserEntity> userOpt = userService.findById(id);
+            userOpt.ifPresent(user -> profileDto.setUser(UserDto.fromEntity(user)));
+
+            LOGGER.info("✅ Профиль пользователя {} успешно обновлен", id);
+            return ResponseEntity.ok(profileDto);
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("⚠️ Профиль не найден: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при обновлении профиля пользователя {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Получить транзакции ART пользователя по Telegram ID (только для админа)
+     */
+    @GetMapping("/{id}/transactions")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+        summary = "Получить транзакции ART пользователя",
+        description = "Возвращает историю начислений и списаний ART для указанного пользователя по Telegram ID (только для ADMIN)"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Список транзакций получен",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = PageResponse.class)
+            )
+        ),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<PageResponse<ArtTransactionDto>> getUserTransactions(
+            @Parameter(description = "Telegram ID пользователя", required = true, example = "123456789")
+            @PathVariable Long id,
+            @ParameterObject @Valid PageRequest pageRequest) {
+        try {
+            var page = artRewardService.findTransactions(id, pageRequest.toPageable());
+            List<ArtTransactionDto> dtos = page.getContent().stream()
+                    .map(ArtTransactionDto::fromEntity)
+                    .toList();
+
+            PageResponse<ArtTransactionDto> response = PageResponse.of(page, dtos);
+            LOGGER.debug("🔍 Найдено {} транзакций ART для пользователя {}", response.getContent().size(), id);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при получении транзакций ART для пользователя {}: {}", id, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }

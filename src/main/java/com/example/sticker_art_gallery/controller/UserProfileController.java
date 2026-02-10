@@ -187,13 +187,13 @@ public class UserProfileController {
     }
 
     /**
-     * Получить транзакции ART пользователя по ID
+     * Получить транзакции ART по ID профиля
      */
-    @GetMapping("/{userId}/transactions")
+    @GetMapping("/{profileId}/transactions")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
-        summary = "Получить транзакции ART пользователя",
-        description = "Возвращает историю начислений и списаний ART для указанного пользователя (только для ADMIN)"
+        summary = "Получить транзакции ART по ID профиля",
+        description = "Возвращает историю начислений и списаний ART для профиля (только для ADMIN)"
     )
     @ApiResponses(value = {
         @ApiResponse(
@@ -203,7 +203,7 @@ public class UserProfileController {
                 mediaType = "application/json",
                 schema = @Schema(implementation = PageResponse.class),
                 examples = @ExampleObject(
-                    name = "Пример списка транзакций пользователя",
+                    name = "Пример списка транзакций профиля",
                     value = """
                         {
                           "content": [
@@ -234,24 +234,30 @@ public class UserProfileController {
             )
         ),
         @ApiResponse(responseCode = "403", description = "Доступ запрещен"),
-        @ApiResponse(responseCode = "404", description = "Пользователь не найден"),
+        @ApiResponse(responseCode = "404", description = "Профиль не найден"),
         @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
     })
-    public ResponseEntity<PageResponse<ArtTransactionDto>> getUserTransactions(
-            @Parameter(description = "Telegram ID пользователя", required = true, example = "123456789")
-            @PathVariable Long userId,
+    public ResponseEntity<PageResponse<ArtTransactionDto>> getProfileTransactions(
+            @Parameter(description = "ID профиля", required = true, example = "1")
+            @PathVariable Long profileId,
             @ParameterObject @Valid PageRequest pageRequest) {
-        return buildTransactionsResponse(userId, getCurrentUserId(), pageRequest);
+        Optional<UserProfileEntity> profileOpt = userProfileService.findById(profileId);
+        if (profileOpt.isEmpty()) {
+            LOGGER.warn("⚠️ Профиль с ID {} не найден", profileId);
+            return ResponseEntity.notFound().build();
+        }
+
+        return buildTransactionsResponse(profileOpt.get().getUserId(), getCurrentUserId(), pageRequest);
     }
     
     /**
      * Обновить профиль пользователя (только для админа)
      */
-    @PatchMapping("/{userId}")
+    @PatchMapping("/{profileId}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
-        summary = "Обновить профиль пользователя (ADMIN)",
-        description = "Обновляет профиль пользователя по его Telegram ID. Доступно только администраторам. Можно обновлять роль, баланс, статус блокировки и статус подписки."
+        summary = "Обновить профиль по ID профиля (ADMIN)",
+        description = "Обновляет профиль пользователя по ID профиля. Доступно только администраторам. Можно обновлять роль, баланс, статус блокировки и статус подписки."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Профиль успешно обновлен",
@@ -280,32 +286,32 @@ public class UserProfileController {
         @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
     })
     public ResponseEntity<UserProfileDto> updateUserProfile(
-            @Parameter(description = "Telegram ID пользователя", required = true, example = "123456789")
-            @PathVariable Long userId,
+            @Parameter(description = "ID профиля", required = true, example = "1")
+            @PathVariable Long profileId,
             @Parameter(description = "Данные для обновления профиля", required = true)
             @RequestBody @Valid UpdateUserProfileRequest request) {
         try {
-            LOGGER.info("🔧 Запрос на обновление профиля пользователя {}: {}", userId, request);
-            
+            LOGGER.info("🔧 Запрос на обновление профиля {}: {}", profileId, request);
+
             // Обновляем профиль
-            UserProfileEntity updatedProfile = userProfileService.updateProfile(userId, request);
-            
+            UserProfileEntity updatedProfile = userProfileService.updateProfileByProfileId(profileId, request);
+
             // Формируем DTO с данными пользователя
             UserProfileDto profileDto = UserProfileDto.fromEntity(updatedProfile);
-            
+
             // Загружаем информацию о пользователе из Telegram
-            Optional<UserEntity> userOpt = userService.findById(userId);
+            Optional<UserEntity> userOpt = userService.findById(updatedProfile.getUserId());
             if (userOpt.isPresent()) {
                 profileDto.setUser(UserDto.fromEntity(userOpt.get()));
             }
-            
-            LOGGER.info("✅ Профиль пользователя {} успешно обновлен", userId);
+
+            LOGGER.info("✅ Профиль {} успешно обновлен", profileId);
             return ResponseEntity.ok(profileDto);
         } catch (IllegalArgumentException e) {
             LOGGER.warn("⚠️ Профиль не найден: {}", e.getMessage());
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при обновлении профиля пользователя {}: {}", userId, e.getMessage(), e);
+            LOGGER.error("❌ Ошибка при обновлении профиля {}: {}", profileId, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }

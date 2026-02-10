@@ -142,15 +142,15 @@ public class UserProfileService {
     }
 
     /**
-     * Обновить профиль пользователя (только для админа)
-     * 
+     * Обновить профиль пользователя по Telegram ID (только для админа)
+     *
      * @param userId Telegram ID пользователя
      * @param request Данные для обновления
      * @return Обновленный профиль
      * @throws IllegalArgumentException если профиль не найден
      */
     @Transactional
-    public UserProfileEntity updateProfile(Long userId, UpdateUserProfileRequest request) {
+    public UserProfileEntity updateProfileByUserId(Long userId, UpdateUserProfileRequest request) {
         LOGGER.info("✏️ Обновление профиля пользователя {}: role={}, artBalance={}, isBlocked={}, subscriptionStatus={}",
                     userId, request.getRole(), request.getArtBalance(), request.getIsBlocked(), request.getSubscriptionStatus());
         
@@ -180,7 +180,49 @@ public class UserProfileService {
         
         UserProfileEntity savedProfile = repository.save(profile);
         LOGGER.info("✅ Профиль пользователя {} успешно обновлен", userId);
-        
+
+        return savedProfile;
+    }
+
+    /**
+     * Обновить профиль пользователя по ID профиля (только для админа)
+     *
+     * @param profileId ID профиля
+     * @param request Данные для обновления
+     * @return Обновленный профиль
+     * @throws IllegalArgumentException если профиль не найден
+     */
+    @Transactional
+    public UserProfileEntity updateProfileByProfileId(Long profileId, UpdateUserProfileRequest request) {
+        LOGGER.info("✏️ Обновление профиля по profileId {}: role={}, artBalance={}, isBlocked={}, subscriptionStatus={}",
+                    profileId, request.getRole(), request.getArtBalance(), request.getIsBlocked(), request.getSubscriptionStatus());
+
+        UserProfileEntity profile = repository.findById(profileId)
+                .orElseThrow(() -> new IllegalArgumentException("Профиль с ID " + profileId + " не найден"));
+
+        if (request.getRole() != null) {
+            profile.setRole(request.getRole());
+            LOGGER.debug("  ✓ Роль изменена на: {}", request.getRole());
+        }
+
+        if (request.getArtBalance() != null) {
+            profile.setArtBalance(request.getArtBalance());
+            LOGGER.debug("  ✓ Баланс изменен на: {}", request.getArtBalance());
+        }
+
+        if (request.getIsBlocked() != null) {
+            profile.setIsBlocked(request.getIsBlocked());
+            LOGGER.debug("  ✓ Статус блокировки изменен на: {}", request.getIsBlocked());
+        }
+
+        if (request.getSubscriptionStatus() != null) {
+            profile.setSubscriptionStatus(request.getSubscriptionStatus());
+            LOGGER.debug("  ✓ Статус подписки изменен на: {}", request.getSubscriptionStatus());
+        }
+
+        UserProfileEntity savedProfile = repository.save(profile);
+        LOGGER.info("✅ Профиль {} успешно обновлен", profileId);
+
         return savedProfile;
     }
 }
