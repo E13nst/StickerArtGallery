@@ -3,6 +3,7 @@ package com.example.sticker_art_gallery.service.profile;
 import com.example.sticker_art_gallery.dto.UpdateUserProfileRequest;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.repository.UserProfileRepository;
+import com.example.sticker_art_gallery.repository.projection.UserProfileWithStickerCountsProjection;
 import com.example.sticker_art_gallery.service.user.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,7 +13,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.OffsetDateTime;
 import java.util.Optional;
 
 @Service
@@ -98,61 +98,30 @@ public class UserProfileService {
     // ============ Admin methods ============
 
     /**
-     * Получить список всех профилей с фильтрами и пагинацией (для админ-панели)
+     * Получить список всех профилей с базовыми фильтрами, пагинацией и счетчиками стикерсетов
+     * Используется в админ-панели для отображения списка пользователей с подсчетом их стикерсетов
      * 
      * @param role Фильтр по роли (USER/ADMIN)
      * @param isBlocked Фильтр по статусу блокировки
-     * @param subscriptionStatus Фильтр по статусу подписки
-     * @param minBalance Минимальный баланс
-     * @param maxBalance Максимальный баланс
-     * @param createdAfter Дата создания после
-     * @param createdBefore Дата создания до
-     * @param search Поиск по User ID
-     * @param userUsername Поиск по username (LIKE)
-     * @param userFirstName Поиск по имени (LIKE)
-     * @param userLastName Поиск по фамилии (LIKE)
-     * @param userLanguageCode Фильтр по коду языка (точное совпадение)
-     * @param userIsPremium Фильтр по Telegram Premium (точное совпадение)
-     * @param pageable Параметры пагинации и сортировки
-     * @return Страница профилей пользователей
+     * @param search Универсальный поиск по User ID или username
+     * @param sort Поле для сортировки (createdAt, ownedStickerSetsCount, authoredStickerSetsCount)
+     * @param direction Направление сортировки (ASC/DESC)
+     * @param pageable Параметры пагинации
+     * @return Страница профилей пользователей с счетчиками стикерсетов
      */
     @Transactional(readOnly = true)
-    public Page<UserProfileEntity> findAllWithFilters(
+    public Page<UserProfileWithStickerCountsProjection> findAllWithFiltersAndCounts(
             UserProfileEntity.UserRole role,
             Boolean isBlocked,
-            UserProfileEntity.SubscriptionStatus subscriptionStatus,
-            Long minBalance,
-            Long maxBalance,
-            OffsetDateTime createdAfter,
-            OffsetDateTime createdBefore,
             String search,
-            String userUsername,
-            String userFirstName,
-            String userLastName,
-            String userLanguageCode,
-            Boolean userIsPremium,
+            String sort,
+            String direction,
             Pageable pageable) {
-        LOGGER.debug("🔍 Поиск профилей с фильтрами: role={}, isBlocked={}, subscriptionStatus={}, " +
-                     "minBalance={}, maxBalance={}, search={}, userUsername={}, userFirstName={}, userLastName={}, " +
-                     "userLanguageCode={}, userIsPremium={}, page={}, size={}",
-                     role, isBlocked, subscriptionStatus, minBalance, maxBalance, search,
-                     userUsername, userFirstName, userLastName, userLanguageCode, userIsPremium,
-                     pageable.getPageNumber(), pageable.getPageSize());
+        LOGGER.debug("🔍 Поиск профилей с счетчиками: role={}, isBlocked={}, search={}, sort={}, direction={}",
+                     role, isBlocked, search, sort, direction);
         
-        // Преобразуем enum в строки для нативного SQL запроса
         String roleStr = role != null ? role.name() : null;
-        String subscriptionStatusStr = subscriptionStatus != null ? subscriptionStatus.name() : null;
-        String createdAfterStr = createdAfter != null ? createdAfter.toString() : null;
-        String createdBeforeStr = createdBefore != null ? createdBefore.toString() : null;
-        
-        return repository.findAllWithFilters(
-                roleStr, isBlocked, subscriptionStatusStr,
-                minBalance, maxBalance,
-                createdAfterStr, createdBeforeStr,
-                search,
-                userUsername, userFirstName, userLastName, userLanguageCode, userIsPremium,
-                pageable
-        );
+        return repository.findAllWithFiltersAndCounts(roleStr, isBlocked, search, sort, direction, pageable);
     }
 
     /**

@@ -29,6 +29,10 @@ public class UserProfileDto {
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
     
+    // Счетчики стикерсетов (только для админского списка)
+    private Long ownedStickerSetsCount;
+    private Long authoredStickerSetsCount;
+    
     // Конструкторы
     public UserProfileDto() {}
     
@@ -104,6 +108,12 @@ public class UserProfileDto {
     
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
+    
+    public Long getOwnedStickerSetsCount() { return ownedStickerSetsCount; }
+    public void setOwnedStickerSetsCount(Long ownedStickerSetsCount) { this.ownedStickerSetsCount = ownedStickerSetsCount; }
+    
+    public Long getAuthoredStickerSetsCount() { return authoredStickerSetsCount; }
+    public void setAuthoredStickerSetsCount(Long authoredStickerSetsCount) { this.authoredStickerSetsCount = authoredStickerSetsCount; }
     
     @Override
     public String toString() {

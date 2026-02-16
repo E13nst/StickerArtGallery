@@ -8,6 +8,7 @@ import com.example.sticker_art_gallery.dto.UserDto;
 import com.example.sticker_art_gallery.dto.UserProfileDto;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.model.user.UserEntity;
+import com.example.sticker_art_gallery.repository.projection.UserProfileWithStickerCountsProjection;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
 import com.example.sticker_art_gallery.service.user.UserService;
@@ -466,7 +467,7 @@ public class UserProfileController {
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @Parameter(description = "Количество элементов на странице (1-100)", example = "20")
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
-            @Parameter(description = "Поле для сортировки", example = "createdAt")
+            @Parameter(description = "Поле для сортировки (createdAt, ownedStickerSetsCount, authoredStickerSetsCount)", example = "createdAt")
             @RequestParam(defaultValue = "createdAt") String sort,
             @Parameter(description = "Направление сортировки (ASC/DESC)", example = "DESC")
             @RequestParam(defaultValue = "DESC") String direction,
@@ -474,36 +475,14 @@ public class UserProfileController {
             @RequestParam(required = false) String role,
             @Parameter(description = "Фильтр по статусу блокировки", example = "false")
             @RequestParam(required = false) Boolean isBlocked,
-            @Parameter(description = "Фильтр по статусу подписки (NONE/ACTIVE/EXPIRED/CANCELLED)", example = "ACTIVE")
-            @RequestParam(required = false) String subscriptionStatus,
-            @Parameter(description = "Минимальный баланс ART", example = "0")
-            @RequestParam(required = false) Long minBalance,
-            @Parameter(description = "Максимальный баланс ART", example = "1000")
-            @RequestParam(required = false) Long maxBalance,
-            @Parameter(description = "Дата создания после (ISO 8601)", example = "2025-01-01T00:00:00Z")
-            @RequestParam(required = false) String createdAfter,
-            @Parameter(description = "Дата создания до (ISO 8601)", example = "2025-12-31T23:59:59Z")
-            @RequestParam(required = false) String createdBefore,
-            @Parameter(description = "Поиск по User ID", example = "123456789")
-            @RequestParam(required = false) String search,
-            @Parameter(description = "Поиск по username пользователя (LIKE)", example = "test")
-            @RequestParam(required = false) String userUsername,
-            @Parameter(description = "Поиск по firstName пользователя (LIKE)", example = "Test")
-            @RequestParam(required = false) String userFirstName,
-            @Parameter(description = "Поиск по lastName пользователя (LIKE)", example = "User")
-            @RequestParam(required = false) String userLastName,
-            @Parameter(description = "Фильтр по languageCode пользователя (точное совпадение)", example = "ru")
-            @RequestParam(required = false) String userLanguageCode,
-            @Parameter(description = "Фильтр по Telegram Premium пользователя", example = "true")
-            @RequestParam(required = false) Boolean userIsPremium) {
+            @Parameter(description = "Универсальный поиск по User ID или username", example = "123456789")
+            @RequestParam(required = false) String search) {
         try {
             LOGGER.debug("🔍 Получение списка профилей: page={}, size={}, sort={}, direction={}, " +
-                        "role={}, isBlocked={}, subscriptionStatus={}, search={}, userUsername={}, " +
-                        "userFirstName={}, userLastName={}, userLanguageCode={}, userIsPremium={}",
-                        page, size, sort, direction, role, isBlocked, subscriptionStatus, search,
-                        userUsername, userFirstName, userLastName, userLanguageCode, userIsPremium);
+                        "role={}, isBlocked={}, search={}",
+                        page, size, sort, direction, role, isBlocked, search);
             
-            // Парсим параметры фильтров
+            // Парсим роль
             UserProfileEntity.UserRole roleEnum = null;
             if (role != null && !role.trim().isEmpty()) {
                 try {
@@ -513,59 +492,48 @@ public class UserProfileController {
                 }
             }
             
-            UserProfileEntity.SubscriptionStatus subscriptionStatusEnum = null;
-            if (subscriptionStatus != null && !subscriptionStatus.trim().isEmpty()) {
-                try {
-                    subscriptionStatusEnum = UserProfileEntity.SubscriptionStatus.valueOf(subscriptionStatus.toUpperCase());
-                } catch (IllegalArgumentException e) {
-                    LOGGER.warn("⚠️ Некорректное значение статуса подписки: {}", subscriptionStatus);
-                }
-            }
+            // Валидируем и нормализуем параметры сортировки
+            String validatedSort = validateSortField(sort);
+            String validatedDirection = validateDirection(direction);
             
-            java.time.OffsetDateTime createdAfterDate = null;
-            if (createdAfter != null && !createdAfter.trim().isEmpty()) {
-                try {
-                    createdAfterDate = java.time.OffsetDateTime.parse(createdAfter);
-                } catch (java.time.format.DateTimeParseException e) {
-                    LOGGER.warn("⚠️ Некорректный формат даты createdAfter: {}", createdAfter);
-                }
-            }
-            
-            java.time.OffsetDateTime createdBeforeDate = null;
-            if (createdBefore != null && !createdBefore.trim().isEmpty()) {
-                try {
-                    createdBeforeDate = java.time.OffsetDateTime.parse(createdBefore);
-                } catch (java.time.format.DateTimeParseException e) {
-                    LOGGER.warn("⚠️ Некорректный формат даты createdBefore: {}", createdBefore);
-                }
-            }
-            
-            // Для нативного запроса используем фиксированную сортировку по created_at в SQL
             org.springframework.data.domain.PageRequest pageRequest =
                 org.springframework.data.domain.PageRequest.of(page, size);
             
-            // Получаем профили с фильтрами
-            org.springframework.data.domain.Page<UserProfileEntity> profilesPage = 
-                userProfileService.findAllWithFilters(
-                    roleEnum, isBlocked, subscriptionStatusEnum,
-                    minBalance, maxBalance,
-                    createdAfterDate, createdBeforeDate,
-                    search, userUsername, userFirstName, userLastName, userLanguageCode, userIsPremium,
+            // Получаем профили с фильтрами и счетчиками стикерсетов
+            org.springframework.data.domain.Page<UserProfileWithStickerCountsProjection> profilesPage = 
+                userProfileService.findAllWithFiltersAndCounts(
+                    roleEnum, isBlocked, search,
+                    validatedSort, validatedDirection,
                     pageRequest
                 );
             
             // Пакетно загружаем пользователей, чтобы избежать N+1 запросов
             List<Long> userIds = profilesPage.getContent().stream()
-                    .map(UserProfileEntity::getUserId)
+                    .map(UserProfileWithStickerCountsProjection::getUserId)
                     .filter(Objects::nonNull)
                     .distinct()
                     .toList();
             Map<Long, UserEntity> usersById = userService.findAllByIds(userIds);
 
             List<UserProfileDto> profileDtos = profilesPage.getContent().stream()
-                    .map(profile -> {
-                        UserProfileDto dto = UserProfileDto.fromEntity(profile);
-                        UserEntity user = usersById.get(profile.getUserId());
+                    .map(projection -> {
+                        UserProfileDto dto = new UserProfileDto();
+                        dto.setId(projection.getId());
+                        dto.setUserId(projection.getUserId());
+                        dto.setRole(projection.getRole());
+                        dto.setArtBalance(projection.getArtBalance());
+                        dto.setIsBlocked(projection.getIsBlocked());
+                        // Конвертируем Instant в OffsetDateTime (UTC)
+                        dto.setCreatedAt(projection.getCreatedAt() != null 
+                            ? java.time.OffsetDateTime.ofInstant(projection.getCreatedAt(), java.time.ZoneOffset.UTC)
+                            : null);
+                        dto.setUpdatedAt(projection.getUpdatedAt() != null 
+                            ? java.time.OffsetDateTime.ofInstant(projection.getUpdatedAt(), java.time.ZoneOffset.UTC)
+                            : null);
+                        dto.setOwnedStickerSetsCount(projection.getOwnedStickerSetsCount());
+                        dto.setAuthoredStickerSetsCount(projection.getAuthoredStickerSetsCount());
+                        
+                        UserEntity user = usersById.get(projection.getUserId());
                         if (user != null) {
                             dto.setUser(UserDto.fromEntity(user));
                         }
@@ -583,5 +551,41 @@ public class UserProfileController {
             LOGGER.error("❌ Ошибка при получении списка профилей: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+    
+    /**
+     * Валидирует поле сортировки и возвращает значение по умолчанию если невалидное
+     */
+    private String validateSortField(String sort) {
+        if (sort == null || sort.trim().isEmpty()) {
+            return "createdAt";
+        }
+        
+        // Whitelist допустимых полей для сортировки
+        String normalized = sort.trim();
+        return switch (normalized) {
+            case "createdAt", "ownedStickerSetsCount", "authoredStickerSetsCount" -> normalized;
+            default -> {
+                LOGGER.warn("⚠️ Некорректное поле сортировки: {}, используется createdAt", sort);
+                yield "createdAt";
+            }
+        };
+    }
+    
+    /**
+     * Валидирует направление сортировки и возвращает значение по умолчанию если невалидное
+     */
+    private String validateDirection(String direction) {
+        if (direction == null || direction.trim().isEmpty()) {
+            return "DESC";
+        }
+        
+        String normalized = direction.trim().toUpperCase();
+        if ("ASC".equals(normalized) || "DESC".equals(normalized)) {
+            return normalized;
+        }
+        
+        LOGGER.warn("⚠️ Некорректное направление сортировки: {}, используется DESC", direction);
+        return "DESC";
     }
 }

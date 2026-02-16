@@ -1,6 +1,7 @@
 package com.example.sticker_art_gallery.repository;
 
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
+import com.example.sticker_art_gallery.repository.projection.UserProfileWithStickerCountsProjection;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -33,55 +34,48 @@ public interface UserProfileRepository extends JpaRepository<UserProfileEntity, 
     boolean existsByUserId(Long userId);
     
     /**
-     * Найти все профили с фильтрами и пагинацией (для админ-панели)
-     * Показываем только данные из user_profiles без JOIN с users для упрощения
+     * Найти все профили с базовыми фильтрами, пагинацией и счетчиками стикерсетов (для админ-панели)
+     * Возвращает projection с дополнительными полями: ownedStickerSetsCount и authoredStickerSetsCount
+     * Поддерживает сортировку по: createdAt, ownedStickerSetsCount, authoredStickerSetsCount
      */
-    @Query(value = "SELECT up.* FROM user_profiles up " +
+    @Query(value = 
+           "SELECT " +
+           "  up.id, up.user_id AS userId, " +
+           "  CAST(up.role AS TEXT) AS role, " +
+           "  up.art_balance AS artBalance, " +
+           "  up.is_blocked AS isBlocked, " +
+           "  CAST(up.subscription_status AS TEXT) AS subscriptionStatus, " +
+           "  up.created_at AS createdAt, up.updated_at AS updatedAt, " +
+           "  COALESCE(oc.cnt, 0) AS ownedStickerSetsCount, " +
+           "  COALESCE(ac.cnt, 0) AS authoredStickerSetsCount " +
+           "FROM user_profiles up " +
+           "LEFT JOIN users u ON up.user_id = u.id " +
+           "LEFT JOIN (SELECT user_id, COUNT(*) AS cnt FROM stickersets WHERE state='ACTIVE' GROUP BY user_id) oc ON oc.user_id = up.user_id " +
+           "LEFT JOIN (SELECT author_id, COUNT(*) AS cnt FROM stickersets WHERE state='ACTIVE' AND author_id IS NOT NULL GROUP BY author_id) ac ON ac.author_id = up.user_id " +
+           "WHERE (:role IS NULL OR CAST(up.role AS TEXT) = :role) " +
+           "  AND (:isBlocked IS NULL OR up.is_blocked = :isBlocked) " +
+           "  AND (:search IS NULL OR :search = '' OR CAST(up.user_id AS TEXT) LIKE CONCAT('%', :search, '%') OR u.username ILIKE CONCAT('%', :search, '%')) " +
+           "ORDER BY " +
+           "  CASE WHEN :sort = 'createdAt' AND :direction = 'ASC' THEN up.created_at END ASC, " +
+           "  CASE WHEN :sort = 'createdAt' AND :direction = 'DESC' THEN up.created_at END DESC, " +
+           "  CASE WHEN :sort = 'ownedStickerSetsCount' AND :direction = 'ASC' THEN COALESCE(oc.cnt, 0) END ASC, " +
+           "  CASE WHEN :sort = 'ownedStickerSetsCount' AND :direction = 'DESC' THEN COALESCE(oc.cnt, 0) END DESC, " +
+           "  CASE WHEN :sort = 'authoredStickerSetsCount' AND :direction = 'ASC' THEN COALESCE(ac.cnt, 0) END ASC, " +
+           "  CASE WHEN :sort = 'authoredStickerSetsCount' AND :direction = 'DESC' THEN COALESCE(ac.cnt, 0) END DESC, " +
+           "  up.created_at DESC, up.user_id ASC",
+           countQuery = 
+           "SELECT COUNT(*) FROM user_profiles up " +
            "LEFT JOIN users u ON up.user_id = u.id " +
            "WHERE (:role IS NULL OR CAST(up.role AS TEXT) = :role) " +
-           "AND (:isBlocked IS NULL OR up.is_blocked = :isBlocked) " +
-           "AND (:subscriptionStatus IS NULL OR CAST(up.subscription_status AS TEXT) = :subscriptionStatus) " +
-           "AND (:minBalance IS NULL OR up.art_balance >= :minBalance) " +
-           "AND (:maxBalance IS NULL OR up.art_balance <= :maxBalance) " +
-           "AND (:createdAfter IS NULL OR up.created_at >= CAST(:createdAfter AS timestamp)) " +
-           "AND (:createdBefore IS NULL OR up.created_at <= CAST(:createdBefore AS timestamp)) " +
-           "AND (:search IS NULL OR :search = '' OR CAST(up.user_id AS TEXT) LIKE CONCAT('%', :search, '%')) " +
-           "AND (:userUsername IS NULL OR :userUsername = '' OR u.username LIKE CONCAT('%', :userUsername, '%')) " +
-           "AND (:userFirstName IS NULL OR :userFirstName = '' OR u.first_name LIKE CONCAT('%', :userFirstName, '%')) " +
-           "AND (:userLastName IS NULL OR :userLastName = '' OR u.last_name LIKE CONCAT('%', :userLastName, '%')) " +
-           "AND (:userLanguageCode IS NULL OR :userLanguageCode = '' OR u.language_code = :userLanguageCode) " +
-           "AND (:userIsPremium IS NULL OR u.is_premium = :userIsPremium) " +
-           "ORDER BY up.created_at DESC",
-           countQuery = "SELECT COUNT(*) FROM user_profiles up " +
-           "LEFT JOIN users u ON up.user_id = u.id " +
-           "WHERE (:role IS NULL OR CAST(up.role AS TEXT) = :role) " +
-           "AND (:isBlocked IS NULL OR up.is_blocked = :isBlocked) " +
-           "AND (:subscriptionStatus IS NULL OR CAST(up.subscription_status AS TEXT) = :subscriptionStatus) " +
-           "AND (:minBalance IS NULL OR up.art_balance >= :minBalance) " +
-           "AND (:maxBalance IS NULL OR up.art_balance <= :maxBalance) " +
-           "AND (:createdAfter IS NULL OR up.created_at >= CAST(:createdAfter AS timestamp)) " +
-           "AND (:createdBefore IS NULL OR up.created_at <= CAST(:createdBefore AS timestamp)) " +
-           "AND (:search IS NULL OR :search = '' OR CAST(up.user_id AS TEXT) LIKE CONCAT('%', :search, '%')) " +
-           "AND (:userUsername IS NULL OR :userUsername = '' OR u.username LIKE CONCAT('%', :userUsername, '%')) " +
-           "AND (:userFirstName IS NULL OR :userFirstName = '' OR u.first_name LIKE CONCAT('%', :userFirstName, '%')) " +
-           "AND (:userLastName IS NULL OR :userLastName = '' OR u.last_name LIKE CONCAT('%', :userLastName, '%')) " +
-           "AND (:userLanguageCode IS NULL OR :userLanguageCode = '' OR u.language_code = :userLanguageCode) " +
-           "AND (:userIsPremium IS NULL OR u.is_premium = :userIsPremium)",
+           "  AND (:isBlocked IS NULL OR up.is_blocked = :isBlocked) " +
+           "  AND (:search IS NULL OR :search = '' OR CAST(up.user_id AS TEXT) LIKE CONCAT('%', :search, '%') OR u.username ILIKE CONCAT('%', :search, '%'))",
            nativeQuery = true)
-    Page<UserProfileEntity> findAllWithFilters(
+    Page<UserProfileWithStickerCountsProjection> findAllWithFiltersAndCounts(
             @Param("role") String role,
             @Param("isBlocked") Boolean isBlocked,
-            @Param("subscriptionStatus") String subscriptionStatus,
-            @Param("minBalance") Long minBalance,
-            @Param("maxBalance") Long maxBalance,
-            @Param("createdAfter") String createdAfter,
-            @Param("createdBefore") String createdBefore,
             @Param("search") String search,
-            @Param("userUsername") String userUsername,
-            @Param("userFirstName") String userFirstName,
-            @Param("userLastName") String userLastName,
-            @Param("userLanguageCode") String userLanguageCode,
-            @Param("userIsPremium") Boolean userIsPremium,
+            @Param("sort") String sort,
+            @Param("direction") String direction,
             Pageable pageable
     );
 }

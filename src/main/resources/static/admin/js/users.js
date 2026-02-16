@@ -63,6 +63,16 @@ const tableColumns = [
         render: (row) => row.isBlocked ? '🚫 Да' : '-'
     },
     {
+        field: 'ownedStickerSetsCount',
+        label: 'Владелец',
+        render: (row) => `<span class="font-mono text-xs">${formatNumber(row.ownedStickerSetsCount || 0)}</span>`
+    },
+    {
+        field: 'authoredStickerSetsCount',
+        label: 'Автор',
+        render: (row) => `<span class="font-mono text-xs">${formatNumber(row.authoredStickerSetsCount || 0)}</span>`
+    },
+    {
         field: 'createdAt',
         label: 'Создан',
         render: (row) => formatDate(row.createdAt)
@@ -78,47 +88,8 @@ const tableColumns = [
     }
 ];
 
-// Фильтры
+// Фильтры (упрощенная версия - только самые нужные)
 const filterConfig = [
-    {
-        name: 'search',
-        label: 'Поиск по User ID',
-        type: 'text',
-        placeholder: 'User ID...'
-    },
-    {
-        name: 'userUsername',
-        label: 'Username',
-        type: 'text',
-        placeholder: 'Поиск по username...'
-    },
-    {
-        name: 'userFirstName',
-        label: 'Имя',
-        type: 'text',
-        placeholder: 'Поиск по имени...'
-    },
-    {
-        name: 'userLastName',
-        label: 'Фамилия',
-        type: 'text',
-        placeholder: 'Поиск по фамилии...'
-    },
-    {
-        name: 'userLanguageCode',
-        label: 'Язык',
-        type: 'text',
-        placeholder: 'ru, en...'
-    },
-    {
-        name: 'userIsPremium',
-        label: 'Premium',
-        type: 'select',
-        options: [
-            { value: 'true', label: 'Да' },
-            { value: 'false', label: 'Нет' }
-        ]
-    },
     {
         name: 'role',
         label: 'Роль',
@@ -138,27 +109,23 @@ const filterConfig = [
         ]
     },
     {
-        name: 'subscriptionStatus',
-        label: 'Статус подписки',
+        name: 'sort',
+        label: 'Сортировка',
         type: 'select',
         options: [
-            { value: 'NONE', label: 'NONE' },
-            { value: 'ACTIVE', label: 'ACTIVE' },
-            { value: 'EXPIRED', label: 'EXPIRED' },
-            { value: 'CANCELLED', label: 'CANCELLED' }
+            { value: 'createdAt', label: 'Дата создания' },
+            { value: 'ownedStickerSetsCount', label: 'Кол-во владения' },
+            { value: 'authoredStickerSetsCount', label: 'Кол-во авторства' }
         ]
     },
     {
-        name: 'minBalance',
-        label: 'Мин. баланс',
-        type: 'number',
-        min: 0
-    },
-    {
-        name: 'maxBalance',
-        label: 'Макс. баланс',
-        type: 'number',
-        min: 0
+        name: 'direction',
+        label: 'Направление',
+        type: 'select',
+        options: [
+            { value: 'DESC', label: 'По убыванию' },
+            { value: 'ASC', label: 'По возрастанию' }
+        ]
     }
 ];
 
@@ -183,7 +150,19 @@ document.addEventListener('DOMContentLoaded', async function() {
     filters = new FiltersPanel('filters-container', {
         filters: filterConfig,
         onFilterChange: (filterValues) => {
+            // Обновляем фильтры
             currentFilters = filterValues;
+            
+            // Обрабатываем sort и direction отдельно
+            if (filterValues.sort) {
+                currentSort = filterValues.sort;
+                delete currentFilters.sort; // Не передаем как фильтр, это параметр сортировки
+            }
+            if (filterValues.direction) {
+                currentDirection = filterValues.direction;
+                delete currentFilters.direction; // Не передаем как фильтр, это параметр сортировки
+            }
+            
             currentPage = 0;
             loadUsers();
         }
