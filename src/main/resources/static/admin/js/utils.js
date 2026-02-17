@@ -113,7 +113,7 @@ function renderActionDropdown(actions) {
     return `
         <details class="relative inline-block action-dropdown">
             <summary class="list-none cursor-pointer px-2 py-1 text-gray-600 hover:bg-gray-100 rounded border border-gray-300 text-sm flex items-center justify-center w-8">⋮</summary>
-            <div class="absolute right-0 mt-1 z-20 bg-white border rounded-lg shadow-lg py-1 min-w-[140px]">
+            <div class="action-dropdown-menu absolute right-0 mt-1 z-[100] bg-white border rounded-lg shadow-lg py-1 min-w-[140px]">
                 ${actions.map(a => `
                     <button type="button" class="block w-full text-left px-3 py-2 text-xs hover:bg-gray-50 transition ${a.className || ''}" onclick="${a.onclick}; closeActionDropdown(this)">
                         ${escapeHtml(a.label)}
@@ -129,6 +129,28 @@ function closeActionDropdown(btn) {
     const details = btn.closest('details');
     if (details) details.removeAttribute('open');
 }
+
+/** Позиционирует выпадающее меню с position:fixed, чтобы не обрезалось overflow контейнера */
+function positionActionDropdown(details) {
+    const summary = details.querySelector('summary');
+    const menu = details.querySelector('.action-dropdown-menu');
+    if (!summary || !menu) return;
+    const rect = summary.getBoundingClientRect();
+    const menuWidth = menu.offsetWidth;
+    let left = rect.right - menuWidth;
+    if (left < 8) left = 8;
+    if (left + menuWidth > window.innerWidth - 8) left = window.innerWidth - menuWidth - 8;
+    menu.style.position = 'fixed';
+    menu.style.top = (rect.bottom + 4) + 'px';
+    menu.style.left = left + 'px';
+    menu.style.right = 'auto';
+}
+
+document.addEventListener('toggle', function(e) {
+    if (e.target.matches('.action-dropdown') && e.target.open) {
+        requestAnimationFrame(() => positionActionDropdown(e.target));
+    }
+}, true);
 
 // Построить query string из объекта
 function buildQueryString(params) {
