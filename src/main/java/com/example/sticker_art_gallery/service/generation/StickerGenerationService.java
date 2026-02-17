@@ -139,9 +139,11 @@ public class StickerGenerationService {
         }
 
         Map<String, Object> auditRequestParams = new HashMap<>();
-        auditRequestParams.put("seed", request.getSeed() != null ? request.getSeed() : -1);
+        // Сохраняем полный входной payload запроса для аудита
+        auditRequestParams.put("prompt", request.getPrompt());
+        auditRequestParams.put("seed", request.getSeed());
         auditRequestParams.put("stylePresetId", request.getStylePresetId());
-        auditRequestParams.put("removeBackground", request.getRemoveBackground() != null ? request.getRemoveBackground() : bgRemoveEnabled);
+        auditRequestParams.put("removeBackground", request.getRemoveBackground());
         generationAuditService.startSession(taskId, userId, request.getPrompt(), auditRequestParams, task.getExpiresAt());
 
         // 4. Запускаем асинхронную обработку промпта
