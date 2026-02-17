@@ -193,6 +193,22 @@ class AdminApiClient {
         const promises = ids.map(id => this.unsetOfficial(id));
         return Promise.all(promises);
     }
+
+    // ============ Generation logs (Admin audit) ============
+
+    async getGenerationLogs(filters = {}, page = 0, size = 20) {
+        const params = { page, size, ...filters };
+        const queryString = buildQueryString(params);
+        return this.request(`/admin/generation-logs${queryString}`);
+    }
+
+    async getGenerationLogDetail(taskId) {
+        return this.request(`/admin/generation-logs/${encodeURIComponent(taskId)}`);
+    }
+
+    async getGenerationLogEvents(taskId) {
+        return this.request(`/admin/generation-logs/${encodeURIComponent(taskId)}/events`);
+    }
 }
 
 // Создаем глобальный экземпляр API client

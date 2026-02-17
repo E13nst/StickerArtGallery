@@ -2,6 +2,8 @@ package com.example.sticker_art_gallery.service.generation;
 
 import com.example.sticker_art_gallery.dto.generation.GenerateStickerRequest;
 import com.example.sticker_art_gallery.dto.generation.GenerationStatusResponse;
+import com.example.sticker_art_gallery.model.generation.GenerationAuditEventStatus;
+import com.example.sticker_art_gallery.model.generation.GenerationAuditStage;
 import com.example.sticker_art_gallery.model.generation.GenerationTaskEntity;
 import com.example.sticker_art_gallery.repository.GenerationTaskRepository;
 import com.example.sticker_art_gallery.model.generation.GenerationTaskStatus;
@@ -30,6 +32,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+import static com.example.sticker_art_gallery.service.generation.GenerationAuditService.*;
+
 @Service
 public class StickerGenerationService {
 
@@ -43,6 +47,7 @@ public class StickerGenerationService {
     private final ImageStorageService imageStorageService;
     private final PromptProcessingService promptProcessingService;
     private final ReferralService referralService;
+    private final GenerationAuditService generationAuditService;
     private final ObjectMapper objectMapper;
 
     @Value("${wavespeed.max-poll-seconds:300}")
@@ -61,7 +66,8 @@ public class StickerGenerationService {
             UserRepository userRepository,
             ImageStorageService imageStorageService,
             PromptProcessingService promptProcessingService,
-            ReferralService referralService) {
+            ReferralService referralService,
+            GenerationAuditService generationAuditService) {
         this.taskRepository = taskRepository;
         this.waveSpeedClient = waveSpeedClient;
         this.artRewardService = artRewardService;
@@ -70,6 +76,7 @@ public class StickerGenerationService {
         this.imageStorageService = imageStorageService;
         this.promptProcessingService = promptProcessingService;
         this.referralService = referralService;
+        this.generationAuditService = generationAuditService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -131,6 +138,12 @@ public class StickerGenerationService {
             throw new IllegalStateException("Недостаточно ART-баллов для генерации: " + e.getMessage(), e);
         }
 
+        Map<String, Object> auditRequestParams = new HashMap<>();
+        auditRequestParams.put("seed", request.getSeed() != null ? request.getSeed() : -1);
+        auditRequestParams.put("stylePresetId", request.getStylePresetId());
+        auditRequestParams.put("removeBackground", request.getRemoveBackground() != null ? request.getRemoveBackground() : bgRemoveEnabled);
+        generationAuditService.startSession(taskId, userId, request.getPrompt(), auditRequestParams, task.getExpiresAt());
+
         // 4. Запускаем асинхронную обработку промпта
         processPromptAsync(taskId, userId, request.getStylePresetId());
         LOGGER.info("Async prompt processing started for task: {}", taskId);
@@ -174,7 +187,8 @@ public class StickerGenerationService {
                     .orElseThrow(() -> new IllegalArgumentException("Task not found: " + taskId));
 
             LOGGER.info("Processing prompt for task: {}", taskId);
-            
+            generationAuditService.addStageEvent(taskId, GenerationAuditStage.PROMPT_PROCESSING_STARTED, GenerationAuditEventStatus.STARTED, null, null, null);
+
             String originalPrompt = task.getPrompt();
             String processedPrompt = promptProcessingService.processPrompt(
                     originalPrompt,
@@ -201,12 +215,15 @@ public class StickerGenerationService {
             
             task = taskRepository.save(task);
             LOGGER.info("Prompt processing completed for task: {}", taskId);
+            generationAuditService.markPromptProcessed(taskId, processedPrompt, null);
 
             // Запускаем генерацию
             runGenerationAsync(taskId);
             
         } catch (Exception e) {
             LOGGER.error("Error processing prompt for task {}: {}", taskId, e.getMessage(), e);
+            generationAuditService.addStageEvent(taskId, GenerationAuditStage.PROMPT_PROCESSING_FAILED, GenerationAuditEventStatus.FAILED, null, ERROR_PROMPT_PROCESSING, e.getMessage());
+            generationAuditService.finishFailure(taskId, ERROR_PROMPT_PROCESSING, e.getMessage(), null);
             GenerationTaskEntity task = taskRepository.findByTaskId(taskId).orElse(null);
             if (task != null) {
                 task.setStatus(GenerationTaskStatus.FAILED);
@@ -260,6 +277,7 @@ public class StickerGenerationService {
                     ""
             );
             LOGGER.info("Generation: Flux request submitted: request_id={}", fluxRequestId);
+            generationAuditService.addStageEvent(taskId, GenerationAuditStage.WAVESPEED_SUBMIT, GenerationAuditEventStatus.STARTED, Map.of("requestId", fluxRequestId), null, null);
 
             // Polling flux result
             String fluxImageUrl = null;
@@ -301,11 +319,14 @@ public class StickerGenerationService {
                     fluxImageUrl = outputs.get(0);
                     LOGGER.info("Generation: Flux generation completed! Image URL: {}...",
                             fluxImageUrl.substring(0, Math.min(80, fluxImageUrl.length())));
+                    generationAuditService.addStageEvent(taskId, GenerationAuditStage.WAVESPEED_RESULT, GenerationAuditEventStatus.SUCCEEDED, Map.of("requestId", fluxRequestId), null, null);
                     break;
                 } else if ("failed".equalsIgnoreCase(status)) {
                     String errorMsg = result.containsKey("error") ? 
                             result.get("error").toString() : "Unknown error";
                     LOGGER.error("Generation: WaveSpeed flux generation failed for {}: {}", fluxRequestId, errorMsg);
+                    generationAuditService.addStageEvent(taskId, GenerationAuditStage.WAVESPEED_RESULT, GenerationAuditEventStatus.FAILED, Map.of("requestId", fluxRequestId), ERROR_WAVESPEED_FAILED, errorMsg);
+                    generationAuditService.finishFailure(taskId, ERROR_WAVESPEED_FAILED, errorMsg, Map.of("requestId", fluxRequestId));
                     task.setStatus(GenerationTaskStatus.FAILED);
                     task.setErrorMessage("Generation failed: " + errorMsg);
                     taskRepository.save(task);
@@ -317,6 +338,7 @@ public class StickerGenerationService {
                 long elapsedTotal = System.currentTimeMillis() / 1000 - startPollTime;
                 LOGGER.warn("Generation: Flux generation timeout or failed after {}s, {} polls, request_id={}",
                         elapsedTotal, pollCount, fluxRequestId);
+                generationAuditService.finishFailure(taskId, ERROR_WAVESPEED_TIMEOUT, "Timed out", Map.of("requestId", fluxRequestId));
                 task.setStatus(GenerationTaskStatus.TIMEOUT);
                 task.setErrorMessage("Timed out");
                 taskRepository.save(task);
@@ -335,7 +357,7 @@ public class StickerGenerationService {
             if (shouldRemoveBg) {
                 LOGGER.info("Generation: Starting background removal for image: {}...",
                         fluxImageUrl.substring(0, Math.min(80, fluxImageUrl.length())));
-                
+                generationAuditService.addStageEvent(taskId, GenerationAuditStage.BACKGROUND_REMOVE, GenerationAuditEventStatus.STARTED, null, null, null);
                 task.setStatus(GenerationTaskStatus.REMOVING_BACKGROUND);
                 task = taskRepository.save(task);
 
@@ -410,14 +432,12 @@ public class StickerGenerationService {
             try {
                 CachedImageEntity cachedImage = imageStorageService.downloadAndStore(finalImageUrl);
                 localImageUrl = imageStorageService.getPublicUrl(cachedImage);
-                
-                // Сохраняем UUID кешированного изображения
                 task.setCachedImageId(cachedImage.getId());
-                
                 LOGGER.info("Generation: Image cached locally: {}", localImageUrl);
+                generationAuditService.addStageEvent(taskId, GenerationAuditStage.IMAGE_CACHE, GenerationAuditEventStatus.SUCCEEDED, Map.of("cachedImageId", cachedImage.getId().toString()), null, null);
             } catch (Exception e) {
                 LOGGER.warn("Generation: Failed to cache image locally, using original URL: {}", e.getMessage());
-                // В случае ошибки используем оригинальный URL
+                generationAuditService.addStageEvent(taskId, GenerationAuditStage.IMAGE_CACHE, GenerationAuditEventStatus.FAILED, null, ERROR_IMAGE_CACHE, e.getMessage());
             }
 
             // Сохраняем originalImageUrl в metadata
@@ -434,10 +454,12 @@ public class StickerGenerationService {
             task.setImageUrl(localImageUrl);
             task.setCompletedAt(OffsetDateTime.now());
             task = taskRepository.save(task);
+            generationAuditService.finishSuccess(taskId, Map.of("imageUrl", localImageUrl != null ? localImageUrl : ""));
             LOGGER.info("Generation: Task {} completed successfully", taskId);
 
         } catch (Exception e) {
             LOGGER.error("Generation: Exception in generation task for {}: {}", taskId, e.getMessage(), e);
+            generationAuditService.finishFailure(taskId, ERROR_GENERIC, e.getMessage(), null);
             task.setStatus(GenerationTaskStatus.FAILED);
             task.setErrorMessage("Error occurred: " + e.getMessage());
             taskRepository.save(task);
