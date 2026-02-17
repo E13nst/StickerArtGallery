@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление ART Rules - Sticker Art Gallery Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen flex">
+        <!-- Боковое меню -->
+        <aside class="w-64 bg-white shadow-lg">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-gray-800">Admin Panel</h1>
+                <p class="text-sm text-gray-500">Sticker Art Gallery</p>
+            </div>
+            <nav class="mt-6">
+                <a href="/admin/index.html" class="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-100 hover:text-gray-700">
+                    <span class="mx-3">Пользователи</span>
+                </a>
+                <a href="/admin/stickers.html" class="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-100 hover:text-gray-700">
+                    <span class="mx-3">Стикерсеты</span>
+                </a>
+                <a href="/admin/generation-logs.html" class="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-100 hover:text-gray-700">
+                    <span class="mx-3">Лог генерации</span>
+                </a>
+                <a href="/admin/stars-packages.html" class="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-100 hover:text-gray-700">
+                    <span class="mx-3">⭐ Stars Packages</span>
+                </a>
+                <a href="/admin/art-rules.html" class="flex items-center px-6 py-3 text-gray-700 bg-gray-100 border-l-4 border-blue-500">
+                    <span class="mx-3">🎭 ART Rules</span>
+                </a>
+                <a href="/admin/prompt-enhancers.html" class="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-100 hover:text-gray-700">
+                    <span class="mx-3">✨ Prompt Enhancers</span>
+                </a>
+                <a href="/admin/style-presets.html" class="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-100 hover:text-gray-700">
+                    <span class="mx-3">🎨 Style Presets</span>
+                </a>
+            </nav>
+            <div class="absolute bottom-0 w-64 p-6 border-t">
+                <button id="logout-btn" class="w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition">
+                    Выйти
+                </button>
+            </div>
+        </aside>
+
+        <!-- Основной контент -->
+        <main class="flex-1 p-8">
+            <div class="max-w-7xl mx-auto">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-3xl font-bold text-gray-800">ART Rules</h2>
+                        <p class="text-gray-600 mt-1">Управление правилами начисления и списания ART</p>
+                    </div>
+                    <button id="add-rule-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                        + Добавить правило
+                    </button>
+                </div>
+
+                <!-- Таблица правил -->
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Код</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Направление</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Сумма</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Описание</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Метаданные</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rules-table-body" class="bg-white divide-y divide-gray-200">
+                            <!-- Динамически заполняется через JS -->
+                        </tbody>
+                    </table>
+                    <div id="loading" class="text-center py-8 text-gray-500">
+                        Загрузка...
+                    </div>
+                    <div id="no-data" class="hidden text-center py-8 text-gray-500">
+                        Правила не найдены
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Модальное окно добавления/редактирования правила -->
+    <div id="edit-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4">
+            <div class="flex items-center justify-between p-6 border-b">
+                <h3 id="modal-title" class="text-xl font-bold text-gray-800">Добавить правило</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+            </div>
+            <form id="rule-form" class="p-6 space-y-4">
+                <input type="hidden" id="rule-id">
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Код правила*</label>
+                        <input
+                            type="text"
+                            id="rule-code"
+                            required
+                            maxlength="64"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                            placeholder="GENERATE_STICKER"
+                        >
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Направление*</label>
+                        <select id="rule-direction" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="CREDIT">CREDIT (начисление)</option>
+                            <option value="DEBIT">DEBIT (списание)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Сумма (ART)*</label>
+                        <input type="number" id="rule-amount" required min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Статус</label>
+                        <div class="flex items-center h-10">
+                            <input type="checkbox" id="rule-enabled" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <label for="rule-enabled" class="ml-2 block text-sm text-gray-700">Активно</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Описание (опционально)</label>
+                    <textarea id="rule-description" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Краткое описание правила"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Metadata Schema (JSON, опционально)</label>
+                    <textarea id="rule-metadata-schema" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm" placeholder='{"type":"object","required":["taskId"]}'></textarea>
+                </div>
+
+                <div class="flex space-x-3 pt-4 border-t">
+                    <button type="button" onclick="closeModal()" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
+                        Отмена
+                    </button>
+                    <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                        Сохранить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="hidden fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50"></div>
+
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/art-rules.js"></script>
+</body>
+</html>

@@ -74,13 +74,21 @@ const tableColumns = [
         field: 'actions',
         label: 'Действия',
         render: (row) => `
-            <div class="flex space-x-2">
+            <div class="flex flex-col space-y-1 text-xs">
                 ${row.state === 'BLOCKED' ? 
-                    `<button onclick="unblockStickerset(${row.id})" class="text-green-600 hover:text-green-800">Разблокировать</button>` :
-                    `<button onclick="blockStickerset(${row.id})" class="text-red-600 hover:text-red-800">Блокировать</button>`
+                    `<button onclick="unblockStickerset(${row.id})" class="text-green-600 hover:text-green-800 text-left">✓ Разблокировать</button>` :
+                    `<button onclick="blockStickerset(${row.id})" class="text-red-600 hover:text-red-800 text-left">✗ Блокировать</button>`
+                }
+                ${row.isPublic ?
+                    `<button onclick="unpublishStickerset(${row.id})" class="text-yellow-600 hover:text-yellow-800 text-left">👁 Скрыть</button>` :
+                    `<button onclick="publishStickerset(${row.id})" class="text-blue-600 hover:text-blue-800 text-left">🌐 Опубликовать</button>`
+                }
+                ${row.isOfficial ?
+                    `<button onclick="unsetOfficialStickerset(${row.id})" class="text-purple-600 hover:text-purple-800 text-left">⭐ Снять официальный</button>` :
+                    `<button onclick="setOfficialStickerset(${row.id})" class="text-purple-600 hover:text-purple-800 text-left">⭐ Сделать официальным</button>`
                 }
                 ${row.state === 'ACTIVE' ?
-                    `<button onclick="deleteStickerset(${row.id})" class="text-gray-600 hover:text-gray-800">Удалить</button>` :
+                    `<button onclick="deleteStickerset(${row.id})" class="text-gray-600 hover:text-gray-800 text-left">🗑 Удалить</button>` :
                     ''
                 }
             </div>
@@ -223,6 +231,62 @@ async function deleteStickerset(id) {
     }
 }
 
+// Опубликовать стикерсет
+async function publishStickerset(id) {
+    if (!confirmAction('Опубликовать стикерсет в галерее?')) return;
+    
+    try {
+        await api.publishStickerset(id);
+        showNotification('Стикерсет опубликован', 'success');
+        await loadStickers();
+    } catch (error) {
+        console.error('Failed to publish stickerset:', error);
+        showNotification('Ошибка публикации стикерсета', 'error');
+    }
+}
+
+// Скрыть стикерсет
+async function unpublishStickerset(id) {
+    if (!confirmAction('Скрыть стикерсет из галереи?')) return;
+    
+    try {
+        await api.unpublishStickerset(id);
+        showNotification('Стикерсет скрыт', 'success');
+        await loadStickers();
+    } catch (error) {
+        console.error('Failed to unpublish stickerset:', error);
+        showNotification('Ошибка скрытия стикерсета', 'error');
+    }
+}
+
+// Сделать официальным
+async function setOfficialStickerset(id) {
+    if (!confirmAction('Сделать этот стикерсет официальным?')) return;
+    
+    try {
+        await api.setOfficial(id);
+        showNotification('Стикерсет отмечен как официальный', 'success');
+        await loadStickers();
+    } catch (error) {
+        console.error('Failed to set official:', error);
+        showNotification('Ошибка установки официального статуса', 'error');
+    }
+}
+
+// Снять официальный статус
+async function unsetOfficialStickerset(id) {
+    if (!confirmAction('Снять официальный статус?')) return;
+    
+    try {
+        await api.unsetOfficial(id);
+        showNotification('Официальный статус снят', 'success');
+        await loadStickers();
+    } catch (error) {
+        console.error('Failed to unset official:', error);
+        showNotification('Ошибка снятия официального статуса', 'error');
+    }
+}
+
 // Закрыть модальное окно
 function closeEditModal() {
     document.getElementById('edit-modal').classList.add('hidden');
@@ -250,8 +314,11 @@ async function bulkBlock() {
     if (!reason) return;
     
     try {
-        await api.bulkBlockStickersets(selectedIds, reason);
-        showNotification(`Заблокировано ${selectedIds.length} стикерсетов`, 'success');
+        await api.bulkOperation(
+            selectedIds,
+            id => api.blockStickerset(id, reason),
+            'Блокировка стикерсетов'
+        );
         dataTable.clearSelection();
         await loadStickers();
     } catch (error) {
@@ -268,8 +335,11 @@ async function bulkUnblock() {
     if (!confirmAction(`Разблокировать ${selectedIds.length} стикерсетов?`)) return;
     
     try {
-        await api.bulkUnblockStickersets(selectedIds);
-        showNotification(`Разблокировано ${selectedIds.length} стикерсетов`, 'success');
+        await api.bulkOperation(
+            selectedIds,
+            id => api.unblockStickerset(id),
+            'Разблокировка стикерсетов'
+        );
         dataTable.clearSelection();
         await loadStickers();
     } catch (error) {
@@ -286,8 +356,11 @@ async function bulkDelete() {
     if (!confirmAction(`Удалить ${selectedIds.length} стикерсетов? Это действие нельзя отменить.`)) return;
     
     try {
-        await api.bulkDeleteStickersets(selectedIds);
-        showNotification(`Удалено ${selectedIds.length} стикерсетов`, 'success');
+        await api.bulkOperation(
+            selectedIds,
+            id => api.deleteStickerset(id),
+            'Удаление стикерсетов'
+        );
         dataTable.clearSelection();
         await loadStickers();
     } catch (error) {
@@ -304,8 +377,11 @@ async function bulkSetOfficial() {
     if (!confirmAction(`Сделать ${selectedIds.length} стикерсетов официальными?`)) return;
     
     try {
-        await api.bulkSetOfficial(selectedIds);
-        showNotification(`Установлен официальный статус для ${selectedIds.length} стикерсетов`, 'success');
+        await api.bulkOperation(
+            selectedIds,
+            id => api.setOfficial(id),
+            'Установка официального статуса'
+        );
         dataTable.clearSelection();
         await loadStickers();
     } catch (error) {

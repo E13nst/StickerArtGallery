@@ -276,8 +276,11 @@ async function bulkBlock() {
     }
     
     try {
-        await api.bulkBlockUsers(selectedIds);
-        showNotification(`Заблокировано ${selectedIds.length} пользователей`, 'success');
+        await api.bulkOperation(
+            selectedIds,
+            userId => api.updateUserProfile(userId, { isBlocked: true }),
+            'Блокировка пользователей'
+        );
         dataTable.clearSelection();
         await loadUsers();
     } catch (error) {
@@ -296,8 +299,11 @@ async function bulkUnblock() {
     }
     
     try {
-        await api.bulkUnblockUsers(selectedIds);
-        showNotification(`Разблокировано ${selectedIds.length} пользователей`, 'success');
+        await api.bulkOperation(
+            selectedIds,
+            userId => api.updateUserProfile(userId, { isBlocked: false }),
+            'Разблокировка пользователей'
+        );
         dataTable.clearSelection();
         await loadUsers();
     } catch (error) {

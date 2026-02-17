@@ -276,7 +276,7 @@ public class StickerSetTestSteps {
 
     @Step("Снять официальный статус (ADMIN)")
     public ResultActions markUnofficial(Long id, String initData) throws Exception {
-        return mockMvc.perform(put("/api/stickersets/" + id + "/unofficial")
+        return mockMvc.perform(delete("/api/stickersets/" + id + "/official")
                 .header("X-Telegram-Init-Data", initData));
     }
 

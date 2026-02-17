@@ -56,7 +56,11 @@ class AdminApiClient {
             const data = await response.json();
             
             if (!response.ok) {
-                throw new Error(data.message || `HTTP error! status: ${response.status}`);
+                const errorMessage = data.message || data.error || `HTTP error! status: ${response.status}`;
+                const error = new Error(errorMessage);
+                error.status = response.status;
+                error.data = data;
+                throw error;
             }
             
             return data;
@@ -64,6 +68,36 @@ class AdminApiClient {
             console.error('API request failed:', error);
             throw error;
         }
+    }
+    
+    // Обработка массовых операций с partial success
+    async bulkOperation(items, operation, operationName = 'операция') {
+        const results = await Promise.allSettled(
+            items.map(item => operation(item))
+        );
+        
+        const successful = results.filter(r => r.status === 'fulfilled').length;
+        const failed = results.filter(r => r.status === 'rejected');
+        
+        const report = {
+            total: items.length,
+            successful,
+            failed: failed.length,
+            errors: failed.map((r, idx) => ({
+                item: items[results.indexOf(r)],
+                error: r.reason?.message || 'Неизвестная ошибка'
+            }))
+        };
+        
+        if (report.failed === 0) {
+            showNotification(`${operationName}: успешно выполнено для ${successful} элементов`, 'success');
+        } else if (report.successful === 0) {
+            showNotification(`${operationName}: все операции завершились ошибкой`, 'error');
+        } else {
+            showNotification(`${operationName}: ${successful} успешно, ${report.failed} ошибок`, 'warning');
+        }
+        
+        return report;
     }
     
     // ============ Auth API ============
@@ -105,19 +139,6 @@ class AdminApiClient {
         });
     }
     
-    async bulkBlockUsers(userIds) {
-        const promises = userIds.map(userId => 
-            this.updateUserProfile(userId, { isBlocked: true })
-        );
-        return Promise.all(promises);
-    }
-    
-    async bulkUnblockUsers(userIds) {
-        const promises = userIds.map(userId => 
-            this.updateUserProfile(userId, { isBlocked: false })
-        );
-        return Promise.all(promises);
-    }
     
     // ============ Stickers API ============
     
@@ -169,29 +190,159 @@ class AdminApiClient {
         });
     }
     
-    async bulkBlockStickersets(ids, reason) {
-        const promises = ids.map(id => this.blockStickerset(id, reason));
-        return Promise.all(promises);
+    async publishStickerset(id) {
+        return this.request(`/stickersets/${id}/publish`, {
+            method: 'POST'
+        });
     }
     
-    async bulkUnblockStickersets(ids) {
-        const promises = ids.map(id => this.unblockStickerset(id));
-        return Promise.all(promises);
-    }
-    
-    async bulkDeleteStickersets(ids) {
-        const promises = ids.map(id => this.deleteStickerset(id));
-        return Promise.all(promises);
-    }
-    
-    async bulkSetOfficial(ids) {
-        const promises = ids.map(id => this.setOfficial(id));
-        return Promise.all(promises);
+    async unpublishStickerset(id) {
+        return this.request(`/stickersets/${id}/unpublish`, {
+            method: 'POST'
+        });
     }
     
     async bulkUnsetOfficial(ids) {
         const promises = ids.map(id => this.unsetOfficial(id));
         return Promise.all(promises);
+    }
+
+    // ============ Stars Packages API ============
+    
+    async getStarsPackages() {
+        return this.request('/admin/stars/packages');
+    }
+    
+    async getStarsPackage(id) {
+        return this.request(`/admin/stars/packages/${id}`);
+    }
+    
+    async createStarsPackage(data) {
+        return this.request('/admin/stars/packages', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+    
+    async updateStarsPackage(id, data) {
+        return this.request(`/admin/stars/packages/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+    
+    async toggleStarsPackage(id) {
+        return this.request(`/admin/stars/packages/${id}/toggle`, {
+            method: 'PATCH'
+        });
+    }
+    
+    async deleteStarsPackage(id) {
+        return this.request(`/admin/stars/packages/${id}`, {
+            method: 'DELETE'
+        });
+    }
+    
+    async getStarsPackagePurchases(packageId, page = 0, size = 20) {
+        const params = { page, size };
+        const queryString = buildQueryString(params);
+        return this.request(`/admin/stars/packages/${packageId}/purchases${queryString}`);
+    }
+
+    // ============ ART Rules API ============
+    
+    async getArtRules() {
+        return this.request('/admin/art-rules');
+    }
+    
+    async createArtRule(data) {
+        return this.request('/admin/art-rules', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+    
+    async updateArtRule(code, data) {
+        return this.request(`/admin/art-rules/${encodeURIComponent(code)}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+
+    // ============ Prompt Enhancers API ============
+    
+    async getPromptEnhancers() {
+        return this.request('/admin/prompt-enhancers');
+    }
+    
+    async getPromptEnhancer(id) {
+        return this.request(`/admin/prompt-enhancers/${id}`);
+    }
+    
+    async createPromptEnhancer(data) {
+        return this.request('/admin/prompt-enhancers', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+    
+    async updatePromptEnhancer(id, data) {
+        return this.request(`/admin/prompt-enhancers/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+    
+    async togglePromptEnhancer(id) {
+        throw new Error('togglePromptEnhancer now requires enabled param');
+    }
+
+    async togglePromptEnhancerEnabled(id, enabled) {
+        return this.request(`/admin/prompt-enhancers/${id}/toggle?enabled=${enabled}`, {
+            method: 'PUT'
+        });
+    }
+    
+    async deletePromptEnhancer(id) {
+        return this.request(`/admin/prompt-enhancers/${id}`, {
+            method: 'DELETE'
+        });
+    }
+
+    // ============ Global Style Presets API ============
+    
+    async getGlobalStylePresets() {
+        return this.request('/generation/style-presets/global');
+    }
+    
+    async getGlobalStylePreset(id) {
+        return this.request(`/generation/style-presets/global/${id}`);
+    }
+    
+    async createGlobalStylePreset(data) {
+        return this.request('/generation/style-presets/global', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+    
+    async updateGlobalStylePreset(id, data) {
+        return this.request(`/generation/style-presets/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+    
+    async toggleGlobalStylePreset(id, enabled) {
+        return this.request(`/generation/style-presets/${id}/toggle?enabled=${enabled}`, {
+            method: 'PUT'
+        });
+    }
+    
+    async deleteGlobalStylePreset(id) {
+        return this.request(`/generation/style-presets/${id}`, {
+            method: 'DELETE'
+        });
     }
 
     // ============ Generation logs (Admin audit) ============

@@ -81,7 +81,7 @@ public class StickerSetAdminController {
     /**
      * Снять признак официального стикерсета (только для админа)
      */
-    @PutMapping("/{id}/unofficial")
+    @DeleteMapping("/{id}/official")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
         summary = "Снять официальный статус",
