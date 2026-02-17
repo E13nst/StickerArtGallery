@@ -94,7 +94,7 @@ class DonationFlowIntegrationTest {
         // Создаем стикерсет
         testStickerSet = new StickerSet();
         testStickerSet.setUserId(authorUser.getId());
-        testStickerSet.setAuthorId(authorUser.getId());
+        testStickerSet.setIsVerified(true);
         testStickerSet.setTitle("Test StickerSet for Donation");
         testStickerSet.setName("test_donation_stickerset");
         stickerSetRepository.save(testStickerSet);
@@ -161,7 +161,7 @@ class DonationFlowIntegrationTest {
 
         StickerSet stickerSetWithoutWallet = new StickerSet();
         stickerSetWithoutWallet.setUserId(authorWithoutWallet.getId());
-        stickerSetWithoutWallet.setAuthorId(authorWithoutWallet.getId());
+        stickerSetWithoutWallet.setIsVerified(true);
         stickerSetWithoutWallet.setTitle("StickerSet without wallet");
         stickerSetWithoutWallet.setName("test_no_wallet_stickerset");
         stickerSetRepository.save(stickerSetWithoutWallet);
@@ -181,12 +181,12 @@ class DonationFlowIntegrationTest {
 
     @Test
     @Story("Ошибки donation")
-    @DisplayName("prepareTransaction должен вернуть 400 если стикерсет не имеет автора")
-    void prepareTransaction_shouldReturn400WhenStickerSetHasNoAuthor() throws Exception {
-        // Arrange - создаем стикерсет без автора
+    @DisplayName("prepareTransaction должен вернуть 400 если стикерсет не верифицирован")
+    void prepareTransaction_shouldReturn400WhenStickerSetNotVerified() throws Exception {
+        // Arrange - создаем стикерсет без isVerified
         StickerSet stickerSetWithoutAuthor = new StickerSet();
         stickerSetWithoutAuthor.setUserId(authorUser.getId());
-        stickerSetWithoutAuthor.setAuthorId(null); // Нет автора
+        stickerSetWithoutAuthor.setIsVerified(false);
         stickerSetWithoutAuthor.setTitle("StickerSet without author");
         stickerSetWithoutAuthor.setName("test_no_author_stickerset");
         stickerSetRepository.save(stickerSetWithoutAuthor);
@@ -201,7 +201,7 @@ class DonationFlowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("StickerSet не имеет автора"));
+                .andExpect(jsonPath("$.error").value("StickerSet не верифицирован для донатов"));
     }
 }
 

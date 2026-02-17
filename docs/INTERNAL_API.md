@@ -67,7 +67,7 @@ X-Language: ru
 #### Параметры
 
 - `userId` (query, обязательный) - Telegram ID пользователя, от имени которого создаётся стикерсет
-- `authorId` (query, опционально) - Telegram ID автора стикерсета (если задан, сохраняется в `authorId`)
+- `isVerified` (query, опционально, по умолчанию `false`) - признак верифицированного авторства (владелец = автор)
 - `shortInfo` (query, опционально, по умолчанию `false`) - вернуть только локальную информацию без данных из Telegram Bot API
 
 #### Тело запроса (JSON)
@@ -94,7 +94,7 @@ X-Language: ru
 #### Пример запроса
 
 ```bash
-POST /internal/stickersets?userId=123456789&authorId=987654321
+POST /internal/stickersets?userId=123456789&isVerified=true
 X-Service-Token: <token>
 Content-Type: application/json
 X-Language: ru

@@ -108,7 +108,7 @@ class TransactionIntentServiceTest {
         testStickerSet = new StickerSet();
         testStickerSet.setId(TEST_STICKER_SET_ID);
         testStickerSet.setUserId(TEST_AUTHOR_ID);
-        testStickerSet.setAuthorId(TEST_AUTHOR_ID);
+        testStickerSet.setIsVerified(true);
         testStickerSet.setTitle("Test StickerSet");
 
         // Настройка кошелька автора
@@ -376,12 +376,12 @@ class TransactionIntentServiceTest {
 
     @Test
     @Story("Создание donation intent для стикерсета")
-    @DisplayName("createStickerSetDonationIntent должен выбросить IllegalStateException если стикерсет не имеет автора")
+    @DisplayName("createStickerSetDonationIntent должен выбросить IllegalStateException если стикерсет не верифицирован")
     void createStickerSetDonationIntent_shouldThrowExceptionWhenNoAuthor() {
         // Arrange
         StickerSet stickerSetWithoutAuthor = new StickerSet();
         stickerSetWithoutAuthor.setId(TEST_STICKER_SET_ID);
-        stickerSetWithoutAuthor.setAuthorId(null);
+        stickerSetWithoutAuthor.setIsVerified(false);
 
         when(stickerSetRepository.findById(TEST_STICKER_SET_ID)).thenReturn(Optional.of(stickerSetWithoutAuthor));
 
@@ -391,7 +391,7 @@ class TransactionIntentServiceTest {
                 TEST_STICKER_SET_ID,
                 TEST_AMOUNT_NANO
         )).isInstanceOf(IllegalStateException.class)
-          .hasMessageContaining("не имеет автора");
+          .hasMessageContaining("не верифицирован");
 
         verify(walletService, never()).getActiveWallet(any());
         verify(intentRepository, never()).save(any());

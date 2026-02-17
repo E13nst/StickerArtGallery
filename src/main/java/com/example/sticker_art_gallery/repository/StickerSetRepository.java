@@ -63,18 +63,16 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
     Page<StickerSet> findByCategoryKeysPublicAndActive(@Param("categoryKeys") String[] categoryKeys, Pageable pageable);
     
     /**
-     * Публичные, активные стикерсеты с гибкой фильтрацией по type/author/userId
+     * Публичные, активные стикерсеты с гибкой фильтрацией по type/userId/isVerified
      */
     @Query("SELECT ss FROM StickerSet ss " +
            "WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PUBLIC' " +
            "AND (:type IS NULL OR ss.type = :type) " +
-           "AND (:authorId IS NULL OR ss.authorId = :authorId) " +
-           "AND (:hasAuthorOnly = false OR ss.authorId IS NOT NULL) " +
-           "AND (:userId IS NULL OR ss.userId = :userId)")
+           "AND (:userId IS NULL OR ss.userId = :userId) " +
+           "AND (:isVerified IS NULL OR :isVerified = false OR ss.isVerified = true)")
     Page<StickerSet> findPublicNotBlockedFiltered(@Param("type") StickerSetType type,
-                                                   @Param("authorId") Long authorId,
-                                                   @Param("hasAuthorOnly") boolean hasAuthorOnly,
                                                    @Param("userId") Long userId,
+                                                   @Param("isVerified") Boolean isVerified,
                                                    Pageable pageable);
 
     /**
@@ -92,20 +90,18 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
     Page<StickerSet> findByCategoryKeysPublicAndNotBlocked(@Param("categoryKeys") String[] categoryKeys, Pageable pageable);
     
     /**
-     * Публичные, активные по категориям с гибкой фильтрацией по type/author/userId
+     * Публичные, активные по категориям с гибкой фильтрацией по type/userId/isVerified
      */
     @Query("SELECT DISTINCT ss FROM StickerSet ss " +
            "JOIN ss.categories c " +
            "WHERE c.key IN :categoryKeys AND ss.state = 'ACTIVE' AND ss.visibility = 'PUBLIC' " +
            "AND (:type IS NULL OR ss.type = :type) " +
-           "AND (:authorId IS NULL OR ss.authorId = :authorId) " +
-           "AND (:hasAuthorOnly = false OR ss.authorId IS NOT NULL) " +
-           "AND (:userId IS NULL OR ss.userId = :userId)")
+           "AND (:userId IS NULL OR ss.userId = :userId) " +
+           "AND (:isVerified IS NULL OR :isVerified = false OR ss.isVerified = true)")
     Page<StickerSet> findByCategoryKeysPublicNotBlockedFiltered(@Param("categoryKeys") String[] categoryKeys,
                                                                 @Param("type") StickerSetType type,
-                                                                @Param("authorId") Long authorId,
-                                                                @Param("hasAuthorOnly") boolean hasAuthorOnly,
                                                                 @Param("userId") Long userId,
+                                                                @Param("isVerified") Boolean isVerified,
                                                                 Pageable pageable);
     
     /**
@@ -169,7 +165,7 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
            "     (:visibilityFilter = 'PUBLIC' AND ss.visibility = 'PUBLIC') OR " +
            "     (:visibilityFilter = 'PRIVATE' AND ss.visibility = 'PRIVATE')) " +
            "AND (:type IS NULL OR ss.type = :type) " +
-           "AND (:hasAuthorOnly = false OR ss.authorId IS NOT NULL) " +
+           "AND (:isVerified IS NULL OR :isVerified = false OR ss.isVerified = true) " +
            "AND (:categoryKeys IS NULL OR c.key IN :categoryKeys) " +
            "AND (:likedOnly = false OR EXISTS (" +
            "   SELECT 1 FROM Like l WHERE l.userId = :currentUserId AND l.stickerSet = ss" +
@@ -177,7 +173,7 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
     Page<StickerSet> findUserStickerSetsFiltered(@Param("userId") Long userId,
                                                  @Param("visibilityFilter") String visibilityFilter,
                                                  @Param("type") StickerSetType type,
-                                                 @Param("hasAuthorOnly") boolean hasAuthorOnly,
+                                                 @Param("isVerified") Boolean isVerified,
                                                  @Param("categoryKeys") Set<String> categoryKeys,
                                                  @Param("likedOnly") boolean likedOnly,
                                                  @Param("currentUserId") Long currentUserId,
@@ -185,22 +181,22 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
                                                  Pageable pageable);
 
     /**
-     * Поиск авторских стикерсетов с дополнительными фильтрами
+     * Поиск верифицированных стикерсетов владельца (deprecated authorId => userId + isVerified)
      */
     @Query("SELECT DISTINCT ss FROM StickerSet ss " +
            "LEFT JOIN ss.categories c " +
-           "WHERE ss.authorId = :authorId " +
+           "WHERE ss.userId = :userId AND ss.isVerified = true " +
            "AND ss.state = 'ACTIVE' " +
            "AND (:visibilityFilter = 'ALL' OR " +
            "     (:visibilityFilter = 'PUBLIC' AND ss.visibility = 'PUBLIC') OR " +
            "     (:visibilityFilter = 'PRIVATE' AND ss.visibility = 'PRIVATE')) " +
            "AND (:type IS NULL OR ss.type = :type) " +
            "AND (:categoryKeys IS NULL OR c.key IN :categoryKeys)")
-    Page<StickerSet> findAuthorStickerSetsFiltered(@Param("authorId") Long authorId,
-                                                   @Param("visibilityFilter") String visibilityFilter,
-                                                   @Param("type") StickerSetType type,
-                                                   @Param("categoryKeys") Set<String> categoryKeys,
-                                                   Pageable pageable);
+    Page<StickerSet> findVerifiedOwnerStickerSetsFiltered(@Param("userId") Long userId,
+                                                          @Param("visibilityFilter") String visibilityFilter,
+                                                          @Param("type") StickerSetType type,
+                                                          @Param("categoryKeys") Set<String> categoryKeys,
+                                                          Pageable pageable);
 
     long countByCreatedAtAfter(LocalDateTime createdAfter);
 
@@ -263,53 +259,44 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
     Page<Object[]> findTopUsersByPrivateStickerSetCount(Pageable pageable);
     
     /**
-     * Получить топ авторов по количеству созданных стикерсетов (общая статистика)
-     * Сортировка по totalCount
+     * Топ верифицированных авторов (user_id, is_verified=true) по количеству стикерсетов
      */
-    @Query(value = "SELECT ss.author_id, " +
+    @Query(value = "SELECT ss.user_id, " +
            "COUNT(ss.id) as total_count, " +
            "SUM(CASE WHEN ss.visibility = 'PUBLIC' THEN 1 ELSE 0 END) as public_count, " +
            "SUM(CASE WHEN ss.visibility = 'PRIVATE' THEN 1 ELSE 0 END) as private_count " +
            "FROM stickersets ss " +
-           "WHERE ss.state = 'ACTIVE' AND ss.author_id IS NOT NULL " +
-           "GROUP BY ss.author_id " +
-           "ORDER BY total_count DESC, ss.author_id ASC",
-           countQuery = "SELECT COUNT(DISTINCT ss.author_id) FROM stickersets ss " +
-                        "WHERE ss.state = 'ACTIVE' AND ss.author_id IS NOT NULL",
+           "WHERE ss.state = 'ACTIVE' AND ss.is_verified = TRUE " +
+           "GROUP BY ss.user_id " +
+           "ORDER BY total_count DESC, ss.user_id ASC",
+           countQuery = "SELECT COUNT(DISTINCT ss.user_id) FROM stickersets ss " +
+                        "WHERE ss.state = 'ACTIVE' AND ss.is_verified = TRUE",
            nativeQuery = true)
     Page<Object[]> findTopAuthorsByTotalStickerSetCount(Pageable pageable);
 
-    /**
-     * Получить топ авторов по количеству созданных публичных стикерсетов
-     * Сортировка по количеству публичных стикерсетов
-     */
-    @Query(value = "SELECT ss.author_id, " +
-           "(SELECT COUNT(s2.id) FROM stickersets s2 WHERE s2.author_id = ss.author_id AND s2.state = 'ACTIVE') as total_count, " +
+    @Query(value = "SELECT ss.user_id, " +
+           "(SELECT COUNT(s2.id) FROM stickersets s2 WHERE s2.user_id = ss.user_id AND s2.state = 'ACTIVE' AND s2.is_verified = TRUE) as total_count, " +
            "COUNT(ss.id) as public_count, " +
-           "(SELECT COUNT(s3.id) FROM stickersets s3 WHERE s3.author_id = ss.author_id AND s3.state = 'ACTIVE' AND s3.visibility = 'PRIVATE') as private_count " +
+           "(SELECT COUNT(s3.id) FROM stickersets s3 WHERE s3.user_id = ss.user_id AND s3.state = 'ACTIVE' AND s3.is_verified = TRUE AND s3.visibility = 'PRIVATE') as private_count " +
            "FROM stickersets ss " +
-           "WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PUBLIC' AND ss.author_id IS NOT NULL " +
-           "GROUP BY ss.author_id " +
-           "ORDER BY public_count DESC, ss.author_id ASC",
-           countQuery = "SELECT COUNT(DISTINCT ss.author_id) FROM stickersets ss " +
-                        "WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PUBLIC' AND ss.author_id IS NOT NULL",
+           "WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PUBLIC' AND ss.is_verified = TRUE " +
+           "GROUP BY ss.user_id " +
+           "ORDER BY public_count DESC, ss.user_id ASC",
+           countQuery = "SELECT COUNT(DISTINCT ss.user_id) FROM stickersets ss " +
+                        "WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PUBLIC' AND ss.is_verified = TRUE",
            nativeQuery = true)
     Page<Object[]> findTopAuthorsByPublicStickerSetCount(Pageable pageable);
 
-    /**
-     * Получить топ авторов по количеству созданных приватных стикерсетов
-     * Сортировка по количеству приватных стикерсетов
-     */
-    @Query(value = "SELECT ss.author_id, " +
-           "(SELECT COUNT(s2.id) FROM stickersets s2 WHERE s2.author_id = ss.author_id AND s2.state = 'ACTIVE') as total_count, " +
-           "(SELECT COUNT(s3.id) FROM stickersets s3 WHERE s3.author_id = ss.author_id AND s3.state = 'ACTIVE' AND s3.visibility = 'PUBLIC') as public_count, " +
+    @Query(value = "SELECT ss.user_id, " +
+           "(SELECT COUNT(s2.id) FROM stickersets s2 WHERE s2.user_id = ss.user_id AND s2.state = 'ACTIVE' AND s2.is_verified = TRUE) as total_count, " +
+           "(SELECT COUNT(s3.id) FROM stickersets s3 WHERE s3.user_id = ss.user_id AND s3.state = 'ACTIVE' AND s3.is_verified = TRUE AND s3.visibility = 'PUBLIC') as public_count, " +
            "COUNT(ss.id) as private_count " +
            "FROM stickersets ss " +
-           "WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PRIVATE' AND ss.author_id IS NOT NULL " +
-           "GROUP BY ss.author_id " +
-           "ORDER BY private_count DESC, ss.author_id ASC",
-           countQuery = "SELECT COUNT(DISTINCT ss.author_id) FROM stickersets ss " +
-                        "WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PRIVATE' AND ss.author_id IS NOT NULL",
+           "WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PRIVATE' AND ss.is_verified = TRUE " +
+           "GROUP BY ss.user_id " +
+           "ORDER BY private_count DESC, ss.user_id ASC",
+           countQuery = "SELECT COUNT(DISTINCT ss.user_id) FROM stickersets ss " +
+                        "WHERE ss.state = 'ACTIVE' AND ss.visibility = 'PRIVATE' AND ss.is_verified = TRUE",
            nativeQuery = true)
     Page<Object[]> findTopAuthorsByPrivateStickerSetCount(Pageable pageable);
     
@@ -328,15 +315,13 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
            "AND ss.visibility = 'PUBLIC' " +
            "AND (:categoryKeys IS NULL OR c.key IN :categoryKeys) " +
            "AND (:type IS NULL OR ss.type = :type) " +
-           "AND (:authorId IS NULL OR ss.authorId = :authorId) " +
-           "AND (:hasAuthorOnly = false OR ss.authorId IS NOT NULL) " +
-           "AND (:userId IS NULL OR ss.userId = :userId)")
+           "AND (:userId IS NULL OR ss.userId = :userId) " +
+           "AND (:isVerified IS NULL OR :isVerified = false OR ss.isVerified = true)")
     Page<StickerSet> searchPublicStickerSets(@Param("query") String query,
                                              @Param("categoryKeys") Set<String> categoryKeys,
                                              @Param("type") StickerSetType type,
-                                             @Param("authorId") Long authorId,
-                                             @Param("hasAuthorOnly") boolean hasAuthorOnly,
                                              @Param("userId") Long userId,
+                                             @Param("isVerified") Boolean isVerified,
                                              Pageable pageable);
     
     /**

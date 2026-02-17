@@ -31,7 +31,7 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_OwnerAuthorPublicStickerSet_ShouldReturnDeleteAndUnpublish() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                OWNER_USER_ID, false, OWNER_USER_ID, OWNER_USER_ID, 
+                OWNER_USER_ID, false, OWNER_USER_ID, true, 
                 StickerSetState.ACTIVE, StickerSetVisibility.PUBLIC
         );
 
@@ -53,7 +53,7 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_OwnerAuthorPrivateStickerSet_ShouldReturnDeleteAndPublish() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                OWNER_USER_ID, false, OWNER_USER_ID, OWNER_USER_ID, 
+                OWNER_USER_ID, false, OWNER_USER_ID, true, 
                 StickerSetState.ACTIVE, StickerSetVisibility.PRIVATE
         );
 
@@ -75,7 +75,7 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_AdminNotBlockedStickerSet_ShouldReturnBlock() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                ADMIN_USER_ID, true, OWNER_USER_ID, AUTHOR_USER_ID, 
+                ADMIN_USER_ID, true, OWNER_USER_ID, true, 
                 StickerSetState.ACTIVE, StickerSetVisibility.PUBLIC
         );
 
@@ -97,7 +97,7 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_AdminBlockedStickerSet_ShouldReturnUnblock() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                ADMIN_USER_ID, true, OWNER_USER_ID, AUTHOR_USER_ID, 
+                ADMIN_USER_ID, true, OWNER_USER_ID, true, 
                 StickerSetState.BLOCKED, StickerSetVisibility.PUBLIC
         );
 
@@ -119,7 +119,7 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_AdminOwnerAuthorPublicStickerSet_ShouldReturnDeleteUnpublishAndBlock() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                ADMIN_USER_ID, true, ADMIN_USER_ID, ADMIN_USER_ID, 
+                ADMIN_USER_ID, true, ADMIN_USER_ID, true, 
                 StickerSetState.ACTIVE, StickerSetVisibility.PUBLIC
         );
 
@@ -141,7 +141,7 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_AdminOwnerAuthorBlockedStickerSet_ShouldReturnDeleteUnpublishAndUnblock() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                ADMIN_USER_ID, true, ADMIN_USER_ID, ADMIN_USER_ID, 
+                ADMIN_USER_ID, true, ADMIN_USER_ID, true, 
                 StickerSetState.BLOCKED, StickerSetVisibility.PUBLIC
         );
 
@@ -163,7 +163,7 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_OtherUser_ShouldReturnEmpty() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                OTHER_USER_ID, false, OWNER_USER_ID, AUTHOR_USER_ID, 
+                OTHER_USER_ID, false, OWNER_USER_ID, true, 
                 StickerSetState.ACTIVE, StickerSetVisibility.PUBLIC
         );
 
@@ -179,7 +179,7 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_UnauthorizedUser_ShouldReturnEmpty() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                null, false, OWNER_USER_ID, AUTHOR_USER_ID, 
+                null, false, OWNER_USER_ID, true, 
                 StickerSetState.ACTIVE, StickerSetVisibility.PUBLIC
         );
 
@@ -195,7 +195,7 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_AdminUserIdButNotAdminRole_ShouldNotReturnBlockActions() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                ADMIN_USER_ID, false, OWNER_USER_ID, AUTHOR_USER_ID, 
+                ADMIN_USER_ID, false, OWNER_USER_ID, true, 
                 StickerSetState.ACTIVE, StickerSetVisibility.PUBLIC
         );
 
@@ -205,13 +205,13 @@ class StickerSetDtoAvailableActionsTest {
 
     @Test
     @Story("Расчет доступных действий")
-    @DisplayName("Владелец (не автор) публичного стикерсета должен видеть DELETE и EDIT_CATEGORIES")
-    @Description("Проверяет, что владелец, который не является автором, может удалить стикерсет и редактировать категории, но не может публиковать/скрывать")
+    @DisplayName("Владелец без isVerified видит только DELETE и EDIT_CATEGORIES")
+    @Description("Проверяет, что владелец при isVerified=false может удалить и редактировать категории, но не PUBLISH/UNPUBLISH")
     @Severity(SeverityLevel.CRITICAL)
-    void calculateAvailableActions_OwnerNotAuthor_ShouldReturnOnlyDelete() {
-        // When
+    void calculateAvailableActions_OwnerNotVerified_ShouldReturnDeleteAndEditCategories() {
+        // When - owner, isVerified=false (author=owner only when verified)
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                OWNER_USER_ID, false, OWNER_USER_ID, AUTHOR_USER_ID, 
+                OWNER_USER_ID, false, OWNER_USER_ID, false,
                 StickerSetState.ACTIVE, StickerSetVisibility.PUBLIC
         );
 
@@ -224,33 +224,13 @@ class StickerSetDtoAvailableActionsTest {
     }
 
     @Test
-    @Story("Расчет доступных действий")
-    @DisplayName("Автор (не владелец) публичного стикерсета должен видеть только UNPUBLISH")
-    @Description("Проверяет, что автор, который не является владельцем, может только публиковать/скрывать стикерсет, но не может удалить или редактировать категории")
-    @Severity(SeverityLevel.CRITICAL)
-    void calculateAvailableActions_AuthorNotOwner_ShouldReturnOnlyUnpublish() {
-        // When
-        List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                AUTHOR_USER_ID, false, OWNER_USER_ID, AUTHOR_USER_ID, 
-                StickerSetState.ACTIVE, StickerSetVisibility.PUBLIC
-        );
-
-        // Then
-        assertEquals(1, actions.size());
-        assertTrue(actions.contains(StickerSetAction.UNPUBLISH));
-        assertFalse(actions.contains(StickerSetAction.EDIT_CATEGORIES));
-        assertFalse(actions.contains(StickerSetAction.DELETE));
-        assertFalse(actions.contains(StickerSetAction.PUBLISH));
-    }
-
-    @Test
     @Story("Методы fromEntity")
     @DisplayName("fromEntity без currentUserId должен устанавливать пустой список действий")
     @Description("Проверяет, что при создании DTO без currentUserId список доступных действий пуст")
     @Severity(SeverityLevel.CRITICAL)
     void fromEntity_WithoutCurrentUserId_ShouldHaveEmptyActions() {
         // Given
-        StickerSet entity = createStickerSet(OWNER_USER_ID, AUTHOR_USER_ID, true, false);
+        StickerSet entity = createStickerSet(OWNER_USER_ID, true, true, false);
 
         // When
         StickerSetDto dto = StickerSetDto.fromEntity(entity);
@@ -267,7 +247,7 @@ class StickerSetDtoAvailableActionsTest {
     @Severity(SeverityLevel.CRITICAL)
     void fromEntity_WithOwnerAuthorCurrentUserId_ShouldCalculateOwnerAuthorActions() {
         // Given
-        StickerSet entity = createStickerSet(OWNER_USER_ID, OWNER_USER_ID, true, false);
+        StickerSet entity = createStickerSet(OWNER_USER_ID, true, true, false);
 
         // When
         StickerSetDto dto = StickerSetDto.fromEntity(entity, "en", OWNER_USER_ID, false);
@@ -287,7 +267,7 @@ class StickerSetDtoAvailableActionsTest {
     @Severity(SeverityLevel.CRITICAL)
     void fromEntity_WithAdmin_ShouldCalculateAdminActions() {
         // Given
-        StickerSet entity = createStickerSet(OWNER_USER_ID, AUTHOR_USER_ID, true, false);
+        StickerSet entity = createStickerSet(OWNER_USER_ID, true, true, false);
 
         // When
         StickerSetDto dto = StickerSetDto.fromEntity(entity, "en", ADMIN_USER_ID, true);
@@ -306,7 +286,7 @@ class StickerSetDtoAvailableActionsTest {
     @Severity(SeverityLevel.CRITICAL)
     void fromEntity_WithAdminOwnerAuthor_ShouldCalculateAllActions() {
         // Given
-        StickerSet entity = createStickerSet(ADMIN_USER_ID, ADMIN_USER_ID, true, false);
+        StickerSet entity = createStickerSet(ADMIN_USER_ID, true, true, false);
 
         // When
         StickerSetDto dto = StickerSetDto.fromEntity(entity, "en", ADMIN_USER_ID, true);
@@ -327,7 +307,7 @@ class StickerSetDtoAvailableActionsTest {
     @Severity(SeverityLevel.CRITICAL)
     void fromEntity_WithBlockedStickerSet_ShouldShowUnblockForAdmin() {
         // Given
-        StickerSet entity = createStickerSet(OWNER_USER_ID, AUTHOR_USER_ID, true, true);
+        StickerSet entity = createStickerSet(OWNER_USER_ID, true, true, true);
 
         // When
         StickerSetDto dto = StickerSetDto.fromEntity(entity, "en", ADMIN_USER_ID, true);
@@ -347,7 +327,7 @@ class StickerSetDtoAvailableActionsTest {
     @Severity(SeverityLevel.CRITICAL)
     void fromEntity_WithPrivateStickerSet_ShouldShowPublishForAuthor() {
         // Given
-        StickerSet entity = createStickerSet(OWNER_USER_ID, OWNER_USER_ID, false, false);
+        StickerSet entity = createStickerSet(OWNER_USER_ID, true, false, false);
 
         // When
         StickerSetDto dto = StickerSetDto.fromEntity(entity, "en", OWNER_USER_ID, false);
@@ -368,7 +348,7 @@ class StickerSetDtoAvailableActionsTest {
     @Severity(SeverityLevel.CRITICAL)
     void fromEntity_WithOtherUser_ShouldHaveEmptyActions() {
         // Given
-        StickerSet entity = createStickerSet(OWNER_USER_ID, AUTHOR_USER_ID, true, false);
+        StickerSet entity = createStickerSet(OWNER_USER_ID, true, true, false);
 
         // When
         StickerSetDto dto = StickerSetDto.fromEntity(entity, "en", OTHER_USER_ID, false);
@@ -386,7 +366,7 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_DeletedStickerSet_ShouldNotShowEditCategories() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                OWNER_USER_ID, false, OWNER_USER_ID, OWNER_USER_ID, 
+                OWNER_USER_ID, false, OWNER_USER_ID, true, 
                 StickerSetState.DELETED, StickerSetVisibility.PUBLIC
         );
 
@@ -398,8 +378,8 @@ class StickerSetDtoAvailableActionsTest {
 
     @Test
     @Story("Расчет доступных действий")
-    @DisplayName("EDIT_CATEGORIES должно показываться для владельца без authorId")
-    @Description("Проверяет, что владелец может редактировать категории даже если authorId = null")
+    @DisplayName("EDIT_CATEGORIES должно показываться для владельца без isVerified")
+    @Description("Проверяет, что владелец может редактировать категории даже если isVerified = false")
     @Severity(SeverityLevel.CRITICAL)
     void calculateAvailableActions_OwnerWithoutAuthor_ShouldShowEditCategories() {
         // When
@@ -416,19 +396,18 @@ class StickerSetDtoAvailableActionsTest {
 
     @Test
     @Story("Расчет доступных действий")
-    @DisplayName("EDIT_CATEGORIES не должно показываться для автора без совпадения с владельцем")
-    @Description("Проверяет, что автор, который не является владельцем, не может редактировать категории (только публиковать/скрывать)")
+    @DisplayName("PUBLISH/UNPUBLISH показываются для верифицированного владельца")
+    @Description("Проверяет, что владелец с isVerified=true видит PUBLISH для приватного стикерсета")
     @Severity(SeverityLevel.CRITICAL)
-    void calculateAvailableActions_AuthorOnly_ShouldNotShowEditCategories() {
-        // When
+    void calculateAvailableActions_VerifiedOwner_ShouldShowPublish() {
+        // When - owner with isVerified (author = owner)
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                AUTHOR_USER_ID, false, OWNER_USER_ID, AUTHOR_USER_ID, 
+                OWNER_USER_ID, false, OWNER_USER_ID, true,
                 StickerSetState.ACTIVE, StickerSetVisibility.PRIVATE
         );
 
         // Then
-        assertEquals(1, actions.size());
-        assertFalse(actions.contains(StickerSetAction.EDIT_CATEGORIES));
+        assertTrue(actions.contains(StickerSetAction.EDIT_CATEGORIES));
         assertTrue(actions.contains(StickerSetAction.PUBLISH));
     }
 
@@ -440,7 +419,7 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_AdminOtherUserStickerSet_ShouldShowEditCategories() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                ADMIN_USER_ID, true, OWNER_USER_ID, AUTHOR_USER_ID, 
+                ADMIN_USER_ID, true, OWNER_USER_ID, true,
                 StickerSetState.ACTIVE, StickerSetVisibility.PRIVATE
         );
 
@@ -452,13 +431,13 @@ class StickerSetDtoAvailableActionsTest {
 
     @Test
     @Story("Расчет доступных действий")
-    @DisplayName("DONATE должно показываться для пользователя с кошельком, если есть автор и пользователь не является автором")
-    @Description("Проверяет, что пользователь с подключенным TON кошельком видит DONATE для стикерсета с автором, если он не является автором")
+    @DisplayName("DONATE должно показываться для пользователя с кошельком, если isVerified и пользователь не владелец")
+    @Description("Проверяет, что пользователь с TON кошельком видит DONATE для верифицированного стикерсета, если он не владелец")
     @Severity(SeverityLevel.CRITICAL)
-    void calculateAvailableActions_UserWithWalletAndAuthor_ShouldShowDonation() {
+    void calculateAvailableActions_UserWithWalletAndVerified_ShouldShowDonation() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                OTHER_USER_ID, false, OWNER_USER_ID, AUTHOR_USER_ID, 
+                OTHER_USER_ID, false, OWNER_USER_ID, true,
                 StickerSetState.ACTIVE, StickerSetVisibility.PUBLIC, true
         );
 
@@ -471,18 +450,17 @@ class StickerSetDtoAvailableActionsTest {
 
     @Test
     @Story("Расчет доступных действий")
-    @DisplayName("DONATE не должно показываться, если пользователь является автором")
-    @Description("Проверяет, что пользователь не может донатить самому себе (запрет доната автору, если пользователь является автором)")
+    @DisplayName("DONATE не должно показываться, если пользователь является владельцем (автором)")
+    @Description("Проверяет, что владелец не может донатить самому себе")
     @Severity(SeverityLevel.CRITICAL)
-    void calculateAvailableActions_UserIsAuthor_ShouldNotShowDonation() {
-        // When
+    void calculateAvailableActions_UserIsOwner_ShouldNotShowDonation() {
+        // When - owner with isVerified
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                AUTHOR_USER_ID, false, OWNER_USER_ID, AUTHOR_USER_ID, 
+                OWNER_USER_ID, false, OWNER_USER_ID, true,
                 StickerSetState.ACTIVE, StickerSetVisibility.PUBLIC, true
         );
 
         // Then
-        assertEquals(1, actions.size());
         assertTrue(actions.contains(StickerSetAction.UNPUBLISH));
         assertFalse(actions.contains(StickerSetAction.DONATE));
     }
@@ -495,7 +473,7 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_UserWithoutWallet_ShouldNotShowDonation() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                OTHER_USER_ID, false, OWNER_USER_ID, AUTHOR_USER_ID, 
+                OTHER_USER_ID, false, OWNER_USER_ID, true, 
                 StickerSetState.ACTIVE, StickerSetVisibility.PUBLIC, false
         );
 
@@ -507,7 +485,7 @@ class StickerSetDtoAvailableActionsTest {
     @Test
     @Story("Расчет доступных действий")
     @DisplayName("DONATE не должно показываться, если у стикерсета нет автора")
-    @Description("Проверяет, что DONATE не показывается, если authorId = null")
+    @Description("Проверяет, что DONATE не показывается, если isVerified = false")
     @Severity(SeverityLevel.CRITICAL)
     void calculateAvailableActions_StickerSetWithoutAuthor_ShouldNotShowDonation() {
         // When
@@ -529,7 +507,7 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_UnauthorizedUserWithWallet_ShouldNotShowDonation() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                null, false, OWNER_USER_ID, AUTHOR_USER_ID, 
+                null, false, OWNER_USER_ID, true,
                 StickerSetState.ACTIVE, StickerSetVisibility.PUBLIC, true
         );
 
@@ -540,21 +518,20 @@ class StickerSetDtoAvailableActionsTest {
 
     @Test
     @Story("Расчет доступных действий")
-    @DisplayName("DONATE должно показываться вместе с другими действиями для владельца с кошельком")
-    @Description("Проверяет, что владелец с кошельком видит DONATE вместе с DELETE и EDIT_CATEGORIES, если он не является автором")
+    @DisplayName("Владелец получает DELETE и EDIT_CATEGORIES, но не DONATE")
+    @Description("Проверяет, что владелец не видит DONATE (нельзя донатить себе)")
     @Severity(SeverityLevel.NORMAL)
-    void calculateAvailableActions_OwnerWithWalletNotAuthor_ShouldShowDonationAndOtherActions() {
-        // When
+    void calculateAvailableActions_OwnerWithWallet_ShouldNotShowDonation() {
+        // When - owner never sees DONATE
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                OWNER_USER_ID, false, OWNER_USER_ID, AUTHOR_USER_ID, 
+                OWNER_USER_ID, false, OWNER_USER_ID, true,
                 StickerSetState.ACTIVE, StickerSetVisibility.PUBLIC, true
         );
 
         // Then
-        assertEquals(3, actions.size());
         assertTrue(actions.contains(StickerSetAction.DELETE));
         assertTrue(actions.contains(StickerSetAction.EDIT_CATEGORIES));
-        assertTrue(actions.contains(StickerSetAction.DONATE));
+        assertFalse(actions.contains(StickerSetAction.DONATE));
     }
 
     @Test
@@ -565,7 +542,7 @@ class StickerSetDtoAvailableActionsTest {
     void calculateAvailableActions_AdminWithWalletNotAuthor_ShouldShowDonationAndAdminActions() {
         // When
         List<StickerSetAction> actions = StickerSetDto.calculateAvailableActions(
-                ADMIN_USER_ID, true, OWNER_USER_ID, AUTHOR_USER_ID, 
+                ADMIN_USER_ID, true, OWNER_USER_ID, true,
                 StickerSetState.ACTIVE, StickerSetVisibility.PUBLIC, true
         );
 
@@ -581,9 +558,9 @@ class StickerSetDtoAvailableActionsTest {
     @DisplayName("fromEntity с hasTonWallet=true должен включать DONATE для пользователя с кошельком")
     @Description("Проверяет, что при создании DTO с hasTonWallet=true и наличием автора, пользователь видит DONATE")
     @Severity(SeverityLevel.CRITICAL)
-    void fromEntity_WithWalletAndAuthor_ShouldIncludeDonation() {
+    void fromEntity_WithWalletAndVerified_ShouldIncludeDonation() {
         // Given
-        StickerSet entity = createStickerSet(OWNER_USER_ID, AUTHOR_USER_ID, true, false);
+        StickerSet entity = createStickerSet(OWNER_USER_ID, true, true, false);
 
         // When
         StickerSetDto dto = StickerSetDto.fromEntity(entity, "en", OTHER_USER_ID, false, true, true);
@@ -601,7 +578,7 @@ class StickerSetDtoAvailableActionsTest {
     @Severity(SeverityLevel.CRITICAL)
     void fromEntity_WithoutWallet_ShouldNotIncludeDonation() {
         // Given
-        StickerSet entity = createStickerSet(OWNER_USER_ID, AUTHOR_USER_ID, true, false);
+        StickerSet entity = createStickerSet(OWNER_USER_ID, true, true, false);
 
         // When
         StickerSetDto dto = StickerSetDto.fromEntity(entity, "en", OTHER_USER_ID, false, true, false);
@@ -617,16 +594,15 @@ class StickerSetDtoAvailableActionsTest {
     @DisplayName("fromEntity с hasTonWallet=true не должен включать DONATE, если пользователь является автором")
     @Description("Проверяет, что даже с hasTonWallet=true DONATE не показывается, если пользователь является автором")
     @Severity(SeverityLevel.CRITICAL)
-    void fromEntity_WithWalletButUserIsAuthor_ShouldNotIncludeDonation() {
-        // Given
-        StickerSet entity = createStickerSet(OWNER_USER_ID, AUTHOR_USER_ID, true, false);
+    void fromEntity_WithWalletButUserIsOwner_ShouldNotIncludeDonation() {
+        // Given - owner = author when verified
+        StickerSet entity = createStickerSet(OWNER_USER_ID, true, true, false);
 
-        // When
-        StickerSetDto dto = StickerSetDto.fromEntity(entity, "en", AUTHOR_USER_ID, false, true, true);
+        // When - current user is owner
+        StickerSetDto dto = StickerSetDto.fromEntity(entity, "en", OWNER_USER_ID, false, true, true);
 
-        // Then
+        // Then - owner never sees DONATE
         assertNotNull(dto.getAvailableActions());
-        assertEquals(1, dto.getAvailableActions().size());
         assertTrue(dto.getAvailableActions().contains(StickerSetAction.UNPUBLISH));
         assertFalse(dto.getAvailableActions().contains(StickerSetAction.DONATE));
     }
@@ -634,11 +610,11 @@ class StickerSetDtoAvailableActionsTest {
     @Test
     @Story("Методы fromEntity")
     @DisplayName("fromEntity с hasTonWallet=true не должен включать DONATE, если нет автора")
-    @Description("Проверяет, что даже с hasTonWallet=true DONATE не показывается, если authorId = null")
+    @Description("Проверяет, что даже с hasTonWallet=true DONATE не показывается, если isVerified = false")
     @Severity(SeverityLevel.CRITICAL)
     void fromEntity_WithWalletButNoAuthor_ShouldNotIncludeDonation() {
         // Given
-        StickerSet entity = createStickerSet(OWNER_USER_ID, null, true, false);
+        StickerSet entity = createStickerSet(OWNER_USER_ID, false, true, false);
 
         // When
         StickerSetDto dto = StickerSetDto.fromEntity(entity, "en", OTHER_USER_ID, false, true, true);
@@ -652,11 +628,11 @@ class StickerSetDtoAvailableActionsTest {
     /**
      * Вспомогательный метод для создания StickerSet для тестов
      */
-    private StickerSet createStickerSet(Long userId, Long authorId, Boolean isPublic, Boolean isBlocked) {
+    private StickerSet createStickerSet(Long userId, Boolean isVerified, Boolean isPublic, Boolean isBlocked) {
         StickerSet entity = new StickerSet();
         entity.setId(1L);
         entity.setUserId(userId);
-        entity.setAuthorId(authorId);
+        entity.setIsVerified(Boolean.TRUE.equals(isVerified));
         entity.setTitle("Test StickerSet");
         entity.setName("test_stickers_by_bot");
         entity.setState(isBlocked ? StickerSetState.BLOCKED : StickerSetState.ACTIVE);

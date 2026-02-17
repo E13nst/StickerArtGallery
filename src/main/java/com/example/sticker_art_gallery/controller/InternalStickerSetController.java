@@ -162,12 +162,12 @@ public class InternalStickerSetController {
             @Valid @RequestBody CreateStickerSetDto createDto,
             @RequestParam @NotNull @Positive Long userId,
             @Parameter(
-                name = "authorId",
+                name = "isVerified",
                 in = ParameterIn.QUERY,
-                description = "Telegram ID автора стикерсета (опционально). Если задан, будет сохранён в authorId.",
-                example = "123456789"
+                description = "Признак верифицированного автора (owner). При true автор = владелец.",
+                example = "false"
             )
-            @RequestParam(required = false) @Positive Long authorId,
+            @RequestParam(required = false, defaultValue = "false") boolean isVerified,
             @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
             @RequestParam(defaultValue = "false") boolean shortInfo,
             HttpServletRequest request) {
@@ -176,9 +176,9 @@ public class InternalStickerSetController {
 
         try {
             String language = resolveLanguage(request);
-            LOGGER.info("🤝 Межсервисное создание стикерсета для userId {}: {} (language={}, shortInfo={}, authorId={})",
-                    userId, createDto.getName(), language, shortInfo, authorId);
-            StickerSet stickerSet = stickerSetService.createStickerSetForUser(createDto, userId, language, authorId);
+            LOGGER.info("🤝 Межсервисное создание стикерсета для userId {}: {} (language={}, shortInfo={}, isVerified={})",
+                    userId, createDto.getName(), language, shortInfo, isVerified);
+            StickerSet stickerSet = stickerSetService.createStickerSetForUser(createDto, userId, language, isVerified);
             StickerSetDto responseDto = stickerSetService.findByIdWithBotApiData(stickerSet.getId(), language, userId, shortInfo);
             if (responseDto == null) {
                 responseDto = StickerSetDto.fromEntity(stickerSet, language, userId);

@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Tag("filters")
 @Tag("fast")
 @Epic("Стикерсеты")
-@Feature("Фильтры списка: officialOnly, authorId, hasAuthorOnly")
+@Feature("Фильтры списка: officialOnly, authorId, isVerified")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class StickerSetFiltersIntegrationTest {
 
@@ -57,7 +57,7 @@ class StickerSetFiltersIntegrationTest {
 		);
 
 		// Создаем тестовые стикерсеты один раз для всех тестов используя StickerSetTestBuilder
-		// S1: type=USER, authorId=null
+		// S1: type=USER, isVerified=false
 		StickerSet s1 = StickerSetTestBuilder.builder()
 				.withUserId(userId)
 				.withTitle("S1")
@@ -65,22 +65,22 @@ class StickerSetFiltersIntegrationTest {
 				.build();
 		stickerSetRepository.save(s1);
 
-		// S2: type=OFFICIAL, authorId=111
+		// S2: type=OFFICIAL, isVerified=true
 		StickerSet s2 = StickerSetTestBuilder.builder()
 				.withUserId(userId)
 				.withTitle("S2")
 				.withName(TEST_STICKERSET_S2)
 				.asOfficial()
-				.withAuthorId(TestConstants.TEST_AUTHOR_ID_111)
+				.withIsVerified(true)
 				.build();
 		stickerSetRepository.save(s2);
 
-		// S3: type=USER, authorId=222
+		// S3: type=USER, userId=222, isVerified=true (для фильтра authorId=222)
 		StickerSet s3 = StickerSetTestBuilder.builder()
-				.withUserId(userId)
+				.withUserId(TestConstants.TEST_AUTHOR_ID_222)
 				.withTitle("S3")
 				.withName(TEST_STICKERSET_S3)
-				.withAuthorId(TestConstants.TEST_AUTHOR_ID_222)
+				.withIsVerified(true)
 				.build();
 		stickerSetRepository.save(s3);
 
@@ -118,42 +118,42 @@ class StickerSetFiltersIntegrationTest {
 
 	@Test
 	@Story("authorId")
-	@DisplayName("authorId фильтрует по автору")
+	@DisplayName("authorId (deprecated) фильтрует по userId + isVerified")
 	void filterByAuthorId() throws Exception {
 		testSteps.getStickerSetsWithFilters(null, TestConstants.TEST_AUTHOR_ID_222, null, initData)
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.content.length()", org.hamcrest.Matchers.is(1)))
-				.andExpect(jsonPath("$.content[0].authorId").value(TestConstants.TEST_AUTHOR_ID_222));
+				.andExpect(jsonPath("$.content[0].userId").value(TestConstants.TEST_AUTHOR_ID_222))
+				.andExpect(jsonPath("$.content[0].isVerified").value(true));
 	}
 
 	@Test
-	@Story("hasAuthorOnly")
-	@DisplayName("hasAuthorOnly=true возвращает только с authorId!=null")
-	void filterHasAuthorOnly() throws Exception {
+	@Story("isVerified")
+	@DisplayName("isVerified=true возвращает только верифицированные")
+	void filterIsVerified() throws Exception {
 		testSteps.getStickerSetsWithFilters(null, null, true, initData)
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.content[*].authorId").value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.notNullValue())));
+				.andExpect(jsonPath("$.content[*].isVerified").value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is(true))));
 	}
 
 	@ParameterizedTest
 	@CsvSource({
 			"true, '', '', OFFICIAL",
-			"'', 111, '', OFFICIAL",
 			"'', 222, '', USER",
 			"'', '', true, USER"
 	})
 	@Story("Комбинированные фильтры")
-	@DisplayName("Фильтры: officialOnly={0}, authorId={1}, hasAuthorOnly={2} -> тип {3}")
+	@DisplayName("Фильтры: officialOnly={0}, authorId={1}, isVerified={2} -> тип {3}")
 	@Tag("filters")
-	void filterWithCombinations(String officialOnlyStr, String authorIdStr, String hasAuthorOnlyStr, String expectedType) throws Exception {
+	void filterWithCombinations(String officialOnlyStr, String authorIdStr, String isVerifiedStr, String expectedType) throws Exception {
 		Boolean officialOnly = "true".equals(officialOnlyStr) ? Boolean.TRUE : (officialOnlyStr.isEmpty() ? null : Boolean.FALSE);
 		Long authorId = authorIdStr.isEmpty() ? null : Long.parseLong(authorIdStr);
-		Boolean hasAuthorOnly = "true".equals(hasAuthorOnlyStr) ? Boolean.TRUE : (hasAuthorOnlyStr.isEmpty() ? null : Boolean.FALSE);
-		
+		Boolean isVerified = "true".equals(isVerifiedStr) ? Boolean.TRUE : (isVerifiedStr.isEmpty() ? null : Boolean.FALSE);
+
 		testSteps.getStickerSetsWithFilters(
 				officialOnly,
 				authorId,
-				hasAuthorOnly,
+				isVerified,
 				initData)
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.content").isArray());

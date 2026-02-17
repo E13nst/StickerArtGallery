@@ -97,7 +97,7 @@ class StickerSetServiceAvailableActionsTest {
     @Severity(SeverityLevel.CRITICAL)
     void findByIdWithBotApiData_ForOwnerAuthor_ShouldCalculateOwnerAuthorActions() {
         // Given
-        StickerSet entity = createStickerSet(OWNER_USER_ID, OWNER_USER_ID, true, false);
+        StickerSet entity = createStickerSet(OWNER_USER_ID, true, true, false);
         when(crudService.findById(1L)).thenReturn(entity);
         lenient().when(walletService.hasActiveWallet(OWNER_USER_ID)).thenReturn(false);
         
@@ -130,7 +130,7 @@ class StickerSetServiceAvailableActionsTest {
     @Severity(SeverityLevel.CRITICAL)
     void findByIdWithBotApiData_ForAdmin_ShouldCalculateAdminActions() {
         // Given
-        StickerSet entity = createStickerSet(OWNER_USER_ID, AUTHOR_USER_ID, true, false);
+        StickerSet entity = createStickerSet(OWNER_USER_ID, true, true, false);
         when(crudService.findById(1L)).thenReturn(entity);
         lenient().when(walletService.hasActiveWallet(ADMIN_USER_ID)).thenReturn(false);
         
@@ -159,7 +159,7 @@ class StickerSetServiceAvailableActionsTest {
     @Severity(SeverityLevel.CRITICAL)
     void findByIdWithBotApiData_ForAdminOwnerAuthor_ShouldCalculateAllActions() {
         // Given
-        StickerSet entity = createStickerSet(ADMIN_USER_ID, ADMIN_USER_ID, true, false);
+        StickerSet entity = createStickerSet(ADMIN_USER_ID, true, true, false);
         when(crudService.findById(1L)).thenReturn(entity);
         lenient().when(walletService.hasActiveWallet(ADMIN_USER_ID)).thenReturn(false);
         
@@ -191,7 +191,7 @@ class StickerSetServiceAvailableActionsTest {
     @Severity(SeverityLevel.CRITICAL)
     void findByIdWithBotApiData_ForOtherUser_ShouldReturnEmptyActions() {
         // Given
-        StickerSet entity = createStickerSet(OWNER_USER_ID, AUTHOR_USER_ID, true, false);
+        StickerSet entity = createStickerSet(OWNER_USER_ID, true, true, false);
         when(crudService.findById(1L)).thenReturn(entity);
         lenient().when(walletService.hasActiveWallet(OTHER_USER_ID)).thenReturn(false);
         
@@ -219,7 +219,7 @@ class StickerSetServiceAvailableActionsTest {
     @Severity(SeverityLevel.CRITICAL)
     void findByIdWithBotApiData_ForBlockedStickerSet_ShouldShowUnblockForAdmin() {
         // Given
-        StickerSet entity = createStickerSet(OWNER_USER_ID, AUTHOR_USER_ID, true, true);
+        StickerSet entity = createStickerSet(OWNER_USER_ID, true, true, true);
         when(crudService.findById(1L)).thenReturn(entity);
         lenient().when(walletService.hasActiveWallet(ADMIN_USER_ID)).thenReturn(false);
         
@@ -250,7 +250,7 @@ class StickerSetServiceAvailableActionsTest {
     @Severity(SeverityLevel.CRITICAL)
     void findByIdWithBotApiData_ForPrivateStickerSet_ShouldShowPublishForAuthor() {
         // Given
-        StickerSet entity = createStickerSet(OWNER_USER_ID, OWNER_USER_ID, false, false);
+        StickerSet entity = createStickerSet(OWNER_USER_ID, true, false, false);
         when(crudService.findById(1L)).thenReturn(entity);
         lenient().when(walletService.hasActiveWallet(OWNER_USER_ID)).thenReturn(false);
         
@@ -281,7 +281,7 @@ class StickerSetServiceAvailableActionsTest {
     @Severity(SeverityLevel.CRITICAL)
     void findByIdWithBotApiData_WithoutCurrentUserId_ShouldReturnEmptyActions() {
         // Given
-        StickerSet entity = createStickerSet(OWNER_USER_ID, AUTHOR_USER_ID, true, false);
+        StickerSet entity = createStickerSet(OWNER_USER_ID, true, true, false);
         when(crudService.findById(1L)).thenReturn(entity);
         
         StickerSetDto mockDto = StickerSetDto.fromEntity(entity, "en", null, false, true, false);
@@ -326,11 +326,11 @@ class StickerSetServiceAvailableActionsTest {
     /**
      * Вспомогательный метод для создания StickerSet для тестов
      */
-    private StickerSet createStickerSet(Long userId, Long authorId, Boolean isPublic, Boolean isBlocked) {
+    private StickerSet createStickerSet(Long userId, Boolean isVerified, Boolean isPublic, Boolean isBlocked) {
         StickerSet entity = new StickerSet();
         entity.setId(1L);
         entity.setUserId(userId);
-        entity.setAuthorId(authorId);
+        entity.setIsVerified(Boolean.TRUE.equals(isVerified));
         entity.setTitle("Test StickerSet");
         entity.setName("test_stickers_by_bot");
         entity.setState(isBlocked ? StickerSetState.BLOCKED : StickerSetState.ACTIVE);

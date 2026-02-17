@@ -104,7 +104,7 @@ public class UserProfileService {
      * @param role Фильтр по роли (USER/ADMIN)
      * @param isBlocked Фильтр по статусу блокировки
      * @param search Универсальный поиск по User ID или username
-     * @param sort Поле для сортировки (createdAt, ownedStickerSetsCount, authoredStickerSetsCount)
+     * @param sort Поле для сортировки (createdAt, ownedStickerSetsCount, verifiedStickerSetsCount)
      * @param direction Направление сортировки (ASC/DESC)
      * @param pageable Параметры пагинации
      * @return Страница профилей пользователей с счетчиками стикерсетов

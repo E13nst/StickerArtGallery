@@ -62,21 +62,21 @@ class StickerSetAuthorVisibilityIntegrationTest {
         // Создаем тестовые стикерсеты один раз для всех тестов используя StickerSetTestBuilder
         stickerSetRepository.saveAll(List.of(
                 StickerSetTestBuilder.builder()
-                        .withUserId(TestUsers.VIEWER.id())
-                        .withAuthorId(TestUsers.OWNER.id())
+                        .withUserId(TestUsers.OWNER.id())
+                        .withIsVerified(true)
                         .withTitle(AUTHOR_PUBLIC_PACK + "_title")
                         .withName(AUTHOR_PUBLIC_PACK)
                         .build(),
                 StickerSetTestBuilder.builder()
-                        .withUserId(TestUsers.VIEWER.id())
-                        .withAuthorId(TestUsers.OWNER.id())
+                        .withUserId(TestUsers.OWNER.id())
+                        .withIsVerified(true)
                         .withTitle(AUTHOR_PRIVATE_PACK + "_title")
                         .withName(AUTHOR_PRIVATE_PACK)
                         .asPrivate()
                         .build(),
                 StickerSetTestBuilder.builder()
-                        .withUserId(TestUsers.VIEWER.id())
-                        .withAuthorId(TestUsers.OWNER.id())
+                        .withUserId(TestUsers.OWNER.id())
+                        .withIsVerified(true)
                         .withTitle(AUTHOR_BLOCKED_PACK + "_title")
                         .withName(AUTHOR_BLOCKED_PACK)
                         .asBlocked("Test block reason")

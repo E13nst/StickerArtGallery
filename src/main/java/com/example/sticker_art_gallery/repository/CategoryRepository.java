@@ -90,9 +90,9 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
            "(ss.state = com.example.sticker_art_gallery.model.telegram.StickerSetState.ACTIVE " +
            "AND ss.visibility = com.example.sticker_art_gallery.model.telegram.StickerSetVisibility.PUBLIC " +
            "AND (:officialOnly = false OR ss.type = com.example.sticker_art_gallery.model.telegram.StickerSetType.OFFICIAL) " +
-           "AND (:authorId IS NULL OR ss.authorId = :authorId) " +
-           "AND (:hasAuthorOnly = false OR ss.authorId IS NOT NULL)) " +
+           "AND (:userId IS NULL OR ss.userId = :userId) " +
+           "AND (:isVerified IS NULL OR :isVerified = false OR ss.isVerified = true)) " +
            "WHERE c.isActive = true " +
            "GROUP BY c.id")
-    List<CategoryCountProjection> countStickerSetsByActiveCategories(boolean officialOnly, Long authorId, boolean hasAuthorOnly);
+    List<CategoryCountProjection> countStickerSetsByActiveCategories(boolean officialOnly, Long userId, Boolean isVerified);
 }

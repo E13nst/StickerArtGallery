@@ -69,9 +69,8 @@ public class StickerSetQueryService {
                 filter.getCurrentUserId(),
                 filter.getCategoryKeys(),
                 filter.getType(),
-                filter.getAuthorId(),
-                filter.isHasAuthorOnly(),
                 filter.getUserId(),
+                filter.getIsVerified(),
                 filter.getPageRequest(),
                 filter.getLanguage(),
                 filter.isShortInfo(),
@@ -94,9 +93,8 @@ public class StickerSetQueryService {
                 filter.getLanguage(),
                 filter.getCurrentUserId(),
                 filter.getType(),
-                filter.getAuthorId(),
-                filter.isHasAuthorOnly(),
                 filter.getUserId(),
+                filter.getIsVerified(),
                 filter.isShortInfo(),
                 filter.isPreview()
             );
@@ -107,9 +105,8 @@ public class StickerSetQueryService {
                 filter.getLanguage(),
                 filter.getCurrentUserId(),
                 filter.getType(),
-                filter.getAuthorId(),
-                filter.isHasAuthorOnly(),
                 filter.getUserId(),
+                filter.getIsVerified(),
                 filter.isShortInfo(),
                 filter.isPreview()
             );

@@ -93,39 +93,7 @@ class StickerSetAdminEndpointsIntegrationTest {
                 .andExpect(jsonPath("$.isOfficial").value(false)); // обратная совместимость
     }
 
-    @Test
-    @Story("Автор")
-    @DisplayName("Админ устанавливает authorId и очищает его")
-    void adminCanSetAndClearAuthor() throws Exception {
-        // set author
-        testSteps.setAuthor(testStickerSetId, TestConstants.TEST_AUTHOR_ID_123456789, adminInitData)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.authorId").value(TestConstants.TEST_AUTHOR_ID_123456789));
-
-        // clear author
-        testSteps.clearAuthor(testStickerSetId, adminInitData)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.authorId").doesNotExist());
-    }
-
-    @Test
-    @Story("Автор")
-    @DisplayName("Пользователь без прав не может установить автора (403)")
-    void userCannotSetAuthor() throws Exception {
-        testSteps.setAuthor(testStickerSetId, 123L, userInitData)
-                .andExpect(status().isForbidden());
-    }
-
-    @ParameterizedTest
-    @ValueSource(longs = {-1L, -5L, -100L, 0L})
-    @Story("Автор")
-    @DisplayName("Валидация authorId: некорректные значения ({0}) -> 400")
-    @Tag("validation")
-    void setAuthorValidation_InvalidAuthorIds_ShouldReturn400(long invalidAuthorId) throws Exception {
-        testSteps.setAuthor(testStickerSetId, invalidAuthorId, adminInitData)
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
-    }
+    // Admin author endpoints (PUT/DELETE /{id}/author) удалены в рамках миграции на isVerified
 }
 
 

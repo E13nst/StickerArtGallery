@@ -237,17 +237,17 @@ public class StickerSetTestSteps {
                         .header("X-Telegram-Init-Data", initData));
     }
 
-    @Step("Получить стикерсеты с фильтрами officialOnly/authorId/hasAuthorOnly")
-    public ResultActions getStickerSetsWithFilters(Boolean officialOnly, Long authorId, Boolean hasAuthorOnly, String initData) throws Exception {
-        return getStickerSetsWithFilters(officialOnly, authorId, hasAuthorOnly, initData, null);
+    @Step("Получить стикерсеты с фильтрами officialOnly/authorId/isVerified")
+    public ResultActions getStickerSetsWithFilters(Boolean officialOnly, Long authorId, Boolean isVerified, String initData) throws Exception {
+        return getStickerSetsWithFilters(officialOnly, authorId, isVerified, initData, null);
     }
-    
-    public ResultActions getStickerSetsWithFilters(Boolean officialOnly, Long authorId, Boolean hasAuthorOnly, String initData, java.util.Map<String, String> additionalParams) throws Exception {
+
+    public ResultActions getStickerSetsWithFilters(Boolean officialOnly, Long authorId, Boolean isVerified, String initData, java.util.Map<String, String> additionalParams) throws Exception {
         var req = get("/api/stickersets")
                 .header("X-Telegram-Init-Data", initData);
         if (officialOnly != null) req = req.param("officialOnly", officialOnly.toString());
         if (authorId != null) req = req.param("authorId", authorId.toString());
-        if (hasAuthorOnly != null) req = req.param("hasAuthorOnly", hasAuthorOnly.toString());
+        if (isVerified != null) req = req.param("isVerified", isVerified.toString());
         if (additionalParams != null) {
             for (java.util.Map.Entry<String, String> entry : additionalParams.entrySet()) {
                 req = req.param(entry.getKey(), entry.getValue());
@@ -256,15 +256,15 @@ public class StickerSetTestSteps {
         return mockMvc.perform(req);
     }
 
-    @Step("Получить топ по лайкам с фильтрами officialOnly/authorId/hasAuthorOnly")
-    public ResultActions getTopByLikesWithFilters(Boolean officialOnly, Long authorId, Boolean hasAuthorOnly, String initData) throws Exception {
+    @Step("Получить топ по лайкам с фильтрами officialOnly/authorId/isVerified")
+    public ResultActions getTopByLikesWithFilters(Boolean officialOnly, Long authorId, Boolean isVerified, String initData) throws Exception {
         var req = get("/api/stickersets")
                 .header("X-Telegram-Init-Data", initData)
                 .param("sort", "likesCount")
                 .param("direction", "DESC");
         if (officialOnly != null) req = req.param("officialOnly", officialOnly.toString());
         if (authorId != null) req = req.param("authorId", authorId.toString());
-        if (hasAuthorOnly != null) req = req.param("hasAuthorOnly", hasAuthorOnly.toString());
+        if (isVerified != null) req = req.param("isVerified", isVerified.toString());
         return mockMvc.perform(req);
     }
 
@@ -277,21 +277,6 @@ public class StickerSetTestSteps {
     @Step("Снять официальный статус (ADMIN)")
     public ResultActions markUnofficial(Long id, String initData) throws Exception {
         return mockMvc.perform(put("/api/stickersets/" + id + "/unofficial")
-                .header("X-Telegram-Init-Data", initData));
-    }
-
-    @Step("Установить автора (ADMIN)")
-    public ResultActions setAuthor(Long id, Long authorId, String initData) throws Exception {
-        java.util.Map<String, Long> body = java.util.Map.of("authorId", authorId);
-        return mockMvc.perform(put("/api/stickersets/" + id + "/author")
-                .header("X-Telegram-Init-Data", initData)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(body)));
-    }
-
-    @Step("Очистить автора (ADMIN)")
-    public ResultActions clearAuthor(Long id, String initData) throws Exception {
-        return mockMvc.perform(delete("/api/stickersets/" + id + "/author")
                 .header("X-Telegram-Init-Data", initData));
     }
 

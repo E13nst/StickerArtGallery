@@ -264,10 +264,10 @@ public class StickerSetController {
             @RequestParam(required = false) com.example.sticker_art_gallery.model.telegram.StickerSetType type,
             @Parameter(description = "Показывать только официальные стикерсеты (устарело, используйте type=OFFICIAL)", example = "false")
             @RequestParam(defaultValue = "false") boolean officialOnly,
-            @Parameter(description = "Фильтр по автору (Telegram ID)", example = "123456789")
+            @Parameter(description = "Фильтр по автору (deprecated: интерпретируется как userId=authorId, isVerified=true)", example = "123456789", deprecated = true)
             @RequestParam(required = false) Long authorId,
-            @Parameter(description = "Показывать только авторские стикерсеты (authorId IS NOT NULL)", example = "false")
-            @RequestParam(defaultValue = "false") boolean hasAuthorOnly,
+            @Parameter(description = "Показывать только верифицированные стикерсеты (isVerified=true)", example = "false")
+            @RequestParam(required = false) Boolean isVerified,
             @Parameter(description = "Фильтр по пользователю (Telegram ID)", example = "123456789")
             @RequestParam(required = false) Long userId,
             @Parameter(description = "Показать только лайкнутые пользователем стикерсеты", example = "false")
@@ -281,7 +281,7 @@ public class StickerSetController {
             // Построение фильтра
             StickerSetFilterRequest filter = helper.buildFilter(
                 page, size, sort, direction, categoryKeys, type, officialOnly,
-                authorId, hasAuthorOnly, userId, likedOnly, shortInfo, preview, request
+                authorId, isVerified, userId, likedOnly, shortInfo, preview, request
             );
             
             LOGGER.debug("📋 Получение стикерсетов: {}", filter);
@@ -370,10 +370,10 @@ public class StickerSetController {
             @RequestParam(required = false) com.example.sticker_art_gallery.model.telegram.StickerSetType type,
             @Parameter(description = "Показывать только официальные стикерсеты (устарело, используйте type=OFFICIAL)", example = "false")
             @RequestParam(defaultValue = "false") boolean officialOnly,
-            @Parameter(description = "Фильтр по автору (Telegram ID)", example = "123456789")
+            @Parameter(description = "Фильтр по автору (deprecated: userId=authorId, isVerified=true)", example = "123456789", deprecated = true)
             @RequestParam(required = false) Long authorId,
-            @Parameter(description = "Показывать только авторские стикерсеты (authorId IS NOT NULL)", example = "false")
-            @RequestParam(defaultValue = "false") boolean hasAuthorOnly,
+            @Parameter(description = "Показывать только верифицированные стикерсеты (isVerified=true)", example = "false")
+            @RequestParam(required = false) Boolean isVerified,
             @Parameter(description = "Фильтр по пользователю (Telegram ID)", example = "123456789")
             @RequestParam(required = false) Long userId,
             @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
@@ -392,7 +392,7 @@ public class StickerSetController {
             // Построение фильтра с likedOnly=true
             StickerSetFilterRequest filter = helper.buildFilter(
                 page, size, sort, direction, categoryKeys, type, officialOnly,
-                authorId, hasAuthorOnly, userId, true, shortInfo, preview, request
+                authorId, isVerified, userId, true, shortInfo, preview, request
             );
             
             LOGGER.debug("📋 Получение лайкнутых стикерсетов пользователя {}: {}", currentUserId, filter);
@@ -535,10 +535,10 @@ public class StickerSetController {
             @RequestParam(required = false) String categoryKeys,
             @Parameter(description = "Фильтр по типу стикерсета", example = "USER")
             @RequestParam(required = false) com.example.sticker_art_gallery.model.telegram.StickerSetType type,
-            @Parameter(description = "Фильтр по автору (Telegram ID)", example = "123456789")
+            @Parameter(description = "Фильтр по автору (deprecated: интерпретируется как userId=authorId, isVerified=true)", example = "123456789", deprecated = true)
             @RequestParam(required = false) Long authorId,
-            @Parameter(description = "Показывать только авторские стикерсеты (authorId IS NOT NULL)", example = "false")
-            @RequestParam(defaultValue = "false") boolean hasAuthorOnly,
+            @Parameter(description = "Показывать только верифицированные стикерсеты (isVerified=true)", example = "false")
+            @RequestParam(required = false) Boolean isVerified,
             @Parameter(description = "Фильтр по пользователю (Telegram ID)", example = "123456789")
             @RequestParam(required = false) Long userId,
             @Parameter(description = "Вернуть только локальную информацию без telegramStickerSetInfo", example = "false")
@@ -566,14 +566,16 @@ public class StickerSetController {
             String language = helper.getLanguageFromHeaderOrUser(request);
             
             // Поиск среди публичных стикерсетов
+            // Deprecated authorId: интерпретируется как userId=authorId, isVerified=true
+            Long effectiveUserId = authorId != null ? authorId : userId;
+            Boolean effectiveIsVerified = authorId != null ? Boolean.TRUE : isVerified;
             PageResponse<StickerSetDto> result = stickerSetService.searchStickerSets(
                 query,
                 pageRequest,
                 categoryKeysSet,
                 type,
-                authorId,
-                hasAuthorOnly,
-                userId,
+                effectiveUserId,
+                effectiveIsVerified,
                 currentUserId,
                 language,
                 shortInfo,

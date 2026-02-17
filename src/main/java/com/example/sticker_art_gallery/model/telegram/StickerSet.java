@@ -64,8 +64,8 @@ public class StickerSet {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt; // Дата удаления (для state = DELETED)
     
-    @Column(name = "author_id")
-    private Long authorId; // Telegram ID автора стикерсета (nullable)
+    @Column(name = "is_verified", nullable = false)
+    private Boolean isVerified = false; // Признак верифицированного авторства (владелец = автор)
 
     @Column(name = "created_at")
     private java.time.LocalDateTime createdAt;

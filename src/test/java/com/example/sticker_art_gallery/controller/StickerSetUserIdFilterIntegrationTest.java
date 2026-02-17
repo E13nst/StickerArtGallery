@@ -69,7 +69,7 @@ class StickerSetUserIdFilterIntegrationTest {
         s1.setState(StickerSetState.ACTIVE);
         s1.setVisibility(StickerSetVisibility.PUBLIC);
         s1.setType(StickerSetType.USER);
-        s1.setAuthorId(null);
+        s1.setIsVerified(false);
         stickerSetRepository.save(s1);
 
         // Стикерсет пользователя 1 (второй)
@@ -80,7 +80,7 @@ class StickerSetUserIdFilterIntegrationTest {
         s2.setState(StickerSetState.ACTIVE);
         s2.setVisibility(StickerSetVisibility.PUBLIC);
         s2.setType(StickerSetType.OFFICIAL);
-        s2.setAuthorId(111L);
+        s2.setIsVerified(true);
         stickerSetRepository.save(s2);
 
         // Стикерсет пользователя 2
@@ -91,7 +91,7 @@ class StickerSetUserIdFilterIntegrationTest {
         s3.setState(StickerSetState.ACTIVE);
         s3.setVisibility(StickerSetVisibility.PUBLIC);
         s3.setType(StickerSetType.USER);
-        s3.setAuthorId(null);
+        s3.setIsVerified(false);
         stickerSetRepository.save(s3);
 
         // Стикерсет пользователя 3
@@ -102,7 +102,7 @@ class StickerSetUserIdFilterIntegrationTest {
         s4.setState(StickerSetState.ACTIVE);
         s4.setVisibility(StickerSetVisibility.PUBLIC);
         s4.setType(StickerSetType.USER);
-        s4.setAuthorId(222L);
+        s4.setIsVerified(true);
         stickerSetRepository.save(s4);
     }
 
@@ -189,32 +189,31 @@ class StickerSetUserIdFilterIntegrationTest {
 
     @Test
     @Story("userId фильтр + другие фильтры")
-    @DisplayName("userId фильтр комбинируется с authorId")
+    @DisplayName("authorId (deprecated) переопределяет userId, ищет userId=authorId и isVerified")
     @Severity(SeverityLevel.NORMAL)
-    void filterByUserIdAndAuthorId_ShouldReturnFilteredResults() throws Exception {
+    void filterByAuthorId_OverridesUserIdAndFiltersByVerified() throws Exception {
         mockMvc.perform(get("/api/stickersets")
                         .header("X-Telegram-Init-Data", initData)
-                        .param("userId", String.valueOf(userId1))
-                        .param("authorId", "111"))
+                        .param("authorId", String.valueOf(userId1)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()", org.hamcrest.Matchers.is(1)))
                 .andExpect(jsonPath("$.content[0].userId").value(userId1))
-                .andExpect(jsonPath("$.content[0].authorId").value(111L));
+                .andExpect(jsonPath("$.content[0].isVerified").value(true));
     }
 
     @Test
     @Story("userId фильтр + другие фильтры")
-    @DisplayName("userId фильтр комбинируется с hasAuthorOnly")
+    @DisplayName("userId фильтр комбинируется с isVerified")
     @Severity(SeverityLevel.NORMAL)
-    void filterByUserIdAndHasAuthorOnly_ShouldReturnFilteredResults() throws Exception {
+    void filterByUserIdAndIsVerified_ShouldReturnFilteredResults() throws Exception {
         mockMvc.perform(get("/api/stickersets")
                         .header("X-Telegram-Init-Data", initData)
                         .param("userId", String.valueOf(userId1))
-                        .param("hasAuthorOnly", "true"))
+                        .param("isVerified", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()", org.hamcrest.Matchers.is(1)))
                 .andExpect(jsonPath("$.content[0].userId").value(userId1))
-                .andExpect(jsonPath("$.content[0].authorId").value(org.hamcrest.Matchers.notNullValue()));
+                .andExpect(jsonPath("$.content[0].isVerified").value(true));
     }
 
     @Test

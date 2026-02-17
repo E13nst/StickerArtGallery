@@ -332,23 +332,21 @@ public class LikeService {
             Long userId,
             Set<String> categoryKeys,
             com.example.sticker_art_gallery.model.telegram.StickerSetType type,
-            Long authorId,
-            boolean hasAuthorOnly,
             Long filterUserId,
+            Boolean isVerified,
             PageRequest pageRequest,
             String language,
             boolean shortInfo,
             boolean preview) {
-        LOGGER.debug("📋 Получение лайкнутых стикерсетов пользователя {} с фильтрами: categoryKeys={}, type={}, authorId={}, hasAuthorOnly={}, filterUserId={}, page={}, size={}, shortInfo={}, preview={}", 
-                userId, categoryKeys, type, authorId, hasAuthorOnly, filterUserId, pageRequest.getPage(), pageRequest.getSize(), shortInfo, preview);
+        LOGGER.debug("📋 Получение лайкнутых стикерсетов пользователя {} с фильтрами: categoryKeys={}, type={}, filterUserId={}, isVerified={}, page={}, size={}, shortInfo={}, preview={}", 
+                userId, categoryKeys, type, filterUserId, isVerified, pageRequest.getPage(), pageRequest.getSize(), shortInfo, preview);
         
         Page<StickerSet> likedStickerSets = likeRepository.findLikedStickerSetsFiltered(
                 userId,
                 categoryKeys,
                 type,
-                authorId,
-                hasAuthorOnly,
                 filterUserId,
+                isVerified,
                 pageRequest.toPageable());
         
         // Обогащаем данными из Telegram Bot API с учетом shortInfo и preview
@@ -425,17 +423,17 @@ public class LikeService {
     }
 
     /**
-     * Получить топ стикерсетов по лайкам c фильтрами officialOnly/authorId/hasAuthorOnly
+     * Получить топ стикерсетов по лайкам c фильтрами officialOnly/userId/isVerified
      */
     @Transactional(readOnly = true)
     public PageResponse<StickerSetWithLikesDto> getTopStickerSetsByLikes(PageRequest pageRequest, String language, Long currentUserId,
-                                                                         boolean officialOnly, Long authorId, boolean hasAuthorOnly) {
+                                                                         boolean officialOnly, Long filterUserId, Boolean isVerified) {
         LOGGER.debug("🏆 Получение {} топ стикерсетов по лайкам{}: page={}, size={}",
                 officialOnly ? "официальных" : "публичных",
-                authorId != null ? (" автора=" + authorId) : (hasAuthorOnly ? " (только с автором)" : ""),
+                filterUserId != null ? (" userId=" + filterUserId) : (Boolean.TRUE.equals(isVerified) ? " (только verified)" : ""),
                 pageRequest.getPage(), pageRequest.getSize());
 
-        Page<Object[]> results = likeRepository.findTopStickerSetsByLikesFiltered(officialOnly, authorId, hasAuthorOnly, pageRequest.toPageable());
+        Page<Object[]> results = likeRepository.findTopStickerSetsByLikesFiltered(officialOnly, filterUserId, isVerified, pageRequest.toPageable());
 
         List<StickerSetWithLikesDto> dtos = results.getContent().stream()
             .map(result -> {

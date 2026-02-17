@@ -467,7 +467,7 @@ public class UserProfileController {
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @Parameter(description = "Количество элементов на странице (1-100)", example = "20")
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
-            @Parameter(description = "Поле для сортировки (createdAt, ownedStickerSetsCount, authoredStickerSetsCount)", example = "createdAt")
+            @Parameter(description = "Поле для сортировки (createdAt, ownedStickerSetsCount, verifiedStickerSetsCount)", example = "createdAt")
             @RequestParam(defaultValue = "createdAt") String sort,
             @Parameter(description = "Направление сортировки (ASC/DESC)", example = "DESC")
             @RequestParam(defaultValue = "DESC") String direction,
@@ -531,7 +531,7 @@ public class UserProfileController {
                             ? java.time.OffsetDateTime.ofInstant(projection.getUpdatedAt(), java.time.ZoneOffset.UTC)
                             : null);
                         dto.setOwnedStickerSetsCount(projection.getOwnedStickerSetsCount());
-                        dto.setAuthoredStickerSetsCount(projection.getAuthoredStickerSetsCount());
+                        dto.setVerifiedStickerSetsCount(projection.getVerifiedStickerSetsCount());
                         
                         UserEntity user = usersById.get(projection.getUserId());
                         if (user != null) {
@@ -564,7 +564,7 @@ public class UserProfileController {
         // Whitelist допустимых полей для сортировки
         String normalized = sort.trim();
         return switch (normalized) {
-            case "createdAt", "ownedStickerSetsCount", "authoredStickerSetsCount" -> normalized;
+            case "createdAt", "ownedStickerSetsCount", "verifiedStickerSetsCount" -> normalized;
             default -> {
                 LOGGER.warn("⚠️ Некорректное поле сортировки: {}, используется createdAt", sort);
                 yield "createdAt";

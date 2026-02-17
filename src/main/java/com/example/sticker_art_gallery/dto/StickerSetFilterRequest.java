@@ -17,8 +17,9 @@ public class StickerSetFilterRequest {
     // Фильтры
     private Set<String> categoryKeys;
     private StickerSetType type;
+    /** @deprecated Используйте userId + isVerified. При передаче интерпретируется как userId=authorId, isVerified=true */
     private Long authorId;
-    private boolean hasAuthorOnly;
+    private Boolean isVerified;
     private Long userId;
     private boolean likedOnly;
     private boolean shortInfo;
@@ -74,12 +75,12 @@ public class StickerSetFilterRequest {
         this.authorId = authorId;
     }
     
-    public boolean isHasAuthorOnly() {
-        return hasAuthorOnly;
+    public Boolean getIsVerified() {
+        return isVerified;
     }
-    
-    public void setHasAuthorOnly(boolean hasAuthorOnly) {
-        this.hasAuthorOnly = hasAuthorOnly;
+
+    public void setIsVerified(Boolean isVerified) {
+        this.isVerified = isVerified;
     }
     
     public Long getUserId() {
@@ -124,10 +125,10 @@ public class StickerSetFilterRequest {
     }
     
     /**
-     * Проверяет наличие фильтра по автору
+     * Проверяет наличие фильтра по автору/верификации
      */
     public boolean hasAuthorFilter() {
-        return authorId != null || hasAuthorOnly;
+        return authorId != null || Boolean.TRUE.equals(isVerified);
     }
     
     /**
@@ -152,7 +153,7 @@ public class StickerSetFilterRequest {
                 ", categoryKeys=" + categoryKeys +
                 ", type=" + type +
                 ", authorId=" + authorId +
-                ", hasAuthorOnly=" + hasAuthorOnly +
+                ", isVerified=" + isVerified +
                 ", userId=" + userId +
                 ", likedOnly=" + likedOnly +
                 ", shortInfo=" + shortInfo +

@@ -102,8 +102,8 @@ public class StickerSetDto {
             example = "true", hidden = true)
     private Boolean isOfficial;
 
-    @Schema(description = "Telegram ID автора стикерсета (только отображение)", example = "123456789", nullable = true)
-    private Long authorId;
+    @Schema(description = "Признак верифицированного авторства (владелец является автором)", example = "true")
+    private Boolean isVerified;
     
     @Schema(description = "Список доступных действий для текущего пользователя", 
             example = "[\"DELETE\", \"UNPUBLISH\"]",
@@ -307,12 +307,12 @@ public class StickerSetDto {
         this.isOfficial = isOfficial;
     }
     
-    public Long getAuthorId() {
-        return authorId;
+    public Boolean getIsVerified() {
+        return isVerified;
     }
     
-    public void setAuthorId(Long authorId) {
-        this.authorId = authorId;
+    public void setIsVerified(Boolean isVerified) {
+        this.isVerified = isVerified;
     }
     
     public List<StickerSetAction> getAvailableActions() {
@@ -333,32 +333,32 @@ public class StickerSetDto {
     
     /**
      * Вычисляет доступные действия для стикерсета на основе текущего пользователя, его роли и состояния стикерсета
-     * 
+     *
      * @param currentUserId ID текущего пользователя (может быть null)
      * @param isAdmin является ли текущий пользователь админом
-     * @param stickerSetUserId ID владельца стикерсета
-     * @param stickerSetAuthorId ID автора стикерсета (может быть null)
+     * @param stickerSetUserId ID владельца стикерсета (автор = владелец при isVerified)
+     * @param isVerified признак верифицированного авторства
      * @param state состояние стикерсета
      * @param visibility видимость стикерсета
      * @param hasTonWallet есть ли у текущего пользователя активный TON кошелек
      * @return список доступных действий
      */
     public static List<StickerSetAction> calculateAvailableActions(
-            Long currentUserId, 
-            boolean isAdmin, 
+            Long currentUserId,
+            boolean isAdmin,
             Long stickerSetUserId,
-            Long stickerSetAuthorId,
+            Boolean isVerified,
             StickerSetState state,
             StickerSetVisibility visibility,
             boolean hasTonWallet) {
-        
+
         List<StickerSetAction> actions = new ArrayList<>();
-        
+
         // Проверяем, является ли текущий пользователь владельцем
         boolean isOwner = currentUserId != null && currentUserId.equals(stickerSetUserId);
-        
-        // Проверяем, является ли текущий пользователь автором
-        boolean isAuthor = currentUserId != null && stickerSetAuthorId != null && currentUserId.equals(stickerSetAuthorId);
+
+        // Проверяем, является ли текущий пользователь автором (владелец = автор при isVerified)
+        boolean isAuthor = isOwner && Boolean.TRUE.equals(isVerified);
         
         // DELETE - для владельца активных и заблокированных стикерсетов (не для удаленных)
         if (isOwner && state != StickerSetState.DELETED) {
@@ -388,11 +388,11 @@ public class StickerSetDto {
             }
         }
         
-        // DONATE - для пользователей с TON кошельком, если у стикерсета есть автор и пользователь не является автором
-        if (currentUserId != null 
-                && stickerSetAuthorId != null 
-                && hasTonWallet 
-                && !currentUserId.equals(stickerSetAuthorId)) {
+        // DONATE - для пользователей с TON кошельком, если стикерсет верифицирован и пользователь не владелец
+        if (currentUserId != null
+                && Boolean.TRUE.equals(isVerified)
+                && hasTonWallet
+                && !currentUserId.equals(stickerSetUserId)) {
             actions.add(StickerSetAction.DONATE);
         }
         
@@ -402,37 +402,28 @@ public class StickerSetDto {
     /**
      * Вычисляет доступные действия для стикерсета на основе текущего пользователя, его роли и состояния стикерсета
      * Перегрузка без параметра hasTonWallet для обратной совместимости (по умолчанию false)
-     * 
-     * @param currentUserId ID текущего пользователя (может быть null)
-     * @param isAdmin является ли текущий пользователь админом
-     * @param stickerSetUserId ID владельца стикерсета
-     * @param stickerSetAuthorId ID автора стикерсета (может быть null)
-     * @param state состояние стикерсета
-     * @param visibility видимость стикерсета
-     * @return список доступных действий
      */
     public static List<StickerSetAction> calculateAvailableActions(
-            Long currentUserId, 
-            boolean isAdmin, 
+            Long currentUserId,
+            boolean isAdmin,
             Long stickerSetUserId,
-            Long stickerSetAuthorId,
+            Boolean isVerified,
             StickerSetState state,
             StickerSetVisibility visibility) {
-        return calculateAvailableActions(currentUserId, isAdmin, stickerSetUserId, stickerSetAuthorId, state, visibility, false);
+        return calculateAvailableActions(currentUserId, isAdmin, stickerSetUserId, isVerified, state, visibility, false);
     }
     
     @Deprecated
     public static List<StickerSetAction> calculateAvailableActions(
-            Long currentUserId, 
-            boolean isAdmin, 
+            Long currentUserId,
+            boolean isAdmin,
             Long stickerSetUserId,
-            Long stickerSetAuthorId,
-            Boolean isPublic, 
+            Boolean isVerified,
+            Boolean isPublic,
             Boolean isBlocked) {
-        // Маппинг для обратной совместимости
         StickerSetState state = Boolean.TRUE.equals(isBlocked) ? StickerSetState.BLOCKED : StickerSetState.ACTIVE;
         StickerSetVisibility visibility = Boolean.TRUE.equals(isPublic) ? StickerSetVisibility.PUBLIC : StickerSetVisibility.PRIVATE;
-        return calculateAvailableActions(currentUserId, isAdmin, stickerSetUserId, stickerSetAuthorId, state, visibility, false);
+        return calculateAvailableActions(currentUserId, isAdmin, stickerSetUserId, isVerified, state, visibility, false);
     }
     
     // Конструктор для создания DTO из Entity
@@ -455,7 +446,7 @@ public class StickerSetDto {
         dto.setType(entity.getType());
         dto.setDeletedAt(entity.getDeletedAt());
         dto.setBlockReason(entity.getBlockReason());
-        dto.setAuthorId(entity.getAuthorId());
+        dto.setIsVerified(entity.getIsVerified());
         
         // Обратная совместимость для deprecated полей
         dto.setIsPublic(entity.isPublic());
@@ -501,7 +492,7 @@ public class StickerSetDto {
         dto.setType(entity.getType());
         dto.setDeletedAt(entity.getDeletedAt());
         dto.setBlockReason(entity.getBlockReason());
-        dto.setAuthorId(entity.getAuthorId());
+        dto.setIsVerified(entity.getIsVerified());
         
         // Обратная совместимость для deprecated полей
         dto.setIsPublic(entity.isPublic());
@@ -583,7 +574,7 @@ public class StickerSetDto {
                 currentUserId,
                 isAdmin,
                 entity.getUserId(),
-                entity.getAuthorId(),
+                entity.getIsVerified(),
                 entity.getState(),
                 entity.getVisibility(),
                 hasTonWallet

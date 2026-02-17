@@ -19,7 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Epic("Стикерсеты")
-@Feature("Фильтры топа по лайкам: officialOnly, authorId, hasAuthorOnly")
+@Feature("Фильтры топа по лайкам: officialOnly, authorId, isVerified")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class StickerSetTopFiltersIntegrationTest {
 
@@ -67,7 +67,7 @@ class StickerSetTopFiltersIntegrationTest {
                 .withTitle(TEST_STICKERSET_OFFICIAL)
                 .withName(TEST_STICKERSET_OFFICIAL)
                 .asOfficial()
-                .withAuthorId(TestConstants.TEST_AUTHOR_ID_111)
+                .withIsVerified(true)
                 .build();
         sOfficial = stickerSetRepository.save(officialStickerSet).getId();
         addLikes(sOfficial, 5);
@@ -77,7 +77,7 @@ class StickerSetTopFiltersIntegrationTest {
                 .withUserId(userId)
                 .withTitle(TEST_STICKERSET_AUTHORED)
                 .withName(TEST_STICKERSET_AUTHORED)
-                .withAuthorId(TestConstants.TEST_AUTHOR_ID_222)
+                .withIsVerified(true)
                 .build();
         sAuthored = stickerSetRepository.save(authoredStickerSet).getId();
         addLikes(sAuthored, 3);
@@ -127,20 +127,21 @@ class StickerSetTopFiltersIntegrationTest {
 
     @Test
     @Story("authorId")
-    @DisplayName("Топ по конкретному authorId")
+    @DisplayName("Топ по authorId (deprecated: userId=authorId, isVerified=true)")
     void topByAuthorId() throws Exception {
-        testSteps.getTopByLikesWithFilters(null, TestConstants.TEST_AUTHOR_ID_222, null, initData)
+        testSteps.getTopByLikesWithFilters(null, userId, null, initData)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].authorId").value(TestConstants.TEST_AUTHOR_ID_222));
+                .andExpect(jsonPath("$.content[0].userId").value(userId))
+                .andExpect(jsonPath("$.content[0].isVerified").value(true));
     }
 
     @Test
-    @Story("hasAuthorOnly")
-    @DisplayName("Топ только авторских")
-    void topHasAuthorOnly() throws Exception {
+    @Story("isVerified")
+    @DisplayName("Топ только верифицированных")
+    void topIsVerified() throws Exception {
         testSteps.getTopByLikesWithFilters(null, null, true, initData)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[*].authorId").value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.notNullValue())));
+                .andExpect(jsonPath("$.content[*].isVerified").value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is(true))));
     }
 
     private void addLikes(Long stickerSetId, int count) {

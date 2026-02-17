@@ -43,14 +43,14 @@ public class CategoryService {
      * Получить активные категории с количеством стикерсетов с учетом фильтров
      */
     @Transactional(readOnly = true)
-    public List<CategoryWithCountDto> getActiveCategoriesWithCounts(String language, boolean officialOnly, Long authorId, boolean hasAuthorOnly) {
-        log.debug("Getting active categories with counts: lang={}, officialOnly={}, authorId={}, hasAuthorOnly={}", language, officialOnly, authorId, hasAuthorOnly);
+    public List<CategoryWithCountDto> getActiveCategoriesWithCounts(String language, boolean officialOnly, Long userId, Boolean isVerified) {
+        log.debug("Getting active categories with counts: lang={}, officialOnly={}, userId={}, isVerified={}", language, officialOnly, userId, isVerified);
 
         // Берем категории по порядку отображения
         var categories = categoryRepository.findByIsActiveTrueOrderByDisplayOrderAsc();
 
         // Считаем количества
-        var counts = categoryRepository.countStickerSetsByActiveCategories(officialOnly, authorId, hasAuthorOnly)
+        var counts = categoryRepository.countStickerSetsByActiveCategories(officialOnly, userId, isVerified)
                 .stream()
                 .collect(java.util.stream.Collectors.toMap(CategoryRepository.CategoryCountProjection::getCategoryId, CategoryRepository.CategoryCountProjection::getCnt));
 

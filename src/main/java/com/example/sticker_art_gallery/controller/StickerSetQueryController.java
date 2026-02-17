@@ -91,8 +91,8 @@ public class StickerSetQueryController {
             @RequestParam(required = false) String categoryKeys,
             @Parameter(description = "Фильтр по типу стикерсета (USER, OFFICIAL)", example = "USER")
             @RequestParam(required = false) StickerSetType type,
-            @Parameter(description = "Показывать только авторские стикерсеты (authorId IS NOT NULL)", example = "false")
-            @RequestParam(defaultValue = "false") boolean hasAuthorOnly,
+            @Parameter(description = "Показывать только верифицированные стикерсеты (isVerified=true)", example = "false")
+            @RequestParam(required = false) Boolean isVerified,
             @Parameter(description = "Показать только лайкнутые пользователем стикерсеты", example = "false")
             @RequestParam(defaultValue = "false") boolean likedOnly,
             @Parameter(description = "Фильтр видимости: ALL (все), PUBLIC (только публичные), PRIVATE (только приватные)", example = "ALL")
@@ -150,7 +150,7 @@ public class StickerSetQueryController {
                 userId,
                 pageRequest,
                 categoryKeysSet,
-                hasAuthorOnly,
+                isVerified,
                 likedOnly,
                 currentUserId,
                 effectiveVisibility,
@@ -172,11 +172,13 @@ public class StickerSetQueryController {
     }
     
     /**
-     * Получить стикерсеты конкретного автора с фильтрацией
+     * Получить стикерсеты конкретного автора с фильтрацией (deprecated: authorId => userId + isVerified)
      */
     @GetMapping("/author/{authorId}")
+    @Deprecated
     @Operation(
-        summary = "Получить стикерсеты автора",
+        summary = "Получить стикерсеты автора (deprecated)",
+        deprecated = true,
         description = "Возвращает список стикерсетов конкретного автора с пагинацией и фильтрацией. " +
                      "Требует авторизации. " +
                      "По умолчанию показывает все стикерсеты автора (публичные и приватные), если текущий пользователь " +

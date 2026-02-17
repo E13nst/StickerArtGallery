@@ -183,7 +183,7 @@ public class StickerSetVisibilityController {
                 currentUserId,
                 isAdmin,
                 blockedStickerSet.getUserId(),
-                blockedStickerSet.getAuthorId(),
+                blockedStickerSet.getIsVerified(),
                 blockedStickerSet.getState(),
                 blockedStickerSet.getVisibility(),
                 hasTonWallet
@@ -269,7 +269,7 @@ public class StickerSetVisibilityController {
                 currentUserId,
                 isAdmin,
                 unblockedStickerSet.getUserId(),
-                unblockedStickerSet.getAuthorId(),
+                unblockedStickerSet.getIsVerified(),
                 unblockedStickerSet.getState(),
                 unblockedStickerSet.getVisibility(),
                 hasTonWallet
@@ -357,7 +357,7 @@ public class StickerSetVisibilityController {
                 currentUserId,
                 isAdmin,
                 updatedStickerSet.getUserId(),
-                updatedStickerSet.getAuthorId(),
+                updatedStickerSet.getIsVerified(),
                 updatedStickerSet.getState(),
                 updatedStickerSet.getVisibility(),
                 hasTonWallet

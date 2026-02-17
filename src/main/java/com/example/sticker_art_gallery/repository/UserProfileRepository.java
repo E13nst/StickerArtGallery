@@ -35,8 +35,8 @@ public interface UserProfileRepository extends JpaRepository<UserProfileEntity, 
     
     /**
      * Найти все профили с базовыми фильтрами, пагинацией и счетчиками стикерсетов (для админ-панели)
-     * Возвращает projection с дополнительными полями: ownedStickerSetsCount и authoredStickerSetsCount
-     * Поддерживает сортировку по: createdAt, ownedStickerSetsCount, authoredStickerSetsCount
+     * Возвращает projection с дополнительными полями: ownedStickerSetsCount и verifiedStickerSetsCount
+     * Поддерживает сортировку по: createdAt, ownedStickerSetsCount, verifiedStickerSetsCount
      */
     @Query(value = 
            "SELECT " +
@@ -47,11 +47,11 @@ public interface UserProfileRepository extends JpaRepository<UserProfileEntity, 
            "  CAST(up.subscription_status AS TEXT) AS subscriptionStatus, " +
            "  up.created_at AS createdAt, up.updated_at AS updatedAt, " +
            "  COALESCE(oc.cnt, 0) AS ownedStickerSetsCount, " +
-           "  COALESCE(ac.cnt, 0) AS authoredStickerSetsCount " +
+           "  COALESCE(vc.cnt, 0) AS verifiedStickerSetsCount " +
            "FROM user_profiles up " +
            "LEFT JOIN users u ON up.user_id = u.id " +
            "LEFT JOIN (SELECT user_id, COUNT(*) AS cnt FROM stickersets WHERE state='ACTIVE' GROUP BY user_id) oc ON oc.user_id = up.user_id " +
-           "LEFT JOIN (SELECT author_id, COUNT(*) AS cnt FROM stickersets WHERE state='ACTIVE' AND author_id IS NOT NULL GROUP BY author_id) ac ON ac.author_id = up.user_id " +
+           "LEFT JOIN (SELECT user_id, COUNT(*) AS cnt FROM stickersets WHERE state='ACTIVE' AND is_verified = TRUE GROUP BY user_id) vc ON vc.user_id = up.user_id " +
            "WHERE (:role IS NULL OR CAST(up.role AS TEXT) = :role) " +
            "  AND (:isBlocked IS NULL OR up.is_blocked = :isBlocked) " +
            "  AND (:search IS NULL OR :search = '' OR CAST(up.user_id AS TEXT) LIKE CONCAT('%', :search, '%') OR u.username ILIKE CONCAT('%', :search, '%')) " +
@@ -60,8 +60,8 @@ public interface UserProfileRepository extends JpaRepository<UserProfileEntity, 
            "  CASE WHEN :sort = 'createdAt' AND :direction = 'DESC' THEN up.created_at END DESC, " +
            "  CASE WHEN :sort = 'ownedStickerSetsCount' AND :direction = 'ASC' THEN COALESCE(oc.cnt, 0) END ASC, " +
            "  CASE WHEN :sort = 'ownedStickerSetsCount' AND :direction = 'DESC' THEN COALESCE(oc.cnt, 0) END DESC, " +
-           "  CASE WHEN :sort = 'authoredStickerSetsCount' AND :direction = 'ASC' THEN COALESCE(ac.cnt, 0) END ASC, " +
-           "  CASE WHEN :sort = 'authoredStickerSetsCount' AND :direction = 'DESC' THEN COALESCE(ac.cnt, 0) END DESC, " +
+           "  CASE WHEN :sort = 'verifiedStickerSetsCount' AND :direction = 'ASC' THEN COALESCE(vc.cnt, 0) END ASC, " +
+           "  CASE WHEN :sort = 'verifiedStickerSetsCount' AND :direction = 'DESC' THEN COALESCE(vc.cnt, 0) END DESC, " +
            "  up.created_at DESC, up.user_id ASC",
            countQuery = 
            "SELECT COUNT(*) FROM user_profiles up " +

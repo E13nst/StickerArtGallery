@@ -68,9 +68,9 @@ const tableColumns = [
         render: (row) => `<span class="font-mono text-xs">${formatNumber(row.ownedStickerSetsCount || 0)}</span>`
     },
     {
-        field: 'authoredStickerSetsCount',
-        label: 'Автор',
-        render: (row) => `<span class="font-mono text-xs">${formatNumber(row.authoredStickerSetsCount || 0)}</span>`
+        field: 'verifiedStickerSetsCount',
+        label: 'Верифицировано',
+        render: (row) => `<span class="font-mono text-xs">${formatNumber(row.verifiedStickerSetsCount || 0)}</span>`
     },
     {
         field: 'createdAt',
@@ -115,7 +115,7 @@ const filterConfig = [
         options: [
             { value: 'createdAt', label: 'Дата создания' },
             { value: 'ownedStickerSetsCount', label: 'Кол-во владения' },
-            { value: 'authoredStickerSetsCount', label: 'Кол-во авторства' }
+            { value: 'verifiedStickerSetsCount', label: 'Кол-во верифицированных' }
         ]
     },
     {

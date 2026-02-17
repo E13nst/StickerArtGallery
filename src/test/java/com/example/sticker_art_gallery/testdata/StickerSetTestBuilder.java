@@ -20,7 +20,7 @@ public class StickerSetTestBuilder {
     private StickerSetState state = StickerSetState.ACTIVE;
     private StickerSetVisibility visibility = StickerSetVisibility.PUBLIC;
     private StickerSetType type = StickerSetType.USER;
-    private Long authorId;
+    private Boolean isVerified;
     private String blockReason;
     private LocalDateTime deletedAt;
     private Integer likesCount = 0;
@@ -82,8 +82,8 @@ public class StickerSetTestBuilder {
         return this;
     }
     
-    public StickerSetTestBuilder withAuthorId(Long authorId) {
-        this.authorId = authorId;
+    public StickerSetTestBuilder withIsVerified(Boolean isVerified) {
+        this.isVerified = isVerified;
         return this;
     }
     
@@ -148,7 +148,7 @@ public class StickerSetTestBuilder {
         stickerSet.setState(state);
         stickerSet.setVisibility(visibility);
         stickerSet.setType(type);
-        stickerSet.setAuthorId(authorId);
+        stickerSet.setIsVerified(Boolean.TRUE.equals(isVerified));
         stickerSet.setBlockReason(blockReason);
         stickerSet.setDeletedAt(deletedAt);
         stickerSet.setLikesCount(likesCount);

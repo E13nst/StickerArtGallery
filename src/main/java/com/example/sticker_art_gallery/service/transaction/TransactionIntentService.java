@@ -204,28 +204,28 @@ public class TransactionIntentService {
         }
         StickerSet stickerSet = stickerSetOpt.get();
 
-        // 2. Проверить автора
-        Long authorId = stickerSet.getAuthorId();
-        if (authorId == null) {
-            throw new IllegalStateException("StickerSet не имеет автора");
+        // 2. Проверить верифицированного владельца (автор = владелец при isVerified)
+        if (!Boolean.TRUE.equals(stickerSet.getIsVerified())) {
+            throw new IllegalStateException("StickerSet не верифицирован для донатов");
         }
+        Long ownerId = stickerSet.getUserId();
 
-        // 3. Найти кошелёк автора
-        UserWalletEntity authorWallet = walletService.getActiveWallet(authorId);
+        // 3. Найти кошелёк владельца
+        UserWalletEntity authorWallet = walletService.getActiveWallet(ownerId);
         String authorWalletAddress = authorWallet.getWalletAddress();
 
         // 4. Создать PlatformEntity для StickerSet
         PlatformEntityEntity stickerSetEntity = platformEntityService.getOrCreate(
                 EntityType.STICKER_SET,
                 "sticker_set:" + stickerSetId,
-                authorId
+                ownerId
         );
 
-        // 5. Создать или получить PlatformEntity для автора
+        // 5. Создать или получить PlatformEntity для владельца
         PlatformEntityEntity authorEntity = platformEntityService.getOrCreate(
                 EntityType.USER,
-                "user:" + authorId,
-                authorId
+                "user:" + ownerId,
+                ownerId
         );
 
         // 6. Получить донатора

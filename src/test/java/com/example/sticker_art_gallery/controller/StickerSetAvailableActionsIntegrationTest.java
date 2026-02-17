@@ -58,7 +58,7 @@ class StickerSetAvailableActionsIntegrationTest {
         privateStickerSet.setState(StickerSetState.ACTIVE);
         privateStickerSet.setVisibility(StickerSetVisibility.PRIVATE);
         privateStickerSet.setType(StickerSetType.USER);
-        privateStickerSet.setAuthorId(userId);
+        privateStickerSet.setIsVerified(true);
         privateStickerSetId = stickerSetRepository.save(privateStickerSet).getId();
 
         // Создаем публичный стикерсет
@@ -69,7 +69,7 @@ class StickerSetAvailableActionsIntegrationTest {
         publicStickerSet.setState(StickerSetState.ACTIVE);
         publicStickerSet.setVisibility(StickerSetVisibility.PUBLIC);
         publicStickerSet.setType(StickerSetType.USER);
-        publicStickerSet.setAuthorId(userId);
+        publicStickerSet.setIsVerified(true);
         publicStickerSetId = stickerSetRepository.save(publicStickerSet).getId();
 
         // Создаем заблокированный стикерсет
@@ -81,7 +81,7 @@ class StickerSetAvailableActionsIntegrationTest {
         blockedStickerSet.setVisibility(StickerSetVisibility.PUBLIC);
         blockedStickerSet.setType(StickerSetType.USER);
         blockedStickerSet.setBlockReason("Test block");
-        blockedStickerSet.setAuthorId(userId);
+        blockedStickerSet.setIsVerified(true);
         blockedStickerSetId = stickerSetRepository.save(blockedStickerSet).getId();
     }
 

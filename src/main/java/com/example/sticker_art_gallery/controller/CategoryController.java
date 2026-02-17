@@ -66,7 +66,7 @@ public class CategoryController {
     @Operation(
         summary = "Получить активные категории с количеством стикерсетов",
         description = "Возвращает список активных категорий с количеством публичных и не заблокированных стикерсетов в каждой. " +
-                     "Поддерживает фильтры: officialOnly, authorId, hasAuthorOnly."
+                     "Поддерживает фильтры: officialOnly, authorId (deprecated), isVerified."
     )
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Список категорий с количеством успешно получен",
@@ -76,13 +76,15 @@ public class CategoryController {
     public ResponseEntity<List<CategoryWithCountDto>> getCategoriesWithCounts(
             @Parameter(description = "Показывать только официальные стикерсеты", example = "false")
             @RequestParam(defaultValue = "false") boolean officialOnly,
-            @Parameter(description = "Фильтр по автору (Telegram ID)", example = "123456789")
+            @Parameter(description = "Фильтр по автору (deprecated: интерпретируется как userId=authorId, isVerified=true)", example = "123456789", deprecated = true)
             @RequestParam(required = false) Long authorId,
-            @Parameter(description = "Показывать только авторские стикерсеты (authorId IS NOT NULL)", example = "false")
-            @RequestParam(defaultValue = "false") boolean hasAuthorOnly,
+            @Parameter(description = "Показывать только верифицированные стикерсеты (isVerified=true)", example = "false")
+            @RequestParam(required = false) Boolean isVerified,
             HttpServletRequest request) {
         String language = getLanguageFromHeaderOrUser(request);
-        List<CategoryWithCountDto> result = categoryService.getActiveCategoriesWithCounts(language, officialOnly, authorId, hasAuthorOnly);
+        Long effectiveUserId = authorId != null ? authorId : null;
+        Boolean effectiveIsVerified = authorId != null ? Boolean.TRUE : isVerified;
+        List<CategoryWithCountDto> result = categoryService.getActiveCategoriesWithCounts(language, officialOnly, effectiveUserId, effectiveIsVerified);
         return ResponseEntity.ok(result);
     }
 

@@ -153,12 +153,13 @@ public class StickerSetControllerHelper {
     }
     
     /**
-     * Построение объекта фильтра из параметров HTTP запроса
+     * Построение объекта фильтра из параметров HTTP запроса.
+     * Deprecated authorId: при передаче интерпретируется как userId=authorId, isVerified=true.
      */
     public StickerSetFilterRequest buildFilter(
             int page, int size, String sort, String direction,
             String categoryKeys, StickerSetType type, boolean officialOnly, Long authorId,
-            boolean hasAuthorOnly, Long userId, boolean likedOnly,
+            Boolean isVerified, Long userId, boolean likedOnly,
             boolean shortInfo, boolean preview, HttpServletRequest request) {
         
         StickerSetFilterRequest filter = new StickerSetFilterRequest();
@@ -176,11 +177,17 @@ public class StickerSetControllerHelper {
         filter.setCurrentUserId(getCurrentUserIdOrNull());
         
         // Логика совместимости: если type указан явно - используем его
-        // Если type не указан, но officialOnly=true - используем OFFICIAL
-        // Иначе null (любые типы)
         StickerSetType effectiveType = type;
         if (effectiveType == null && officialOnly) {
             effectiveType = StickerSetType.OFFICIAL;
+        }
+        
+        // Deprecated authorId: интерпретируется как userId=authorId, isVerified=true
+        Long effectiveUserId = userId;
+        Boolean effectiveIsVerified = isVerified;
+        if (authorId != null) {
+            effectiveUserId = authorId;
+            effectiveIsVerified = Boolean.TRUE;
         }
         
         // Фильтры
@@ -189,8 +196,8 @@ public class StickerSetControllerHelper {
         }
         filter.setType(effectiveType);
         filter.setAuthorId(authorId);
-        filter.setHasAuthorOnly(hasAuthorOnly);
-        filter.setUserId(userId);
+        filter.setUserId(effectiveUserId);
+        filter.setIsVerified(effectiveIsVerified);
         filter.setLikedOnly(likedOnly);
         filter.setShortInfo(shortInfo);
         filter.setPreview(preview);

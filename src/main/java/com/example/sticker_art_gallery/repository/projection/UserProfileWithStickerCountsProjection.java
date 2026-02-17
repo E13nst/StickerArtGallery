@@ -33,7 +33,7 @@ public interface UserProfileWithStickerCountsProjection {
     Long getOwnedStickerSetsCount();
     
     /**
-     * Количество стикерсетов, где пользователь является автором (author_id)
+     * Количество верифицированных стикерсетов (user_id + is_verified=true)
      */
-    Long getAuthoredStickerSetsCount();
+    Long getVerifiedStickerSetsCount();
 }

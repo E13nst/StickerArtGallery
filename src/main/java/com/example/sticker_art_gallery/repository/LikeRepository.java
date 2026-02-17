@@ -81,20 +81,20 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
     Page<Object[]> findTopOfficialStickerSetsByLikes(Pageable pageable);
 
     /**
-     * Получить топ стикерсетов по лайкам с фильтрами officialOnly/authorId/hasAuthorOnly
+     * Получить топ стикерсетов по лайкам с фильтрами officialOnly/userId/isVerified
      */
     @Query("SELECT s, COUNT(l) as likesCount FROM StickerSet s " +
            "LEFT JOIN s.likes l " +
            "WHERE s.state = com.example.sticker_art_gallery.model.telegram.StickerSetState.ACTIVE " +
            "AND s.visibility = com.example.sticker_art_gallery.model.telegram.StickerSetVisibility.PUBLIC " +
            "AND (:officialOnly = false OR s.type = com.example.sticker_art_gallery.model.telegram.StickerSetType.OFFICIAL) " +
-           "AND (:authorId IS NULL OR s.authorId = :authorId) " +
-           "AND (:hasAuthorOnly = false OR s.authorId IS NOT NULL) " +
+           "AND (:filterUserId IS NULL OR s.userId = :filterUserId) " +
+           "AND (:isVerified IS NULL OR :isVerified = false OR s.isVerified = true) " +
            "GROUP BY s.id " +
            "ORDER BY likesCount DESC, s.createdAt DESC")
     Page<Object[]> findTopStickerSetsByLikesFiltered(@Param("officialOnly") boolean officialOnly,
-                                                     @Param("authorId") Long authorId,
-                                                     @Param("hasAuthorOnly") boolean hasAuthorOnly,
+                                                     @Param("filterUserId") Long filterUserId,
+                                                     @Param("isVerified") Boolean isVerified,
                                                      Pageable pageable);
     
     /**
@@ -142,16 +142,14 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
            "AND s.visibility = com.example.sticker_art_gallery.model.telegram.StickerSetVisibility.PUBLIC " +
            "AND (:categoryKeys IS NULL OR c.key IN :categoryKeys) " +
            "AND (:type IS NULL OR s.type = :type) " +
-           "AND (:authorId IS NULL OR s.authorId = :authorId) " +
-           "AND (:hasAuthorOnly = false OR s.authorId IS NOT NULL) " +
-           "AND (:filterUserId IS NULL OR s.userId = :filterUserId)")
+           "AND (:filterUserId IS NULL OR s.userId = :filterUserId) " +
+           "AND (:isVerified IS NULL OR :isVerified = false OR s.isVerified = true)")
     Page<StickerSet> findLikedStickerSetsFiltered(
             @Param("userId") Long userId,
             @Param("categoryKeys") Set<String> categoryKeys,
             @Param("type") com.example.sticker_art_gallery.model.telegram.StickerSetType type,
-            @Param("authorId") Long authorId,
-            @Param("hasAuthorOnly") boolean hasAuthorOnly,
             @Param("filterUserId") Long filterUserId,
+            @Param("isVerified") Boolean isVerified,
             Pageable pageable);
 
     long countByCreatedAtAfter(LocalDateTime createdAfter);

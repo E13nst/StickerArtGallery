@@ -31,7 +31,7 @@ public class UserProfileDto {
     
     // Счетчики стикерсетов (только для админского списка)
     private Long ownedStickerSetsCount;
-    private Long authoredStickerSetsCount;
+    private Long verifiedStickerSetsCount;
     
     // Конструкторы
     public UserProfileDto() {}
@@ -112,8 +112,8 @@ public class UserProfileDto {
     public Long getOwnedStickerSetsCount() { return ownedStickerSetsCount; }
     public void setOwnedStickerSetsCount(Long ownedStickerSetsCount) { this.ownedStickerSetsCount = ownedStickerSetsCount; }
     
-    public Long getAuthoredStickerSetsCount() { return authoredStickerSetsCount; }
-    public void setAuthoredStickerSetsCount(Long authoredStickerSetsCount) { this.authoredStickerSetsCount = authoredStickerSetsCount; }
+    public Long getVerifiedStickerSetsCount() { return verifiedStickerSetsCount; }
+    public void setVerifiedStickerSetsCount(Long verifiedStickerSetsCount) { this.verifiedStickerSetsCount = verifiedStickerSetsCount; }
     
     @Override
     public String toString() {
