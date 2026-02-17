@@ -76,9 +76,11 @@ http://localhost:8080/admin/
 ### Frontend
 - **Технологии**: Vanilla JavaScript + Tailwind CSS
 - **Архитектура**: 
-  - Компонентный подход (таблицы, фильтры)
+  - Компонентный подход (sidebar, таблицы, фильтры)
+  - **Sidebar Component** (`sidebar.js`) - единый для всех страниц, автоматически определяет активную страницу
   - API client для работы с backend
   - Переиспользуемые утилиты
+- **Дизайн**: Компактный, современный, с иконками в меню
 - **Хранение**: localStorage для initData и настроек
 
 ### Безопасность
@@ -92,17 +94,28 @@ http://localhost:8080/admin/
 /admin/
 ├── index.html              # Страница пользователей
 ├── stickers.html           # Страница стикерсетов
+├── generation-logs.html    # Логи генерации
+├── stars-packages.html     # Stars Packages
+├── art-rules.html          # ART Rules
+├── prompt-enhancers.html   # Prompt Enhancers
+├── style-presets.html      # Style Presets
 ├── login.html              # Страница авторизации
 ├── css/
-│   └── admin.css           # Дополнительные стили
+│   └── admin.css           # Стили + компактные таблицы
 └── js/
     ├── api.js              # API client
     ├── auth.js             # Логика авторизации
+    ├── sidebar.js          # ⭐ Единый компонент sidebar
     ├── utils.js            # Утилиты
     ├── table.js            # Компонент таблицы
     ├── filters.js          # Компонент фильтров
     ├── users.js            # Логика страницы пользователей
-    └── stickers.js         # Логика страницы стикерсетов
+    ├── stickers.js         # Логика страницы стикерсетов
+    ├── generation-logs.js  # Логика логов
+    ├── stars-packages.js   # Логика Stars Packages
+    ├── art-rules.js        # Логика ART Rules
+    ├── prompt-enhancers.js # Логика Prompt Enhancers
+    └── style-presets.js    # Логика Style Presets
 ```
 
 ## Примеры использования

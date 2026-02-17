@@ -174,7 +174,6 @@ async function deletePackage(id) {
 // Event listeners
 document.getElementById('add-package-btn').addEventListener('click', openAddModal);
 document.getElementById('package-form').addEventListener('submit', savePackage);
-document.getElementById('logout-btn').addEventListener('click', logout);
 
 // Загрузка при старте
 loadPackages();

@@ -10,49 +10,7 @@
 <body class="bg-gray-100">
     <!-- Layout with Sidebar -->
     <div class="flex h-screen overflow-hidden">
-        <!-- Sidebar -->
-        <aside class="w-64 bg-white shadow-md sidebar">
-            <div class="p-6">
-                <h1 class="text-2xl font-bold text-gray-800">Admin Panel</h1>
-                <p class="text-sm text-gray-600">Sticker Gallery</p>
-            </div>
-            
-            <nav class="mt-6">
-                <a href="/admin/index.html" class="flex items-center px-6 py-3 text-gray-700 bg-gray-100 border-l-4 border-blue-500">
-                    <span class="mx-3">Пользователи</span>
-                </a>
-                <a href="/admin/stickers.html" class="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-100 hover:text-gray-700">
-                    <span class="mx-3">Стикерсеты</span>
-                </a>
-                <a href="/admin/generation-logs.html" class="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-100 hover:text-gray-700">
-                    <span class="mx-3">Лог генерации</span>
-                </a>
-                <a href="/admin/stars-packages.html" class="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-100 hover:text-gray-700">
-                    <span class="mx-3">⭐ Stars Packages</span>
-                </a>
-                <a href="/admin/art-rules.html" class="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-100 hover:text-gray-700">
-                    <span class="mx-3">🎭 ART Rules</span>
-                </a>
-                <a href="/admin/prompt-enhancers.html" class="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-100 hover:text-gray-700">
-                    <span class="mx-3">✨ Prompt Enhancers</span>
-                </a>
-                <a href="/admin/style-presets.html" class="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-100 hover:text-gray-700">
-                    <span class="mx-3">🎨 Style Presets</span>
-                </a>
-            </nav>
-            
-            <div class="absolute bottom-0 w-64 p-6 border-t">
-                <div class="flex items-center">
-                    <div class="flex-1">
-                        <p class="text-sm font-medium text-gray-700" id="current-user-name">Admin</p>
-                        <p class="text-xs text-gray-500" id="current-user-role">ADMIN</p>
-                    </div>
-                </div>
-                <button onclick="logout()" class="mt-4 w-full px-4 py-2 text-sm text-white bg-red-600 rounded-md hover:bg-red-700">
-                    Выйти
-                </button>
-            </div>
-        </aside>
+        <!-- Sidebar будет вставлен динамически через sidebar.js -->
         
         <!-- Main Content -->
         <main class="flex-1 overflow-y-auto">
@@ -149,6 +107,7 @@
     <script src="/admin/js/utils.js"></script>
     <script src="/admin/js/api.js"></script>
     <script src="/admin/js/auth.js"></script>
+    <script src="/admin/js/sidebar.js"></script>
     <script src="/admin/js/table.js"></script>
     <script src="/admin/js/filters.js"></script>
     <script src="/admin/js/users.js"></script>

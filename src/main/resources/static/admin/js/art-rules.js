@@ -180,7 +180,6 @@ async function toggleRule(code) {
 // Event listeners
 document.getElementById('add-rule-btn').addEventListener('click', openAddModal);
 document.getElementById('rule-form').addEventListener('submit', saveRule);
-document.getElementById('logout-btn').addEventListener('click', logout);
 
 // Загрузка при старте
 loadRules();

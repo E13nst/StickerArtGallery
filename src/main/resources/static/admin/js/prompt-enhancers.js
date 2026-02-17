@@ -174,7 +174,6 @@ async function deleteEnhancer(id) {
 // Event listeners
 document.getElementById('add-enhancer-btn').addEventListener('click', openAddModal);
 document.getElementById('enhancer-form').addEventListener('submit', saveEnhancer);
-document.getElementById('logout-btn').addEventListener('click', logout);
 
 // Загрузка при старте
 loadEnhancers();

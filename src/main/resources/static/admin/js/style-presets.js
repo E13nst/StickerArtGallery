@@ -174,7 +174,6 @@ async function deletePreset(id) {
 // Event listeners
 document.getElementById('add-preset-btn').addEventListener('click', openAddModal);
 document.getElementById('preset-form').addEventListener('submit', savePreset);
-document.getElementById('logout-btn').addEventListener('click', logout);
 
 // Загрузка при старте
 loadPresets();

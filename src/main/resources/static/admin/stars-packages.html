@@ -5,61 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Управление Stars Packages - Sticker Art Gallery Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="css/admin.css">
+    <link rel="stylesheet" href="/admin/css/admin.css">
 </head>
-<body class="bg-gray-50">
-    <div class="min-h-screen flex">
-        <!-- Боковое меню -->
-        <aside class="w-64 bg-white shadow-lg">
-            <div class="p-6">
-                <h1 class="text-2xl font-bold text-gray-800">Admin Panel</h1>
-                <p class="text-sm text-gray-500">Sticker Art Gallery</p>
-            </div>
-            <nav class="mt-6">
-                <a href="index.html" class="block px-6 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition">
-                    👥 Пользователи
-                </a>
-                <a href="stickers.html" class="block px-6 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition">
-                    🎨 Стикерсеты
-                </a>
-                <a href="generation-logs.html" class="block px-6 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition">
-                    📋 Логи генерации
-                </a>
-                <a href="stars-packages.html" class="block px-6 py-3 bg-blue-50 text-blue-600 border-r-4 border-blue-600 font-semibold transition">
-                    ⭐ Stars Packages
-                </a>
-                <a href="art-rules.html" class="block px-6 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition">
-                    🎭 ART Rules
-                </a>
-                <a href="prompt-enhancers.html" class="block px-6 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition">
-                    ✨ Prompt Enhancers
-                </a>
-                <a href="style-presets.html" class="block px-6 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition">
-                    🎨 Style Presets
-                </a>
-            </nav>
-            <div class="absolute bottom-0 w-64 p-6 border-t">
-                <button id="logout-btn" class="w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition">
-                    Выйти
-                </button>
-            </div>
-        </aside>
-
-        <!-- Основной контент -->
-        <main class="flex-1 p-8">
-            <div class="max-w-7xl mx-auto">
-                <div class="flex items-center justify-between mb-6">
+<body class="bg-gray-100">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar будет вставлен динамически через sidebar.js -->
+        
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto">
+            <div class="p-4">
+                <div class="flex items-center justify-between mb-4">
                     <div>
-                        <h2 class="text-3xl font-bold text-gray-800">Stars Packages</h2>
-                        <p class="text-gray-600 mt-1">Управление тарифами на покупку ART токенов за Telegram Stars</p>
+                        <h2 class="text-2xl font-bold text-gray-800">Stars Packages</h2>
+                        <p class="text-sm text-gray-600 mt-1">Управление тарифами на покупку ART токенов за Telegram Stars</p>
                     </div>
-                    <button id="add-package-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                    <button id="add-package-btn" class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
                         + Добавить тариф
                     </button>
                 </div>
 
                 <!-- Таблица тарифов -->
-                <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="bg-white rounded-lg shadow overflow-hidden admin-table-compact">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
@@ -150,9 +116,10 @@
     <!-- Notification -->
     <div id="notification" class="hidden fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50"></div>
 
-    <script src="js/utils.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/stars-packages.js"></script>
+    <script src="/admin/js/utils.js"></script>
+    <script src="/admin/js/api.js"></script>
+    <script src="/admin/js/auth.js"></script>
+    <script src="/admin/js/sidebar.js"></script>
+    <script src="/admin/js/stars-packages.js"></script>
 </body>
 </html>
