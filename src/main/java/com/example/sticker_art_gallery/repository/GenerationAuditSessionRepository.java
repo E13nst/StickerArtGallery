@@ -20,8 +20,8 @@ public interface GenerationAuditSessionRepository extends JpaRepository<Generati
     @Query("SELECT s FROM GenerationAuditSessionEntity s WHERE " +
             "(:userId is null OR s.userId = :userId) AND " +
             "(:finalStatus is null OR s.finalStatus = :finalStatus) AND " +
-            "(:dateFrom is null OR s.startedAt >= :dateFrom) AND " +
-            "(:dateTo is null OR s.startedAt <= :dateTo) AND " +
+            "(COALESCE(:dateFrom, s.startedAt) <= s.startedAt) AND " +
+            "(s.startedAt <= COALESCE(:dateTo, s.startedAt)) AND " +
             "(:errorOnly is null OR :errorOnly = false OR s.errorCode is not null) AND " +
             "(:taskId is null OR s.taskId = :taskId) " +
             "ORDER BY s.startedAt DESC")
