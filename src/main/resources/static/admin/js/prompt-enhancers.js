@@ -63,16 +63,12 @@ function renderEnhancers() {
                         : '<span class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 rounded-full">Неактивен</span>'
                     }
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
-                    <button onclick="editEnhancer(${enhancer.id})" class="text-blue-600 hover:text-blue-800 font-medium">
-                        Изменить
-                    </button>
-                    <button onclick="toggleEnhancer(${enhancer.id}, ${!enhancer.isEnabled})" class="text-${enhancer.isEnabled ? 'yellow' : 'green'}-600 hover:text-${enhancer.isEnabled ? 'yellow' : 'green'}-800 font-medium">
-                        ${enhancer.isEnabled ? 'Выкл' : 'Вкл'}
-                    </button>
-                    <button onclick="deleteEnhancer(${enhancer.id})" class="text-red-600 hover:text-red-800 font-medium">
-                        Удалить
-                    </button>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                    ${renderActionDropdown([
+                        { label: 'Изменить', onclick: `editEnhancer(${enhancer.id})`, className: 'text-blue-600' },
+                        { label: enhancer.isEnabled ? 'Выкл' : 'Вкл', onclick: `toggleEnhancer(${enhancer.id}, ${!enhancer.isEnabled})`, className: enhancer.isEnabled ? 'text-yellow-600' : 'text-green-600' },
+                        { label: 'Удалить', onclick: `deleteEnhancer(${enhancer.id})`, className: 'text-red-600' }
+                    ])}
                 </td>
             </tr>
         `).join('');

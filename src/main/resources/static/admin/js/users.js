@@ -80,11 +80,9 @@ const tableColumns = [
     {
         field: 'actions',
         label: 'Действия',
-        render: (row) => `
-            <button onclick="editUser(${row.userId})" class="text-xs px-2 py-1 text-blue-600 hover:text-blue-800">
-                Редактировать
-            </button>
-        `
+        render: (row) => renderActionDropdown([
+            { label: 'Редактировать', onclick: `editUser(${row.userId})`, className: 'text-blue-600' }
+        ])
     }
 ];
 

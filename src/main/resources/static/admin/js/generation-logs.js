@@ -63,7 +63,9 @@ const tableColumns = [
     {
         field: 'actions',
         label: 'Действия',
-        render: (row) => `<button type="button" class="detail-btn text-xs px-2 py-1 text-blue-600 hover:text-blue-800" data-task-id="${escapeHtml(row.taskId || '')}">Детали</button>`
+        render: (row) => renderActionDropdown([
+            { label: 'Детали', onclick: `openDetail('${String(row.taskId || '').replace(/'/g, "\\'")}')`, className: 'text-blue-600' }
+        ])
     }
 ];
 
@@ -131,11 +133,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     const errorRetryBtn = document.getElementById('error-retry-btn');
     if (errorRetryBtn) errorRetryBtn.addEventListener('click', loadLogs);
-
-    document.getElementById('logs-table').addEventListener('click', function(e) {
-        const btn = e.target.closest('.detail-btn');
-        if (btn && btn.dataset.taskId) openDetail(btn.dataset.taskId);
-    });
 
     syncFiltersFromUrl();
     await loadLogs();

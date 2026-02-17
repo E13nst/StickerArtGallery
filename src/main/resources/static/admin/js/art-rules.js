@@ -73,13 +73,11 @@ function renderRules() {
                         : '<span class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 rounded-full">Неактивно</span>'
                     }
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
-                    <button onclick="editRule('${String(rule.code || '').replace(/'/g, "\\'")}')" class="text-blue-600 hover:text-blue-800 font-medium">
-                        Изменить
-                    </button>
-                    <button onclick="toggleRule('${String(rule.code || '').replace(/'/g, "\\'")}')" class="text-${rule.isEnabled ? 'yellow' : 'green'}-600 hover:text-${rule.isEnabled ? 'yellow' : 'green'}-800 font-medium">
-                        ${rule.isEnabled ? 'Отключить' : 'Включить'}
-                    </button>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                    ${renderActionDropdown([
+                        { label: 'Изменить', onclick: `editRule('${String(rule.code || '').replace(/'/g, "\\'")}')`, className: 'text-blue-600' },
+                        { label: rule.isEnabled ? 'Отключить' : 'Включить', onclick: `toggleRule('${String(rule.code || '').replace(/'/g, "\\'")}')`, className: rule.isEnabled ? 'text-yellow-600' : 'text-green-600' }
+                    ])}
                 </td>
             </tr>
         `).join('');

@@ -103,6 +103,33 @@ function debounce(func, wait) {
     };
 }
 
+/**
+ * Рендерит выпадающий список действий для колонки таблицы.
+ * @param {Array<{label: string, onclick: string, className?: string}>} actions - массив действий
+ * @returns {string} HTML строка
+ */
+function renderActionDropdown(actions) {
+    if (!actions || actions.length === 0) return '-';
+    return `
+        <details class="relative inline-block action-dropdown">
+            <summary class="list-none cursor-pointer px-2 py-1 text-gray-600 hover:bg-gray-100 rounded border border-gray-300 text-sm flex items-center justify-center w-8">⋮</summary>
+            <div class="absolute right-0 mt-1 z-20 bg-white border rounded-lg shadow-lg py-1 min-w-[140px]">
+                ${actions.map(a => `
+                    <button type="button" class="block w-full text-left px-3 py-2 text-xs hover:bg-gray-50 transition ${a.className || ''}" onclick="${a.onclick}; closeActionDropdown(this)">
+                        ${escapeHtml(a.label)}
+                    </button>
+                `).join('')}
+            </div>
+        </details>
+    `;
+}
+
+/** Закрывает выпадающий список действий после клика по пункту */
+function closeActionDropdown(btn) {
+    const details = btn.closest('details');
+    if (details) details.removeAttribute('open');
+}
+
 // Построить query string из объекта
 function buildQueryString(params) {
     const queryParams = [];

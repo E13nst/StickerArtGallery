@@ -73,26 +73,28 @@ const tableColumns = [
     {
         field: 'actions',
         label: 'Действия',
-        render: (row) => `
-            <div class="flex flex-col space-y-1 text-xs">
-                ${row.state === 'BLOCKED' ? 
-                    `<button onclick="unblockStickerset(${row.id})" class="text-green-600 hover:text-green-800 text-left">✓ Разблокировать</button>` :
-                    `<button onclick="blockStickerset(${row.id})" class="text-red-600 hover:text-red-800 text-left">✗ Блокировать</button>`
-                }
-                ${row.isPublic ?
-                    `<button onclick="unpublishStickerset(${row.id})" class="text-yellow-600 hover:text-yellow-800 text-left">👁 Скрыть</button>` :
-                    `<button onclick="publishStickerset(${row.id})" class="text-blue-600 hover:text-blue-800 text-left">🌐 Опубликовать</button>`
-                }
-                ${row.isOfficial ?
-                    `<button onclick="unsetOfficialStickerset(${row.id})" class="text-purple-600 hover:text-purple-800 text-left">⭐ Снять официальный</button>` :
-                    `<button onclick="setOfficialStickerset(${row.id})" class="text-purple-600 hover:text-purple-800 text-left">⭐ Сделать официальным</button>`
-                }
-                ${row.state === 'ACTIVE' ?
-                    `<button onclick="deleteStickerset(${row.id})" class="text-gray-600 hover:text-gray-800 text-left">🗑 Удалить</button>` :
-                    ''
-                }
-            </div>
-        `
+        render: (row) => {
+            const actions = [];
+            if (row.state === 'BLOCKED') {
+                actions.push({ label: '✓ Разблокировать', onclick: `unblockStickerset(${row.id})`, className: 'text-green-600' });
+            } else {
+                actions.push({ label: '✗ Блокировать', onclick: `blockStickerset(${row.id})`, className: 'text-red-600' });
+            }
+            if (row.isPublic) {
+                actions.push({ label: '👁 Скрыть', onclick: `unpublishStickerset(${row.id})`, className: 'text-yellow-600' });
+            } else {
+                actions.push({ label: '🌐 Опубликовать', onclick: `publishStickerset(${row.id})`, className: 'text-blue-600' });
+            }
+            if (row.isOfficial) {
+                actions.push({ label: '⭐ Снять официальный', onclick: `unsetOfficialStickerset(${row.id})`, className: 'text-purple-600' });
+            } else {
+                actions.push({ label: '⭐ Сделать официальным', onclick: `setOfficialStickerset(${row.id})`, className: 'text-purple-600' });
+            }
+            if (row.state === 'ACTIVE') {
+                actions.push({ label: '🗑 Удалить', onclick: `deleteStickerset(${row.id})`, className: 'text-gray-600' });
+            }
+            return renderActionDropdown(actions);
+        }
     }
 ];
 

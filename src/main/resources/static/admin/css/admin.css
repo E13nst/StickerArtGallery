@@ -157,3 +157,18 @@
     font-size: 0.75rem;
     padding: 0.25rem 0.5rem;
 }
+
+/* Выпадающий список действий в таблицах */
+.action-dropdown summary {
+    user-select: none;
+}
+.action-dropdown summary::-webkit-details-marker {
+    display: none;
+}
+.action-dropdown summary::marker {
+    display: none;
+}
+.action-dropdown[open] summary {
+    border-color: #93c5fd;
+    background-color: #eff6ff;
+}
