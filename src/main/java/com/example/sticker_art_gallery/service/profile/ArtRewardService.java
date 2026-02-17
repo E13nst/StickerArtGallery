@@ -96,5 +96,13 @@ public class ArtRewardService {
         return artTransactionRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
     }
 
+    /**
+     * Получить все транзакции с пагинацией (для админа)
+     */
+    @Transactional(readOnly = true)
+    public Page<ArtTransactionEntity> findAllTransactions(Pageable pageable) {
+        return artTransactionRepository.findAll(pageable);
+    }
+
 }
 

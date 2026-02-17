@@ -9,7 +9,10 @@ const SidebarComponent = {
         { path: '/admin/index.html', icon: '👥', label: 'Пользователи' },
         { path: '/admin/stickers.html', icon: '🎨', label: 'Стикерсеты' },
         { path: '/admin/generation-logs.html', icon: '📋', label: 'Лог генерации' },
-        { path: '/admin/stars-packages.html', icon: '⭐', label: 'Stars Packages' },
+        { path: '/admin/art-transactions.html', icon: '💰', label: 'ART Транзакции' },
+        { path: '/admin/stars-transactions.html', icon: '⭐', label: 'Stars Транзакции' },
+        { path: '/admin/ton-transactions.html', icon: '💎', label: 'TON Транзакции' },
+        { path: '/admin/stars-packages.html', icon: '📦', label: 'Stars Packages' },
         { path: '/admin/art-rules.html', icon: '🎭', label: 'ART Rules' },
         { path: '/admin/prompt-enhancers.html', icon: '✨', label: 'Prompt Enhancers' },
         { path: '/admin/style-presets.html', icon: '🖌️', label: 'Style Presets' }

@@ -360,6 +360,27 @@ class AdminApiClient {
     async getGenerationLogEvents(taskId) {
         return this.request(`/admin/generation-logs/${encodeURIComponent(taskId)}/events`);
     }
+
+    // ============ ART Transactions (Admin) ============
+
+    async getArtTransactions(filters = {}) {
+        const queryString = buildQueryString(filters);
+        return this.request(`/admin/art-transactions${queryString}`);
+    }
+
+    // ============ Stars Transactions (Admin) ============
+
+    async getStarsTransactions(filters = {}) {
+        const queryString = buildQueryString(filters);
+        return this.request(`/admin/stars/packages/purchases${queryString}`);
+    }
+
+    // ============ TON Transactions (Admin) ============
+
+    async getTonTransactions(filters = {}) {
+        const queryString = buildQueryString(filters);
+        return this.request(`/admin/ton-transactions${queryString}`);
+    }
 }
 
 // Создаем глобальный экземпляр API client

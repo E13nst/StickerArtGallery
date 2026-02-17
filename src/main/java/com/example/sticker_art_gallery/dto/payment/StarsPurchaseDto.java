@@ -18,6 +18,9 @@ public class StarsPurchaseDto {
     @Schema(description = "ID покупки", example = "1")
     private Long id;
 
+    @Schema(description = "ID пользователя", example = "123456789")
+    private Long userId;
+
     @Schema(description = "Код пакета", example = "STARTER")
     private String packageCode;
 
@@ -36,6 +39,7 @@ public class StarsPurchaseDto {
     public static StarsPurchaseDto fromEntity(StarsPurchaseEntity entity) {
         StarsPurchaseDto dto = new StarsPurchaseDto();
         dto.setId(entity.getId());
+        dto.setUserId(entity.getUserId());
         dto.setPackageCode(entity.getPackageCode());
         if (entity.getStarsPackage() != null) {
             dto.setPackageName(entity.getStarsPackage().getName());
