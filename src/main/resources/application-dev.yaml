@@ -3,13 +3,11 @@
 # Настройки приложения для разработки
 app:
   url: ${APP_URL:http://localhost:8080}
+  service-api-token: ${SERVICE_API_TOKEN:}
   mini-app:
     url: ${MINI_APP_URL:${app.url}/mini-app/}
   telegram:
     bot-token: ${TELEGRAM_BOT_TOKEN:dev-bot-token-placeholder}
-  internal:
-    service-tokens:
-      sticker-bot: ${STICKERBOT_SERVICE_TOKEN:}
 
 # Тестовый initData для разработки
 # Этот initData можно использовать в Swagger UI для тестирования API

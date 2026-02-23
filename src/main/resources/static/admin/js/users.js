@@ -81,7 +81,8 @@ const tableColumns = [
         field: 'actions',
         label: 'Действия',
         render: (row) => renderActionDropdown([
-            { label: 'Редактировать', onclick: `editUser(${row.userId})`, className: 'text-blue-600' }
+            { label: 'Редактировать', onclick: `editUser(${row.userId})`, className: 'text-blue-600' },
+            { label: 'Начислить/списать ART', onclick: `openCreateArtTransaction(${row.userId})`, className: 'text-green-600' }
         ])
     }
 ];
@@ -184,6 +185,10 @@ document.addEventListener('DOMContentLoaded', async function() {
             await saveUser();
         });
     }
+
+    // Форма создания ART-транзакции
+    document.getElementById('art-tx-cancel').addEventListener('click', closeArtTxModal);
+    document.getElementById('art-tx-form').addEventListener('submit', onSubmitArtTx);
     
     // Загрузить пользователей
     await loadUsers();
@@ -214,7 +219,6 @@ async function editUser(userId) {
         
         document.getElementById('edit-user-id').value = userId;
         document.getElementById('edit-role').value = profile.role || 'USER';
-        document.getElementById('edit-balance').value = profile.artBalance || 0;
         document.getElementById('edit-subscription').value = profile.subscriptionStatus || 'NONE';
         document.getElementById('edit-blocked').checked = profile.isBlocked || false;
         
@@ -231,7 +235,6 @@ async function saveUser() {
         const userId = document.getElementById('edit-user-id').value;
         const data = {
             role: document.getElementById('edit-role').value,
-            artBalance: parseInt(document.getElementById('edit-balance').value),
             subscriptionStatus: document.getElementById('edit-subscription').value,
             isBlocked: document.getElementById('edit-blocked').checked
         };
@@ -249,6 +252,68 @@ async function saveUser() {
 // Закрыть модальное окно
 function closeEditModal() {
     document.getElementById('edit-modal').classList.add('hidden');
+}
+
+// Открыть модалку создания ART-транзакции с предзаполненным userId
+function openCreateArtTransaction(userId) {
+    document.getElementById('art-tx-user-id').value = userId;
+    document.getElementById('art-tx-amount').value = '';
+    document.getElementById('art-tx-message').value = '';
+    document.getElementById('art-tx-result').classList.add('hidden');
+    document.getElementById('art-tx-result').textContent = '';
+    document.getElementById('art-tx-submit').disabled = false;
+    document.getElementById('art-tx-modal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('art-tx-amount').focus(), 50);
+}
+
+function closeArtTxModal() {
+    document.getElementById('art-tx-modal').classList.add('hidden');
+}
+
+async function onSubmitArtTx(e) {
+    e.preventDefault();
+    const userIdEl = document.getElementById('art-tx-user-id');
+    const amountEl = document.getElementById('art-tx-amount');
+    const messageEl = document.getElementById('art-tx-message');
+    const resultEl = document.getElementById('art-tx-result');
+    const submitBtn = document.getElementById('art-tx-submit');
+
+    const userId = parseInt(userIdEl.value, 10);
+    const amount = parseInt(amountEl.value, 10);
+    const message = (messageEl.value || '').trim() || null;
+
+    if (isNaN(userId) || isNaN(amount) || amount === 0) {
+        resultEl.textContent = 'Укажите корректный User ID и ненулевую сумму.';
+        resultEl.className = 'text-sm text-red-600';
+        resultEl.classList.remove('hidden');
+        return;
+    }
+
+    submitBtn.disabled = true;
+    resultEl.classList.add('hidden');
+    try {
+        const response = await api.createArtTransaction({ userId, amount, message });
+        const delta = response.transaction?.delta ?? '';
+        const balanceAfter = response.transaction?.balanceAfter ?? '';
+        let msg = `Транзакция создана. Delta: ${delta}, баланс после: ${balanceAfter}.`;
+        if (message) {
+            msg += response.messageSent
+                ? ' Сообщение пользователю отправлено.'
+                : ` Сообщение не отправлено: ${response.messageError || 'неизвестная ошибка'}`;
+        }
+        resultEl.textContent = msg;
+        resultEl.className = `text-sm ${message && !response.messageSent ? 'text-amber-600' : 'text-green-600'}`;
+        resultEl.classList.remove('hidden');
+        showNotification('ART-транзакция создана', 'success');
+        await loadUsers();
+    } catch (error) {
+        resultEl.textContent = error.message || 'Ошибка создания транзакции';
+        resultEl.className = 'text-sm text-red-600';
+        resultEl.classList.remove('hidden');
+        showNotification(error.message || 'Ошибка создания транзакции', 'error');
+    } finally {
+        submitBtn.disabled = false;
+    }
 }
 
 // Обновить панель массовых действий

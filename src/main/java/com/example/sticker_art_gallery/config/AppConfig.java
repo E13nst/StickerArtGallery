@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 public class AppConfig {
     
     private String url;
+    private String serviceApiToken;
     private MiniApp miniApp = new MiniApp();
     private Telegram telegram = new Telegram();
     private Referral referral = new Referral();
@@ -19,6 +20,14 @@ public class AppConfig {
     
     public void setUrl(String url) {
         this.url = url;
+    }
+
+    public String getServiceApiToken() {
+        return serviceApiToken;
+    }
+
+    public void setServiceApiToken(String serviceApiToken) {
+        this.serviceApiToken = serviceApiToken;
     }
     
     public MiniApp getMiniApp() {

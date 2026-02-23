@@ -53,6 +53,40 @@
         </main>
     </div>
     
+    <!-- Create ART Transaction Modal -->
+    <div id="art-tx-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div class="p-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Создать ART-транзакцию</h3>
+                <form id="art-tx-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">User ID (Telegram)</label>
+                        <input type="number" id="art-tx-user-id" required
+                               class="mt-1 block w-full px-3 py-2 border rounded-md text-sm"
+                               placeholder="123456789">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Сумма (положительная — начисление, отрицательная — списание)</label>
+                        <input type="number" id="art-tx-amount" required
+                               class="mt-1 block w-full px-3 py-2 border rounded-md text-sm"
+                               placeholder="50 или -20">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Сообщение пользователю (опционально)</label>
+                        <textarea id="art-tx-message" rows="3"
+                                  class="mt-1 block w-full px-3 py-2 border rounded-md text-sm"
+                                  placeholder="Текст, который бот отправит в личку"></textarea>
+                    </div>
+                    <div id="art-tx-result" class="hidden text-sm"></div>
+                    <div class="flex justify-end space-x-2 pt-2">
+                        <button type="button" id="art-tx-cancel" class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 text-sm">Отмена</button>
+                        <button type="submit" id="art-tx-submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm">Создать</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Edit User Modal -->
     <div id="edit-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal-backdrop z-50">
         <div class="flex items-center justify-center min-h-screen p-4">
@@ -68,11 +102,6 @@
                                 <option value="USER">USER</option>
                                 <option value="ADMIN">ADMIN</option>
                             </select>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Баланс ART</label>
-                            <input type="number" id="edit-balance" class="mt-1 block w-full px-3 py-2 border rounded-md">
                         </div>
                         
                         <div>

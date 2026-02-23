@@ -15,7 +15,7 @@ import java.util.Optional;
 
 /**
  * Сервис для управления сервисными токенами межсервисной авторизации.
- * Токены конфигурируются через app.stickerbot.service-token
+ * Токены конфигурируются через app.service-api-token
  * и сравниваются по SHA-256 хэшу, чтобы избежать логирования/хранения в открытом виде.
  */
 @Component
@@ -29,11 +29,7 @@ public class ServiceTokenService {
     public ServiceTokenService(AppConfig appConfig) {
         Map<String, byte[]> hashes = new HashMap<>();
 
-        if (appConfig.getStickerbot() != null) {
-            registerToken(hashes, "StickerBot", appConfig.getStickerbot().getServiceToken());
-        } else {
-            LOGGER.warn("⚠️ Секция app.stickerbot не сконфигурирована. Межсервисные токены недоступны.");
-        }
+        registerToken(hashes, "StickerBot", appConfig.getServiceApiToken());
 
         this.tokenHashes = Collections.unmodifiableMap(hashes);
     }

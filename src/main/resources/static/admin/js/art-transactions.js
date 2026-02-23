@@ -94,8 +94,20 @@ document.addEventListener('DOMContentLoaded', async function() {
     const errorRetryBtn = document.getElementById('error-retry-btn');
     if (errorRetryBtn) errorRetryBtn.addEventListener('click', loadTransactions);
 
+    document.getElementById('create-art-tx-btn').addEventListener('click', () => openCreateArtModal());
+    document.getElementById('create-art-cancel').addEventListener('click', closeCreateArtModal);
+    document.getElementById('create-art-form').addEventListener('submit', onSubmitCreateArt);
+
     syncFiltersFromUrl();
     await loadTransactions();
+
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('openCreate') === '1' && urlParams.has('userId')) {
+        const userId = urlParams.get('userId');
+        document.getElementById('create-art-user-id').value = userId;
+        openCreateArtModal();
+        setTimeout(() => document.getElementById('create-art-amount').focus(), 100);
+    }
 });
 
 function buildQueryParams() {
@@ -150,5 +162,64 @@ async function loadTransactions() {
         showNotification('Ошибка загрузки ART транзакций', 'error');
         if (tableEl) tableEl.classList.add('hidden');
         if (errorEl) errorEl.classList.remove('hidden');
+    }
+}
+
+function openCreateArtModal() {
+    document.getElementById('create-art-modal').classList.remove('hidden');
+    document.getElementById('create-art-result').classList.add('hidden');
+}
+
+function closeCreateArtModal() {
+    document.getElementById('create-art-modal').classList.add('hidden');
+}
+
+async function onSubmitCreateArt(e) {
+    e.preventDefault();
+    const userIdEl = document.getElementById('create-art-user-id');
+    const amountEl = document.getElementById('create-art-amount');
+    const messageEl = document.getElementById('create-art-message');
+    const resultEl = document.getElementById('create-art-result');
+    const submitBtn = document.getElementById('create-art-submit');
+
+    const userId = parseInt(userIdEl.value, 10);
+    const amount = parseInt(amountEl.value, 10);
+    const message = (messageEl.value || '').trim() || null;
+
+    if (isNaN(userId) || isNaN(amount) || amount === 0) {
+        resultEl.textContent = 'Укажите корректный User ID и ненулевую сумму.';
+        resultEl.className = 'text-sm text-red-600';
+        resultEl.classList.remove('hidden');
+        return;
+    }
+
+    submitBtn.disabled = true;
+    resultEl.classList.add('hidden');
+    try {
+        const response = await api.createArtTransaction({ userId, amount, message });
+        resultEl.classList.remove('hidden');
+        resultEl.className = 'text-sm';
+        let msg = 'Транзакция создана. Delta: ' + (response.transaction?.delta ?? '') + ', баланс после: ' + (response.transaction?.balanceAfter ?? '') + '. ';
+        if (message) {
+            if (response.messageSent) {
+                msg += 'Сообщение пользователю отправлено.';
+                resultEl.classList.add('text-green-600');
+            } else {
+                msg += 'Сообщение не отправлено: ' + (response.messageError || 'неизвестная ошибка');
+                resultEl.classList.add('text-amber-600');
+            }
+        } else {
+            resultEl.classList.add('text-green-600');
+        }
+        resultEl.textContent = msg;
+        showNotification('ART-транзакция создана', 'success');
+        await loadTransactions();
+    } catch (error) {
+        resultEl.classList.remove('hidden');
+        resultEl.className = 'text-sm text-red-600';
+        resultEl.textContent = error.message || 'Ошибка создания транзакции';
+        showNotification(error.message || 'Ошибка создания транзакции', 'error');
+    } finally {
+        submitBtn.disabled = false;
     }
 }

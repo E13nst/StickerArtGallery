@@ -12,9 +12,6 @@ public class UpdateUserProfileRequest {
     @Schema(description = "Роль пользователя", example = "USER", allowableValues = {"USER", "ADMIN"})
     private UserProfileEntity.UserRole role;
     
-    @Schema(description = "Баланс ART-кредитов", example = "100")
-    private Long artBalance;
-    
     @Schema(description = "Флаг блокировки пользователя", example = "false")
     private Boolean isBlocked;
     
@@ -26,12 +23,10 @@ public class UpdateUserProfileRequest {
     public UpdateUserProfileRequest() {
     }
     
-    public UpdateUserProfileRequest(UserProfileEntity.UserRole role, 
-                                   Long artBalance, 
+    public UpdateUserProfileRequest(UserProfileEntity.UserRole role,
                                    Boolean isBlocked,
                                    UserProfileEntity.SubscriptionStatus subscriptionStatus) {
         this.role = role;
-        this.artBalance = artBalance;
         this.isBlocked = isBlocked;
         this.subscriptionStatus = subscriptionStatus;
     }
@@ -43,14 +38,6 @@ public class UpdateUserProfileRequest {
     
     public void setRole(UserProfileEntity.UserRole role) {
         this.role = role;
-    }
-    
-    public Long getArtBalance() {
-        return artBalance;
-    }
-    
-    public void setArtBalance(Long artBalance) {
-        this.artBalance = artBalance;
     }
     
     public Boolean getIsBlocked() {
@@ -73,7 +60,6 @@ public class UpdateUserProfileRequest {
     public String toString() {
         return "UpdateUserProfileRequest{" +
                 "role=" + role +
-                ", artBalance=" + artBalance +
                 ", isBlocked=" + isBlocked +
                 ", subscriptionStatus=" + subscriptionStatus +
                 '}';

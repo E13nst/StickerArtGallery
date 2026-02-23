@@ -134,8 +134,8 @@ public class UserProfileService {
      */
     @Transactional
     public UserProfileEntity updateProfileByUserId(Long userId, UpdateUserProfileRequest request) {
-        LOGGER.info("✏️ Обновление профиля пользователя {}: role={}, artBalance={}, isBlocked={}, subscriptionStatus={}",
-                    userId, request.getRole(), request.getArtBalance(), request.getIsBlocked(), request.getSubscriptionStatus());
+        LOGGER.info("✏️ Обновление профиля пользователя {}: role={}, isBlocked={}, subscriptionStatus={}",
+                    userId, request.getRole(), request.getIsBlocked(), request.getSubscriptionStatus());
         
         UserProfileEntity profile = repository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Профиль пользователя с ID " + userId + " не найден"));
@@ -144,11 +144,6 @@ public class UserProfileService {
         if (request.getRole() != null) {
             profile.setRole(request.getRole());
             LOGGER.debug("  ✓ Роль изменена на: {}", request.getRole());
-        }
-        
-        if (request.getArtBalance() != null) {
-            profile.setArtBalance(request.getArtBalance());
-            LOGGER.debug("  ✓ Баланс изменен на: {}", request.getArtBalance());
         }
         
         if (request.getIsBlocked() != null) {
@@ -177,8 +172,8 @@ public class UserProfileService {
      */
     @Transactional
     public UserProfileEntity updateProfileByProfileId(Long profileId, UpdateUserProfileRequest request) {
-        LOGGER.info("✏️ Обновление профиля по profileId {}: role={}, artBalance={}, isBlocked={}, subscriptionStatus={}",
-                    profileId, request.getRole(), request.getArtBalance(), request.getIsBlocked(), request.getSubscriptionStatus());
+        LOGGER.info("✏️ Обновление профиля по profileId {}: role={}, isBlocked={}, subscriptionStatus={}",
+                    profileId, request.getRole(), request.getIsBlocked(), request.getSubscriptionStatus());
 
         UserProfileEntity profile = repository.findById(profileId)
                 .orElseThrow(() -> new IllegalArgumentException("Профиль с ID " + profileId + " не найден"));
@@ -186,11 +181,6 @@ public class UserProfileService {
         if (request.getRole() != null) {
             profile.setRole(request.getRole());
             LOGGER.debug("  ✓ Роль изменена на: {}", request.getRole());
-        }
-
-        if (request.getArtBalance() != null) {
-            profile.setArtBalance(request.getArtBalance());
-            LOGGER.debug("  ✓ Баланс изменен на: {}", request.getArtBalance());
         }
 
         if (request.getIsBlocked() != null) {

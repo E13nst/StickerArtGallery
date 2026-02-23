@@ -1,5 +1,6 @@
 package com.example.sticker_art_gallery.service.profile;
 
+import com.example.sticker_art_gallery.controller.ArtTransactionAdminController;
 import com.example.sticker_art_gallery.model.profile.*;
 import com.example.sticker_art_gallery.repository.ArtRuleRepository;
 import com.example.sticker_art_gallery.repository.ArtTransactionRepository;
@@ -202,6 +203,78 @@ class ArtRewardServiceTest {
         assertThat(debitTx.getDirection()).isEqualTo(ArtTransactionDirection.DEBIT);
         assertThat(debitTx.getDelta()).isEqualTo(-5L);
         assertThat(debitTx.getPerformedBy()).isEqualTo(999L);
+    }
+
+    @Test
+    @Story("Ручное начисление/списание администратором (ADMIN_MANUAL_CREDIT / ADMIN_MANUAL_DEBIT)")
+    @DisplayName("award с ADMIN_MANUAL_CREDIT и overrideAmount увеличивает баланс")
+    void award_adminManualCredit_withOverrideAmount_shouldIncreaseBalance() {
+        ensureAdminManualRulesExist();
+        UserProfileEntity initial = userProfileRepository.findByUserId(USER_ID).orElseThrow();
+        long initialBalance = initial.getArtBalance();
+
+        ArtTransactionEntity tx = artRewardService.award(
+                USER_ID,
+                ArtTransactionAdminController.RULE_ADMIN_MANUAL_CREDIT,
+                50L,
+                "{\"message\":\"Test bonus\"}",
+                "it:admin-manual:credit:1",
+                999L
+        );
+
+        entityManager.flush();
+        entityManager.clear();
+        UserProfileEntity after = userProfileRepository.findByUserId(USER_ID).orElseThrow();
+        assertThat(tx.getDelta()).isEqualTo(50L);
+        assertThat(after.getArtBalance()).isEqualTo(initialBalance + 50L);
+    }
+
+    @Test
+    @Story("Ручное списание администратором")
+    @DisplayName("award с ADMIN_MANUAL_DEBIT и overrideAmount уменьшает баланс")
+    void award_adminManualDebit_withOverrideAmount_shouldDecreaseBalance() {
+        ensureAdminManualRulesExist();
+        UserProfileEntity initial = userProfileRepository.findByUserId(USER_ID).orElseThrow();
+        long initialBalance = initial.getArtBalance();
+        artRewardService.award(USER_ID, ArtTransactionAdminController.RULE_ADMIN_MANUAL_CREDIT, 100L, null, "it:admin:bootstrap", USER_ID);
+        entityManager.flush();
+        entityManager.clear();
+
+        ArtTransactionEntity tx = artRewardService.award(
+                USER_ID,
+                ArtTransactionAdminController.RULE_ADMIN_MANUAL_DEBIT,
+                30L,
+                null,
+                "it:admin-manual:debit:1",
+                999L
+        );
+
+        entityManager.flush();
+        entityManager.clear();
+        UserProfileEntity after = userProfileRepository.findByUserId(USER_ID).orElseThrow();
+        assertThat(tx.getDelta()).isEqualTo(-30L);
+        assertThat(after.getArtBalance()).isEqualTo(initialBalance + 100L - 30L);
+    }
+
+    private void ensureAdminManualRulesExist() {
+        if (artRuleRepository.findByCode(ArtTransactionAdminController.RULE_ADMIN_MANUAL_CREDIT).isEmpty()) {
+            ArtRuleEntity r = new ArtRuleEntity();
+            r.setCode(ArtTransactionAdminController.RULE_ADMIN_MANUAL_CREDIT);
+            r.setDirection(ArtTransactionDirection.CREDIT);
+            r.setAmount(0L);
+            r.setIsEnabled(Boolean.TRUE);
+            r.setDescription("Ручное начисление (тест)");
+            artRuleService.save(r);
+        }
+        if (artRuleRepository.findByCode(ArtTransactionAdminController.RULE_ADMIN_MANUAL_DEBIT).isEmpty()) {
+            ArtRuleEntity r = new ArtRuleEntity();
+            r.setCode(ArtTransactionAdminController.RULE_ADMIN_MANUAL_DEBIT);
+            r.setDirection(ArtTransactionDirection.DEBIT);
+            r.setAmount(0L);
+            r.setIsEnabled(Boolean.TRUE);
+            r.setDescription("Ручное списание (тест)");
+            artRuleService.save(r);
+        }
     }
 }
 

@@ -368,6 +368,13 @@ class AdminApiClient {
         return this.request(`/admin/art-transactions${queryString}`);
     }
 
+    async createArtTransaction(data) {
+        return this.request('/admin/art-transactions', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
     // ============ Stars Transactions (Admin) ============
 
     async getStarsTransactions(filters = {}) {
