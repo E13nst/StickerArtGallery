@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -66,4 +67,9 @@ public interface UserSwipeRepository extends JpaRepository<UserSwipeEntity, Long
            "ORDER BY us.createdAt ASC")
     List<UserSwipeEntity> findSwipesByUserAndDateOrdered(@Param("userId") Long userId,
                                                          @Param("swipeDate") LocalDate swipeDate);
+
+    /**
+     * Подсчитать общее количество свайпов за период (для аналитики)
+     */
+    long countByCreatedAtBetween(OffsetDateTime from, OffsetDateTime to);
 }

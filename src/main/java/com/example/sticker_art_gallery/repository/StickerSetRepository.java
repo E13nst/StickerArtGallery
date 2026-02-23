@@ -200,6 +200,11 @@ public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
 
     long countByCreatedAtAfter(LocalDateTime createdAfter);
 
+    /**
+     * Подсчитать количество стикерсетов, созданных в период
+     */
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
     @Query("SELECT DISTINCT ss.userId FROM StickerSet ss WHERE ss.createdAt >= :since")
     List<Long> findDistinctUserIdsByCreatedAtAfter(@Param("since") LocalDateTime since);
 

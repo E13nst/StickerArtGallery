@@ -35,4 +35,14 @@ public interface GenerationAuditSessionRepository extends JpaRepository<Generati
             Pageable pageable);
 
     List<GenerationAuditSessionEntity> findByExpiresAtBefore(OffsetDateTime now);
+
+    /**
+     * Количество сессий генерации, стартовавших в период (для аналитики)
+     */
+    long countByStartedAtBetween(OffsetDateTime from, OffsetDateTime to);
+
+    /**
+     * Количество успешно завершённых генераций за период
+     */
+    long countByStartedAtBetweenAndFinalStatus(OffsetDateTime from, OffsetDateTime to, String finalStatus);
 }

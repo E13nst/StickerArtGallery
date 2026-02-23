@@ -26,6 +26,12 @@ public interface ArtTransactionRepository extends JpaRepository<ArtTransactionEn
            "WHERE t.direction = :direction AND t.createdAt >= :since")
     Long sumDeltaByDirectionSince(@Param("direction") ArtTransactionDirection direction,
                                   @Param("since") OffsetDateTime since);
+
+    @Query("SELECT COALESCE(SUM(t.delta), 0) FROM ArtTransactionEntity t " +
+           "WHERE t.direction = :direction AND t.createdAt >= :from AND t.createdAt < :to")
+    Long sumDeltaByDirectionBetween(@Param("direction") ArtTransactionDirection direction,
+                                    @Param("from") OffsetDateTime from,
+                                    @Param("to") OffsetDateTime to);
     
     /**
      * Проверяет, существует ли транзакция с указанным name стикерсета в metadata

@@ -10,6 +10,7 @@ const SidebarComponent = {
             title: 'Пользователи и контент',
             items: [
                 { path: '/admin/index.html', icon: '👥', label: 'Пользователи' },
+                { path: '/admin/analytics.html', icon: '📊', label: 'Аналитика' },
                 { path: '/admin/stickers.html', icon: '🎨', label: 'Стикерсеты' },
                 { path: '/admin/generation-logs.html', icon: '📋', label: 'Лог генерации' }
             ]
@@ -79,17 +80,17 @@ const SidebarComponent = {
         const menuHTML = this.menuSections.map(section => this.renderMenuSection(section)).join('');
         
         return `
-            <aside class="w-64 bg-white shadow-md sidebar">
-                <div class="p-4">
+            <aside class="sidebar flex flex-col w-64 h-screen bg-white shadow-md">
+                <div class="flex-shrink-0 p-4">
                     <h1 class="text-xl font-bold text-gray-800">Admin Panel</h1>
                     <p class="text-xs text-gray-600">Sticker Gallery</p>
                 </div>
                 
-                <nav class="mt-4">
+                <nav class="sidebar-nav flex-1 min-h-0 overflow-y-auto mt-2">
                     ${menuHTML}
                 </nav>
                 
-                <div class="absolute bottom-0 w-64 p-4 border-t">
+                <div class="sidebar-footer flex-shrink-0 p-4 border-t border-gray-200 bg-white">
                     <div>
                         <p class="text-sm font-medium text-gray-700" id="current-user-name">Admin</p>
                         <p class="text-xs text-gray-500" id="current-user-role">ADMIN</p>

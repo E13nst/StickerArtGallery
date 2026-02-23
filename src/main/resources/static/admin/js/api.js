@@ -381,6 +381,15 @@ class AdminApiClient {
         const queryString = buildQueryString(filters);
         return this.request(`/admin/ton-transactions${queryString}`);
     }
+
+    // ============ Analytics Dashboard (Admin) ============
+
+    async getAnalyticsDashboard(from, to, granularity = 'day', tz = 'UTC') {
+        const params = { from, to, granularity };
+        if (tz) params.tz = tz;
+        const queryString = buildQueryString(params);
+        return this.request(`/admin/analytics/dashboard${queryString}`);
+    }
 }
 
 // Создаем глобальный экземпляр API client

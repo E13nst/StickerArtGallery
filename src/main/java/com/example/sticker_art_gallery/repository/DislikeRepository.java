@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -58,4 +59,9 @@ public interface DislikeRepository extends JpaRepository<Dislike, Long> {
      */
     @Query("SELECT d.stickerSet.id FROM Dislike d WHERE d.userId = :userId AND d.stickerSet.id IN :stickerSetIds")
     List<Long> findDislikedStickerSetIdsByUserId(@Param("userId") Long userId, @Param("stickerSetIds") List<Long> stickerSetIds);
+
+    /**
+     * Подсчитать количество дизлайков за период
+     */
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 }
