@@ -1,7 +1,10 @@
 package com.example.sticker_art_gallery.service.user;
 
+import com.example.sticker_art_gallery.dto.messaging.SendBotMessageRequest;
+import com.example.sticker_art_gallery.dto.messaging.SendBotMessageResponse;
 import com.example.sticker_art_gallery.model.user.UserEntity;
 import com.example.sticker_art_gallery.repository.UserRepository;
+import com.example.sticker_art_gallery.service.messaging.StickerBotMessageService;
 import com.example.sticker_art_gallery.service.telegram.TelegramBotApiService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,11 +30,15 @@ public class UserService {
     
     private final UserRepository userRepository;
     private final TelegramBotApiService telegramBotApiService;
-    
+    private final StickerBotMessageService stickerBotMessageService;
+
     @Autowired
-    public UserService(UserRepository userRepository, TelegramBotApiService telegramBotApiService) {
+    public UserService(UserRepository userRepository,
+                       TelegramBotApiService telegramBotApiService,
+                       StickerBotMessageService stickerBotMessageService) {
         this.userRepository = userRepository;
         this.telegramBotApiService = telegramBotApiService;
+        this.stickerBotMessageService = stickerBotMessageService;
     }
     
     /**
@@ -100,6 +107,24 @@ public class UserService {
                 .collect(Collectors.toMap(UserEntity::getId, Function.identity()));
     }
     
+    /**
+     * Отправить произвольное сообщение пользователю от бота через внешний StickerBot API.
+     * Используется бизнес-логикой для уведомлений (например, после оплаты или модерации).
+     *
+     * @param request запрос с текстом, user_id и опционально parse_mode
+     * @return ответ API (chat_id, message_id) при успехе
+     */
+    public SendBotMessageResponse sendBotMessageToUser(SendBotMessageRequest request) {
+        return stickerBotMessageService.sendToUser(request);
+    }
+
+    /**
+     * Отправить текстовое сообщение пользователю (plain, без разметки).
+     */
+    public SendBotMessageResponse sendPlainBotMessageToUser(Long userId, String text) {
+        return stickerBotMessageService.sendPlainTextToUser(userId, text);
+    }
+
     /**
      * Получить фото профиля пользователя из Bot API
      * Возвращает объект с информацией о фото и file_id самого большого фото

@@ -112,7 +112,8 @@ docker compose up --build
 | `APP_URL` | ✅ | Базовый URL приложения |
 | `MINI_APP_URL` | ❌ | URL мини-приложения (по умолчанию: `${APP_URL}/mini-app/`) |
 | `STICKER_PROCESSOR_URL` | ✅ | URL сервиса обработки стикеров |
-| `STICKERBOT_SERVICE_TOKEN` | ❌ | Межсервисный токен StickerBot для доступа к `/internal/**` |
+| `STICKERBOT_API_URL` | ❌ | URL внешнего StickerBot API (по умолчанию: `https://stixly-e13nst.amvera.io`). Используется для создания invoice и отправки сообщений пользователю (`POST /api/messages/send`). |
+| `STICKERBOT_SERVICE_TOKEN` | ❌ | Межсервисный токен StickerBot: для входящих webhook'ов на `/internal/**` и для исходящих вызовов к StickerBot API (Bearer), в т.ч. отправка сообщений. |
 | `BACKEND_WEBHOOK_SECRET` | ❌ | Секрет для HMAC проверки webhook от StickerBot API (Stars payments) |
 | `OPENAI_API_KEY` | ❌ | API ключ OpenAI (опционально) |
 
@@ -212,6 +213,9 @@ docker compose up --build
 
 ### Конфигурация
 Webhook от StickerBot API использует ту же авторизацию, что и все `/api/internal/**` endpoints - через `X-Service-Token`.
+
+### Отправка сообщений пользователю
+Backend может отправлять произвольные сообщения пользователю от бота через внешний StickerBot API (`POST /api/messages/send`). Используются `STICKERBOT_API_URL` и `STICKERBOT_SERVICE_TOKEN` (Bearer). Вызов только из сервисного слоя: `StickerBotMessageService.sendToUser(...)` или `UserService.sendBotMessageToUser(...)` / `sendPlainBotMessageToUser(userId, text)`.
 
 ### Тестирование
 ```bash
