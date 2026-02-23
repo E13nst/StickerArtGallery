@@ -1,0 +1,116 @@
+package com.example.sticker_art_gallery.service.messaging;
+
+import com.example.sticker_art_gallery.config.AppConfig;
+import com.example.sticker_art_gallery.dto.messaging.SendBotMessageRequest;
+import com.example.sticker_art_gallery.dto.messaging.SendBotMessageResponse;
+import com.example.sticker_art_gallery.exception.BotException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
+
+/**
+ * Клиент для отправки произвольных сообщений пользователю через внешний StickerBot API
+ * (POST /api/messages/send). Авторизация: Bearer с использованием app.stickerbot.service-token.
+ */
+@Service
+public class StickerBotMessageService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(StickerBotMessageService.class);
+    private static final String PATH_SEND = "/api/messages/send";
+
+    private final RestTemplate restTemplate;
+    private final AppConfig appConfig;
+
+    public StickerBotMessageService(RestTemplate restTemplate, AppConfig appConfig) {
+        this.restTemplate = restTemplate;
+        this.appConfig = appConfig;
+    }
+
+    /**
+     * Отправить сообщение пользователю в личный чат через StickerBot API.
+     *
+     * @param request запрос с текстом и user_id (и опционально parse_mode, disable_web_page_preview)
+     * @return ответ API (status, chat_id, message_id) при успехе
+     * @throws BotException если токен не настроен, API вернул ошибку или произошла сетевая ошибка
+     */
+    public SendBotMessageResponse sendToUser(SendBotMessageRequest request) {
+        String baseUrl = appConfig.getStickerbot().getApiUrl();
+        String token = appConfig.getStickerbot().getServiceToken();
+
+        if (baseUrl == null || baseUrl.isBlank()) {
+            LOGGER.error("❌ StickerBot API URL не настроен (app.stickerbot.api-url)");
+            throw new BotException("StickerBot API URL не настроен");
+        }
+        if (token == null || token.isBlank()) {
+            LOGGER.error("❌ StickerBot service token не настроен (app.stickerbot.service-token)");
+            throw new BotException("StickerBot service token не настроен");
+        }
+
+        String url = baseUrl.replaceAll("/$", "") + PATH_SEND;
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(token.trim());
+
+        HttpEntity<SendBotMessageRequest> entity = new HttpEntity<>(request, headers);
+        LOGGER.debug("📤 Отправка сообщения через StickerBot API: userId={}, textLength={}", request.getUserId(), request.getText().length());
+
+        try {
+            ResponseEntity<SendBotMessageResponse> response = restTemplate.exchange(
+                    url,
+                    org.springframework.http.HttpMethod.POST,
+                    entity,
+                    SendBotMessageResponse.class
+            );
+
+            SendBotMessageResponse body = response.getBody();
+            if (body == null) {
+                LOGGER.warn("⚠️ Пустой ответ от StickerBot API");
+                throw new BotException("Пустой ответ от StickerBot API");
+            }
+            if (!body.isSent()) {
+                LOGGER.warn("⚠️ StickerBot API вернул статус отличный от sent: {}", body.getStatus());
+                throw new BotException("Отправка сообщения не удалась: статус " + body.getStatus());
+            }
+            LOGGER.info("✅ Сообщение отправлено пользователю {}: chatId={}, messageId={}", request.getUserId(), body.getChatId(), body.getMessageId());
+            return body;
+        } catch (HttpClientErrorException e) {
+            String responseBody = e.getResponseBodyAsString();
+            LOGGER.error("❌ StickerBot API ошибка {}: {}", e.getStatusCode(), responseBody);
+            throw new BotException("StickerBot API ошибка: " + e.getStatusCode() + " — " + safeMessage(responseBody), e);
+        } catch (HttpServerErrorException e) {
+            String responseBody = e.getResponseBodyAsString();
+            LOGGER.error("❌ StickerBot API серверная ошибка {}: {}", e.getStatusCode(), responseBody);
+            throw new BotException("StickerBot API ошибка: " + e.getStatusCode() + " — " + safeMessage(responseBody), e);
+        } catch (RestClientException e) {
+            LOGGER.error("❌ Ошибка при вызове StickerBot API: {}", e.getMessage());
+            throw new BotException("Ошибка при отправке сообщения через StickerBot: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Удобный метод: отправить текстовое сообщение пользователю (parse_mode = plain).
+     */
+    public SendBotMessageResponse sendPlainTextToUser(Long userId, String text) {
+        SendBotMessageRequest request = SendBotMessageRequest.builder()
+                .userId(userId)
+                .text(text)
+                .parseMode("plain")
+                .build();
+        return sendToUser(request);
+    }
+
+    private static String safeMessage(String s) {
+        if (s == null || s.length() > 200) {
+            return s != null ? s.substring(0, 200) + "…" : "нет тела ответа";
+        }
+        return s;
+    }
+}
