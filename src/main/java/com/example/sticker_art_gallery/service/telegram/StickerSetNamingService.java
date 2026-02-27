@@ -19,10 +19,11 @@ public class StickerSetNamingService {
     
     @Autowired
     public StickerSetNamingService(
-            @Value("${app.telegram.bot-username:stixlybot}") String botUsername) {
-        this.botUsername = botUsername != null && !botUsername.isBlank() 
-            ? botUsername.toLowerCase() 
-            : "stixlybot";
+            @Value("${TELEGRAM_BOT_USERNAME}") String botUsername) {
+        if (botUsername == null || botUsername.isBlank()) {
+            throw new IllegalStateException("Environment variable TELEGRAM_BOT_USERNAME must be set");
+        }
+        this.botUsername = botUsername.toLowerCase();
         LOGGER.info("✅ StickerSetNamingService инициализирован с botUsername: {}", this.botUsername);
     }
     
@@ -83,6 +84,27 @@ public class StickerSetNamingService {
         }
     }
     
+    /**
+     * Гарантирует, что имя стикерсета заканчивается на _by_{botUsername}.
+     * Тримит и приводит к нижнему регистру; добавляет суффикс только если его ещё нет (case-insensitive).
+     * Для null/blank возвращает без изменений.
+     *
+     * @param name имя стикерсета (может быть null или пустым)
+     * @return нормализованное имя с суффиксом или исходное значение для null/blank
+     */
+    public String ensureBotSuffix(String name) {
+        if (name == null || name.isBlank()) {
+            return name;
+        }
+        String normalized = name.trim().toLowerCase();
+        String suffix = "_by_" + botUsername;
+        if (normalized.endsWith(suffix)) {
+            return normalized;
+        }
+        LOGGER.debug("📝 Автодобавление суффикса к имени стикерсета: '{}' -> '{}'", name, normalized + suffix);
+        return normalized + suffix;
+    }
+
     /**
      * Получает username бота
      */

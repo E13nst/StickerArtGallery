@@ -79,13 +79,16 @@ public class StickerSetCreationService {
         // 1. Получить файл
         File stickerFile = imageStorageService.getFileByUuid(imageUuid);
         
-        // 2. Генерировать имя если не указано
+        // 2. Генерировать имя если не указано, затем гарантировать суффикс _by_<bot>
         if (name == null || name.isBlank()) {
             String username = getUserUsername(userId);
             name = namingService.generateDefaultName(userId, username);
             LOGGER.debug("📝 Сгенерировано имя стикерсета: {}", name);
         }
-        
+        if (name != null && !name.isBlank()) {
+            name = namingService.ensureBotSuffix(name);
+        }
+
         // 3. Установить дефолтные значения
         if (title == null || title.isBlank()) {
             title = appConfig.getTelegram().getDefaultStickerSetTitle();

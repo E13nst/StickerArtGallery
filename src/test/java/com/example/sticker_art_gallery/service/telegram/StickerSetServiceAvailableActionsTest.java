@@ -58,6 +58,9 @@ class StickerSetServiceAvailableActionsTest {
     private StickerSetEnrichmentService enrichmentService;
 
     @Mock
+    private StickerSetNamingService namingService;
+
+    @Mock
     private com.example.sticker_art_gallery.service.transaction.WalletService walletService;
 
     @Mock
@@ -86,7 +89,8 @@ class StickerSetServiceAvailableActionsTest {
             artRewardService,
             crudService,
             visibilityService,
-            enrichmentService
+            enrichmentService,
+            namingService
         );
     }
 
