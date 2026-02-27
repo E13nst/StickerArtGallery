@@ -67,8 +67,8 @@ const filterConfig = [
             { value: 'DEBIT', label: 'DEBIT' }
         ]
     },
-    { name: 'dateFrom', label: 'Дата от (ISO)', type: 'text' },
-    { name: 'dateTo', label: 'Дата до (ISO)', type: 'text' }
+    { name: 'dateFrom', label: 'Дата от', type: 'datetime' },
+    { name: 'dateTo', label: 'Дата до', type: 'datetime' }
 ];
 
 document.addEventListener('DOMContentLoaded', async function() {
@@ -99,6 +99,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('create-art-form').addEventListener('submit', onSubmitCreateArt);
 
     syncFiltersFromUrl();
+    filters.setValues(currentFilters);
     await loadTransactions();
 
     const urlParams = new URLSearchParams(window.location.search);

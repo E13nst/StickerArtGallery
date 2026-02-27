@@ -55,6 +55,8 @@ class FiltersPanel {
                 return this.renderNumberFilter(filter);
             case 'date':
                 return this.renderDateFilter(filter);
+            case 'datetime':
+                return this.renderDatetimeFilter(filter);
             case 'checkbox':
                 return this.renderCheckboxFilter(filter);
             default:
@@ -133,6 +135,22 @@ class FiltersPanel {
             </div>
         `;
     }
+
+    renderDatetimeFilter(filter) {
+        return `
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-0.5">
+                    ${filter.label}
+                </label>
+                <input 
+                    type="datetime-local"
+                    id="filter-${filter.name}"
+                    name="${filter.name}"
+                    class="w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                >
+            </div>
+        `;
+    }
     
     renderCheckboxFilter(filter) {
         return `
@@ -167,8 +185,8 @@ class FiltersPanel {
             });
         }
         
-        // Enter key in text inputs
-        const textInputs = this.container.querySelectorAll('input[type="text"], input[type="number"]');
+        // Enter key in text and datetime inputs
+        const textInputs = this.container.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], input[type="datetime-local"]');
         textInputs.forEach(input => {
             input.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
@@ -188,6 +206,11 @@ class FiltersPanel {
             if (filter.type === 'checkbox') {
                 if (element.checked) {
                     this.values[filter.name] = true;
+                }
+            } else if (filter.type === 'datetime') {
+                const value = element.value.trim();
+                if (value) {
+                    this.values[filter.name] = datetimeLocalToIso(value);
                 }
             } else {
                 const value = element.value.trim();
@@ -232,6 +255,8 @@ class FiltersPanel {
             if (value !== undefined && value !== null) {
                 if (filter.type === 'checkbox') {
                     element.checked = !!value;
+                } else if (filter.type === 'datetime') {
+                    element.value = isoToDatetimeLocal(value) || value;
                 } else {
                     element.value = value;
                 }

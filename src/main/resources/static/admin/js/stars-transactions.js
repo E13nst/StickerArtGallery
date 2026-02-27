@@ -43,8 +43,8 @@ const tableColumns = [
 
 const filterConfig = [
     { name: 'userId', label: 'User ID', type: 'text' },
-    { name: 'dateFrom', label: 'Дата от (ISO)', type: 'text' },
-    { name: 'dateTo', label: 'Дата до (ISO)', type: 'text' }
+    { name: 'dateFrom', label: 'Дата от', type: 'datetime' },
+    { name: 'dateTo', label: 'Дата до', type: 'datetime' }
 ];
 
 document.addEventListener('DOMContentLoaded', async function() {
@@ -71,6 +71,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (errorRetryBtn) errorRetryBtn.addEventListener('click', loadTransactions);
 
     syncFiltersFromUrl();
+    filters.setValues(currentFilters);
     await loadTransactions();
 });
 

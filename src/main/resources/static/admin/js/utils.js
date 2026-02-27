@@ -2,6 +2,29 @@
  * Утилиты для админ-панели
  */
 
+/**
+ * Конвертирует значение datetime-local (YYYY-MM-DDTHH:mm) или дату (YYYY-MM-DD) в ISO для API.
+ */
+function datetimeLocalToIso(val) {
+    if (!val || typeof val !== 'string') return val;
+    const trimmed = val.trim();
+    if (!trimmed) return val;
+    const d = new Date(trimmed);
+    return isNaN(d.getTime()) ? val : d.toISOString();
+}
+
+/**
+ * Конвертирует ISO строку в формат datetime-local (YYYY-MM-DDTHH:mm) для input.
+ */
+function isoToDatetimeLocal(iso) {
+    if (!iso || typeof iso !== 'string') return '';
+    const d = new Date(iso.trim());
+    if (isNaN(d.getTime())) return '';
+    const pad = n => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+        'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
 // Форматирование даты
 function formatDate(dateString) {
     if (!dateString) return '-';

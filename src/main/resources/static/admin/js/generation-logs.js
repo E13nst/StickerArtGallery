@@ -82,8 +82,8 @@ const filterConfig = [
             { value: 'TIMEOUT', label: 'TIMEOUT' }
         ]
     },
-    { name: 'dateFrom', label: 'Дата от (ISO)', type: 'text' },
-    { name: 'dateTo', label: 'Дата до (ISO)', type: 'text' },
+    { name: 'dateFrom', label: 'Дата от', type: 'datetime' },
+    { name: 'dateTo', label: 'Дата до', type: 'datetime' },
     {
         name: 'errorOnly',
         label: 'Только с ошибками',
@@ -135,6 +135,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (errorRetryBtn) errorRetryBtn.addEventListener('click', loadLogs);
 
     syncFiltersFromUrl();
+    filters.setValues(currentFilters);
     await loadLogs();
 });
 
