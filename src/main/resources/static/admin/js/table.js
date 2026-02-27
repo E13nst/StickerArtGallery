@@ -16,8 +16,16 @@ class DataTable {
         this.onSelectionChange = options.onSelectionChange || null;
         this.selectedRows = new Set();
         this.selectable = options.selectable !== false;
+        this.rowIdField = options.rowIdField || null;
         
         this.render();
+    }
+    
+    getRowId(row) {
+        if (this.rowIdField && row[this.rowIdField] != null) {
+            return String(row[this.rowIdField]);
+        }
+        return String(row.id != null ? row.id : row.userId != null ? row.userId : '');
     }
     
     setData(pageResponse) {
@@ -53,10 +61,10 @@ class DataTable {
                                 </td>
                             </tr>
                         ` : this.data.map(row => `
-                            <tr class="hover:bg-gray-50 ${this.onRowClick ? 'cursor-pointer' : ''}" data-row-id="${row.id || row.userId || ''}">
+                            <tr class="hover:bg-gray-50 ${this.onRowClick ? 'cursor-pointer' : ''}" data-row-id="${this.getRowId(row)}">
                                 ${this.selectable ? `
                                     <td class="px-2 py-1.5" onclick="event.stopPropagation()">
-                                        <input type="checkbox" class="row-checkbox rounded border-gray-300" data-row-id="${row.id || row.userId || ''}">
+                                        <input type="checkbox" class="row-checkbox rounded border-gray-300" data-row-id="${this.getRowId(row)}">
                                     </td>
                                 ` : ''}
                                 ${this.columns.map(col => `
@@ -257,7 +265,7 @@ class DataTable {
             rows.forEach(row => {
                 row.addEventListener('click', (e) => {
                     const rowId = row.getAttribute('data-row-id');
-                    const rowData = this.data.find(d => (d.id || d.userId) == rowId);
+                    const rowData = this.data.find(d => this.getRowId(d) === rowId);
                     if (rowData) {
                         this.onRowClick(rowData);
                     }

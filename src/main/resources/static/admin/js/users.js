@@ -148,6 +148,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     dataTable = new DataTable('users-table', {
         columns: tableColumns,
         pageSize: 20,
+        rowIdField: 'userId',
         onPageChange: (page) => {
             currentPage = page;
             loadUsers();
@@ -203,6 +204,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Форма создания ART-транзакции
     document.getElementById('art-tx-cancel').addEventListener('click', closeArtTxModal);
     document.getElementById('art-tx-form').addEventListener('submit', onSubmitArtTx);
+
+    // Форма массовой ART-операции
+    document.getElementById('bulk-art-cancel').addEventListener('click', closeBulkArtModal);
+    document.getElementById('bulk-art-form').addEventListener('submit', onSubmitBulkArt);
     
     // Загрузить пользователей
     await loadUsers();
@@ -330,16 +335,26 @@ async function onSubmitArtTx(e) {
     }
 }
 
+function formatSelectedIds(ids, maxShow = 15) {
+    if (!ids || ids.length === 0) return '';
+    const list = ids.slice(0, maxShow).join(', ');
+    return ids.length > maxShow ? list + ' … +' + (ids.length - maxShow) : list;
+}
+
 // Обновить панель массовых действий
 function updateBulkActionsPanel(selectedIds) {
     const bulkActions = document.getElementById('bulk-actions');
     const selectedCount = document.getElementById('selected-count');
+    const selectedIdsEl = document.getElementById('selected-ids');
     
     if (selectedIds.length > 0) {
         bulkActions.classList.remove('hidden');
         selectedCount.textContent = selectedIds.length;
+        selectedIdsEl.textContent = '(' + formatSelectedIds(selectedIds) + ')';
+        selectedIdsEl.title = selectedIds.join(', ');
     } else {
         bulkActions.classList.add('hidden');
+        selectedIdsEl.textContent = '';
     }
 }
 
@@ -386,5 +401,81 @@ async function bulkUnblock() {
     } catch (error) {
         console.error('Failed to unblock users:', error);
         showNotification('Ошибка разблокировки пользователей', 'error');
+    }
+}
+
+// Открыть модалку массовой ART-операции
+function openBulkArtModal() {
+    const selectedIds = dataTable.getSelectedRows();
+    if (selectedIds.length === 0) return;
+    document.getElementById('bulk-art-count').textContent = selectedIds.length;
+    const idsEl = document.getElementById('bulk-art-ids');
+    idsEl.textContent = selectedIds.join(', ');
+    idsEl.title = selectedIds.join(', ');
+    document.getElementById('bulk-art-amount').value = '';
+    document.getElementById('bulk-art-message').value = '';
+    document.getElementById('bulk-art-result').classList.add('hidden');
+    document.getElementById('bulk-art-result').textContent = '';
+    document.getElementById('bulk-art-submit').disabled = false;
+    document.getElementById('bulk-art-modal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('bulk-art-amount').focus(), 50);
+}
+
+function closeBulkArtModal() {
+    document.getElementById('bulk-art-modal').classList.add('hidden');
+}
+
+async function onSubmitBulkArt(e) {
+    e.preventDefault();
+    const amountEl = document.getElementById('bulk-art-amount');
+    const messageEl = document.getElementById('bulk-art-message');
+    const resultEl = document.getElementById('bulk-art-result');
+    const submitBtn = document.getElementById('bulk-art-submit');
+
+    const amount = parseInt(amountEl.value, 10);
+    const message = (messageEl.value || '').trim() || null;
+
+    if (isNaN(amount) || amount === 0) {
+        resultEl.textContent = 'Укажите ненулевую сумму (положительную для начисления, отрицательную для списания).';
+        resultEl.className = 'text-sm text-red-600';
+        resultEl.classList.remove('hidden');
+        return;
+    }
+
+    const selectedIds = dataTable.getSelectedRows();
+    const userIds = selectedIds
+        .map(id => parseInt(id, 10))
+        .filter(id => !isNaN(id));
+    if (userIds.length === 0) {
+        resultEl.textContent = 'Нет выбранных пользователей.';
+        resultEl.className = 'text-sm text-red-600';
+        resultEl.classList.remove('hidden');
+        return;
+    }
+
+    submitBtn.disabled = true;
+    resultEl.classList.add('hidden');
+    try {
+        const report = await api.bulkOperation(
+            userIds,
+            userId => api.createArtTransaction({ userId, amount, message }),
+            'Массовая ART-операция'
+        );
+        resultEl.textContent = `Выполнено: ${report.successful} из ${report.total}.${report.failed > 0 ? ` Ошибок: ${report.failed}.` : ''}`;
+        resultEl.className = `text-sm ${report.failed > 0 ? 'text-amber-600' : 'text-green-600'}`;
+        resultEl.classList.remove('hidden');
+        dataTable.clearSelection();
+        updateBulkActionsPanel([]);
+        await loadUsers();
+        if (report.failed === 0) {
+            closeBulkArtModal();
+        }
+    } catch (error) {
+        resultEl.textContent = error.message || 'Ошибка массовой операции';
+        resultEl.className = 'text-sm text-red-600';
+        resultEl.classList.remove('hidden');
+        showNotification(error.message || 'Ошибка массовой ART-операции', 'error');
+    } finally {
+        submitBtn.disabled = false;
     }
 }

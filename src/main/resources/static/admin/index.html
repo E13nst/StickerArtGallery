@@ -32,16 +32,20 @@
                 
                 <!-- Bulk Actions -->
                 <div id="bulk-actions" class="hidden bg-blue-50 p-2 rounded-lg mb-2">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs text-gray-700">
-                            Выбрано: <span id="selected-count">0</span>
-                        </span>
+                    <div class="flex items-center justify-between flex-wrap gap-2">
+                        <div class="text-xs text-gray-700">
+                            <span>Выбрано: <span id="selected-count">0</span></span>
+                            <span id="selected-ids" class="ml-2 font-mono text-gray-600"></span>
+                        </div>
                         <div class="space-x-1">
                             <button onclick="bulkBlock()" class="px-2 py-1 text-xs bg-red-600 text-white rounded-md hover:bg-red-700">
                                 Заблокировать
                             </button>
                             <button onclick="bulkUnblock()" class="px-2 py-1 text-xs bg-green-600 text-white rounded-md hover:bg-green-700">
                                 Разблокировать
+                            </button>
+                            <button onclick="openBulkArtModal()" class="px-2 py-1 text-xs bg-amber-600 text-white rounded-md hover:bg-amber-700">
+                                Начислить/списать ART
                             </button>
                         </div>
                     </div>
@@ -81,6 +85,36 @@
                     <div class="flex justify-end space-x-2 pt-2">
                         <button type="button" id="art-tx-cancel" class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 text-sm">Отмена</button>
                         <button type="submit" id="art-tx-submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm">Создать</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk ART Transaction Modal -->
+    <div id="bulk-art-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div class="p-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Массовое начисление/списание ART</h3>
+                <p class="text-xs text-gray-600 mb-1">Операция будет применена к выбранным пользователям: <span id="bulk-art-count">0</span>.</p>
+                <p id="bulk-art-ids" class="text-xs font-mono text-gray-500 mb-4 break-all"></p>
+                <form id="bulk-art-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Сумма (положительная — начисление, отрицательная — списание)</label>
+                        <input type="number" id="bulk-art-amount" required
+                               class="mt-1 block w-full px-3 py-2 border rounded-md text-sm"
+                               placeholder="50 или -20">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Сообщение пользователю (опционально)</label>
+                        <textarea id="bulk-art-message" rows="3"
+                                  class="mt-1 block w-full px-3 py-2 border rounded-md text-sm"
+                                  placeholder="Текст, который бот отправит в личку"></textarea>
+                    </div>
+                    <div id="bulk-art-result" class="hidden text-sm"></div>
+                    <div class="flex justify-end space-x-2 pt-2">
+                        <button type="button" id="bulk-art-cancel" class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 text-sm">Отмена</button>
+                        <button type="submit" id="bulk-art-submit" class="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 text-sm">Выполнить</button>
                     </div>
                 </form>
             </div>

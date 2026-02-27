@@ -18,6 +18,7 @@ public class StickerSetFilterRequest {
     private Set<String> categoryKeys;
     private StickerSetType type;
     /** @deprecated Используйте userId + isVerified. При передаче интерпретируется как userId=authorId, isVerified=true */
+    @Deprecated
     private Long authorId;
     private Boolean isVerified;
     private Long userId;
@@ -67,10 +68,14 @@ public class StickerSetFilterRequest {
         this.type = type;
     }
     
+    /** @deprecated Используйте getUserId() + getIsVerified() */
+    @Deprecated
     public Long getAuthorId() {
         return authorId;
     }
-    
+
+    /** @deprecated Используйте setUserId() + setIsVerified() */
+    @Deprecated
     public void setAuthorId(Long authorId) {
         this.authorId = authorId;
     }
