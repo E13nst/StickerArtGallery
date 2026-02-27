@@ -108,6 +108,20 @@ const filterConfig = [
         ]
     },
     {
+        name: 'artBalanceMin',
+        label: 'ART от',
+        type: 'number',
+        placeholder: '0',
+        min: 0
+    },
+    {
+        name: 'artBalanceMax',
+        label: 'ART до',
+        type: 'number',
+        placeholder: '',
+        min: 0
+    },
+    {
         name: 'sort',
         label: 'Сортировка',
         type: 'select',

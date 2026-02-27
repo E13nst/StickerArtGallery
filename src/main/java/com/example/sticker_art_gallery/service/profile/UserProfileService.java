@@ -100,10 +100,12 @@ public class UserProfileService {
     /**
      * Получить список всех профилей с базовыми фильтрами, пагинацией и счетчиками стикерсетов
      * Используется в админ-панели для отображения списка пользователей с подсчетом их стикерсетов
-     * 
+     *
      * @param role Фильтр по роли (USER/ADMIN)
      * @param isBlocked Фильтр по статусу блокировки
      * @param search Универсальный поиск по User ID или username
+     * @param artBalanceMin Минимальный баланс ART (включительно)
+     * @param artBalanceMax Максимальный баланс ART (включительно)
      * @param sort Поле для сортировки (createdAt, ownedStickerSetsCount, verifiedStickerSetsCount)
      * @param direction Направление сортировки (ASC/DESC)
      * @param pageable Параметры пагинации
@@ -114,14 +116,16 @@ public class UserProfileService {
             UserProfileEntity.UserRole role,
             Boolean isBlocked,
             String search,
+            Long artBalanceMin,
+            Long artBalanceMax,
             String sort,
             String direction,
             Pageable pageable) {
-        LOGGER.debug("🔍 Поиск профилей с счетчиками: role={}, isBlocked={}, search={}, sort={}, direction={}",
-                     role, isBlocked, search, sort, direction);
-        
+        LOGGER.debug("🔍 Поиск профилей с счетчиками: role={}, isBlocked={}, search={}, artBalanceMin={}, artBalanceMax={}, sort={}, direction={}",
+                     role, isBlocked, search, artBalanceMin, artBalanceMax, sort, direction);
+
         String roleStr = role != null ? role.name() : null;
-        return repository.findAllWithFiltersAndCounts(roleStr, isBlocked, search, sort, direction, pageable);
+        return repository.findAllWithFiltersAndCounts(roleStr, isBlocked, search, artBalanceMin, artBalanceMax, sort, direction, pageable);
     }
 
     /**

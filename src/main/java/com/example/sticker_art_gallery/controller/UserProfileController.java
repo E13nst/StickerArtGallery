@@ -459,6 +459,7 @@ public class UserProfileController {
                         "totalPages": 8
                     }
                     """))),
+        @ApiResponse(responseCode = "400", description = "Некорректный диапазон ART (artBalanceMin > artBalanceMax)"),
         @ApiResponse(responseCode = "403", description = "Доступ запрещен (требуется роль ADMIN)"),
         @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
     })
@@ -476,12 +477,21 @@ public class UserProfileController {
             @Parameter(description = "Фильтр по статусу блокировки", example = "false")
             @RequestParam(required = false) Boolean isBlocked,
             @Parameter(description = "Универсальный поиск по User ID или username", example = "123456789")
-            @RequestParam(required = false) String search) {
+            @RequestParam(required = false) String search,
+            @Parameter(description = "Минимальный баланс ART (включительно)", example = "0")
+            @RequestParam(required = false) Long artBalanceMin,
+            @Parameter(description = "Максимальный баланс ART (включительно)", example = "50")
+            @RequestParam(required = false) Long artBalanceMax) {
         try {
+            if (artBalanceMin != null && artBalanceMax != null && artBalanceMin > artBalanceMax) {
+                LOGGER.warn("⚠️ Некорректный диапазон ART: min={} > max={}", artBalanceMin, artBalanceMax);
+                return ResponseEntity.badRequest().build();
+            }
+
             LOGGER.debug("🔍 Получение списка профилей: page={}, size={}, sort={}, direction={}, " +
-                        "role={}, isBlocked={}, search={}",
-                        page, size, sort, direction, role, isBlocked, search);
-            
+                        "role={}, isBlocked={}, search={}, artBalanceMin={}, artBalanceMax={}",
+                        page, size, sort, direction, role, isBlocked, search, artBalanceMin, artBalanceMax);
+
             // Парсим роль
             UserProfileEntity.UserRole roleEnum = null;
             if (role != null && !role.trim().isEmpty()) {
@@ -491,18 +501,19 @@ public class UserProfileController {
                     LOGGER.warn("⚠️ Некорректное значение роли: {}", role);
                 }
             }
-            
+
             // Валидируем и нормализуем параметры сортировки
             String validatedSort = validateSortField(sort);
             String validatedDirection = validateDirection(direction);
-            
+
             org.springframework.data.domain.PageRequest pageRequest =
                 org.springframework.data.domain.PageRequest.of(page, size);
-            
+
             // Получаем профили с фильтрами и счетчиками стикерсетов
-            org.springframework.data.domain.Page<UserProfileWithStickerCountsProjection> profilesPage = 
+            org.springframework.data.domain.Page<UserProfileWithStickerCountsProjection> profilesPage =
                 userProfileService.findAllWithFiltersAndCounts(
                     roleEnum, isBlocked, search,
+                    artBalanceMin, artBalanceMax,
                     validatedSort, validatedDirection,
                     pageRequest
                 );

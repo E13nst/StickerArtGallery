@@ -55,6 +55,8 @@ public interface UserProfileRepository extends JpaRepository<UserProfileEntity, 
            "WHERE (:role IS NULL OR CAST(up.role AS TEXT) = :role) " +
            "  AND (:isBlocked IS NULL OR up.is_blocked = :isBlocked) " +
            "  AND (:search IS NULL OR :search = '' OR CAST(up.user_id AS TEXT) LIKE CONCAT('%', :search, '%') OR u.username ILIKE CONCAT('%', :search, '%')) " +
+           "  AND (:artBalanceMin IS NULL OR up.art_balance >= :artBalanceMin) " +
+           "  AND (:artBalanceMax IS NULL OR up.art_balance <= :artBalanceMax) " +
            "ORDER BY " +
            "  CASE WHEN :sort = 'createdAt' AND :direction = 'ASC' THEN up.created_at END ASC, " +
            "  CASE WHEN :sort = 'createdAt' AND :direction = 'DESC' THEN up.created_at END DESC, " +
@@ -68,12 +70,16 @@ public interface UserProfileRepository extends JpaRepository<UserProfileEntity, 
            "LEFT JOIN users u ON up.user_id = u.id " +
            "WHERE (:role IS NULL OR CAST(up.role AS TEXT) = :role) " +
            "  AND (:isBlocked IS NULL OR up.is_blocked = :isBlocked) " +
-           "  AND (:search IS NULL OR :search = '' OR CAST(up.user_id AS TEXT) LIKE CONCAT('%', :search, '%') OR u.username ILIKE CONCAT('%', :search, '%'))",
+           "  AND (:search IS NULL OR :search = '' OR CAST(up.user_id AS TEXT) LIKE CONCAT('%', :search, '%') OR u.username ILIKE CONCAT('%', :search, '%')) " +
+           "  AND (:artBalanceMin IS NULL OR up.art_balance >= :artBalanceMin) " +
+           "  AND (:artBalanceMax IS NULL OR up.art_balance <= :artBalanceMax)",
            nativeQuery = true)
     Page<UserProfileWithStickerCountsProjection> findAllWithFiltersAndCounts(
             @Param("role") String role,
             @Param("isBlocked") Boolean isBlocked,
             @Param("search") String search,
+            @Param("artBalanceMin") Long artBalanceMin,
+            @Param("artBalanceMax") Long artBalanceMax,
             @Param("sort") String sort,
             @Param("direction") String direction,
             Pageable pageable
