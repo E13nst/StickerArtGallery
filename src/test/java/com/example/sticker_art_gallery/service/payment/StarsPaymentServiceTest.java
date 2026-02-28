@@ -21,9 +21,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
@@ -111,7 +113,7 @@ class StarsPaymentServiceTest {
                 eq("https://stickerbot.example/api/payments/create-invoice"),
                 eq(HttpMethod.POST),
                 any(),
-                eq(Map.class)
+                ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
         )).thenReturn(ResponseEntity.ok(externalResponse));
 
         CreateInvoiceResponse response = starsPaymentService.createInvoice(77L, request, "initData=test");
@@ -127,7 +129,7 @@ class StarsPaymentServiceTest {
                 eq("https://stickerbot.example/api/payments/create-invoice"),
                 eq(HttpMethod.POST),
                 any(),
-                eq(Map.class)
+                ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
         );
     }
 
