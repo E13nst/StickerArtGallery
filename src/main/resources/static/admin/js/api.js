@@ -361,6 +361,22 @@ class AdminApiClient {
         return this.request(`/admin/generation-logs/${encodeURIComponent(taskId)}/events`);
     }
 
+    // ============ Message logs (Admin audit) ============
+
+    async getMessageLogs(filters = {}, page = 0, size = 20) {
+        const params = { page, size, ...filters };
+        const queryString = buildQueryString(params);
+        return this.request(`/admin/message-logs${queryString}`);
+    }
+
+    async getMessageLogDetail(messageId) {
+        return this.request(`/admin/message-logs/${encodeURIComponent(messageId)}`);
+    }
+
+    async getMessageLogEvents(messageId) {
+        return this.request(`/admin/message-logs/${encodeURIComponent(messageId)}/events`);
+    }
+
     // ============ ART Transactions (Admin) ============
 
     async getArtTransactions(filters = {}) {

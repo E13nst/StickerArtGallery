@@ -12,7 +12,8 @@ const SidebarComponent = {
                 { path: '/admin/index.html', icon: '👥', label: 'Пользователи' },
                 { path: '/admin/analytics.html', icon: '📊', label: 'Аналитика' },
                 { path: '/admin/stickers.html', icon: '🎨', label: 'Стикерсеты' },
-                { path: '/admin/generation-logs.html', icon: '📋', label: 'Лог генерации' }
+                { path: '/admin/generation-logs.html', icon: '📋', label: 'Лог генерации' },
+                { path: '/admin/message-logs.html', icon: '📨', label: 'Лог сообщений' }
             ]
         },
         {

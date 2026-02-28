@@ -4,6 +4,8 @@ import com.example.sticker_art_gallery.config.AppConfig;
 import com.example.sticker_art_gallery.dto.messaging.SendBotMessageRequest;
 import com.example.sticker_art_gallery.dto.messaging.SendBotMessageResponse;
 import com.example.sticker_art_gallery.exception.BotException;
+import com.example.sticker_art_gallery.model.messaging.MessageAuditEventStatus;
+import com.example.sticker_art_gallery.model.messaging.MessageAuditStage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
@@ -28,10 +30,15 @@ public class StickerBotMessageService {
 
     private final RestTemplate restTemplate;
     private final AppConfig appConfig;
+    private final MessageAuditService messageAuditService;
 
-    public StickerBotMessageService(RestTemplate restTemplate, AppConfig appConfig) {
+    public StickerBotMessageService(
+            RestTemplate restTemplate,
+            AppConfig appConfig,
+            MessageAuditService messageAuditService) {
         this.restTemplate = restTemplate;
         this.appConfig = appConfig;
+        this.messageAuditService = messageAuditService;
     }
 
     /**
@@ -42,25 +49,62 @@ public class StickerBotMessageService {
      * @throws BotException если токен не настроен, API вернул ошибку или произошла сетевая ошибка
      */
     public SendBotMessageResponse sendToUser(SendBotMessageRequest request) {
+        String auditMessageId = java.util.UUID.randomUUID().toString();
         String baseUrl = appConfig.getStickerbot().getApiUrl();
         String token = appConfig.getStickerbot().getServiceToken();
+        String url = (baseUrl != null && !baseUrl.isBlank())
+                ? baseUrl.replaceAll("/$", "") + PATH_SEND
+                : PATH_SEND;
+
+        messageAuditService.startSession(auditMessageId, request, url);
 
         if (baseUrl == null || baseUrl.isBlank()) {
             LOGGER.error("❌ StickerBot API URL не настроен (app.stickerbot.api-url)");
+            messageAuditService.addStageEvent(
+                    auditMessageId,
+                    MessageAuditStage.API_CALL_FAILED,
+                    MessageAuditEventStatus.FAILED,
+                    java.util.Map.of("reason", "api-url missing"),
+                    MessageAuditService.ERROR_CONFIG,
+                    "StickerBot API URL не настроен");
+            messageAuditService.finishFailure(
+                    auditMessageId,
+                    MessageAuditService.ERROR_CONFIG,
+                    "StickerBot API URL не настроен",
+                    java.util.Map.of("config", "app.stickerbot.api-url"));
             throw new BotException("StickerBot API URL не настроен");
         }
         if (token == null || token.isBlank()) {
             LOGGER.error("❌ StickerBot service token не настроен (app.stickerbot.service-token)");
+            messageAuditService.addStageEvent(
+                    auditMessageId,
+                    MessageAuditStage.API_CALL_FAILED,
+                    MessageAuditEventStatus.FAILED,
+                    java.util.Map.of("reason", "service-token missing"),
+                    MessageAuditService.ERROR_CONFIG,
+                    "StickerBot service token не настроен");
+            messageAuditService.finishFailure(
+                    auditMessageId,
+                    MessageAuditService.ERROR_CONFIG,
+                    "StickerBot service token не настроен",
+                    java.util.Map.of("config", "app.stickerbot.service-token"));
             throw new BotException("StickerBot service token не настроен");
         }
 
-        String url = baseUrl.replaceAll("/$", "") + PATH_SEND;
+        url = baseUrl.replaceAll("/$", "") + PATH_SEND;
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(token.trim());
 
         HttpEntity<SendBotMessageRequest> entity = new HttpEntity<>(request, headers);
         LOGGER.debug("📤 Отправка сообщения через StickerBot API: userId={}, textLength={}", request.getUserId(), request.getText().length());
+        messageAuditService.addStageEvent(
+                auditMessageId,
+                MessageAuditStage.API_CALL_STARTED,
+                MessageAuditEventStatus.STARTED,
+                java.util.Map.of("url", url),
+                null,
+                null);
 
         try {
             ResponseEntity<SendBotMessageResponse> response = restTemplate.exchange(
@@ -73,24 +117,101 @@ public class StickerBotMessageService {
             SendBotMessageResponse body = response.getBody();
             if (body == null) {
                 LOGGER.warn("⚠️ Пустой ответ от StickerBot API");
+                messageAuditService.addStageEvent(
+                        auditMessageId,
+                        MessageAuditStage.API_CALL_FAILED,
+                        MessageAuditEventStatus.FAILED,
+                        java.util.Map.of("httpStatus", String.valueOf(response.getStatusCode().value())),
+                        MessageAuditService.ERROR_EMPTY_RESPONSE,
+                        "Пустой ответ от StickerBot API");
+                messageAuditService.finishFailure(
+                        auditMessageId,
+                        MessageAuditService.ERROR_EMPTY_RESPONSE,
+                        "Пустой ответ от StickerBot API",
+                        java.util.Map.of("httpStatus", String.valueOf(response.getStatusCode().value())));
                 throw new BotException("Пустой ответ от StickerBot API");
             }
             if (!body.isSent()) {
                 LOGGER.warn("⚠️ StickerBot API вернул статус отличный от sent: {}", body.getStatus());
+                String reason = "Отправка сообщения не удалась: статус " + body.getStatus();
+                messageAuditService.addStageEvent(
+                        auditMessageId,
+                        MessageAuditStage.API_CALL_FAILED,
+                        MessageAuditEventStatus.FAILED,
+                        java.util.Map.of("status", String.valueOf(body.getStatus())),
+                        MessageAuditService.ERROR_UNEXPECTED_STATUS,
+                        reason);
+                messageAuditService.finishFailure(
+                        auditMessageId,
+                        MessageAuditService.ERROR_UNEXPECTED_STATUS,
+                        reason,
+                        java.util.Map.of("status", String.valueOf(body.getStatus())));
                 throw new BotException("Отправка сообщения не удалась: статус " + body.getStatus());
             }
+            messageAuditService.addStageEvent(
+                    auditMessageId,
+                    MessageAuditStage.API_CALL_SUCCEEDED,
+                    MessageAuditEventStatus.SUCCEEDED,
+                    java.util.Map.of(
+                            "status", String.valueOf(body.getStatus()),
+                            "chatId", String.valueOf(body.getChatId()),
+                            "messageId", String.valueOf(body.getMessageId())),
+                    null,
+                    null);
+            messageAuditService.finishSuccess(auditMessageId, body);
             LOGGER.info("✅ Сообщение отправлено пользователю {}: chatId={}, messageId={}", request.getUserId(), body.getChatId(), body.getMessageId());
             return body;
         } catch (HttpClientErrorException e) {
             String responseBody = e.getResponseBodyAsString();
             LOGGER.error("❌ StickerBot API ошибка {}: {}", e.getStatusCode(), responseBody);
+            messageAuditService.addStageEvent(
+                    auditMessageId,
+                    MessageAuditStage.API_CALL_FAILED,
+                    MessageAuditEventStatus.FAILED,
+                    java.util.Map.of(
+                            "httpStatus", String.valueOf(e.getStatusCode().value()),
+                            "responseBody", safeMessage(responseBody)),
+                    MessageAuditService.ERROR_HTTP_4XX,
+                    safeMessage(responseBody));
+            messageAuditService.finishFailure(
+                    auditMessageId,
+                    MessageAuditService.ERROR_HTTP_4XX,
+                    safeMessage(responseBody),
+                    java.util.Map.of("httpStatus", String.valueOf(e.getStatusCode().value())));
             throw new BotException("StickerBot API ошибка: " + e.getStatusCode() + " — " + safeMessage(responseBody), e);
         } catch (HttpServerErrorException e) {
             String responseBody = e.getResponseBodyAsString();
             LOGGER.error("❌ StickerBot API серверная ошибка {}: {}", e.getStatusCode(), responseBody);
+            messageAuditService.addStageEvent(
+                    auditMessageId,
+                    MessageAuditStage.API_CALL_FAILED,
+                    MessageAuditEventStatus.FAILED,
+                    java.util.Map.of(
+                            "httpStatus", String.valueOf(e.getStatusCode().value()),
+                            "responseBody", safeMessage(responseBody)),
+                    MessageAuditService.ERROR_HTTP_5XX,
+                    safeMessage(responseBody));
+            messageAuditService.finishFailure(
+                    auditMessageId,
+                    MessageAuditService.ERROR_HTTP_5XX,
+                    safeMessage(responseBody),
+                    java.util.Map.of("httpStatus", String.valueOf(e.getStatusCode().value())));
             throw new BotException("StickerBot API ошибка: " + e.getStatusCode() + " — " + safeMessage(responseBody), e);
         } catch (RestClientException e) {
             LOGGER.error("❌ Ошибка при вызове StickerBot API: {}", e.getMessage());
+            String reason = safeMessage(e.getMessage());
+            messageAuditService.addStageEvent(
+                    auditMessageId,
+                    MessageAuditStage.API_CALL_FAILED,
+                    MessageAuditEventStatus.FAILED,
+                    java.util.Map.of("exception", e.getClass().getSimpleName()),
+                    MessageAuditService.ERROR_NETWORK,
+                    reason);
+            messageAuditService.finishFailure(
+                    auditMessageId,
+                    MessageAuditService.ERROR_NETWORK,
+                    reason,
+                    java.util.Map.of("exception", e.getClass().getName()));
             throw new BotException("Ошибка при отправке сообщения через StickerBot: " + e.getMessage(), e);
         }
     }
