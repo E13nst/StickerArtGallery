@@ -47,6 +47,9 @@ class StickerBotMessageServiceTest {
     @Mock
     private AppConfig appConfig;
 
+    @Mock
+    private MessageAuditService messageAuditService;
+
     private AppConfig.StickerBot stickerBotConfig;
     private StickerBotMessageService service;
 
@@ -56,7 +59,7 @@ class StickerBotMessageServiceTest {
         stickerBotConfig.setApiUrl(API_URL);
         stickerBotConfig.setServiceToken(SERVICE_TOKEN);
         when(appConfig.getStickerbot()).thenReturn(stickerBotConfig);
-        service = new StickerBotMessageService(restTemplate, appConfig);
+        service = new StickerBotMessageService(restTemplate, appConfig, messageAuditService);
     }
 
     @Test
@@ -123,7 +126,7 @@ class StickerBotMessageServiceTest {
     @DisplayName("sendToUser при пустом api-url выбрасывает BotException")
     void sendToUser_emptyApiUrl_throwsBotException() {
         stickerBotConfig.setApiUrl("");
-        service = new StickerBotMessageService(restTemplate, appConfig);
+        service = new StickerBotMessageService(restTemplate, appConfig, messageAuditService);
         SendBotMessageRequest request = SendBotMessageRequest.builder().userId(USER_ID).text(MESSAGE_TEXT).build();
 
         assertThatThrownBy(() -> service.sendToUser(request))
@@ -136,7 +139,7 @@ class StickerBotMessageServiceTest {
     @DisplayName("sendToUser при пустом service-token выбрасывает BotException")
     void sendToUser_emptyToken_throwsBotException() {
         stickerBotConfig.setServiceToken("");
-        service = new StickerBotMessageService(restTemplate, appConfig);
+        service = new StickerBotMessageService(restTemplate, appConfig, messageAuditService);
         SendBotMessageRequest request = SendBotMessageRequest.builder().userId(USER_ID).text(MESSAGE_TEXT).build();
 
         assertThatThrownBy(() -> service.sendToUser(request))
