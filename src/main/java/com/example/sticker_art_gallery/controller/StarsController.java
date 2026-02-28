@@ -105,6 +105,71 @@ public class StarsController {
     }
 
     /**
+     * Создать invoice для покупки пакета ART за Stars
+     */
+    @PostMapping("/create-invoice")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    @Operation(
+            summary = "Создать invoice для оплаты Stars",
+            description = "Создает invoice для выбранного пакета и возвращает URL для открытия оплаты в Telegram"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Invoice успешно создан",
+                    content = @Content(
+                            schema = @Schema(implementation = CreateInvoiceResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "invoiceUrl": "https://t.me/$abcdef1234567890ABCDEF",
+                                      "intentId": 123,
+                                      "starsPackage": {
+                                        "id": 2,
+                                        "code": "BASIC",
+                                        "name": "Basic Pack",
+                                        "description": "250 ART баллов",
+                                        "starsPrice": 100,
+                                        "artAmount": 250,
+                                        "sortOrder": 2,
+                                        "createdAt": "2025-01-15T10:00:00Z"
+                                      }
+                                    }
+                                    """)
+                    )
+            ),
+            @ApiResponse(responseCode = "400", description = "Некорректные данные запроса"),
+            @ApiResponse(responseCode = "403", description = "Доступ запрещен"),
+            @ApiResponse(responseCode = "404", description = "Пакет не найден"),
+            @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<CreateInvoiceResponse> createInvoice(
+            @Valid @RequestBody CreateInvoiceRequest request,
+            @RequestHeader(value = "X-Telegram-Init-Data", required = false) String telegramInitData) {
+        try {
+            Long userId = getCurrentUserId();
+            if (userId == null) {
+                LOGGER.warn("⚠️ Попытка создать invoice без авторизации");
+                return ResponseEntity.status(403).build();
+            }
+
+            CreateInvoiceResponse response = starsPaymentService.createInvoice(userId, request, telegramInitData);
+            LOGGER.info("🧾 Создан invoice: userId={}, packageCode={}, intentId={}",
+                    userId, request.getPackageCode(), response.getIntentId());
+            return ResponseEntity.ok(response);
+        } catch (java.util.NoSuchElementException e) {
+            LOGGER.warn("⚠️ Пакет не найден при создании invoice: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("⚠️ Ошибка валидации при создании invoice: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при создании invoice для packageCode={}: {}",
+                    request.getPackageCode(), e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
      * Получить историю покупок текущего пользователя
      */
     @GetMapping("/purchases")

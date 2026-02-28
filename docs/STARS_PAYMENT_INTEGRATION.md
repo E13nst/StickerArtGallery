@@ -7,7 +7,7 @@
 ## Архитектура
 
 ```
-Mini App → Java REST API → Telegram Bot API (createInvoiceLink)
+Mini App → Java REST API → StickerBot API (create-invoice)
                                     ↓
                             Telegram Payment
                                     ↓
@@ -48,7 +48,7 @@ SERVICE_TOKEN=your-service-token-from-java-config
 
 1. Пользователь выбирает пакет в Mini App
 2. Mini App вызывает `POST /api/stars/create-invoice` с `packageCode`
-3. Java API создает invoice через Telegram Bot API и возвращает `invoiceUrl`
+3. Java API создает запись в `stars_invoice_intents`, вызывает внешний StickerBot API (`/api/payments/create-invoice`) и возвращает `invoiceUrl`
 4. Mini App открывает invoice URL
 5. Пользователь оплачивает Stars
 6. Telegram отправляет `pre_checkout_query` → Python бот → Java API валидирует
@@ -61,6 +61,7 @@ SERVICE_TOKEN=your-service-token-from-java-config
 - `GET /api/stars/packages` - список активных пакетов (публичный)
 - `POST /api/stars/create-invoice` - создание invoice (требует авторизации)
 - `GET /api/stars/purchases` - история покупок пользователя
+- `GET /api/stars/purchases/recent` - последняя покупка пользователя
 
 ### Admin API
 
@@ -72,10 +73,9 @@ SERVICE_TOKEN=your-service-token-from-java-config
 
 ### Internal API (для Python бота)
 
-- `POST /api/internal/stars/validate-payment` - валидация перед оплатой
-- `POST /api/internal/stars/process-payment` - обработка успешного платежа
+- `POST /api/internal/webhooks/stars-payment` - webhook обработки успешного платежа
 
-Все internal endpoints требуют заголовок `X-Service-Token`.
+Internal endpoint требует заголовок `X-Service-Token`.
 
 ## База данных
 
