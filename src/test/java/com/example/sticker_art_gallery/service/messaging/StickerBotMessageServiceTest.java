@@ -71,7 +71,7 @@ class StickerBotMessageServiceTest {
                 .text(MESSAGE_TEXT)
                 .parseMode("plain")
                 .build();
-        SendBotMessageResponse expectedResponse = new SendBotMessageResponse("sent", 123456789, 42, "plain");
+        SendBotMessageResponse expectedResponse = new SendBotMessageResponse("sent", 123456789L, 42L, "plain");
         when(restTemplate.exchange(
                 eq(API_URL + "/api/messages/send"),
                 eq(HttpMethod.POST),
@@ -83,8 +83,8 @@ class StickerBotMessageServiceTest {
 
         assertThat(result).isNotNull();
         assertThat(result.isSent()).isTrue();
-        assertThat(result.getChatId()).isEqualTo(123456789);
-        assertThat(result.getMessageId()).isEqualTo(42);
+        assertThat(result.getChatId()).isEqualTo(123456789L);
+        assertThat(result.getMessageId()).isEqualTo(42L);
 
         ArgumentCaptor<HttpEntity<SendBotMessageRequest>> captor = ArgumentCaptor.forClass(HttpEntity.class);
         verify(restTemplate).exchange(
@@ -101,7 +101,7 @@ class StickerBotMessageServiceTest {
     @Story("Успешная отправка")
     @DisplayName("sendPlainTextToUser формирует запрос с parse_mode plain")
     void sendPlainTextToUser_success_returnsResponse() {
-        SendBotMessageResponse expectedResponse = new SendBotMessageResponse("sent", 999, 1, "plain");
+        SendBotMessageResponse expectedResponse = new SendBotMessageResponse("sent", 999L, 1L, "plain");
         when(restTemplate.exchange(
                 eq(API_URL + "/api/messages/send"),
                 eq(HttpMethod.POST),

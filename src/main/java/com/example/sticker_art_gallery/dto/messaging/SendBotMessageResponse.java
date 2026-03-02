@@ -19,10 +19,10 @@ public class SendBotMessageResponse {
     private String status;
 
     @JsonProperty("chat_id")
-    private Integer chatId;
+    private Long chatId;
 
     @JsonProperty("message_id")
-    private Integer messageId;
+    private Long messageId;
 
     @JsonProperty("parse_mode")
     private String parseMode;

@@ -47,10 +47,10 @@ public class MessageAuditSessionEntity {
     private String errorMessage;
 
     @Column(name = "telegram_chat_id")
-    private Integer telegramChatId;
+    private Long telegramChatId;
 
     @Column(name = "telegram_message_id")
-    private Integer telegramMessageId;
+    private Long telegramMessageId;
 
     @Column(name = "started_at", nullable = false)
     private OffsetDateTime startedAt = OffsetDateTime.now();
@@ -152,19 +152,19 @@ public class MessageAuditSessionEntity {
         this.errorMessage = errorMessage;
     }
 
-    public Integer getTelegramChatId() {
+    public Long getTelegramChatId() {
         return telegramChatId;
     }
 
-    public void setTelegramChatId(Integer telegramChatId) {
+    public void setTelegramChatId(Long telegramChatId) {
         this.telegramChatId = telegramChatId;
     }
 
-    public Integer getTelegramMessageId() {
+    public Long getTelegramMessageId() {
         return telegramMessageId;
     }
 
-    public void setTelegramMessageId(Integer telegramMessageId) {
+    public void setTelegramMessageId(Long telegramMessageId) {
         this.telegramMessageId = telegramMessageId;
     }
 

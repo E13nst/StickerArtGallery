@@ -31,9 +31,9 @@ public class MessageAuditSessionDto {
     @Schema(description = "Причина ошибки")
     private String errorMessage;
     @Schema(description = "chat_id из ответа StickerBot")
-    private Integer telegramChatId;
+    private Long telegramChatId;
     @Schema(description = "message_id из ответа StickerBot")
-    private Integer telegramMessageId;
+    private Long telegramMessageId;
     @Schema(description = "Время старта отправки")
     private OffsetDateTime startedAt;
     @Schema(description = "Время завершения отправки")
@@ -87,10 +87,10 @@ public class MessageAuditSessionDto {
     public void setErrorCode(String errorCode) { this.errorCode = errorCode; }
     public String getErrorMessage() { return errorMessage; }
     public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
-    public Integer getTelegramChatId() { return telegramChatId; }
-    public void setTelegramChatId(Integer telegramChatId) { this.telegramChatId = telegramChatId; }
-    public Integer getTelegramMessageId() { return telegramMessageId; }
-    public void setTelegramMessageId(Integer telegramMessageId) { this.telegramMessageId = telegramMessageId; }
+    public Long getTelegramChatId() { return telegramChatId; }
+    public void setTelegramChatId(Long telegramChatId) { this.telegramChatId = telegramChatId; }
+    public Long getTelegramMessageId() { return telegramMessageId; }
+    public void setTelegramMessageId(Long telegramMessageId) { this.telegramMessageId = telegramMessageId; }
     public OffsetDateTime getStartedAt() { return startedAt; }
     public void setStartedAt(OffsetDateTime startedAt) { this.startedAt = startedAt; }
     public OffsetDateTime getCompletedAt() { return completedAt; }
