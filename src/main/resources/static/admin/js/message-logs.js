@@ -219,16 +219,22 @@ function openDetail(messageId) {
                 content.innerHTML = '<p class="text-red-600">Сессия не найдена.</p>';
                 return;
             }
+            const statusCls = session.finalStatus === 'SENT'
+                ? 'bg-green-100 text-green-800'
+                : session.finalStatus === 'FAILED'
+                    ? 'bg-red-100 text-red-800'
+                    : 'bg-gray-100 text-gray-800';
             let html = '<div class="space-y-4">';
             html += '<div><strong>Message ID:</strong> <code class="text-xs">' + escapeHtml(session.messageId || '') + '</code></div>';
             html += '<div><strong>User ID:</strong> ' + escapeHtml(String(session.userId || '-')) + '</div>';
             html += '<div><strong>Chat ID (request):</strong> ' + escapeHtml(String(session.chatId || '-')) + '</div>';
-            html += '<div><strong>Статус:</strong> ' + escapeHtml(session.finalStatus || '-') + '</div>';
+            html += '<div><strong>Статус:</strong> <span class="inline-flex px-1.5 py-0.5 rounded text-xs font-medium ' + statusCls + '">' + escapeHtml(session.finalStatus || '-') + '</span></div>';
             html += '<div><strong>Parse mode:</strong> ' + escapeHtml(session.parseMode || '-') + '</div>';
             html += '<div><strong>Старт:</strong> ' + formatDate(session.startedAt) + '</div>';
             html += '<div><strong>Завершение:</strong> ' + formatDate(session.completedAt) + '</div>';
             html += '<div><strong>Telegram chat_id:</strong> ' + escapeHtml(String(session.telegramChatId || '-')) + '</div>';
             html += '<div><strong>Telegram message_id:</strong> ' + escapeHtml(String(session.telegramMessageId || '-')) + '</div>';
+            if (session.retryOfMessageId) html += '<div><strong>Retry исходной сессии:</strong> <code class="text-xs text-orange-600">' + escapeHtml(session.retryOfMessageId) + '</code></div>';
             if (session.errorCode) html += '<div><strong>Код ошибки:</strong> <span class="text-red-600">' + escapeHtml(session.errorCode) + '</span></div>';
             if (session.errorMessage) html += '<div><strong>Причина ошибки:</strong> <pre class="text-xs bg-gray-100 p-2 rounded overflow-x-auto">' + escapeHtml(session.errorMessage) + '</pre></div>';
             html += '<div><strong>Текст сообщения:</strong><pre class="text-xs bg-gray-100 p-2 rounded whitespace-pre-wrap">' + escapeHtml(session.messageText || '') + '</pre></div>';
@@ -240,13 +246,57 @@ function openDetail(messageId) {
                     (ev.errorMessage ? ' <span class="text-red-600">' + escapeHtml(ev.errorMessage.substring(0, 100)) + '</span>' : '') +
                     '</li>';
             });
-            html += '</ul></div>';
+            html += '</ul>';
+
+            if (session.finalStatus === 'FAILED') {
+                const safeId = (session.messageId || '').replace(/'/g, "\\'");
+                html += '<div class="pt-4 border-t border-gray-200 mt-4">';
+                html += '<button id="detail-retry-btn" onclick="retryMessage(\'' + safeId + '\')" ' +
+                    'class="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed ' +
+                    'text-white text-sm font-medium px-4 py-2 rounded transition-colors">' +
+                    '🔄 Повторить отправку' +
+                    '</button>';
+                html += '</div>';
+            }
+
+            html += '</div>';
             content.innerHTML = html;
         } catch (error) {
             console.error(error);
             content.innerHTML = '<p class="text-red-600">Ошибка загрузки деталей.</p>';
         }
     })();
+}
+
+async function retryMessage(messageId) {
+    if (!messageId) return;
+    if (!confirmAction('Повторить отправку сообщения пользователю?')) return;
+
+    const btn = document.getElementById('detail-retry-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Отправка…';
+    }
+
+    try {
+        const result = await api.retryMessageLog(messageId);
+        showNotification('✅ Повторная отправка запущена. Новый ID: ' + (result && result.retryMessageId ? result.retryMessageId.substring(0, 12) + '…' : ''), 'success');
+        // Обновить список и детали с небольшой задержкой, чтобы дать время async задаче стартовать
+        setTimeout(async function() {
+            await loadLogs();
+            if (result && result.retryMessageId) {
+                openDetail(result.retryMessageId);
+            }
+        }, 1500);
+    } catch (error) {
+        const msg = (error && error.data && error.data.message) ? error.data.message : 'Ошибка запуска повторной отправки';
+        const isConflict = error && error.status === 409;
+        showNotification(isConflict ? '⚠️ ' + msg : '❌ ' + msg, isConflict ? 'warning' : 'error');
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = '🔄 Повторить отправку';
+        }
+    }
 }
 
 function closeDetailModal() {

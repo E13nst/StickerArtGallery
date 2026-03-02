@@ -40,6 +40,8 @@ public class MessageAuditSessionDto {
     private OffsetDateTime completedAt;
     @Schema(description = "Время истечения хранения")
     private OffsetDateTime expiresAt;
+    @Schema(description = "message_id исходной сессии при ручном retry (null для обычных отправок)")
+    private String retryOfMessageId;
 
     public static MessageAuditSessionDto fromEntity(MessageAuditSessionEntity e) {
         MessageAuditSessionDto dto = new MessageAuditSessionDto();
@@ -59,6 +61,7 @@ public class MessageAuditSessionDto {
         dto.setStartedAt(e.getStartedAt());
         dto.setCompletedAt(e.getCompletedAt());
         dto.setExpiresAt(e.getExpiresAt());
+        dto.setRetryOfMessageId(e.getRetryOfMessageId());
         return dto;
     }
 
@@ -94,4 +97,6 @@ public class MessageAuditSessionDto {
     public void setCompletedAt(OffsetDateTime completedAt) { this.completedAt = completedAt; }
     public OffsetDateTime getExpiresAt() { return expiresAt; }
     public void setExpiresAt(OffsetDateTime expiresAt) { this.expiresAt = expiresAt; }
+    public String getRetryOfMessageId() { return retryOfMessageId; }
+    public void setRetryOfMessageId(String retryOfMessageId) { this.retryOfMessageId = retryOfMessageId; }
 }

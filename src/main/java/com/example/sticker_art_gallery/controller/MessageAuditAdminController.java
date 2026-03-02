@@ -4,7 +4,9 @@ import com.example.sticker_art_gallery.dto.PageRequest;
 import com.example.sticker_art_gallery.dto.PageResponse;
 import com.example.sticker_art_gallery.dto.messaging.MessageAuditEventDto;
 import com.example.sticker_art_gallery.dto.messaging.MessageAuditSessionDto;
+import com.example.sticker_art_gallery.dto.messaging.RetryMessageLogResponse;
 import com.example.sticker_art_gallery.service.messaging.MessageAuditQueryService;
+import com.example.sticker_art_gallery.service.messaging.MessageAuditRetryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -16,10 +18,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,9 +41,13 @@ public class MessageAuditAdminController {
     private static final Logger LOGGER = LoggerFactory.getLogger(MessageAuditAdminController.class);
 
     private final MessageAuditQueryService messageAuditQueryService;
+    private final MessageAuditRetryService messageAuditRetryService;
 
-    public MessageAuditAdminController(MessageAuditQueryService messageAuditQueryService) {
+    public MessageAuditAdminController(
+            MessageAuditQueryService messageAuditQueryService,
+            MessageAuditRetryService messageAuditRetryService) {
         this.messageAuditQueryService = messageAuditQueryService;
+        this.messageAuditRetryService = messageAuditRetryService;
     }
 
     @GetMapping
@@ -90,6 +98,37 @@ public class MessageAuditAdminController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(dto);
+    }
+
+    @PostMapping("/{messageId}/retry")
+    @Operation(
+            summary = "Повторная отправка сообщения",
+            description = "Запускает асинхронную повторную отправку для FAILED сессии. " +
+                    "Возвращает 202 с retryMessageId новой сессии. " +
+                    "Защищён от дублей: 409 если retry уже выполняется или завершился успехом."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "202", description = "Retry запущен асинхронно",
+                    content = @Content(schema = @Schema(implementation = RetryMessageLogResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Сессия не найдена"),
+            @ApiResponse(responseCode = "409", description = "Retry невозможен: сессия не в статусе FAILED, или retry уже запущен/успешен")
+    })
+    public ResponseEntity<?> retryMessageLog(
+            @Parameter(description = "Идентификатор исходной FAILED сессии", required = true)
+            @PathVariable String messageId) {
+        LOGGER.info("🔄 Admin retry request: messageId={}", messageId);
+        try {
+            RetryMessageLogResponse response = messageAuditRetryService.initiateRetry(messageId);
+            LOGGER.info("✅ Retry запущен: source={}, retryMessageId={}", messageId, response.getRetryMessageId());
+            return ResponseEntity.accepted().body(response);
+        } catch (MessageAuditRetryService.RetryNotAllowedException e) {
+            if (messageAuditRetryService.isNotFoundError(e)) {
+                LOGGER.warn("⚠️ Retry: сессия не найдена: {}", messageId);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.toErrorBody());
+            }
+            LOGGER.warn("⚠️ Retry отклонён для {}: {}", messageId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.toErrorBody());
+        }
     }
 
     @GetMapping("/{messageId}/events")

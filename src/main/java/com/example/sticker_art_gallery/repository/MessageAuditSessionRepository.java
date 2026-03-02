@@ -35,4 +35,13 @@ public interface MessageAuditSessionRepository extends JpaRepository<MessageAudi
             Pageable pageable);
 
     List<MessageAuditSessionEntity> findByExpiresAtBefore(OffsetDateTime now);
+
+    /**
+     * Найти активный (не завершившийся ошибкой) retry для исходного messageId.
+     * Используется для идемпотентности: запрет повторного retry если уже SENT или ещё выполняется.
+     */
+    @Query("SELECT s FROM MessageAuditSessionEntity s WHERE s.retryOfMessageId = :sourceMessageId " +
+           "AND (s.finalStatus IS NULL OR s.finalStatus = 'SENT')")
+    java.util.Optional<MessageAuditSessionEntity> findActiveOrSuccessfulRetryBySourceMessageId(
+            @Param("sourceMessageId") String sourceMessageId);
 }

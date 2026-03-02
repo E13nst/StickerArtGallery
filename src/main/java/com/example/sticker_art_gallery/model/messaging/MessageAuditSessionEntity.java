@@ -61,6 +61,9 @@ public class MessageAuditSessionEntity {
     @Column(name = "expires_at", nullable = false)
     private OffsetDateTime expiresAt;
 
+    @Column(name = "retry_of_message_id", length = 255)
+    private String retryOfMessageId;
+
     public Long getId() {
         return id;
     }
@@ -187,5 +190,13 @@ public class MessageAuditSessionEntity {
 
     public void setExpiresAt(OffsetDateTime expiresAt) {
         this.expiresAt = expiresAt;
+    }
+
+    public String getRetryOfMessageId() {
+        return retryOfMessageId;
+    }
+
+    public void setRetryOfMessageId(String retryOfMessageId) {
+        this.retryOfMessageId = retryOfMessageId;
     }
 }

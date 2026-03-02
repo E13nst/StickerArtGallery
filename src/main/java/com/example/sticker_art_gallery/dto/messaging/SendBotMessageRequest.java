@@ -1,5 +1,6 @@
 package com.example.sticker_art_gallery.dto.messaging;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
@@ -49,4 +50,18 @@ public class SendBotMessageRequest {
     @JsonProperty("disable_web_page_preview")
     @Builder.Default
     private boolean disableWebPagePreview = false;
+
+    /**
+     * Внутренний контекст: зафиксировать конкретный auditMessageId (не сериализуется в JSON).
+     * Используется при ручном retry из админки, чтобы заранее знать ID новой audit-сессии.
+     */
+    @JsonIgnore
+    private String auditMessageIdOverride;
+
+    /**
+     * Внутренний контекст: message_id исходной сессии при ручном retry (не сериализуется в JSON).
+     * Записывается в поле retry_of_message_id новой audit-сессии для трассировки.
+     */
+    @JsonIgnore
+    private String retryOfMessageId;
 }

@@ -59,6 +59,7 @@ public class MessageAuditService {
             session.setDisableWebPagePreview(request.isDisableWebPagePreview());
             session.setStartedAt(OffsetDateTime.now());
             session.setExpiresAt(OffsetDateTime.now().plusDays(90));
+            session.setRetryOfMessageId(request.getRetryOfMessageId());
             Map<String, Object> requestPayload = new LinkedHashMap<>();
             requestPayload.put("url", url);
             requestPayload.put("userId", request.getUserId());

@@ -69,7 +69,7 @@ public class StickerBotMessageService {
                 : PATH_SEND;
 
         org.springframework.retry.RetryContext retryContext = RetrySynchronizationManager.getContext();
-        String auditMessageId = resolveAuditMessageId(retryContext);
+        String auditMessageId = resolveAuditMessageId(retryContext, request.getAuditMessageIdOverride());
         if (isFirstAttempt(retryContext)) {
             messageAuditService.startSession(auditMessageId, request, url);
         }
@@ -294,15 +294,19 @@ public class StickerBotMessageService {
         return sendToUser(request);
     }
 
-    private String resolveAuditMessageId(org.springframework.retry.RetryContext retryContext) {
+    private String resolveAuditMessageId(org.springframework.retry.RetryContext retryContext, String overrideId) {
         if (retryContext == null) {
-            return java.util.UUID.randomUUID().toString();
+            return (overrideId != null && !overrideId.isBlank())
+                    ? overrideId
+                    : java.util.UUID.randomUUID().toString();
         }
         Object existing = retryContext.getAttribute("auditMessageId");
         if (existing instanceof String value && !value.isBlank()) {
             return value;
         }
-        String generated = java.util.UUID.randomUUID().toString();
+        String generated = (overrideId != null && !overrideId.isBlank())
+                ? overrideId
+                : java.util.UUID.randomUUID().toString();
         retryContext.setAttribute("auditMessageId", generated);
         return generated;
     }

@@ -377,6 +377,12 @@ class AdminApiClient {
         return this.request(`/admin/message-logs/${encodeURIComponent(messageId)}/events`);
     }
 
+    async retryMessageLog(messageId) {
+        return this.request(`/admin/message-logs/${encodeURIComponent(messageId)}/retry`, {
+            method: 'POST'
+        });
+    }
+
     // ============ ART Transactions (Admin) ============
 
     async getArtTransactions(filters = {}) {
