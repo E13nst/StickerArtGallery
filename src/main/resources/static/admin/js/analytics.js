@@ -164,19 +164,50 @@ function renderCharts(data) {
         });
     }
 
-    chartArt = createLineChart('chart-art', ts.artEarned, 'ART заработано');
-    if (ts.artSpent && ts.artSpent.length && chartArt) {
-        const labels = ts.artSpent.map(p => (p.bucketStart || '').replace('Z', '').slice(0, 16).replace('T', ' '));
-        chartArt.data.labels = labels.length ? labels : chartArt.data.labels;
-        chartArt.data.datasets.push({
-            label: 'ART потрачено',
-            data: ts.artSpent.map(p => p.value != null ? p.value : 0),
-            borderColor: 'rgb(239, 68, 68)',
-            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-            fill: true,
-            tension: 0.2
+    const artEarnedSeries = ts.artEarned || [];
+    const artSpentSeries = ts.artSpent || [];
+    const artAllKeys = Array.from(new Set([
+        ...artEarnedSeries.map(p => p.bucketStart),
+        ...artSpentSeries.map(p => p.bucketStart)
+    ])).sort();
+    const artEarnedMap = Object.fromEntries(artEarnedSeries.map(p => [p.bucketStart, p.value != null ? p.value : 0]));
+    const artSpentMap = Object.fromEntries(artSpentSeries.map(p => [p.bucketStart, p.value != null ? p.value : 0]));
+    const artLabels = artAllKeys.map(k => k.replace('Z', '').slice(0, 16).replace('T', ' '));
+    const ctxArt = document.getElementById('chart-art');
+    if (ctxArt) {
+        chartArt = new Chart(ctxArt, {
+            type: 'line',
+            data: {
+                labels: artLabels,
+                datasets: [
+                    {
+                        label: 'ART заработано',
+                        data: artAllKeys.map(k => artEarnedMap[k] ?? 0),
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.2
+                    },
+                    {
+                        label: 'ART потрачено',
+                        data: artAllKeys.map(k => artSpentMap[k] ?? 0),
+                        borderColor: 'rgb(239, 68, 68)',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        fill: true,
+                        tension: 0.2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { maxRotation: 45, font: { size: 10 } } },
+                    y: { beginAtZero: true }
+                }
+            }
         });
-        chartArt.update();
     }
 
     chartGeneration = createLineChart('chart-generation', ts.generationRuns, 'Запуски');
