@@ -123,12 +123,14 @@ public class StarsPaymentService {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден: " + userId));
 
-        long timestamp = System.currentTimeMillis();
-        String nonce = UUID.randomUUID().toString().replace("-", "");
+        String nonce = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         String invoicePayload = String.format(
-                "{\"package_id\":%d,\"user_id\":%d,\"ts\":%d,\"nonce\":\"%s\"}",
-                starsPackage.getId(), userId, timestamp, nonce
+                "{\"package_id\":%d,\"nonce\":\"%s\"}",
+                starsPackage.getId(), nonce
         );
+        if (invoicePayload.length() > 128) {
+            throw new IllegalArgumentException("Invoice payload слишком длинный");
+        }
 
         StarsInvoiceIntentEntity intent = new StarsInvoiceIntentEntity();
         intent.setUser(user);
