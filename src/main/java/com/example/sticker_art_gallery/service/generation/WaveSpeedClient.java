@@ -5,6 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.http.*;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -17,14 +20,11 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 @Component
 public class WaveSpeedClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(WaveSpeedClient.class);
-    private static final int MAX_RETRIES = 2;
-    private static final Random random = new Random();
 
     private final String apiKey;
     private final String baseUrl;
@@ -62,6 +62,25 @@ public class WaveSpeedClient {
             Integer numImages,
             Double strength,
             String image) {
+        return submitFluxSchnellWithRetry(finalPrompt, size, outputFormat, seed, numImages, strength, image);
+    }
+
+    @Retryable(
+            retryFor = RetryableWaveSpeedException.class,
+            maxAttemptsExpression = "#{${wavespeed.retry.max-attempts:3}}",
+            backoff = @Backoff(
+                    delayExpression = "#{${wavespeed.retry.initial-delay-ms:1000}}",
+                    multiplierExpression = "#{${wavespeed.retry.multiplier:2.0}}"
+            )
+    )
+    public String submitFluxSchnellWithRetry(
+            String finalPrompt,
+            String size,
+            String outputFormat,
+            Integer seed,
+            Integer numImages,
+            Double strength,
+            String image) {
         
         String url = baseUrl + "/wavespeed-ai/flux-schnell";
         
@@ -79,65 +98,43 @@ public class WaveSpeedClient {
         LOGGER.info("WaveSpeed: Submitting flux-schnell request to {}", url);
         LOGGER.debug("WaveSpeed: Payload: prompt_length={}, size={}, output_format={}, seed={}, num_images={}",
                 finalPrompt.length(), size, outputFormat, seed, numImages);
-        
-        Exception lastException = null;
-        for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-            try {
-                if (attempt > 0) {
-                    double waitTime = Math.pow(2, attempt) + random.nextDouble();
-                    LOGGER.info("WaveSpeed: Retry attempt {}/{} for flux-schnell, waiting {:.1f}s",
-                            attempt + 1, MAX_RETRIES + 1, waitTime);
-                    Thread.sleep((long) (waitTime * 1000));
-                }
-                
-                HttpHeaders headers = createHeaders();
-                HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(payload, headers);
-                
-                ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
-                LOGGER.debug("WaveSpeed: Response status: {}", response.getStatusCode());
-                
-                if (!response.getStatusCode().is2xxSuccessful()) {
-                    throw new HttpServerErrorException(response.getStatusCode(), "WaveSpeed API error");
-                }
-                
-                JsonNode data = objectMapper.readTree(response.getBody());
-                LOGGER.debug("WaveSpeed: Response data keys: {}", data.fieldNames());
-                
-                String requestId = extractRequestId(data);
-                if (requestId == null) {
-                    LOGGER.error("WaveSpeed: Invalid response structure - no id found. Full response: {}", response.getBody());
-                    throw new IllegalArgumentException("Invalid response from WaveSpeed API: " + response.getBody());
-                }
-                
-                LOGGER.info("WaveSpeed: Flux-schnell task submitted successfully: request_id={}", requestId);
-                return requestId;
-                
-            } catch (HttpServerErrorException | HttpClientErrorException e) {
-                if (e.getStatusCode().value() == 429 || 
-                    (e.getStatusCode().is5xxServerError() && attempt < MAX_RETRIES)) {
-                    lastException = e;
-                    continue;
-                }
-                throw new RuntimeException("WaveSpeed API error: " + e.getMessage(), e);
-            } catch (ResourceAccessException e) {
-                if (attempt < MAX_RETRIES) {
-                    lastException = e;
-                    continue;
-                }
-                throw new RuntimeException("WaveSpeed network error: " + e.getMessage(), e);
-            } catch (Exception e) {
-                if (attempt < MAX_RETRIES && (e.getMessage() == null || e.getMessage().contains("timeout"))) {
-                    lastException = e;
-                    continue;
-                }
-                throw new RuntimeException("WaveSpeed error: " + e.getMessage(), e);
+
+        try {
+            HttpHeaders headers = createHeaders();
+            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(payload, headers);
+            ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
+            LOGGER.debug("WaveSpeed: Response status: {}", response.getStatusCode());
+
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw new RetryableWaveSpeedException("WaveSpeed API error: " + response.getStatusCode(), null);
             }
+
+            JsonNode data = objectMapper.readTree(response.getBody());
+            LOGGER.debug("WaveSpeed: Response data keys: {}", data.fieldNames());
+
+            String requestId = extractRequestId(data);
+            if (requestId == null) {
+                LOGGER.error("WaveSpeed: Invalid response structure - no id found. Full response: {}", response.getBody());
+                throw new RuntimeException("Invalid response from WaveSpeed API: " + response.getBody());
+            }
+
+            LOGGER.info("WaveSpeed: Flux-schnell task submitted successfully: request_id={}", requestId);
+            return requestId;
+        } catch (HttpServerErrorException e) {
+            throw new RetryableWaveSpeedException("WaveSpeed server error: " + e.getMessage(), e);
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode().value() == 429) {
+                throw new RetryableWaveSpeedException("WaveSpeed rate limit: " + e.getMessage(), e);
+            }
+            throw new RuntimeException("WaveSpeed API error: " + e.getMessage(), e);
+        } catch (ResourceAccessException e) {
+            throw new RetryableWaveSpeedException("WaveSpeed network error: " + e.getMessage(), e);
+        } catch (Exception e) {
+            if (isTimeoutLike(e)) {
+                throw new RetryableWaveSpeedException("WaveSpeed timeout: " + e.getMessage(), e);
+            }
+            throw new RuntimeException("WaveSpeed error: " + e.getMessage(), e);
         }
-        
-        if (lastException != null) {
-            throw new RuntimeException("WaveSpeed error after retries: " + lastException.getMessage(), lastException);
-        }
-        throw new RuntimeException("WaveSpeed error: failed after retries");
     }
 
     public Map<String, Object> getPredictionResult(String requestId) {
@@ -217,6 +214,18 @@ public class WaveSpeedClient {
     }
 
     public String submitBackgroundRemover(String imageUrl) {
+        return submitBackgroundRemoverWithRetry(imageUrl);
+    }
+
+    @Retryable(
+            retryFor = RetryableWaveSpeedException.class,
+            maxAttemptsExpression = "#{${wavespeed.retry.max-attempts:3}}",
+            backoff = @Backoff(
+                    delayExpression = "#{${wavespeed.retry.initial-delay-ms:1000}}",
+                    multiplierExpression = "#{${wavespeed.retry.multiplier:2.0}}"
+            )
+    )
+    public String submitBackgroundRemoverWithRetry(String imageUrl) {
         String url = baseUrl + "/wavespeed-ai/image-background-remover";
         
         Map<String, Object> payload = new HashMap<>();
@@ -227,66 +236,63 @@ public class WaveSpeedClient {
         String logUrl = extractLogUrl(imageUrl);
         LOGGER.info("WaveSpeed: Submitting background-remover request to {}", url);
         LOGGER.debug("WaveSpeed: Image URL: {}", logUrl);
-        
-        Exception lastException = null;
-        for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-            try {
-                if (attempt > 0) {
-                    double waitTime = Math.pow(2, attempt) + random.nextDouble();
-                    LOGGER.info("WaveSpeed: Retry attempt {}/{} for bg-remover, waiting {:.1f}s",
-                            attempt + 1, MAX_RETRIES + 1, waitTime);
-                    Thread.sleep((long) (waitTime * 1000));
-                }
-                
-                HttpHeaders headers = createHeaders();
-                HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(payload, headers);
-                
-                ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
-                LOGGER.debug("WaveSpeed: Response status: {}", response.getStatusCode());
-                
-                if (!response.getStatusCode().is2xxSuccessful()) {
-                    throw new HttpServerErrorException(response.getStatusCode(), "WaveSpeed API error");
-                }
-                
-                JsonNode data = objectMapper.readTree(response.getBody());
-                LOGGER.debug("WaveSpeed: Response data keys: {}", data.fieldNames());
-                
-                String requestId = extractRequestId(data);
-                if (requestId == null) {
-                    LOGGER.error("WaveSpeed: Invalid response structure - no id found. Full response: {}", response.getBody());
-                    throw new IllegalArgumentException("Invalid response from WaveSpeed API: " + response.getBody());
-                }
-                
-                LOGGER.info("WaveSpeed: Background-remover task submitted successfully: request_id={}, image={}", 
-                        requestId, logUrl);
-                return requestId;
-                
-            } catch (HttpServerErrorException | HttpClientErrorException e) {
-                if (e.getStatusCode().value() == 429 || 
-                    (e.getStatusCode().is5xxServerError() && attempt < MAX_RETRIES)) {
-                    lastException = e;
-                    continue;
-                }
-                throw new RuntimeException("WaveSpeed API error: " + e.getMessage(), e);
-            } catch (ResourceAccessException e) {
-                if (attempt < MAX_RETRIES) {
-                    lastException = e;
-                    continue;
-                }
-                throw new RuntimeException("WaveSpeed network error: " + e.getMessage(), e);
-            } catch (Exception e) {
-                if (attempt < MAX_RETRIES && (e.getMessage() == null || e.getMessage().contains("timeout"))) {
-                    lastException = e;
-                    continue;
-                }
-                throw new RuntimeException("WaveSpeed error: " + e.getMessage(), e);
+
+        try {
+            HttpHeaders headers = createHeaders();
+            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(payload, headers);
+
+            ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
+            LOGGER.debug("WaveSpeed: Response status: {}", response.getStatusCode());
+
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw new RetryableWaveSpeedException("WaveSpeed API error: " + response.getStatusCode(), null);
             }
+
+            JsonNode data = objectMapper.readTree(response.getBody());
+            LOGGER.debug("WaveSpeed: Response data keys: {}", data.fieldNames());
+
+            String requestId = extractRequestId(data);
+            if (requestId == null) {
+                LOGGER.error("WaveSpeed: Invalid response structure - no id found. Full response: {}", response.getBody());
+                throw new RuntimeException("Invalid response from WaveSpeed API: " + response.getBody());
+            }
+
+            LOGGER.info("WaveSpeed: Background-remover task submitted successfully: request_id={}, image={}",
+                    requestId, logUrl);
+            return requestId;
+        } catch (HttpServerErrorException e) {
+            throw new RetryableWaveSpeedException("WaveSpeed server error: " + e.getMessage(), e);
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode().value() == 429) {
+                throw new RetryableWaveSpeedException("WaveSpeed rate limit: " + e.getMessage(), e);
+            }
+            throw new RuntimeException("WaveSpeed API error: " + e.getMessage(), e);
+        } catch (ResourceAccessException e) {
+            throw new RetryableWaveSpeedException("WaveSpeed network error: " + e.getMessage(), e);
+        } catch (Exception e) {
+            if (isTimeoutLike(e)) {
+                throw new RetryableWaveSpeedException("WaveSpeed timeout: " + e.getMessage(), e);
+            }
+            throw new RuntimeException("WaveSpeed error: " + e.getMessage(), e);
         }
-        
-        if (lastException != null) {
-            throw new RuntimeException("WaveSpeed error after retries: " + lastException.getMessage(), lastException);
-        }
-        throw new RuntimeException("WaveSpeed error: failed after retries");
+    }
+
+    @Recover
+    public String recoverFluxSchnell(
+            RetryableWaveSpeedException e,
+            String finalPrompt,
+            String size,
+            String outputFormat,
+            Integer seed,
+            Integer numImages,
+            Double strength,
+            String image) {
+        throw new RuntimeException("WaveSpeed error after retries: " + e.getMessage(), e.getCause() != null ? e.getCause() : e);
+    }
+
+    @Recover
+    public String recoverBackgroundRemover(RetryableWaveSpeedException e, String imageUrl) {
+        throw new RuntimeException("WaveSpeed error after retries: " + e.getMessage(), e.getCause() != null ? e.getCause() : e);
     }
 
     public byte[] downloadImage(String imageUrl, int maxSize) {
@@ -367,6 +373,17 @@ public class WaveSpeedClient {
             return uri.getHost() + "/" + lastSegment;
         } catch (Exception e) {
             return "image_url";
+        }
+    }
+
+    private boolean isTimeoutLike(Exception e) {
+        String message = e.getMessage();
+        return message == null || message.toLowerCase().contains("timeout");
+    }
+
+    private static class RetryableWaveSpeedException extends RuntimeException {
+        private RetryableWaveSpeedException(String message, Throwable cause) {
+            super(message, cause);
         }
     }
 }

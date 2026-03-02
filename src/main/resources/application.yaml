@@ -15,6 +15,10 @@ app:
   stickerbot:
     api-url: ${STICKERBOT_API_URL:https://stixly-e13nst.amvera.io}
     service-token: ${STICKERBOT_SERVICE_TOKEN:}
+    retry:
+      max-attempts: ${STICKERBOT_RETRY_MAX_ATTEMPTS:3}
+      initial-delay-ms: ${STICKERBOT_RETRY_INITIAL_DELAY_MS:300}
+      multiplier: ${STICKERBOT_RETRY_MULTIPLIER:3.0}
   ai:
     context-length: ${AI_CONTEXT_LENGTH:10}  # Длина контекста для InMemoryChatMemory (количество сообщений)
     auto-category:
@@ -143,6 +147,10 @@ wavespeed:
   base-url: ${WAVESPEED_BASE_URL:https://api.wavespeed.ai/api/v3}
   max-poll-seconds: ${WAVESPEED_MAX_POLL_SECONDS:300}
   bg-remove-enabled: ${WAVESPEED_BG_REMOVE_ENABLED:true}
+  retry:
+    max-attempts: ${WAVESPEED_RETRY_MAX_ATTEMPTS:3}
+    initial-delay-ms: ${WAVESPEED_RETRY_INITIAL_DELAY_MS:1000}
+    multiplier: ${WAVESPEED_RETRY_MULTIPLIER:2.0}
   timeout:
     connect: 5000
     read: 20000

@@ -8,6 +8,10 @@ import com.example.sticker_art_gallery.model.messaging.MessageAuditEventStatus;
 import com.example.sticker_art_gallery.model.messaging.MessageAuditStage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
+import org.springframework.retry.support.RetrySynchronizationManager;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -48,15 +52,27 @@ public class StickerBotMessageService {
      * @return ответ API (status, chat_id, message_id) при успехе
      * @throws BotException если токен не настроен, API вернул ошибку или произошла сетевая ошибка
      */
+    @Retryable(
+            retryFor = RetryableStickerBotException.class,
+            noRetryFor = BotException.class,
+            maxAttemptsExpression = "#{${app.stickerbot.retry.max-attempts:3}}",
+            backoff = @Backoff(
+                    delayExpression = "#{${app.stickerbot.retry.initial-delay-ms:300}}",
+                    multiplierExpression = "#{${app.stickerbot.retry.multiplier:3.0}}"
+            )
+    )
     public SendBotMessageResponse sendToUser(SendBotMessageRequest request) {
-        String auditMessageId = java.util.UUID.randomUUID().toString();
         String baseUrl = appConfig.getStickerbot().getApiUrl();
         String token = appConfig.getStickerbot().getServiceToken();
         String url = (baseUrl != null && !baseUrl.isBlank())
                 ? baseUrl.replaceAll("/$", "") + PATH_SEND
                 : PATH_SEND;
 
-        messageAuditService.startSession(auditMessageId, request, url);
+        org.springframework.retry.RetryContext retryContext = RetrySynchronizationManager.getContext();
+        String auditMessageId = resolveAuditMessageId(retryContext);
+        if (isFirstAttempt(retryContext)) {
+            messageAuditService.startSession(auditMessageId, request, url);
+        }
 
         if (baseUrl == null || baseUrl.isBlank()) {
             LOGGER.error("❌ StickerBot API URL не настроен (app.stickerbot.api-url)");
@@ -97,12 +113,21 @@ public class StickerBotMessageService {
         headers.setBearerAuth(token.trim());
 
         HttpEntity<SendBotMessageRequest> entity = new HttpEntity<>(request, headers);
-        LOGGER.debug("📤 Отправка сообщения через StickerBot API: userId={}, textLength={}", request.getUserId(), request.getText().length());
+        int attempt = getAttemptNumber(retryContext);
+        LOGGER.debug(
+                "📤 Отправка сообщения через StickerBot API: userId={}, textLength={}, attempt={}",
+                request.getUserId(),
+                request.getText().length(),
+                attempt
+        );
+        java.util.Map<String, Object> startedPayload = new java.util.LinkedHashMap<>();
+        startedPayload.put("url", url);
+        startedPayload.put("attempt", attempt);
         messageAuditService.addStageEvent(
                 auditMessageId,
                 MessageAuditStage.API_CALL_STARTED,
                 MessageAuditEventStatus.STARTED,
-                java.util.Map.of("url", url),
+                startedPayload,
                 null,
                 null);
 
@@ -164,61 +189,102 @@ public class StickerBotMessageService {
         } catch (HttpClientErrorException e) {
             String responseBody = e.getResponseBodyAsString();
             LOGGER.error("❌ StickerBot API ошибка {}: {}", e.getStatusCode(), responseBody);
-            messageAuditService.addStageEvent(
-                    auditMessageId,
-                    MessageAuditStage.API_CALL_FAILED,
-                    MessageAuditEventStatus.FAILED,
-                    java.util.Map.of(
-                            "httpStatus", String.valueOf(e.getStatusCode().value()),
-                            "responseBody", safeMessage(responseBody)),
-                    MessageAuditService.ERROR_HTTP_4XX,
-                    safeMessage(responseBody));
-            messageAuditService.finishFailure(
+            if (isRetryableClientStatus(e.getStatusCode().value())) {
+                throw buildRetryableException(
+                        retryContext,
+                        auditMessageId,
+                        MessageAuditService.ERROR_HTTP_4XX,
+                        "StickerBot API ошибка: " + e.getStatusCode() + " — " + safeMessage(responseBody),
+                        e,
+                        java.util.Map.of(
+                                "httpStatus", String.valueOf(e.getStatusCode().value()),
+                                "responseBody", safeMessage(responseBody))
+                );
+            }
+            failAndThrowBotException(
                     auditMessageId,
                     MessageAuditService.ERROR_HTTP_4XX,
                     safeMessage(responseBody),
-                    java.util.Map.of("httpStatus", String.valueOf(e.getStatusCode().value())));
-            throw new BotException("StickerBot API ошибка: " + e.getStatusCode() + " — " + safeMessage(responseBody), e);
+                    java.util.Map.of(
+                            "httpStatus", String.valueOf(e.getStatusCode().value()),
+                            "responseBody", safeMessage(responseBody)),
+                    "StickerBot API ошибка: " + e.getStatusCode() + " — " + safeMessage(responseBody),
+                    e
+            );
+            return null;
         } catch (HttpServerErrorException e) {
             String responseBody = e.getResponseBodyAsString();
             LOGGER.error("❌ StickerBot API серверная ошибка {}: {}", e.getStatusCode(), responseBody);
-            messageAuditService.addStageEvent(
+            throw buildRetryableException(
+                    retryContext,
                     auditMessageId,
-                    MessageAuditStage.API_CALL_FAILED,
-                    MessageAuditEventStatus.FAILED,
+                    MessageAuditService.ERROR_HTTP_5XX,
+                    "StickerBot API ошибка: " + e.getStatusCode() + " — " + safeMessage(responseBody),
+                    e,
                     java.util.Map.of(
                             "httpStatus", String.valueOf(e.getStatusCode().value()),
-                            "responseBody", safeMessage(responseBody)),
-                    MessageAuditService.ERROR_HTTP_5XX,
-                    safeMessage(responseBody));
-            messageAuditService.finishFailure(
-                    auditMessageId,
-                    MessageAuditService.ERROR_HTTP_5XX,
-                    safeMessage(responseBody),
-                    java.util.Map.of("httpStatus", String.valueOf(e.getStatusCode().value())));
-            throw new BotException("StickerBot API ошибка: " + e.getStatusCode() + " — " + safeMessage(responseBody), e);
+                            "responseBody", safeMessage(responseBody))
+            );
         } catch (RestClientException e) {
             LOGGER.error("❌ Ошибка при вызове StickerBot API: {}", e.getMessage());
             String reason = safeMessage(e.getMessage());
-            messageAuditService.addStageEvent(
-                    auditMessageId,
-                    MessageAuditStage.API_CALL_FAILED,
-                    MessageAuditEventStatus.FAILED,
-                    java.util.Map.of("exception", e.getClass().getSimpleName()),
-                    MessageAuditService.ERROR_NETWORK,
-                    reason);
-            messageAuditService.finishFailure(
+            throw buildRetryableException(
+                    retryContext,
                     auditMessageId,
                     MessageAuditService.ERROR_NETWORK,
-                    reason,
-                    java.util.Map.of("exception", e.getClass().getName()));
-            throw new BotException("Ошибка при отправке сообщения через StickerBot: " + e.getMessage(), e);
+                    "Ошибка при отправке сообщения через StickerBot: " + reason,
+                    e,
+                    java.util.Map.of("exception", e.getClass().getSimpleName())
+            );
         }
+    }
+
+    @Recover
+    public SendBotMessageResponse recover(RetryableStickerBotException e, SendBotMessageRequest request) {
+        java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>(e.getPayload());
+        payload.put("attempts", getMaxAttempts());
+        messageAuditService.addStageEvent(
+                e.getAuditMessageId(),
+                MessageAuditStage.API_CALL_FAILED,
+                MessageAuditEventStatus.FAILED,
+                payload,
+                e.getErrorCode(),
+                e.getErrorMessage());
+        messageAuditService.finishFailure(
+                e.getAuditMessageId(),
+                e.getErrorCode(),
+                e.getErrorMessage(),
+                payload);
+        throw new BotException(e.getErrorMessage(), e.getCause() != null ? e.getCause() : e);
+    }
+
+    @Recover
+    public SendBotMessageResponse recover(RetryableStickerBotException e, Long userId, String text) {
+        return recover(e, SendBotMessageRequest.builder().userId(userId).text(text).parseMode("plain").build());
+    }
+
+    @Recover
+    public SendBotMessageResponse recover(BotException e, SendBotMessageRequest request) {
+        throw e;
+    }
+
+    @Recover
+    public SendBotMessageResponse recover(BotException e, Long userId, String text) {
+        throw e;
     }
 
     /**
      * Удобный метод: отправить текстовое сообщение пользователю (parse_mode = plain).
      */
+    @Retryable(
+            retryFor = RetryableStickerBotException.class,
+            noRetryFor = BotException.class,
+            maxAttemptsExpression = "#{${app.stickerbot.retry.max-attempts:3}}",
+            backoff = @Backoff(
+                    delayExpression = "#{${app.stickerbot.retry.initial-delay-ms:300}}",
+                    multiplierExpression = "#{${app.stickerbot.retry.multiplier:3.0}}"
+            )
+    )
     public SendBotMessageResponse sendPlainTextToUser(Long userId, String text) {
         SendBotMessageRequest request = SendBotMessageRequest.builder()
                 .userId(userId)
@@ -228,10 +294,184 @@ public class StickerBotMessageService {
         return sendToUser(request);
     }
 
+    private String resolveAuditMessageId(org.springframework.retry.RetryContext retryContext) {
+        if (retryContext == null) {
+            return java.util.UUID.randomUUID().toString();
+        }
+        Object existing = retryContext.getAttribute("auditMessageId");
+        if (existing instanceof String value && !value.isBlank()) {
+            return value;
+        }
+        String generated = java.util.UUID.randomUUID().toString();
+        retryContext.setAttribute("auditMessageId", generated);
+        return generated;
+    }
+
+    private int getAttemptNumber(org.springframework.retry.RetryContext retryContext) {
+        if (retryContext == null) {
+            return 1;
+        }
+        return retryContext.getRetryCount() + 1;
+    }
+
+    private boolean isFirstAttempt(org.springframework.retry.RetryContext retryContext) {
+        return getAttemptNumber(retryContext) == 1;
+    }
+
+    private int getMaxAttempts() {
+        AppConfig.Retry retry = appConfig.getStickerbot().getRetry();
+        if (retry == null || retry.getMaxAttempts() < 1) {
+            return 3;
+        }
+        return retry.getMaxAttempts();
+    }
+
+    private long getInitialDelayMs() {
+        AppConfig.Retry retry = appConfig.getStickerbot().getRetry();
+        if (retry == null || retry.getInitialDelayMs() < 1) {
+            return 300L;
+        }
+        return retry.getInitialDelayMs();
+    }
+
+    private double getMultiplier() {
+        AppConfig.Retry retry = appConfig.getStickerbot().getRetry();
+        if (retry == null || retry.getMultiplier() <= 0) {
+            return 3.0d;
+        }
+        return retry.getMultiplier();
+    }
+
+    private long calculateNextDelayMs(int attemptNumber) {
+        double rawDelay = getInitialDelayMs() * Math.pow(getMultiplier(), Math.max(0, attemptNumber - 1));
+        if (rawDelay >= Long.MAX_VALUE) {
+            return Long.MAX_VALUE;
+        }
+        return Math.round(rawDelay);
+    }
+
+    private boolean isRetryableClientStatus(int statusCode) {
+        return statusCode == 429 || statusCode == 408;
+    }
+
+    private RetryableStickerBotException buildRetryableException(
+            org.springframework.retry.RetryContext retryContext,
+            String auditMessageId,
+            String errorCode,
+            String errorMessage,
+            Exception cause,
+            java.util.Map<String, Object> basePayload
+    ) {
+        int attempt = getAttemptNumber(retryContext);
+        int maxAttempts = getMaxAttempts();
+        boolean willRetry = retryContext != null && attempt < maxAttempts;
+        java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>(basePayload);
+        payload.put("attempt", attempt);
+
+        if (willRetry) {
+            long nextDelayMs = calculateNextDelayMs(attempt);
+            payload.put("nextDelayMs", nextDelayMs);
+            messageAuditService.addStageEvent(
+                    auditMessageId,
+                    MessageAuditStage.API_CALL_FAILED,
+                    MessageAuditEventStatus.RETRY,
+                    payload,
+                    errorCode,
+                    errorMessage
+            );
+            LOGGER.warn(
+                    "⚠️ Retry StickerBot API: userMessage='{}', attempt={}/{}, nextDelay={}ms",
+                    safeMessage(errorMessage),
+                    attempt,
+                    maxAttempts,
+                    nextDelayMs
+            );
+        } else if (retryContext == null) {
+            messageAuditService.addStageEvent(
+                    auditMessageId,
+                    MessageAuditStage.API_CALL_FAILED,
+                    MessageAuditEventStatus.FAILED,
+                    payload,
+                    errorCode,
+                    errorMessage
+            );
+            messageAuditService.finishFailure(
+                    auditMessageId,
+                    errorCode,
+                    errorMessage,
+                    payload
+            );
+            throw new BotException(errorMessage, cause);
+        }
+        return new RetryableStickerBotException(auditMessageId, errorCode, errorMessage, payload, cause);
+    }
+
+    private void failAndThrowBotException(
+            String auditMessageId,
+            String errorCode,
+            String errorMessage,
+            java.util.Map<String, Object> payload,
+            String exceptionMessage,
+            Exception cause
+    ) {
+        messageAuditService.addStageEvent(
+                auditMessageId,
+                MessageAuditStage.API_CALL_FAILED,
+                MessageAuditEventStatus.FAILED,
+                payload,
+                errorCode,
+                errorMessage
+        );
+        messageAuditService.finishFailure(
+                auditMessageId,
+                errorCode,
+                errorMessage,
+                payload
+        );
+        throw new BotException(exceptionMessage, cause);
+    }
+
     private static String safeMessage(String s) {
         if (s == null || s.length() > 200) {
             return s != null ? s.substring(0, 200) + "…" : "нет тела ответа";
         }
         return s;
+    }
+
+    private static class RetryableStickerBotException extends RuntimeException {
+        private final String auditMessageId;
+        private final String errorCode;
+        private final String errorMessage;
+        private final java.util.Map<String, Object> payload;
+
+        private RetryableStickerBotException(
+                String auditMessageId,
+                String errorCode,
+                String errorMessage,
+                java.util.Map<String, Object> payload,
+                Throwable cause
+        ) {
+            super(errorMessage, cause);
+            this.auditMessageId = auditMessageId;
+            this.errorCode = errorCode;
+            this.errorMessage = errorMessage;
+            this.payload = payload;
+        }
+
+        public String getAuditMessageId() {
+            return auditMessageId;
+        }
+
+        public String getErrorCode() {
+            return errorCode;
+        }
+
+        public String getErrorMessage() {
+            return errorMessage;
+        }
+
+        public java.util.Map<String, Object> getPayload() {
+            return payload;
+        }
     }
 }

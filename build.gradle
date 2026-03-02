@@ -60,6 +60,8 @@ dependencies {
     implementation 'net.gcardone.junidecode:junidecode:0.5.1'
     implementation 'net.datafaker:datafaker:2.3.1'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.retry:spring-retry'
+    implementation 'org.springframework:spring-aspects'
     implementation 'javax.xml.bind:jaxb-api:2.3.1'
     implementation 'org.glassfish.jaxb:jaxb-runtime:2.3.6'
     implementation 'com.pngencoder:pngencoder:0.16.0' // Быстрый PNG энкодер

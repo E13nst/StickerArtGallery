@@ -137,6 +137,7 @@ public class AppConfig {
     public static class StickerBot {
         private String apiUrl;
         private String serviceToken;
+        private Retry retry = new Retry();
         
         public String getApiUrl() {
             return apiUrl;
@@ -152,6 +153,44 @@ public class AppConfig {
         
         public void setServiceToken(String serviceToken) {
             this.serviceToken = serviceToken;
+        }
+
+        public Retry getRetry() {
+            return retry;
+        }
+
+        public void setRetry(Retry retry) {
+            this.retry = retry;
+        }
+    }
+
+    public static class Retry {
+        private int maxAttempts = 3;
+        private long initialDelayMs = 300L;
+        private double multiplier = 3.0d;
+
+        public int getMaxAttempts() {
+            return maxAttempts;
+        }
+
+        public void setMaxAttempts(int maxAttempts) {
+            this.maxAttempts = maxAttempts;
+        }
+
+        public long getInitialDelayMs() {
+            return initialDelayMs;
+        }
+
+        public void setInitialDelayMs(long initialDelayMs) {
+            this.initialDelayMs = initialDelayMs;
+        }
+
+        public double getMultiplier() {
+            return multiplier;
+        }
+
+        public void setMultiplier(double multiplier) {
+            this.multiplier = multiplier;
         }
     }
 }
