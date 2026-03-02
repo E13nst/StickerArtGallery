@@ -37,7 +37,6 @@ public class StickerSetService {
     private final StickerSetCrudService crudService;
     private final StickerSetVisibilityService visibilityService;
     private final StickerSetEnrichmentService enrichmentService;
-    private final StickerSetNamingService namingService;
     private LikeService likeService; // Lazy injection to avoid circular dependency
 
     @Autowired
@@ -47,8 +46,7 @@ public class StickerSetService {
                              ArtRewardService artRewardService,
                              StickerSetCrudService crudService,
                              StickerSetVisibilityService visibilityService,
-                             StickerSetEnrichmentService enrichmentService,
-                             StickerSetNamingService namingService) {
+                             StickerSetEnrichmentService enrichmentService) {
         this.stickerSetRepository = stickerSetRepository;
         this.telegramBotApiService = telegramBotApiService;
         this.categoryService = categoryService;
@@ -56,7 +54,6 @@ public class StickerSetService {
         this.crudService = crudService;
         this.visibilityService = visibilityService;
         this.enrichmentService = enrichmentService;
-        this.namingService = namingService;
     }
     
     @Autowired(required = false)
@@ -131,13 +128,11 @@ public class StickerSetService {
     }
 
     private StickerSet createStickerSetValidated(CreateStickerSetDto createDto, Long userId, String lang, boolean isVerified) {
-        // Нормализуем имя стикерсета и гарантируем суффикс _by_<bot>
+        // Нормализуем имя стикерсета (без автодобавления суффикса бота).
+        // Для /api/stickersets мы регистрируем уже существующий набор в Telegram,
+        // поэтому имя должно оставаться точным.
         createDto.normalizeName();
         String stickerSetName = createDto.getName();
-        if (stickerSetName != null && !stickerSetName.isBlank()) {
-            stickerSetName = namingService.ensureBotSuffix(stickerSetName);
-            createDto.setName(stickerSetName);
-        }
 
         // 1. Проверяем существующий стикерсет с таким именем (игнорируя регистр)
         Optional<StickerSet> existingByName = Optional.ofNullable(
