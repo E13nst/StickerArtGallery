@@ -58,7 +58,7 @@ class StickerBotMessageServiceRetryTest {
     @Test
     @DisplayName("Успех на 3-й попытке после двух 5xx ошибок")
     void sendToUser_successAfterRetries() {
-        SendBotMessageResponse success = new SendBotMessageResponse("sent", 100, 200, "plain");
+        SendBotMessageResponse success = new SendBotMessageResponse("sent", 100L, 200L, "plain");
         when(restTemplate.exchange(
                 eq(API_URL + "/api/messages/send"),
                 eq(HttpMethod.POST),
