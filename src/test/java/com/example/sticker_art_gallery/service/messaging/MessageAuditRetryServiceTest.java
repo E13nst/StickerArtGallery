@@ -22,7 +22,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -153,45 +152,46 @@ class MessageAuditRetryServiceTest {
 
     @Test
     @Story("Идемпотентность: отклонение если retry уже в процессе (in-memory lock)")
-    @DisplayName("initiateRetry: двойной клик при активном in-flight retry → RetryNotAllowedException RETRY_IN_PROGRESS")
-    @Description("Если retry уже выполняется (in-memory lock), второй запрос должен быть отклонён")
+    @DisplayName("initiateRetry: активный in-flight retry в карте → RetryNotAllowedException RETRY_IN_PROGRESS")
+    @Description("Если in-memory lock уже содержит запись для sourceMessageId (retry в полёте), второй запрос должен быть отклонён")
     @Severity(SeverityLevel.CRITICAL)
-    void initiateRetry_concurrentDoubleClick_throwsRetryInProgress() {
+    void initiateRetry_activeInFlightRetryInMap_throwsRetryInProgress() {
+        // Симулируем уже активный in-flight retry: вручную ставим lock в карту
+        retryService.activeRetries.put("source-id-5", "existing-retry-uuid");
+
         MessageAuditSessionEntity source = buildFailedSession("source-id-5");
         when(sessionRepository.findByMessageId("source-id-5")).thenReturn(Optional.of(source));
         when(sessionRepository.findActiveOrSuccessfulRetryBySourceMessageId("source-id-5"))
                 .thenReturn(Optional.empty());
 
-        // Первый запрос успешен
-        RetryMessageLogResponse first = retryService.initiateRetry("source-id-5");
-        assertThat(first.getRetryMessageId()).isNotBlank();
-
-        // Второй запрос пока первый ещё "в полёте" (in-memory lock) → 409
         assertThatThrownBy(() -> retryService.initiateRetry("source-id-5"))
                 .isInstanceOf(MessageAuditRetryService.RetryNotAllowedException.class)
                 .extracting(e -> ((MessageAuditRetryService.RetryNotAllowedException) e).getErrorCode())
                 .isEqualTo("RETRY_IN_PROGRESS");
+
+        verify(stickerBotMessageService, never()).sendToUser(any());
     }
 
     @Test
     @Story("In-memory lock снимается после завершения retry")
-    @DisplayName("executeRetryAsync: после завершения lock снят, следующий retry разрешён")
-    @Description("После завершения executeRetryAsync in-memory lock должен быть снят, и новый retry должен проходить")
+    @DisplayName("executeRetryAsync: lock снимается в finally даже при ошибке отправки")
+    @Description("Метод executeRetryAsync должен снимать in-memory lock в finally-блоке независимо от результата отправки")
     @Severity(SeverityLevel.NORMAL)
-    void executeRetryAsync_releasesLockAfterCompletion() {
-        MessageAuditSessionEntity source = buildFailedSession("source-id-6");
-        when(sessionRepository.findByMessageId("source-id-6")).thenReturn(Optional.of(source));
-        when(sessionRepository.findActiveOrSuccessfulRetryBySourceMessageId("source-id-6"))
-                .thenReturn(Optional.empty());
+    void executeRetryAsync_releasesLockAfterCompletionEvenOnError() {
+        retryService.activeRetries.put("source-id-6", "some-retry-id");
 
-        // Первый retry запускается и синхронно выполняется (self = retryService, @Async игнорируется в unit)
-        retryService.initiateRetry("source-id-6");
+        // Мок: sendToUser бросает исключение
+        when(stickerBotMessageService.sendToUser(any()))
+                .thenThrow(new com.example.sticker_art_gallery.exception.BotException("Ошибка отправки"));
 
-        // После завершения executeRetryAsync lock снят — второй retry должен пройти
-        when(sessionRepository.findActiveOrSuccessfulRetryBySourceMessageId("source-id-6"))
-                .thenReturn(Optional.empty());
-        RetryMessageLogResponse second = retryService.initiateRetry("source-id-6");
-        assertThat(second.getRetryMessageId()).isNotBlank();
+        var request = com.example.sticker_art_gallery.dto.messaging.SendBotMessageRequest.builder()
+                .userId(1L).text("test").parseMode("plain").build();
+
+        // executeRetryAsync не должен бросать исключение наружу
+        retryService.executeRetryAsync("source-id-6", "some-retry-id", request);
+
+        // Lock снят
+        assertThat(retryService.activeRetries).doesNotContainKey("source-id-6");
     }
 
     @Test

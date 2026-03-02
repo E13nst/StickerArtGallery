@@ -35,8 +35,9 @@ public class MessageAuditRetryService {
     /**
      * In-memory lock: sourceMessageId → retryMessageId.
      * Защищает от двойного клика / concurrent запросов в рамках одного экземпляра приложения.
+     * Package-private для тестирования.
      */
-    private final ConcurrentHashMap<String, String> activeRetries = new ConcurrentHashMap<>();
+    final ConcurrentHashMap<String, String> activeRetries = new ConcurrentHashMap<>();
 
     @Lazy
     @Autowired
