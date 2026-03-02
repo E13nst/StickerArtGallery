@@ -123,43 +123,105 @@ function renderCharts(data) {
     destroyChart(chartGeneration);
     destroyChart(chartReferrals);
 
-    chartUsers = createLineChart('chart-users', ts.newUsers, 'Новые пользователи');
-    if (ts.activeUsers && ts.activeUsers.length) {
-        const labels = ts.activeUsers.map(p => (p.bucketStart || '').replace('Z', '').slice(0, 16).replace('T', ' '));
-        const dataActive = ts.activeUsers.map(p => p.value != null ? p.value : 0);
-        const ctx = document.getElementById('chart-users');
-        if (ctx && chartUsers) {
-            chartUsers.data.datasets.push({
-                label: 'Активные',
-                data: dataActive,
-                borderColor: 'rgb(34, 197, 94)',
-                backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                fill: true,
-                tension: 0.2
-            });
-            chartUsers.update();
-        }
+    const newUsersSeries = ts.newUsers || [];
+    const activeUsersSeries = ts.activeUsers || [];
+    const usersAllKeys = Array.from(new Set([
+        ...newUsersSeries.map(p => p.bucketStart),
+        ...activeUsersSeries.map(p => p.bucketStart)
+    ])).sort();
+    const newUsersMap = Object.fromEntries(newUsersSeries.map(p => [p.bucketStart, p.value != null ? p.value : 0]));
+    const activeUsersMap = Object.fromEntries(activeUsersSeries.map(p => [p.bucketStart, p.value != null ? p.value : 0]));
+    const usersLabels = usersAllKeys.map(k => k.replace('Z', '').slice(0, 16).replace('T', ' '));
+    const ctxUsers = document.getElementById('chart-users');
+    if (ctxUsers) {
+        chartUsers = new Chart(ctxUsers, {
+            type: 'line',
+            data: {
+                labels: usersLabels,
+                datasets: [
+                    {
+                        label: 'Новые пользователи',
+                        data: usersAllKeys.map(k => newUsersMap[k] ?? 0),
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.2
+                    },
+                    {
+                        label: 'Активные',
+                        data: usersAllKeys.map(k => activeUsersMap[k] ?? 0),
+                        borderColor: 'rgb(34, 197, 94)',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        fill: true,
+                        tension: 0.2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { maxRotation: 45, font: { size: 10 } } },
+                    y: { beginAtZero: true }
+                }
+            }
+        });
     }
 
-    const seriesList = ts.createdStickerSets || ts.likes || ts.swipes || [];
-    const contentLabels = seriesList.length ? seriesList.map(p => (p.bucketStart || '').replace('Z', '').slice(0, 16).replace('T', ' ')) : [];
-    const contentData = {
-        labels: contentLabels,
-        datasets: [
-            { label: 'Стикерсеты', data: (ts.createdStickerSets || []).map(p => p.value != null ? p.value : 0), borderColor: 'rgb(59, 130, 246)', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true, tension: 0.2 },
-            { label: 'Лайки', data: (ts.likes || []).map(p => p.value != null ? p.value : 0), borderColor: 'rgb(34, 197, 94)', backgroundColor: 'rgba(34, 197, 94, 0.1)', fill: true, tension: 0.2 },
-            { label: 'Свайпы', data: (ts.swipes || []).map(p => p.value != null ? p.value : 0), borderColor: 'rgb(234, 179, 8)', backgroundColor: 'rgba(234, 179, 8, 0.1)', fill: true, tension: 0.2 }
-        ]
-    };
+    const stickerSetsSeries = ts.createdStickerSets || [];
+    const likesSeries = ts.likes || [];
+    const swipesSeries = ts.swipes || [];
+    const contentAllKeys = Array.from(new Set([
+        ...stickerSetsSeries.map(p => p.bucketStart),
+        ...likesSeries.map(p => p.bucketStart),
+        ...swipesSeries.map(p => p.bucketStart)
+    ])).sort();
+    const stickerSetsMap = Object.fromEntries(stickerSetsSeries.map(p => [p.bucketStart, p.value != null ? p.value : 0]));
+    const likesMap = Object.fromEntries(likesSeries.map(p => [p.bucketStart, p.value != null ? p.value : 0]));
+    const swipesMap = Object.fromEntries(swipesSeries.map(p => [p.bucketStart, p.value != null ? p.value : 0]));
+    const contentLabels = contentAllKeys.map(k => k.replace('Z', '').slice(0, 16).replace('T', ' '));
     const ctxContent = document.getElementById('chart-content');
     if (ctxContent) {
         chartContent = new Chart(ctxContent, {
             type: 'line',
-            data: contentData,
+            data: {
+                labels: contentLabels,
+                datasets: [
+                    {
+                        label: 'Стикерсеты',
+                        data: contentAllKeys.map(k => stickerSetsMap[k] ?? 0),
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.2
+                    },
+                    {
+                        label: 'Лайки',
+                        data: contentAllKeys.map(k => likesMap[k] ?? 0),
+                        borderColor: 'rgb(34, 197, 94)',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        fill: true,
+                        tension: 0.2
+                    },
+                    {
+                        label: 'Свайпы',
+                        data: contentAllKeys.map(k => swipesMap[k] ?? 0),
+                        borderColor: 'rgb(234, 179, 8)',
+                        backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                        fill: true,
+                        tension: 0.2
+                    }
+                ]
+            },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                scales: { x: { ticks: { maxRotation: 45, font: { size: 10 } } }, y: { beginAtZero: true } }
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { maxRotation: 45, font: { size: 10 } } },
+                    y: { beginAtZero: true }
+                }
             }
         });
     }
@@ -210,17 +272,50 @@ function renderCharts(data) {
         });
     }
 
-    chartGeneration = createLineChart('chart-generation', ts.generationRuns, 'Запуски');
-    if (ts.generationSuccess && ts.generationSuccess.length && chartGeneration) {
-        chartGeneration.data.datasets.push({
-            label: 'Успешные',
-            data: ts.generationSuccess.map(p => p.value != null ? p.value : 0),
-            borderColor: 'rgb(34, 197, 94)',
-            backgroundColor: 'rgba(34, 197, 94, 0.1)',
-            fill: true,
-            tension: 0.2
+    const generationRunsSeries = ts.generationRuns || [];
+    const generationSuccessSeries = ts.generationSuccess || [];
+    const genAllKeys = Array.from(new Set([
+        ...generationRunsSeries.map(p => p.bucketStart),
+        ...generationSuccessSeries.map(p => p.bucketStart)
+    ])).sort();
+    const generationRunsMap = Object.fromEntries(generationRunsSeries.map(p => [p.bucketStart, p.value != null ? p.value : 0]));
+    const generationSuccessMap = Object.fromEntries(generationSuccessSeries.map(p => [p.bucketStart, p.value != null ? p.value : 0]));
+    const genLabels = genAllKeys.map(k => k.replace('Z', '').slice(0, 16).replace('T', ' '));
+    const ctxGen = document.getElementById('chart-generation');
+    if (ctxGen) {
+        chartGeneration = new Chart(ctxGen, {
+            type: 'line',
+            data: {
+                labels: genLabels,
+                datasets: [
+                    {
+                        label: 'Запуски',
+                        data: genAllKeys.map(k => generationRunsMap[k] ?? 0),
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.2
+                    },
+                    {
+                        label: 'Успешные',
+                        data: genAllKeys.map(k => generationSuccessMap[k] ?? 0),
+                        borderColor: 'rgb(34, 197, 94)',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        fill: true,
+                        tension: 0.2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { maxRotation: 45, font: { size: 10 } } },
+                    y: { beginAtZero: true }
+                }
+            }
         });
-        chartGeneration.update();
     }
 
     chartReferrals = createLineChart('chart-referrals', ts.referralEvents, 'Реферальные события');
