@@ -144,7 +144,8 @@ public class StickerGenerationService {
         auditRequestParams.put("seed", request.getSeed());
         auditRequestParams.put("stylePresetId", request.getStylePresetId());
         auditRequestParams.put("removeBackground", request.getRemoveBackground());
-        generationAuditService.startSession(taskId, userId, request.getPrompt(), auditRequestParams, task.getExpiresAt());
+        OffsetDateTime auditExpiresAt = OffsetDateTime.now().plusDays(90);
+        generationAuditService.startSession(taskId, userId, request.getPrompt(), auditRequestParams, auditExpiresAt);
 
         // 4. Запускаем асинхронную обработку промпта
         processPromptAsync(taskId, userId, request.getStylePresetId());
