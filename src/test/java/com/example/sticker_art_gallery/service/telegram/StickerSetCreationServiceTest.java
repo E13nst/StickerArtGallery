@@ -40,6 +40,9 @@ class StickerSetCreationServiceTest {
     private StickerSetService stickerSetService;
 
     @Mock
+    private StickerSetTelegramCacheService stickerSetTelegramCacheService;
+
+    @Mock
     private UserRepository userRepository;
 
     @Mock
@@ -62,6 +65,7 @@ class StickerSetCreationServiceTest {
                 telegramBotApiService,
                 stickerSetService,
                 namingService,
+                stickerSetTelegramCacheService,
                 userRepository,
                 appConfig
         );

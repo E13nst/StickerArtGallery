@@ -37,6 +37,7 @@ public class StickerSetService {
     private final StickerSetCrudService crudService;
     private final StickerSetVisibilityService visibilityService;
     private final StickerSetEnrichmentService enrichmentService;
+    private final StickerSetTelegramCacheService stickerSetTelegramCacheService;
     private LikeService likeService; // Lazy injection to avoid circular dependency
 
     @Autowired
@@ -46,7 +47,8 @@ public class StickerSetService {
                              ArtRewardService artRewardService,
                              StickerSetCrudService crudService,
                              StickerSetVisibilityService visibilityService,
-                             StickerSetEnrichmentService enrichmentService) {
+                             StickerSetEnrichmentService enrichmentService,
+                             StickerSetTelegramCacheService stickerSetTelegramCacheService) {
         this.stickerSetRepository = stickerSetRepository;
         this.telegramBotApiService = telegramBotApiService;
         this.categoryService = categoryService;
@@ -54,6 +56,7 @@ public class StickerSetService {
         this.crudService = crudService;
         this.visibilityService = visibilityService;
         this.enrichmentService = enrichmentService;
+        this.stickerSetTelegramCacheService = stickerSetTelegramCacheService;
     }
     
     @Autowired(required = false)
@@ -225,7 +228,14 @@ public class StickerSetService {
         }
 
         // 6. Создаем стикерсет
-        return createStickerSetInternal(userId, title, stickerSetName, createDto.getDescription(), createDto.getVisibility(), categories, isVerified, false, stickersCount);
+        StickerSet createdStickerSet = createStickerSetInternal(
+                userId, title, stickerSetName, createDto.getDescription(), createDto.getVisibility(), categories, isVerified, false, stickersCount);
+        try {
+            stickerSetTelegramCacheService.save(createdStickerSet.getId(), stickerSetName, telegramStickerSetInfo);
+        } catch (Exception e) {
+            LOGGER.warn("⚠️ Не удалось сохранить кеш Telegram payload для стикерсета {}: {}", stickerSetName, e.getMessage());
+        }
+        return createdStickerSet;
     }
     
     /**
@@ -294,6 +304,12 @@ public class StickerSetService {
         StickerSet savedSet = stickerSetRepository.save(existing);
         LOGGER.info("✅ Восстановлен стикерсет: ID={}, Name={}, UserId={}, Visibility={}", 
                 savedSet.getId(), savedSet.getName(), userId, savedSet.getVisibility());
+
+        try {
+            stickerSetTelegramCacheService.save(savedSet.getId(), stickerSetName, telegramStickerSetInfo);
+        } catch (Exception e) {
+            LOGGER.warn("⚠️ Не удалось обновить кеш Telegram payload при восстановлении {}: {}", stickerSetName, e.getMessage());
+        }
         
         // НЕ начисляем ART - это восстановление, не новый стикерсет
         
@@ -685,21 +701,6 @@ public class StickerSetService {
         
         // Обогащаем данными Telegram API
         StickerSetDto dto = enrichSingleStickerSetSafelyWithCategories(stickerSet, lang, currentUserId, shortInfo, false, true);
-        
-        // Обновляем title и stickers_count в БД, если данные Telegram API получены
-        // Обновление выполняется только если shortInfo == false (данные Telegram API получены)
-        if (!shortInfo && dto != null && dto.getTelegramStickerSetInfo() != null) {
-            try {
-                // Получаем оригинальные данные из кэша (не отфильтрованные для preview)
-                // Кэш уже использован при обогащении, поэтому это не создаст дополнительного запроса
-                Object botApiData = telegramBotApiService.getStickerSetInfo(stickerSet.getName());
-                enrichmentService.updateTitleAndStickersCount(stickerSet, botApiData);
-            } catch (Exception e) {
-                LOGGER.warn("⚠️ Ошибка при обновлении title и stickers_count для стикерсета {}: {} - продолжаем выполнение", 
-                        id, e.getMessage());
-                // Не прерываем выполнение - ошибка обновления не должна влиять на возврат DTO
-            }
-        }
         
         LOGGER.debug("🔍 Стикерсет ID {}: userId={}, currentUserId={}, state={}, visibility={}, availableActions={}", 
                 id, stickerSet.getUserId(), currentUserId, stickerSet.getState(), stickerSet.getVisibility(), 

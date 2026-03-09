@@ -32,6 +32,7 @@ public class StickerSetCreationService {
     private final TelegramBotApiService telegramBotApiService;
     private final StickerSetService stickerSetService;
     private final StickerSetNamingService namingService;
+    private final StickerSetTelegramCacheService stickerSetTelegramCacheService;
     private final UserRepository userRepository;
     private final AppConfig appConfig;
     
@@ -41,12 +42,14 @@ public class StickerSetCreationService {
             TelegramBotApiService telegramBotApiService,
             StickerSetService stickerSetService,
             StickerSetNamingService namingService,
+            StickerSetTelegramCacheService stickerSetTelegramCacheService,
             UserRepository userRepository,
             AppConfig appConfig) {
         this.imageStorageService = imageStorageService;
         this.telegramBotApiService = telegramBotApiService;
         this.stickerSetService = stickerSetService;
         this.namingService = namingService;
+        this.stickerSetTelegramCacheService = stickerSetTelegramCacheService;
         this.userRepository = userRepository;
         this.appConfig = appConfig;
     }
@@ -126,6 +129,14 @@ public class StickerSetCreationService {
             
             StickerSet stickerSet = stickerSetService.createStickerSetForUser(dto, userId, "en", null);
             LOGGER.info("✅ Стикерсет зарегистрирован в БД: id={}, name={}", stickerSet.getId(), name);
+
+            // Обновляем persistent cache сразу после успешного создания
+            try {
+                Object payload = telegramBotApiService.getStickerSetInfo(name);
+                stickerSetTelegramCacheService.save(stickerSet.getId(), name, payload);
+            } catch (Exception e) {
+                LOGGER.warn("⚠️ Не удалось сохранить кеш Telegram payload для нового стикерсета {}: {}", name, e.getMessage());
+            }
             return stickerSet;
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при регистрации стикерсета в БД: {}", e.getMessage(), e);
@@ -259,6 +270,16 @@ public class StickerSetCreationService {
         // 5. Получить title стикерсета
         Object fullStickerSetInfo = telegramBotApiService.getStickerSetInfo(stickerSetName);
         String title = telegramBotApiService.extractTitleFromStickerSetInfo(fullStickerSetInfo);
+
+        // Сохраняем обновленный payload в persistent cache, если стикерсет зарегистрирован в БД
+        StickerSet existingStickerSet = stickerSetService.findByName(stickerSetName);
+        if (existingStickerSet != null) {
+            try {
+                stickerSetTelegramCacheService.save(existingStickerSet.getId(), stickerSetName, fullStickerSetInfo);
+            } catch (Exception e) {
+                LOGGER.warn("⚠️ Не удалось сохранить кеш Telegram payload для стикерсета {}: {}", stickerSetName, e.getMessage());
+            }
+        }
 
         return new SaveImageToStickerSetResponseDto(stickerSetName, stickerIndex, newStickerFileId, title);
     }

@@ -29,4 +29,19 @@ public class AsyncConfig {
         LOGGER.info("Generation task executor configured: corePoolSize=5, maxPoolSize=10, queueCapacity=100");
         return executor;
     }
+
+    @Bean(name = "stickerCacheRefreshExecutor")
+    public Executor stickerCacheRefreshExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(200);
+        executor.setThreadNamePrefix("sticker-cache-");
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
+        executor.initialize();
+
+        LOGGER.info("Sticker cache refresh executor configured: corePoolSize=2, maxPoolSize=4, queueCapacity=200");
+        return executor;
+    }
 }

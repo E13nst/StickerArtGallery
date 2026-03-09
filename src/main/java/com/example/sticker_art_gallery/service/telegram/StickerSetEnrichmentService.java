@@ -26,14 +26,17 @@ public class StickerSetEnrichmentService {
     private final TelegramBotApiService telegramBotApiService;
     private final StickerSetRepository stickerSetRepository;
     private final WalletService walletService;
+    private final StickerSetTelegramCacheService stickerSetTelegramCacheService;
     
     @Autowired
     public StickerSetEnrichmentService(TelegramBotApiService telegramBotApiService,
                                      StickerSetRepository stickerSetRepository,
-                                     WalletService walletService) {
+                                     WalletService walletService,
+                                     StickerSetTelegramCacheService stickerSetTelegramCacheService) {
         this.telegramBotApiService = telegramBotApiService;
         this.stickerSetRepository = stickerSetRepository;
         this.walletService = walletService;
+        this.stickerSetTelegramCacheService = stickerSetTelegramCacheService;
     }
     
     /**
@@ -88,23 +91,26 @@ public class StickerSetEnrichmentService {
             return dto;
         }
         
-        Object botApiData = null;
-        try {
-            botApiData = telegramBotApiService.getStickerSetInfo(stickerSet.getName());
-            
-            // Применяем фильтрацию для режима превью
-            if (preview && botApiData != null) {
-                botApiData = filterStickersForPreview(botApiData);
-            }
-            
-            dto.setTelegramStickerSetInfo(botApiData);
-            LOGGER.debug("✅ Стикерсет '{}' обогащен данными Bot API (preview={})", stickerSet.getName(), preview);
-        } catch (Exception e) {
-            LOGGER.warn("⚠️ Не удалось получить данные Bot API для стикерсета '{}': {} - пропускаем обогащение", 
-                    stickerSet.getName(), e.getMessage());
-            // Оставляем telegramStickerSetInfo = null, продолжаем обработку
+        Object botApiData = stickerSetTelegramCacheService.getCachedPayload(stickerSet.getId()).orElse(null);
+        if (botApiData == null) {
+            LOGGER.debug("ℹ️ Cache miss for stickerset {}, scheduling background refresh", stickerSet.getId());
             dto.setTelegramStickerSetInfo(null);
+            stickerSetTelegramCacheService.scheduleRefreshIfNeeded(stickerSet.getId());
+            return dto;
         }
+
+        if (stickerSetTelegramCacheService.isStale(stickerSet.getId())) {
+            LOGGER.debug("♻️ Cache stale for stickerset {}, scheduling background refresh", stickerSet.getId());
+            stickerSetTelegramCacheService.scheduleRefreshIfNeeded(stickerSet.getId());
+        }
+
+        // Применяем фильтрацию для режима превью
+        if (preview) {
+            botApiData = filterStickersForPreview(botApiData);
+        }
+
+        dto.setTelegramStickerSetInfo(botApiData);
+        LOGGER.debug("✅ Стикерсет '{}' обогащен данными cache (preview={})", stickerSet.getName(), preview);
         
         return dto;
     }

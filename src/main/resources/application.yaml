@@ -19,6 +19,8 @@ app:
       max-attempts: ${STICKERBOT_RETRY_MAX_ATTEMPTS:3}
       initial-delay-ms: ${STICKERBOT_RETRY_INITIAL_DELAY_MS:300}
       multiplier: ${STICKERBOT_RETRY_MULTIPLIER:3.0}
+  sticker-cache:
+    refresh-after-days: ${STICKER_CACHE_REFRESH_AFTER_DAYS:7}
   ai:
     context-length: ${AI_CONTEXT_LENGTH:10}  # Длина контекста для InMemoryChatMemory (количество сообщений)
     auto-category:

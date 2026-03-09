@@ -4,6 +4,7 @@ import com.example.sticker_art_gallery.dto.*;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.service.telegram.StickerSetService;
 import com.example.sticker_art_gallery.service.telegram.StickerSetCreationService;
+import com.example.sticker_art_gallery.service.telegram.StickerSetTelegramCacheService;
 import com.example.sticker_art_gallery.service.telegram.TelegramBotApiService;
 import com.example.sticker_art_gallery.service.ai.AutoCategorizationService;
 import com.example.sticker_art_gallery.service.ai.StickerSetDescriptionService;
@@ -57,6 +58,7 @@ public class StickerSetController {
     private final StickerSetControllerHelper helper;
     private final StickerSetCreationService stickerSetCreationService;
     private final TelegramBotApiService telegramBotApiService;
+    private final StickerSetTelegramCacheService stickerSetTelegramCacheService;
     private final SwipeTrackingService swipeTrackingService;
     
     @Autowired
@@ -69,6 +71,7 @@ public class StickerSetController {
                                StickerSetControllerHelper helper,
                                StickerSetCreationService stickerSetCreationService,
                                TelegramBotApiService telegramBotApiService,
+                               StickerSetTelegramCacheService stickerSetTelegramCacheService,
                                SwipeTrackingService swipeTrackingService) {
         this.stickerSetService = stickerSetService;
         this.autoCategorizationService = autoCategorizationService;
@@ -79,6 +82,7 @@ public class StickerSetController {
         this.helper = helper;
         this.stickerSetCreationService = stickerSetCreationService;
         this.telegramBotApiService = telegramBotApiService;
+        this.stickerSetTelegramCacheService = stickerSetTelegramCacheService;
         this.swipeTrackingService = swipeTrackingService;
     }
     
@@ -1305,6 +1309,8 @@ public class StickerSetController {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to delete sticker from Telegram"));
             }
+
+            stickerSetTelegramCacheService.scheduleRefreshIfNeeded(id);
             
             return ResponseEntity.ok().build();
         } catch (IllegalArgumentException e) {
