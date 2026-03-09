@@ -8,13 +8,20 @@ plugins {
     id 'java'
     id 'org.flywaydb.flyway' version '10.8.1'
     id 'io.qameta.allure' version '2.11.2'
+    // Важно: используем ветку 3.14.x, т.к. она стабильно доступна в mirror-репозиториях.
+    // 3.15.x в некоторых mirror'ах отсутствует и может ломать сборку при блокировке Maven Central.
+    id 'io.gatling.gradle' version '3.13.5.4'
 }
 
 group = 'com.example'
 version = '0.0.1-SNAPSHOT'
 description = 'sticker-art-gallery'
-sourceCompatibility = '17'
-targetCompatibility = '17'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
 
 repositories {
     mavenLocal()
@@ -282,6 +289,13 @@ allure {
             }
         }
     }
+}
+
+// Gatling load testing configuration
+// Изолируем Gatling от основного classpath — симуляции не нужны Spring Boot зависимости
+gatling {
+    includeMainOutput = false
+    includeTestOutput = false
 }
 
 // Flyway configuration

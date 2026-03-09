@@ -4,9 +4,13 @@
 
 pluginManagement {
     repositories {
+        // Aliyun public mirror — зеркало Maven Central (нужно для транзитивных deps плагинов)
+        maven { url "https://maven.aliyun.com/repository/public" }
         maven { url "https://maven.aliyun.com/repository/gradle-plugin" }
+        maven { url "https://repo.huaweicloud.com/repository/maven/" }
         maven { url "https://maven.yandex.ru/repository/gradle‑plugins/" }
         maven { url "https://plugins.gradle.org/m2/" }
+        mavenCentral()
 //        gradlePluginPortal()
     }
 }

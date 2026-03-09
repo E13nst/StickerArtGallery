@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Конфигурация логирования для Gatling симуляций.
+  Уровень WARN по умолчанию — не спамим в консоль при высоком RPS.
+  Чтобы видеть тела запросов/ответов при отладке, выставь:
+    <logger name="io.gatling.http.engine.response" level="TRACE" />
+-->
+<configuration>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%-5level] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Ключевые Gatling-пакеты: только WARN и выше во время нагрузки -->
+    <logger name="io.gatling" level="WARN" />
+    <logger name="io.netty" level="WARN" />
+
+    <!-- Раскомментировать для отладки конкретного запроса:
+    <logger name="io.gatling.http.engine.response" level="TRACE" />
+    -->
+
+    <root level="WARN">
+        <appender-ref ref="CONSOLE" />
+    </root>
+
+</configuration>

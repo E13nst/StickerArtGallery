@@ -13,6 +13,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.HashMap;
@@ -208,6 +209,14 @@ public class ValidationExceptionHandler {
         body.put("rootCause", getRootCauseMessage(ex));
         body.put("timestamp", java.time.OffsetDateTime.now());
         return ResponseEntity.status(org.springframework.http.HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    /**
+     * Клиент разорвал соединение до получения ответа (нормально при деплое или закрытии вкладки)
+     */
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    public void handleClientAbort(AsyncRequestNotUsableException ex) {
+        LOGGER.debug("🔌 Клиент разорвал соединение: {}", ex.getMessage());
     }
 
     /**

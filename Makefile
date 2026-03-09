@@ -1,7 +1,7 @@
 # Telegram Bot Dream Stream - Makefile
 # Удобные команды для разработки и тестирования
 
-.PHONY: help start stop restart build test clean logs status
+.PHONY: help start stop restart build test clean logs status load-test-stickersets load-test-quick
 
 # Цвета для вывода
 GREEN=\033[0;32m
@@ -200,6 +200,33 @@ test-api: ## Тестировать API локально
 	else \
 		echo "$(RED)❌ Приложение не запущено! Запустите командой: make start$(NC)"; \
 	fi
+
+# Опциональные JVM-параметры для нагрузочного теста (можно переопределить при вызове)
+# Пример: make load-test-stickersets GATLING_LOAD_OPTS="-DstartRps=1 -DstepRps=2 -Dsteps=10 -DstepDurationSeconds=60"
+GATLING_LOAD_OPTS ?=
+
+load-test-stickersets: ## Нагрузочный тест Gatling: GET /api/stickersets на прод (дефолт: 20 ступеней по 30 сек, 1→20 RPS)
+	@set -e; \
+	JAVA17_HOME=$$(/usr/libexec/java_home -v 17 2>/dev/null || true); \
+	if [ -z "$$JAVA17_HOME" ]; then \
+		echo "$(RED)❌ JDK 17 не найден. Установите Java 17 и повторите.$(NC)"; \
+		exit 1; \
+	fi; \
+	echo "$(GREEN)⚡ Запускаем нагрузочный тест Gatling...$(NC)"; \
+	echo "$(RED)⚠️  ВНИМАНИЕ: нагрузка идёт на ПРОДАКШЕН!$(NC)"; \
+	echo "$(YELLOW)☕ Java: $$JAVA17_HOME$(NC)"; \
+	echo "$(YELLOW)🎯 Цель: https://stickerartgallery-e13nst.amvera.io/api/stickersets$(NC)"; \
+	echo "$(YELLOW)📈 Профиль: 1 RPS → 20 RPS, шаг +1 каждые 30 сек (~13 минут)$(NC)"; \
+	echo "$(YELLOW)💡 Кастомизация: make load-test-stickersets GATLING_LOAD_OPTS=\"-DstartRps=1 -DstepRps=2 -Dsteps=10 -DstepDurationSeconds=60\"$(NC)"; \
+	echo ""; \
+	JAVA_HOME="$$JAVA17_HOME" $(GRADLE_CMD) --no-daemon -Dorg.gradle.java.home="$$JAVA17_HOME" gatlingRun --non-interactive $(GATLING_LOAD_OPTS); \
+	echo ""; \
+	echo "$(GREEN)✅ Тест завершён!$(NC)"; \
+	echo "$(YELLOW)📊 Отчёт: build/reports/gatling/*/index.html$(NC)"; \
+	echo "$(YELLOW)💡 Открыть отчёт: open \$$(ls -dt build/reports/gatling/*/index.html | head -1)$(NC)"
+
+load-test-quick: ## Быстрый нагрузочный тест (5 ступеней по 10 сек, 1→5 RPS, ~1.5 минуты)
+	@$(MAKE) load-test-stickersets GATLING_LOAD_OPTS="-DstartRps=1 -DstepRps=1 -Dsteps=5 -DstepDurationSeconds=10 -DrampSeconds=5"
 
 deploy: ## Развернуть на продакшен (только push в main)
 	@echo "$(GREEN)🚀 Развертываем на продакшен...$(NC)"
