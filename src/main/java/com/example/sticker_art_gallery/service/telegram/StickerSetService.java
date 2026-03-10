@@ -103,10 +103,18 @@ public class StickerSetService {
      */
     public StickerSet createStickerSetForUser(CreateStickerSetDto createDto, Long userId, String language, Long authorId) {
         // Deprecated authorId: при authorId != null интерпретируется как isVerified=true
-        return createStickerSetForUser(createDto, userId, language, authorId != null);
+        return createStickerSetForUser(createDto, userId, language, authorId != null, StickerSetType.USER);
     }
 
     public StickerSet createStickerSetForUser(CreateStickerSetDto createDto, Long userId, String language, boolean isVerified) {
+        return createStickerSetForUser(createDto, userId, language, isVerified, StickerSetType.USER);
+    }
+
+    public StickerSet createStickerSetForUser(CreateStickerSetDto createDto,
+                                              Long userId,
+                                              String language,
+                                              boolean isVerified,
+                                              StickerSetType type) {
         String lang = normalizeLanguage(language);
         if (userId == null) {
             throw new IllegalArgumentException(localize(
@@ -127,10 +135,15 @@ public class StickerSetService {
             }
         }
         
-        return createStickerSetValidated(createDto, userId, lang, isVerified);
+        StickerSetType effectiveType = type != null ? type : StickerSetType.USER;
+        return createStickerSetValidated(createDto, userId, lang, isVerified, effectiveType);
     }
 
-    private StickerSet createStickerSetValidated(CreateStickerSetDto createDto, Long userId, String lang, boolean isVerified) {
+    private StickerSet createStickerSetValidated(CreateStickerSetDto createDto,
+                                                 Long userId,
+                                                 String lang,
+                                                 boolean isVerified,
+                                                 StickerSetType type) {
         // Нормализуем имя стикерсета (без автодобавления суффикса бота).
         // Для /api/stickersets мы регистрируем уже существующий набор в Telegram,
         // поэтому имя должно оставаться точным.
@@ -169,7 +182,7 @@ public class StickerSetService {
             // Если DELETED - восстанавливаем запись (обновляем старую запись)
             if (existing.isDeleted()) {
                 LOGGER.info("🔄 Восстановление удаленного стикерсета: ID={}, Name={}", existing.getId(), stickerSetName);
-                return restoreAndUpdateStickerSet(existing, createDto, userId, lang, isVerified);
+                return restoreAndUpdateStickerSet(existing, createDto, userId, lang, isVerified, type);
             }
         }
 
@@ -229,7 +242,7 @@ public class StickerSetService {
 
         // 6. Создаем стикерсет
         StickerSet createdStickerSet = createStickerSetInternal(
-                userId, title, stickerSetName, createDto.getDescription(), createDto.getVisibility(), categories, isVerified, false, stickersCount);
+                userId, title, stickerSetName, createDto.getDescription(), createDto.getVisibility(), categories, type, isVerified, false, stickersCount);
         try {
             stickerSetTelegramCacheService.save(createdStickerSet.getId(), stickerSetName, telegramStickerSetInfo);
         } catch (Exception e) {
@@ -242,7 +255,7 @@ public class StickerSetService {
      * Восстановление и обновление удаленного стикерсета
      */
     private StickerSet restoreAndUpdateStickerSet(StickerSet existing, CreateStickerSetDto createDto, 
-                                                   Long userId, String lang, boolean isVerified) {
+                                                   Long userId, String lang, boolean isVerified, StickerSetType type) {
         String stickerSetName = createDto.getName();
         
         // 1. Валидируем в Telegram API (может быть удален там)
@@ -270,6 +283,7 @@ public class StickerSetService {
         // 3. Обновляем данные
         existing.setUserId(userId);
         existing.setVisibility(createDto.getVisibility() != null ? createDto.getVisibility() : StickerSetVisibility.PRIVATE);
+        existing.setType(type != null ? type : StickerSetType.USER);
         existing.setIsVerified(isVerified);
         
         // 4. Обновляем title если указан
@@ -327,6 +341,7 @@ public class StickerSetService {
                                                String description,
                                                StickerSetVisibility visibility,
                                                List<Category> categories,
+                                               StickerSetType type,
                                                boolean isVerified,
                                                boolean isRestored,
                                                Integer stickersCount) {
@@ -340,7 +355,7 @@ public class StickerSetService {
         stickerSet.setDescription(description);
         stickerSet.setState(StickerSetState.ACTIVE);
         stickerSet.setVisibility(visibility != null ? visibility : StickerSetVisibility.PRIVATE);
-        stickerSet.setType(StickerSetType.USER);
+        stickerSet.setType(type != null ? type : StickerSetType.USER);
         stickerSet.setStickersCount(stickersCount);
         stickerSet.setIsVerified(isVerified);
         

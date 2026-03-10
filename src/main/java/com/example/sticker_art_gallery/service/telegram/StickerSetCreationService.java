@@ -4,6 +4,7 @@ import com.example.sticker_art_gallery.config.AppConfig;
 import com.example.sticker_art_gallery.dto.CreateStickerSetDto;
 import com.example.sticker_art_gallery.dto.SaveImageToStickerSetResponseDto;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
+import com.example.sticker_art_gallery.model.telegram.StickerSetType;
 import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
 import com.example.sticker_art_gallery.repository.UserRepository;
 import com.example.sticker_art_gallery.model.user.UserEntity;
@@ -127,7 +128,13 @@ public class StickerSetCreationService {
             dto.setCategoryKeys(categoryKeys);
             dto.setVisibility(visibility);
             
-            StickerSet stickerSet = stickerSetService.createStickerSetForUser(dto, userId, "en", null);
+            StickerSet stickerSet = stickerSetService.createStickerSetForUser(
+                    dto,
+                    userId,
+                    "en",
+                    true,
+                    StickerSetType.GENERATED
+            );
             LOGGER.info("✅ Стикерсет зарегистрирован в БД: id={}, name={}", stickerSet.getId(), name);
 
             // Обновляем persistent cache сразу после успешного создания

@@ -10,6 +10,11 @@ public enum StickerSetType {
     USER,
     
     /**
+     * Сгенерирован через внутренний pipeline создания (POST /api/stickersets/create)
+     */
+    GENERATED,
+    
+    /**
      * Официальный стикерсет Telegram
      */
     OFFICIAL

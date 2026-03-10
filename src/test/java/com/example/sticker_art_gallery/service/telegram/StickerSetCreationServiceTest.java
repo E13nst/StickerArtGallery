@@ -2,6 +2,7 @@ package com.example.sticker_art_gallery.service.telegram;
 
 import com.example.sticker_art_gallery.config.AppConfig;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
+import com.example.sticker_art_gallery.model.telegram.StickerSetType;
 import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
 import com.example.sticker_art_gallery.repository.UserRepository;
 import com.example.sticker_art_gallery.service.storage.ImageStorageService;
@@ -69,8 +70,6 @@ class StickerSetCreationServiceTest {
                 userRepository,
                 appConfig
         );
-        when(appConfig.getTelegram()).thenReturn(telegramConfig);
-        when(telegramConfig.getDefaultStickerSetTitle()).thenReturn("Test Title");
     }
 
     @Test
@@ -89,7 +88,12 @@ class StickerSetCreationServiceTest {
         StickerSet saved = new StickerSet();
         saved.setId(1L);
         saved.setName("spamsticks_by_stixlybot");
-        when(stickerSetService.createStickerSetForUser(any(), any(Long.class), anyString(), any(Long.class)))
+        when(stickerSetService.createStickerSetForUser(
+                any(),
+                anyLong(),
+                anyString(),
+                anyBoolean(),
+                any(StickerSetType.class)))
                 .thenReturn(saved);
 
         creationService.createWithSticker(
@@ -110,6 +114,13 @@ class StickerSetCreationServiceTest {
                 eq("My Title"),
                 eq("🎨")
         );
+        verify(stickerSetService).createStickerSetForUser(
+                any(),
+                eq(100L),
+                anyString(),
+                eq(true),
+                eq(StickerSetType.GENERATED)
+        );
         assertEquals("spamsticks_by_stixlybot", nameCaptor.getValue());
     }
 
@@ -127,7 +138,12 @@ class StickerSetCreationServiceTest {
         StickerSet saved = new StickerSet();
         saved.setId(2L);
         saved.setName("mypack_by_stixlybot");
-        when(stickerSetService.createStickerSetForUser(any(), any(Long.class), anyString(), any(Long.class)))
+        when(stickerSetService.createStickerSetForUser(
+                any(),
+                anyLong(),
+                anyString(),
+                anyBoolean(),
+                any(StickerSetType.class)))
                 .thenReturn(saved);
 
         creationService.createWithSticker(
@@ -147,6 +163,13 @@ class StickerSetCreationServiceTest {
                 nameCaptor.capture(),
                 eq("Title"),
                 eq("🎨")
+        );
+        verify(stickerSetService).createStickerSetForUser(
+                any(),
+                eq(200L),
+                anyString(),
+                eq(true),
+                eq(StickerSetType.GENERATED)
         );
         assertEquals("mypack_by_stixlybot", nameCaptor.getValue());
     }

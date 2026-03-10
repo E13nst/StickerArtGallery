@@ -261,7 +261,14 @@ public class StickerSet {
      * Проверить, создан ли стикерсет пользователем
      */
     public boolean isUserCreated() {
-        return type == StickerSetType.USER;
+        return type == StickerSetType.USER || type == StickerSetType.GENERATED;
+    }
+
+    /**
+     * Проверить, сгенерирован ли стикерсет через генератор
+     */
+    public boolean isGenerated() {
+        return type == StickerSetType.GENERATED;
     }
     
     // ============ Business logic ============
