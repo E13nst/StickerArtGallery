@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.util.Set;
+import java.util.Locale;
 
 /**
  * Сервис для создания и управления стикерсетами через Telegram Bot API.
@@ -27,6 +28,8 @@ public class StickerSetCreationService {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(StickerSetCreationService.class);
     private static final int MAX_STICKERS_PER_SET = 120;
+    private static final int MAX_CREATE_RETRIES_ON_NAME_CONFLICT = 3;
+    private static final int MAX_TELEGRAM_STICKERSET_NAME_LENGTH = 64;
     private static final String DEFAULT_EMOJI = "🎨";
     
     private final ImageStorageService imageStorageService;
@@ -109,21 +112,16 @@ public class StickerSetCreationService {
             visibility = StickerSetVisibility.PRIVATE;
         }
         
-        // 4. Создать в Telegram
-        boolean success = telegramBotApiService.createNewStickerSet(
-            userId, stickerFile, name, title, emoji
+        // 4. Создать в Telegram (с retry при коллизии имени)
+        String createdStickerSetName = createStickerSetInTelegramWithRetry(
+                userId, stickerFile, name, title, emoji
         );
-        
-        if (!success) {
-            throw new RuntimeException("Failed to create sticker set in Telegram: " + name);
-        }
-        
-        LOGGER.info("✅ Стикерсет создан в Telegram: {}", name);
+        LOGGER.info("✅ Стикерсет создан в Telegram: {}", createdStickerSetName);
         
         // 5. Зарегистрировать в БД (простая стратегия: если упало - логируем)
         try {
             CreateStickerSetDto dto = new CreateStickerSetDto();
-            dto.setName(name);
+            dto.setName(createdStickerSetName);
             dto.setTitle(title);
             dto.setCategoryKeys(categoryKeys);
             dto.setVisibility(visibility);
@@ -135,14 +133,14 @@ public class StickerSetCreationService {
                     true,
                     StickerSetType.GENERATED
             );
-            LOGGER.info("✅ Стикерсет зарегистрирован в БД: id={}, name={}", stickerSet.getId(), name);
+            LOGGER.info("✅ Стикерсет зарегистрирован в БД: id={}, name={}", stickerSet.getId(), createdStickerSetName);
 
             // Обновляем persistent cache сразу после успешного создания
             try {
-                Object payload = telegramBotApiService.getStickerSetInfo(name);
-                stickerSetTelegramCacheService.save(stickerSet.getId(), name, payload);
+                Object payload = telegramBotApiService.getStickerSetInfo(createdStickerSetName);
+                stickerSetTelegramCacheService.save(stickerSet.getId(), createdStickerSetName, payload);
             } catch (Exception e) {
-                LOGGER.warn("⚠️ Не удалось сохранить кеш Telegram payload для нового стикерсета {}: {}", name, e.getMessage());
+                LOGGER.warn("⚠️ Не удалось сохранить кеш Telegram payload для нового стикерсета {}: {}", createdStickerSetName, e.getMessage());
             }
             return stickerSet;
         } catch (Exception e) {
@@ -301,5 +299,49 @@ public class StickerSetCreationService {
         return userRepository.findById(userId)
             .map(UserEntity::getUsername)
             .orElse(null);
+    }
+
+    private String createStickerSetInTelegramWithRetry(Long userId,
+                                                       File stickerFile,
+                                                       String initialName,
+                                                       String title,
+                                                       String emoji) {
+        String currentName = initialName;
+        for (int attempt = 1; attempt <= MAX_CREATE_RETRIES_ON_NAME_CONFLICT; attempt++) {
+            boolean success = telegramBotApiService.createNewStickerSet(
+                    userId, stickerFile, currentName, title, emoji
+            );
+            if (success) {
+                return currentName;
+            }
+
+            if (attempt == MAX_CREATE_RETRIES_ON_NAME_CONFLICT) {
+                break;
+            }
+
+            String nextName = buildRetryStickerSetName(initialName, attempt);
+            LOGGER.warn("⚠️ Коллизия имени стикерсета или другая ошибка создания. Retry {}/{}: {} -> {}",
+                    attempt, MAX_CREATE_RETRIES_ON_NAME_CONFLICT, currentName, nextName);
+            currentName = nextName;
+        }
+
+        throw new RuntimeException("Failed to create sticker set in Telegram after retries: " + initialName);
+    }
+
+    private String buildRetryStickerSetName(String sourceName, int attempt) {
+        String normalizedName = namingService.ensureBotSuffix(sourceName).toLowerCase(Locale.ROOT);
+        String suffix = "_by_" + namingService.getBotUsername();
+        String base = normalizedName.endsWith(suffix)
+                ? normalizedName.substring(0, normalizedName.length() - suffix.length())
+                : normalizedName;
+
+        String retryMarker = "_g" + attempt;
+        int maxBaseLength = MAX_TELEGRAM_STICKERSET_NAME_LENGTH - suffix.length() - retryMarker.length();
+        if (maxBaseLength <= 0) {
+            throw new IllegalStateException("Bot username is too long for Telegram sticker set name constraints");
+        }
+
+        String trimmedBase = base.length() > maxBaseLength ? base.substring(0, maxBaseLength) : base;
+        return trimmedBase + retryMarker + suffix;
     }
 }

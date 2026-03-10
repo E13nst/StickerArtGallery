@@ -173,4 +173,64 @@ class StickerSetCreationServiceTest {
         );
         assertEquals("mypack_by_stixlybot", nameCaptor.getValue());
     }
+
+    @Test
+    @DisplayName("createWithSticker при занятом имени ретраит с новым именем")
+    void createWithSticker_WhenNameOccupied_RetriesWithGeneratedSuffix() throws Exception {
+        UUID imageUuid = UUID.randomUUID();
+        File stickerFile = tempDir.resolve("sticker3.png").toFile();
+        stickerFile.createNewFile();
+        when(imageStorageService.getFileByUuid(imageUuid)).thenReturn(stickerFile);
+
+        when(telegramBotApiService.createNewStickerSet(anyLong(), any(File.class), anyString(), anyString(), anyString()))
+                .thenReturn(false)
+                .thenReturn(true);
+
+        StickerSet saved = new StickerSet();
+        saved.setId(3L);
+        saved.setName("retrypack_g1_by_stixlybot");
+        when(stickerSetService.createStickerSetForUser(
+                any(),
+                anyLong(),
+                anyString(),
+                anyBoolean(),
+                any(StickerSetType.class)))
+                .thenReturn(saved);
+
+        creationService.createWithSticker(
+                300L,
+                imageUuid,
+                "Retry Title",
+                "retrypack",
+                "🎨",
+                Set.of(),
+                StickerSetVisibility.PRIVATE
+        );
+
+        verify(telegramBotApiService).createNewStickerSet(
+                eq(300L),
+                eq(stickerFile),
+                eq("retrypack_by_stixlybot"),
+                eq("Retry Title"),
+                eq("🎨")
+        );
+        verify(telegramBotApiService).createNewStickerSet(
+                eq(300L),
+                eq(stickerFile),
+                eq("retrypack_g1_by_stixlybot"),
+                eq("Retry Title"),
+                eq("🎨")
+        );
+
+        ArgumentCaptor<com.example.sticker_art_gallery.dto.CreateStickerSetDto> dtoCaptor =
+                ArgumentCaptor.forClass(com.example.sticker_art_gallery.dto.CreateStickerSetDto.class);
+        verify(stickerSetService).createStickerSetForUser(
+                dtoCaptor.capture(),
+                eq(300L),
+                anyString(),
+                eq(true),
+                eq(StickerSetType.GENERATED)
+        );
+        assertEquals("retrypack_g1_by_stixlybot", dtoCaptor.getValue().getName());
+    }
 }
