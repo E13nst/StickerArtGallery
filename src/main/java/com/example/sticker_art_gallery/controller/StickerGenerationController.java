@@ -27,7 +27,8 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/generation")
 @CrossOrigin(origins = "*")
-@Tag(name = "Генерация стикеров", description = "API для генерации стикеров через WaveSpeed")
+@Deprecated
+@Tag(name = "Генерация стикеров (legacy)", description = "Устаревший API прямой генерации через WaveSpeed. Используйте /api/generation/v2")
 @SecurityRequirement(name = "TelegramInitData")
 public class StickerGenerationController {
 
@@ -44,7 +45,8 @@ public class StickerGenerationController {
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @Operation(
         summary = "Запустить генерацию стикера",
-        description = "Запускает асинхронную генерацию стикера по промпту. Списывает ART-баллы и возвращает task_id для отслеживания статуса."
+        description = "Устаревший endpoint. Запускает асинхронную генерацию стикера по промпту. Используйте /api/generation/v2/generate.",
+        deprecated = true
     )
     @ApiResponses(value = {
         @ApiResponse(
@@ -89,7 +91,8 @@ public class StickerGenerationController {
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @Operation(
         summary = "Получить статус генерации",
-        description = "Возвращает текущий статус задачи генерации и результат (если готов). Админ может просматривать статус любой задачи."
+        description = "Устаревший endpoint. Возвращает статус задачи генерации. Используйте /api/generation/v2/status/{taskId}.",
+        deprecated = true
     )
     @ApiResponses(value = {
         @ApiResponse(
@@ -130,7 +133,8 @@ public class StickerGenerationController {
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @Operation(
         summary = "Получить историю генераций",
-        description = "Возвращает историю генераций пользователя с пагинацией"
+        description = "Устаревший endpoint. Возвращает историю генераций пользователя с пагинацией.",
+        deprecated = true
     )
     @ApiResponses(value = {
         @ApiResponse(

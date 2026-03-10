@@ -1,15 +1,18 @@
 package com.example.sticker_art_gallery.service.generation;
 
 import com.example.sticker_art_gallery.dto.generation.GenerateStickerRequest;
+import com.example.sticker_art_gallery.dto.generation.GenerateStickerV2Request;
+import com.example.sticker_art_gallery.dto.generation.GenerationAdminHistoryItemDto;
 import com.example.sticker_art_gallery.dto.generation.GenerationStatusResponse;
+import com.example.sticker_art_gallery.dto.generation.SaveToSetV2Request;
+import com.example.sticker_art_gallery.dto.generation.SaveToSetV2Response;
+import com.example.sticker_art_gallery.model.generation.GenerationTaskStatus;
 import com.example.sticker_art_gallery.model.generation.GenerationAuditEventStatus;
 import com.example.sticker_art_gallery.model.generation.GenerationAuditStage;
 import com.example.sticker_art_gallery.model.generation.GenerationTaskEntity;
 import com.example.sticker_art_gallery.repository.GenerationTaskRepository;
-import com.example.sticker_art_gallery.model.generation.GenerationTaskStatus;
 import com.example.sticker_art_gallery.model.profile.ArtTransactionEntity;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
-import com.example.sticker_art_gallery.repository.UserRepository;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
 import com.example.sticker_art_gallery.service.referral.ReferralService;
@@ -40,14 +43,15 @@ public class StickerGenerationService {
     private static final Logger LOGGER = LoggerFactory.getLogger(StickerGenerationService.class);
 
     private final GenerationTaskRepository taskRepository;
+    @SuppressWarnings("deprecation")
     private final WaveSpeedClient waveSpeedClient;
     private final ArtRewardService artRewardService;
     private final UserProfileService userProfileService;
-    private final UserRepository userRepository;
     private final ImageStorageService imageStorageService;
     private final PromptProcessingService promptProcessingService;
     private final ReferralService referralService;
     private final GenerationAuditService generationAuditService;
+    private final StickerProcessorGenerationClient stickerProcessorGenerationClient;
     private final ObjectMapper objectMapper;
 
     @Value("${wavespeed.max-poll-seconds:300}")
@@ -56,27 +60,31 @@ public class StickerGenerationService {
     @Value("${wavespeed.bg-remove-enabled:true}")
     private boolean bgRemoveEnabled;
 
+    @Value("${sticker.processor.url}")
+    private String stickerProcessorBaseUrl;
+
 
     @Autowired
     public StickerGenerationService(
             GenerationTaskRepository taskRepository,
+            @SuppressWarnings("deprecation")
             WaveSpeedClient waveSpeedClient,
             ArtRewardService artRewardService,
             UserProfileService userProfileService,
-            UserRepository userRepository,
             ImageStorageService imageStorageService,
             PromptProcessingService promptProcessingService,
             ReferralService referralService,
-            GenerationAuditService generationAuditService) {
+            GenerationAuditService generationAuditService,
+            StickerProcessorGenerationClient stickerProcessorGenerationClient) {
         this.taskRepository = taskRepository;
         this.waveSpeedClient = waveSpeedClient;
         this.artRewardService = artRewardService;
         this.userProfileService = userProfileService;
-        this.userRepository = userRepository;
         this.imageStorageService = imageStorageService;
         this.promptProcessingService = promptProcessingService;
         this.referralService = referralService;
         this.generationAuditService = generationAuditService;
+        this.stickerProcessorGenerationClient = stickerProcessorGenerationClient;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -182,6 +190,74 @@ public class StickerGenerationService {
         return tasks.map(this::toStatusResponse);
     }
 
+    @Transactional(readOnly = true)
+    public Page<GenerationStatusResponse> getGenerationHistoryV2(Long userId, Pageable pageable) {
+        Page<GenerationTaskEntity> tasks = taskRepository.findV2ByUserIdOrderByCreatedAtDesc(userId, pageable);
+        return tasks.map(this::toStatusResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<GenerationAdminHistoryItemDto> getGenerationHistoryV2ForAdmin(
+            Long userId,
+            String status,
+            String taskId,
+            Pageable pageable
+    ) {
+        String normalizedStatus = (status == null || status.isBlank()) ? null : status.trim().toUpperCase();
+        if (normalizedStatus != null) {
+            try {
+                GenerationTaskStatus.valueOf(normalizedStatus);
+            } catch (IllegalArgumentException ex) {
+                throw new IllegalArgumentException("Invalid status: " + status);
+            }
+        }
+        String normalizedTaskId = (taskId == null || taskId.isBlank()) ? null : taskId.trim();
+        Page<GenerationTaskEntity> tasks = taskRepository.findV2ForAdmin(userId, normalizedStatus, normalizedTaskId, pageable);
+        return tasks.map(this::toAdminHistoryItem);
+    }
+
+    @Transactional
+    public String startGenerationV2(Long userId, GenerateStickerV2Request request) {
+        LOGGER.info("Starting generation v2 for user {}: prompt_length={}, model={}",
+                userId, request.getPrompt().length(), request.getModel());
+
+        UserProfileEntity profile = userProfileService.getOrCreateDefaultForUpdate(userId);
+        String taskId = UUID.randomUUID().toString();
+        GenerationTaskEntity task = new GenerationTaskEntity();
+        task.setTaskId(taskId);
+        task.setUserProfile(profile);
+        task.setPrompt(request.getPrompt());
+        task.setStatus(GenerationTaskStatus.PROCESSING_PROMPT);
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("flow", "generation-v2");
+        metadata.put("prompt", request.getPrompt());
+        metadata.put("model", request.getModel());
+        metadata.put("size", request.getSize());
+        metadata.put("seed", request.getSeed());
+        metadata.put("num_images", request.getNumImages());
+        metadata.put("strength", request.getStrength());
+        metadata.put("remove_background", request.getRemoveBackground());
+        metadata.put("source_image_url", request.getSourceImageUrl());
+        metadata.put("source_image_base64", request.getSourceImageBase64() != null ? "[base64]" : null);
+        metadata.put("image", request.getImage());
+        metadata.put("stylePresetId", request.getStylePresetId());
+        try {
+            task.setMetadata(objectMapper.writeValueAsString(metadata));
+        } catch (Exception e) {
+            LOGGER.warn("Failed to serialize v2 metadata", e);
+        }
+
+        task.setExpiresAt(OffsetDateTime.now().plusHours(24));
+        taskRepository.save(task);
+
+        OffsetDateTime auditExpiresAt = OffsetDateTime.now().plusDays(90);
+        generationAuditService.startSession(taskId, userId, request.getPrompt(), metadata, auditExpiresAt);
+
+        processPromptAsyncV2(taskId, userId, request.getStylePresetId());
+        return taskId;
+    }
+
     @Async("generationTaskExecutor")
     @Transactional
     public CompletableFuture<Void> processPromptAsync(String taskId, Long userId, Long stylePresetId) {
@@ -239,11 +315,55 @@ public class StickerGenerationService {
 
     @Async("generationTaskExecutor")
     @Transactional
+    public CompletableFuture<Void> processPromptAsyncV2(String taskId, Long userId, Long stylePresetId) {
+        try {
+            GenerationTaskEntity task = taskRepository.findByTaskId(taskId)
+                    .orElseThrow(() -> new IllegalArgumentException("Task not found: " + taskId));
+            generationAuditService.addStageEvent(taskId, GenerationAuditStage.PROMPT_PROCESSING_STARTED, GenerationAuditEventStatus.STARTED, null, null, null);
+
+            String originalPrompt = task.getPrompt();
+            String processedPrompt = promptProcessingService.processPrompt(originalPrompt, userId, stylePresetId);
+            task.setPrompt(processedPrompt);
+            task.setStatus(GenerationTaskStatus.PENDING);
+
+            Map<String, Object> metadata = parseMetadata(task.getMetadata());
+            metadata.put("originalPrompt", originalPrompt);
+            metadata.put("processedPrompt", processedPrompt);
+            task.setMetadata(objectMapper.writeValueAsString(metadata));
+            taskRepository.save(task);
+            generationAuditService.markPromptProcessed(taskId, processedPrompt, null);
+            runGenerationV2Async(taskId);
+        } catch (Exception e) {
+            generationAuditService.addStageEvent(taskId, GenerationAuditStage.PROMPT_PROCESSING_FAILED, GenerationAuditEventStatus.FAILED, null, ERROR_PROMPT_PROCESSING, e.getMessage());
+            generationAuditService.finishFailure(taskId, ERROR_PROMPT_PROCESSING, e.getMessage(), null);
+            GenerationTaskEntity task = taskRepository.findByTaskId(taskId).orElse(null);
+            if (task != null) {
+                task.setStatus(GenerationTaskStatus.FAILED);
+                task.setErrorMessage("Prompt processing failed: " + e.getMessage());
+                taskRepository.save(task);
+            }
+        }
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Async("generationTaskExecutor")
+    @Transactional
     public CompletableFuture<Void> runGenerationAsync(String taskId) {
         try {
             runGeneration(taskId);
         } catch (Exception e) {
             LOGGER.error("Error in async generation for task {}: {}", taskId, e.getMessage(), e);
+        }
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Async("generationTaskExecutor")
+    @Transactional
+    public CompletableFuture<Void> runGenerationV2Async(String taskId) {
+        try {
+            runGenerationV2(taskId);
+        } catch (Exception e) {
+            LOGGER.error("Error in async generation v2 for task {}: {}", taskId, e.getMessage(), e);
         }
         return CompletableFuture.completedFuture(null);
     }
@@ -469,6 +589,154 @@ public class StickerGenerationService {
         }
     }
 
+    @Transactional
+    public void runGenerationV2(String taskId) {
+        GenerationTaskEntity task = taskRepository.findByTaskId(taskId)
+                .orElseThrow(() -> new IllegalArgumentException("Task not found: " + taskId));
+        task.setStatus(GenerationTaskStatus.GENERATING);
+        task = taskRepository.save(task);
+
+        Map<String, Object> metadata = parseMetadata(task.getMetadata());
+        try {
+            GenerateStickerV2Request request = new GenerateStickerV2Request();
+            request.setPrompt(task.getPrompt());
+            request.setModel(metadata.get("model") != null ? metadata.get("model").toString() : "flux-schnell");
+            request.setSize(metadata.get("size") != null ? metadata.get("size").toString() : "512*512");
+            request.setSeed(metadata.get("seed") instanceof Number ? ((Number) metadata.get("seed")).intValue() : -1);
+            request.setNumImages(metadata.get("num_images") instanceof Number ? ((Number) metadata.get("num_images")).intValue() : 1);
+            request.setStrength(metadata.get("strength") instanceof Number ? ((Number) metadata.get("strength")).doubleValue() : 0.8);
+            request.setRemoveBackground(Boolean.TRUE.equals(metadata.get("remove_background")));
+            request.setSourceImageUrl(metadata.get("source_image_url") != null ? metadata.get("source_image_url").toString() : null);
+            request.setSourceImageBase64(null);
+            request.setImage(metadata.get("image") != null ? metadata.get("image").toString() : null);
+
+            StickerProcessorGenerationClient.SubmitResult submit = stickerProcessorGenerationClient.submitGenerate(request);
+            if (submit.fileId() == null || submit.fileId().isBlank()) {
+                throw new IllegalStateException("STICKER_PROCESSOR did not return file_id");
+            }
+
+            metadata.put("provider", "sticker-processor");
+            metadata.put("provider_file_id", submit.fileId());
+            metadata.put("provider_request_id", submit.providerRequestId());
+            task.setMetadata(objectMapper.writeValueAsString(metadata));
+            taskRepository.save(task);
+            Map<String, Object> submitPayload = new HashMap<>();
+            submitPayload.put("file_id", submit.fileId());
+            if (submit.providerRequestId() != null) {
+                submitPayload.put("provider_request_id", submit.providerRequestId());
+            }
+            generationAuditService.addStageEvent(taskId, GenerationAuditStage.STICKER_PROCESSOR_SUBMIT, GenerationAuditEventStatus.SUCCEEDED,
+                    submitPayload, null, null);
+
+            long deadlineMs = System.currentTimeMillis() + (maxPollSeconds * 1000L);
+            while (System.currentTimeMillis() < deadlineMs) {
+                try {
+                    Thread.sleep(1500);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+
+                StickerProcessorGenerationClient.PollResult poll = stickerProcessorGenerationClient.pollResult(submit.fileId());
+                if (poll.isImageReady()) {
+                    generationAuditService.addStageEvent(taskId, GenerationAuditStage.STICKER_PROCESSOR_RESULT,
+                            GenerationAuditEventStatus.SUCCEEDED, Map.of("file_id", submit.fileId()), null, null);
+                    String providerSource = buildStickerProcessorResultUrl(submit.fileId());
+                    CachedImageEntity cachedImage = imageStorageService.storeBytes(providerSource, poll.getImageBytes(), "image/webp");
+                    String localImageUrl = imageStorageService.getPublicUrl(cachedImage);
+
+                    ArtTransactionEntity transaction = artRewardService.award(
+                            task.getUserProfile().getUserId(),
+                            ArtRewardService.RULE_GENERATE_STICKER,
+                            null,
+                            objectMapper.writeValueAsString(Map.of("taskId", taskId, "providerFileId", submit.fileId())),
+                            "generation-success:" + taskId,
+                            task.getUserProfile().getUserId()
+                    );
+
+                    Map<String, Object> updatedMetadata = parseMetadata(task.getMetadata());
+                    updatedMetadata.put("originalImageUrl", providerSource);
+                    task.setMetadata(objectMapper.writeValueAsString(updatedMetadata));
+                    task.setCachedImageId(cachedImage.getId());
+                    task.setArtTransaction(transaction);
+                    task.setImageUrl(localImageUrl);
+                    task.setStatus(GenerationTaskStatus.COMPLETED);
+                    task.setCompletedAt(OffsetDateTime.now());
+                    taskRepository.save(task);
+                    generationAuditService.finishSuccess(taskId, Map.of("imageUrl", localImageUrl, "providerFileId", submit.fileId()));
+                    return;
+                }
+
+                int statusCode = poll.getHttpStatus();
+                if (statusCode == 202 || statusCode == 0) {
+                    continue;
+                }
+                if (statusCode == 404 || statusCode == 410 || statusCode == 422 || statusCode == 424) {
+                    generationAuditService.addStageEvent(taskId, GenerationAuditStage.STICKER_PROCESSOR_RESULT,
+                            GenerationAuditEventStatus.FAILED, poll.getPayload(), ERROR_STICKER_PROCESSOR_FAILED, "Terminal status: " + statusCode);
+                    task.setStatus(GenerationTaskStatus.FAILED);
+                    task.setErrorMessage("STICKER_PROCESSOR terminal status: " + statusCode);
+                    taskRepository.save(task);
+                    generationAuditService.finishFailure(taskId, ERROR_STICKER_PROCESSOR_FAILED, "Terminal status: " + statusCode, poll.getPayload());
+                    return;
+                }
+            }
+
+            task.setStatus(GenerationTaskStatus.TIMEOUT);
+            task.setErrorMessage("Timed out while waiting STICKER_PROCESSOR result");
+            taskRepository.save(task);
+            generationAuditService.finishFailure(taskId, ERROR_STICKER_PROCESSOR_TIMEOUT, "Timed out", null);
+        } catch (Exception e) {
+            task.setStatus(GenerationTaskStatus.FAILED);
+            task.setErrorMessage("Error occurred: " + e.getMessage());
+            taskRepository.save(task);
+            generationAuditService.finishFailure(taskId, ERROR_STICKER_PROCESSOR_FAILED, e.getMessage(), null);
+        }
+    }
+
+    @Transactional
+    public SaveToSetV2Response saveToSetV2(SaveToSetV2Request request) {
+        GenerationTaskEntity task = taskRepository.findByTaskId(request.getTaskId())
+                .orElseThrow(() -> new IllegalArgumentException("Task not found: " + request.getTaskId()));
+        Map<String, Object> metadata = parseMetadata(task.getMetadata());
+        String providerFileId = metadata.get("provider_file_id") != null ? metadata.get("provider_file_id").toString() : null;
+        if (providerFileId == null || providerFileId.isBlank()) {
+            throw new IllegalStateException("provider_file_id not found for task " + request.getTaskId());
+        }
+
+        StickerProcessorGenerationClient.SaveResult saveResult = stickerProcessorGenerationClient.saveToSet(
+                providerFileId,
+                request.getUserId(),
+                request.getName(),
+                request.getTitle(),
+                request.getEmoji(),
+                request.getWaitTimeoutSec()
+        );
+
+        SaveToSetV2Response response = new SaveToSetV2Response();
+        response.setStatus(String.valueOf(saveResult.httpStatus()));
+        response.setOperation(saveResult.payload().get("operation") != null ? saveResult.payload().get("operation").toString() : null);
+        response.setStickerSetName(saveResult.payload().get("sticker_set_name") != null ? saveResult.payload().get("sticker_set_name").toString() : request.getName());
+        response.setTelegramFileId(saveResult.payload().get("telegram_file_id") != null ? saveResult.payload().get("telegram_file_id").toString() : null);
+
+        if (saveResult.httpStatus() == 200) {
+            generationAuditService.addStageEvent(request.getTaskId(), GenerationAuditStage.STICKER_PROCESSOR_SAVE_TO_SET,
+                    GenerationAuditEventStatus.SUCCEEDED, saveResult.payload(), null, null);
+            task.setTelegramFileId(response.getTelegramFileId());
+            try {
+                metadata.put("save_to_set", saveResult.payload());
+                task.setMetadata(objectMapper.writeValueAsString(metadata));
+            } catch (Exception e) {
+                LOGGER.warn("Failed to serialize save-to-set metadata: {}", e.getMessage());
+            }
+            taskRepository.save(task);
+        } else {
+            generationAuditService.addStageEvent(request.getTaskId(), GenerationAuditStage.STICKER_PROCESSOR_SAVE_TO_SET,
+                    GenerationAuditEventStatus.FAILED, saveResult.payload(), ERROR_STICKER_PROCESSOR_FAILED, "HTTP " + saveResult.httpStatus());
+        }
+        return response;
+    }
+
 
     private GenerationStatusResponse toStatusResponse(GenerationTaskEntity task) {
         GenerationStatusResponse response = new GenerationStatusResponse();
@@ -483,7 +751,15 @@ public class StickerGenerationService {
         // Извлекаем originalImageUrl из metadata
         Map<String, Object> metadata = parseMetadata(task.getMetadata());
         if (metadata.containsKey("originalImageUrl")) {
-            response.setOriginalImageUrl(metadata.get("originalImageUrl").toString());
+            String originalImageUrl = metadata.get("originalImageUrl").toString();
+            if (originalImageUrl.startsWith("sp://")) {
+                String providerFileId = metadata.get("provider_file_id") != null
+                        ? metadata.get("provider_file_id").toString()
+                        : originalImageUrl.substring("sp://".length());
+                response.setOriginalImageUrl(buildStickerProcessorResultUrl(providerFileId));
+            } else {
+                response.setOriginalImageUrl(originalImageUrl);
+            }
         }
 
         // Устанавливаем imageId и imageFormat из сохраненного UUID
@@ -512,6 +788,21 @@ public class StickerGenerationService {
         return response;
     }
 
+    private GenerationAdminHistoryItemDto toAdminHistoryItem(GenerationTaskEntity task) {
+        GenerationStatusResponse statusResponse = toStatusResponse(task);
+        GenerationAdminHistoryItemDto dto = new GenerationAdminHistoryItemDto();
+        dto.setTaskId(statusResponse.getTaskId());
+        dto.setUserId(task.getUserProfile() != null ? task.getUserProfile().getUserId() : null);
+        dto.setStatus(statusResponse.getStatus());
+        dto.setImageUrl(statusResponse.getImageUrl());
+        dto.setOriginalImageUrl(statusResponse.getOriginalImageUrl());
+        dto.setMetadata(statusResponse.getMetadata());
+        dto.setErrorMessage(statusResponse.getErrorMessage());
+        dto.setCreatedAt(statusResponse.getCreatedAt());
+        dto.setCompletedAt(statusResponse.getCompletedAt());
+        return dto;
+    }
+
     private String extractStatus(Map<String, Object> result) {
         if (result.containsKey("data") && result.get("data") instanceof Map) {
             @SuppressWarnings("unchecked")
@@ -532,5 +823,12 @@ public class StickerGenerationService {
             LOGGER.warn("Failed to parse metadata: {}", e.getMessage());
             return new HashMap<>();
         }
+    }
+
+    private String buildStickerProcessorResultUrl(String providerFileId) {
+        String baseUrl = stickerProcessorBaseUrl.endsWith("/")
+                ? stickerProcessorBaseUrl.substring(0, stickerProcessorBaseUrl.length() - 1)
+                : stickerProcessorBaseUrl;
+        return baseUrl + "/stickers/wavespeed/" + providerFileId;
     }
 }

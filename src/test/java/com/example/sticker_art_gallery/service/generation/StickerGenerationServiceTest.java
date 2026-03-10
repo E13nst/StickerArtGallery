@@ -4,8 +4,8 @@ import com.example.sticker_art_gallery.dto.generation.GenerateStickerRequest;
 import com.example.sticker_art_gallery.model.generation.GenerationTaskEntity;
 import com.example.sticker_art_gallery.model.profile.ArtTransactionEntity;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
+import com.example.sticker_art_gallery.model.storage.CachedImageEntity;
 import com.example.sticker_art_gallery.repository.GenerationTaskRepository;
-import com.example.sticker_art_gallery.repository.UserRepository;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
 import com.example.sticker_art_gallery.service.referral.ReferralService;
@@ -17,8 +17,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.OffsetDateTime;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -26,7 +30,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -37,13 +42,12 @@ class StickerGenerationServiceTest {
     @Mock
     private GenerationTaskRepository taskRepository;
     @Mock
+    @SuppressWarnings("deprecation")
     private WaveSpeedClient waveSpeedClient;
     @Mock
     private ArtRewardService artRewardService;
     @Mock
     private UserProfileService userProfileService;
-    @Mock
-    private UserRepository userRepository;
     @Mock
     private ImageStorageService imageStorageService;
     @Mock
@@ -52,6 +56,8 @@ class StickerGenerationServiceTest {
     private ReferralService referralService;
     @Mock
     private GenerationAuditService generationAuditService;
+    @Mock
+    private StickerProcessorGenerationClient stickerProcessorGenerationClient;
 
     private StickerGenerationService stickerGenerationService;
 
@@ -62,17 +68,20 @@ class StickerGenerationServiceTest {
                 waveSpeedClient,
                 artRewardService,
                 userProfileService,
-                userRepository,
                 imageStorageService,
                 promptProcessingService,
                 referralService,
-                generationAuditService
+                generationAuditService,
+                stickerProcessorGenerationClient
         ));
 
         // Избегаем запуска полного async pipeline в unit-тесте startGeneration
-        doReturn(CompletableFuture.completedFuture(null))
-                .when(stickerGenerationService)
-                .processPromptAsync(anyString(), anyLong(), any());
+        lenient().doReturn(CompletableFuture.completedFuture(null))
+                .when(stickerGenerationService).processPromptAsync(anyString(), anyLong(), any());
+        lenient().doReturn(CompletableFuture.completedFuture(null))
+                .when(stickerGenerationService).processPromptAsyncV2(anyString(), anyLong(), any());
+        ReflectionTestUtils.setField(stickerGenerationService, "maxPollSeconds", 5);
+        ReflectionTestUtils.setField(stickerGenerationService, "stickerProcessorBaseUrl", "https://sticker-processor.example");
     }
 
     @Test
@@ -112,6 +121,69 @@ class StickerGenerationServiceTest {
         OffsetDateTime taskExpiresAt = taskCaptor.getAllValues().get(0).getExpiresAt();
 
         assertWithinRange(taskExpiresAt, before.plusHours(24).minusMinutes(1), after.plusHours(24).plusMinutes(1));
+    }
+
+    @Test
+    @DisplayName("startGenerationV2: ART не списывается на submit")
+    void startGenerationV2_shouldNotChargeArtOnSubmit() {
+        long userId = 555L;
+        UserProfileEntity profile = new UserProfileEntity();
+        profile.setUserId(userId);
+        when(userProfileService.getOrCreateDefaultForUpdate(userId)).thenReturn(profile);
+        when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var request = new com.example.sticker_art_gallery.dto.generation.GenerateStickerV2Request();
+        request.setPrompt("v2 prompt");
+        request.setModel("flux-schnell");
+
+        stickerGenerationService.startGenerationV2(userId, request);
+        verify(artRewardService, never()).award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("runGenerationV2: ART списывается только при успехе")
+    void runGenerationV2_shouldChargeArtOnSuccess() throws Exception {
+        String taskId = "task-v2-1";
+        long userId = 777L;
+        UserProfileEntity profile = new UserProfileEntity();
+        profile.setUserId(userId);
+
+        GenerationTaskEntity task = new GenerationTaskEntity();
+        task.setTaskId(taskId);
+        task.setUserProfile(profile);
+        task.setPrompt("processed prompt");
+        task.setStatus(com.example.sticker_art_gallery.model.generation.GenerationTaskStatus.PENDING);
+        task.setMetadata(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(Map.of(
+                "model", "flux-schnell",
+                "size", "512*512",
+                "seed", -1,
+                "num_images", 1,
+                "strength", 0.8,
+                "remove_background", true
+        )));
+
+        when(taskRepository.findByTaskId(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(stickerProcessorGenerationClient.submitGenerate(any())).thenReturn(
+                new StickerProcessorGenerationClient.SubmitResult("ws_123", "pending", "req_1")
+        );
+        when(stickerProcessorGenerationClient.pollResult("ws_123")).thenReturn(
+                StickerProcessorGenerationClient.PollResult.imageReady("img".getBytes())
+        );
+
+        CachedImageEntity cached = new CachedImageEntity();
+        cached.setId(UUID.randomUUID());
+        cached.setFileName(cached.getId() + ".webp");
+        when(imageStorageService.storeBytes(anyString(), any(), anyString())).thenReturn(cached);
+        when(imageStorageService.getPublicUrl(any())).thenReturn("http://localhost/api/images/" + cached.getFileName());
+
+        ArtTransactionEntity transaction = new ArtTransactionEntity();
+        transaction.setId(99L);
+        when(artRewardService.award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong())).thenReturn(transaction);
+
+        stickerGenerationService.runGenerationV2(taskId);
+
+        verify(artRewardService).award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong());
     }
 
     private static void assertWithinRange(OffsetDateTime value, OffsetDateTime minInclusive, OffsetDateTime maxInclusive) {

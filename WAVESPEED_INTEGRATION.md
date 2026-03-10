@@ -1,11 +1,45 @@
 # Интеграция с WaveSpeed Endpoint-ами
 
+> Обновление: c `2026-03` генерация в `sticker-art-gallery` должна идти через `STICKER_PROCESSOR`.
+> Прямой flow в WaveSpeed считается legacy и оставлен только для обратной совместимости.
+
 Этот документ описывает, как другому сервису интегрироваться с новыми асинхронными endpoint-ами генерации стикеров через WaveSpeed.
+
+## API Sticker Art Gallery (v2)
+
+Новые endpoint-ы приложения:
+
+- `POST /api/generation/v2/generate` — запуск генерации через `STICKER_PROCESSOR`
+- `GET /api/generation/v2/status/{taskId}` — статус внутренней задачи
+- `GET /api/generation/v2/history` — история задач нового flow (`generation-v2`) для текущего пользователя
+- `POST /api/generation/v2/save-to-set` — сохранение в Telegram set через `STICKER_PROCESSOR`
+
+### Совместимость с пресетами и энхенсерами
+
+Новые ручки `v2` используют текущий pipeline обработки промпта:
+
+1. Применяются активные Prompt Enhancers пользователя.
+2. Если в запросе передан `stylePresetId`, применяется legacy Style Preset.
+3. В `STICKER_PROCESSOR` отправляется уже обработанный промпт.
+
+Старые endpoint-ы:
+
+- `POST /api/generation/generate`
+- `GET /api/generation/status/{taskId}`
+- `GET /api/generation/history`
+
+помечены как `deprecated` и не рекомендуются для новых интеграций.
+
+### ART-списание
+
+Для v2 ART списываются только при успешном завершении генерации (`COMPLETED`).
+При terminal fail/timeout списание не выполняется.
 
 ## Endpoint-ы
 
 - `POST /stickers/wavespeed/generate` - отправка задачи генерации, получение синтетического `ws_...` file id
 - `GET /stickers/wavespeed/{file_id}` - получение готового стикера (`image/webp`) или текущего статуса задачи
+- `POST /stickers/wavespeed/save-to-set` - дождаться готовности `ws_...` и сохранить в Telegram sticker set
 
 Пример локового base URL: `http://127.0.0.1:8081`
 
@@ -17,6 +51,7 @@
 4. Если ответ `200`, сохранить/передать байты WebP
 5. Если ответ `202`, продолжать polling
 6. Если ответ terminal `4xx/5xx` (`404`, `410`, `422`, `424`) - завершить задачу как failed
+7. (Опционально) Вызвать `POST /stickers/wavespeed/save-to-set` для автоматического добавления в стикерсет
 
 ## Модель запроса: `POST /stickers/wavespeed/generate`
 
@@ -95,6 +130,32 @@
 }
 ```
 
+## Автосохранение в стикерсет: `POST /stickers/wavespeed/save-to-set`
+
+Endpoint принимает `ws_` `file_id`, ждёт готовности стикера (до `wait_timeout_sec`) и затем:
+
+- если стикерсет уже существует -> добавляет стикер;
+- если стикерсета нет -> создаёт новый набор (`name` + `title`) и добавляет первый стикер.
+- при необходимости автоматически нормализует `name`: добавляет суффикс `_by_<TELEGRAM_BOT_USERNAME>`.
+
+Поля запроса:
+
+- `file_id: string` (обязательно, `ws_...`)
+- `user_id: int` (обязательно, владелец стикерсета в Telegram)
+- `name: string` (обязательно, short name стикерсета)
+- `title: string` (обязательно, title для создания набора)
+- `emoji: string` (опционально, emoji, который привязывается к стикеру; по умолчанию `😀`)
+- `wait_timeout_sec: int` (опционально, по умолчанию `60`)
+
+Ответы:
+
+- `200` - стикер успешно сохранён/добавлен в набор
+- `202` - генерация ещё не готова в пределах `wait_timeout_sec`
+- `404` - `ws_` job не найден
+- `410` - `ws_` job истёк
+- `422` - неподдерживаемый формат для сохранения (ожидается static `image/webp`)
+- `424` - ошибка генерации/post-processing перед сохранением
+
 ## Стратегия polling для production
 
 Используйте ограниченные retries с exponential backoff и jitter.
@@ -169,6 +230,22 @@ curl -X POST "http://127.0.0.1:8081/stickers/wavespeed/generate" \
 ```bash
 # Замените ws_xxx на file_id из ответа POST
 curl -v "http://127.0.0.1:8081/stickers/wavespeed/ws_xxx" --output sticker.webp
+```
+
+### 5) сохранить готовый `ws_` стикер в Telegram set
+
+```bash
+curl -X POST "http://127.0.0.1:8081/stickers/wavespeed/save-to-set" \
+  -H "accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "file_id": "ws_xxx",
+    "user_id": 123456789,
+    "name": "my_pack_by_your_bot",
+    "title": "My Pack",
+    "emoji": "😀",
+    "wait_timeout_sec": 60
+  }'
 ```
 
 Примечания:

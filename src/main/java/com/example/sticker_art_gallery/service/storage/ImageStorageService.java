@@ -165,6 +165,50 @@ public class ImageStorageService {
     }
 
     /**
+     * Сохраняет готовые байты изображения в локальное хранилище.
+     * Используется для провайдеров, которые возвращают бинарный результат напрямую.
+     */
+    @Transactional
+    public CachedImageEntity storeBytes(String originalUrl, byte[] imageBytes, String contentType) {
+        if (imageBytes == null || imageBytes.length == 0) {
+            throw new IllegalArgumentException("imageBytes is empty");
+        }
+        if (originalUrl == null || originalUrl.isBlank()) {
+            throw new IllegalArgumentException("originalUrl is required");
+        }
+
+        Optional<CachedImageEntity> existing = cachedImageRepository.findByOriginalUrl(originalUrl);
+        if (existing.isPresent()) {
+            CachedImageEntity cached = existing.get();
+            if (!cached.isExpired() && Files.exists(Paths.get(storagePath, cached.getFilePath()))) {
+                return cached;
+            }
+            deleteImage(cached);
+        }
+
+        try {
+            String effectiveContentType = (contentType == null || contentType.isBlank()) ? "image/webp" : contentType;
+            String extension = getExtensionFromContentType(effectiveContentType);
+            UUID id = UUID.randomUUID();
+            String fileName = id + "." + extension;
+            Path fullPath = Paths.get(storagePath, fileName);
+            Files.write(fullPath, imageBytes);
+
+            CachedImageEntity entity = new CachedImageEntity();
+            entity.setId(id);
+            entity.setOriginalUrl(originalUrl);
+            entity.setFilePath(fileName);
+            entity.setFileName(fileName);
+            entity.setContentType(effectiveContentType);
+            entity.setFileSize((long) imageBytes.length);
+            entity.setExpiresAt(OffsetDateTime.now().plusDays(retentionDays));
+            return cachedImageRepository.save(entity);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to store image bytes: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Получает изображение по ID.
      * Выполняет lazy проверку срока истечения.
      *

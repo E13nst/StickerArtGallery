@@ -361,6 +361,14 @@ class AdminApiClient {
         return this.request(`/admin/generation-logs/${encodeURIComponent(taskId)}/events`);
     }
 
+    // ============ Generation v2 history (Admin) ============
+
+    async getGenerationV2History(filters = {}, page = 0, size = 20) {
+        const params = { page, size, ...filters };
+        const queryString = buildQueryString(params);
+        return this.request(`/admin/generation-v2${queryString}`);
+    }
+
     // ============ Message logs (Admin audit) ============
 
     async getMessageLogs(filters = {}, page = 0, size = 20) {

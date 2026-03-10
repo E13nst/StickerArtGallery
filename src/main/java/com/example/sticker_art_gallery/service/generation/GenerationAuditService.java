@@ -30,6 +30,8 @@ public class GenerationAuditService {
     public static final String ERROR_WAVESPEED_SUBMIT = "WAVESPEED_SUBMIT_ERROR";
     public static final String ERROR_WAVESPEED_TIMEOUT = "WAVESPEED_TIMEOUT";
     public static final String ERROR_WAVESPEED_FAILED = "WAVESPEED_FAILED";
+    public static final String ERROR_STICKER_PROCESSOR_TIMEOUT = "STICKER_PROCESSOR_TIMEOUT";
+    public static final String ERROR_STICKER_PROCESSOR_FAILED = "STICKER_PROCESSOR_FAILED";
     public static final String ERROR_IMAGE_CACHE = "IMAGE_CACHE_ERROR";
     public static final String ERROR_BACKGROUND_REMOVE = "BACKGROUND_REMOVE_ERROR";
     public static final String ERROR_GENERIC = "GENERATION_ERROR";

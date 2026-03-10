@@ -142,6 +142,9 @@ sticker:
     timeout:
       connect: 5000
       read: 10000
+    generation:
+      poll-interval-ms: ${STICKER_PROCESSOR_GENERATION_POLL_INTERVAL_MS:1500}
+      save-to-set-timeout-sec: ${STICKER_PROCESSOR_SAVE_TO_SET_TIMEOUT_SEC:60}
 
 # Конфигурация WaveSpeed API
 wavespeed:

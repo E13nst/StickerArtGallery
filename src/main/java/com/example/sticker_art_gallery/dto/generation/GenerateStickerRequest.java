@@ -15,7 +15,8 @@ public class GenerateStickerRequest {
     @Schema(description = "Seed для генерации (опционально, -1 = случайный)", example = "42")
     private Integer seed;
 
-    @Schema(description = "ID пресета стиля (опционально)", example = "1")
+    @Deprecated
+    @Schema(description = "ID пресета стиля (опционально, legacy)", example = "1", deprecated = true)
     private Long stylePresetId;
 
     @Schema(description = "Удалять фон после генерации", example = "true", defaultValue = "true")

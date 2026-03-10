@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 @Component
+@Deprecated
 public class WaveSpeedClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(WaveSpeedClient.class);
