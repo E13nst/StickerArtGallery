@@ -13,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.util.Set;
@@ -70,7 +69,6 @@ public class StickerSetCreationService {
      * @param visibility видимость стикерсета (опционально, по умолчанию PRIVATE)
      * @return созданный StickerSet или null если регистрация в БД не удалась
      */
-    @Transactional
     public StickerSet createWithSticker(
             Long userId,
             java.util.UUID imageUuid,
@@ -83,7 +81,7 @@ public class StickerSetCreationService {
         LOGGER.info("🎯 Создание стикерсета с первым стикером: userId={}, imageUuid={}, name={}", 
                 userId, imageUuid, name);
         
-        // 1. Получить файл
+        // 1. Получить файл (локальная операция без DB transaction)
         File stickerFile = imageStorageService.getFileByUuid(imageUuid);
         
         // 2. Генерировать имя если не указано, затем гарантировать суффикс _by_<bot>
@@ -112,13 +110,13 @@ public class StickerSetCreationService {
             visibility = StickerSetVisibility.PRIVATE;
         }
         
-        // 4. Создать в Telegram (с retry при коллизии имени)
+        // 4. IO-фаза: создать в Telegram (с retry при коллизии имени) без открытой DB-транзакции
         String createdStickerSetName = createStickerSetInTelegramWithRetry(
                 userId, stickerFile, name, title, emoji
         );
         LOGGER.info("✅ Стикерсет создан в Telegram: {}", createdStickerSetName);
         
-        // 5. Зарегистрировать в БД (простая стратегия: если упало - логируем)
+        // 5. Короткая DB-фаза: зарегистрировать в БД (простая стратегия: если упало - логируем)
         try {
             CreateStickerSetDto dto = new CreateStickerSetDto();
             dto.setName(createdStickerSetName);
@@ -158,7 +156,6 @@ public class StickerSetCreationService {
      * @param stickerSetName имя стикерсета (опционально, дефолтный если не указан)
      * @param emoji эмодзи для стикера (опционально, по умолчанию "🎨")
      */
-    @Transactional
     public SaveImageToStickerSetResponseDto saveImageToStickerSet(
             Long userId,
             java.util.UUID imageUuid,
@@ -177,7 +174,7 @@ public class StickerSetCreationService {
             // Проверить существование в Telegram
             TelegramBotApiService.StickerSetInfo setInfo = telegramBotApiService.getStickerSetInfoSimple(stickerSetName);
             if (setInfo == null || !setInfo.exists()) {
-                // Дефолтный стикерсет не существует - создаем его с текущим стикером
+                // Дефолтный стикерсет не существует - IO-фаза: создаем его с текущим стикером
                 LOGGER.info("📦 Дефолтный стикерсет не существует, создаем: {}", stickerSetName);
                 String defaultTitle = appConfig.getTelegram().getDefaultStickerSetTitle();
                 if (defaultTitle == null || defaultTitle.isBlank()) {
@@ -223,7 +220,7 @@ public class StickerSetCreationService {
         // 2.1. Получить предыдущее состояние набора (file_id в порядке Telegram)
         java.util.List<String> previousFileIds = telegramBotApiService.getStickerFileIdsInOrder(stickerSetName);
         
-        // 3. Получить файл и добавить
+        // 3. IO-фаза: получить файл и добавить
         File stickerFile = imageStorageService.getFileByUuid(imageUuid);
         
         if (emoji == null || emoji.isBlank()) {

@@ -696,16 +696,17 @@ public class StickerGenerationService {
         }
     }
 
-    @Transactional
     public SaveToSetV2Response saveToSetV2(SaveToSetV2Request request) {
-        GenerationTaskEntity task = taskRepository.findByTaskId(request.getTaskId())
+        // Short DB phase #1: read task metadata.
+        GenerationTaskEntity taskSnapshot = taskRepository.findByTaskId(request.getTaskId())
                 .orElseThrow(() -> new IllegalArgumentException("Task not found: " + request.getTaskId()));
-        Map<String, Object> metadata = parseMetadata(task.getMetadata());
+        Map<String, Object> metadata = parseMetadata(taskSnapshot.getMetadata());
         String providerFileId = metadata.get("provider_file_id") != null ? metadata.get("provider_file_id").toString() : null;
         if (providerFileId == null || providerFileId.isBlank()) {
             throw new IllegalStateException("provider_file_id not found for task " + request.getTaskId());
         }
 
+        // IO phase: external call without wrapping transaction.
         StickerProcessorGenerationClient.SaveResult saveResult = stickerProcessorGenerationClient.saveToSet(
                 providerFileId,
                 request.getUserId(),
@@ -724,14 +725,18 @@ public class StickerGenerationService {
         if (saveResult.httpStatus() == 200) {
             generationAuditService.addStageEvent(request.getTaskId(), GenerationAuditStage.STICKER_PROCESSOR_SAVE_TO_SET,
                     GenerationAuditEventStatus.SUCCEEDED, saveResult.payload(), null, null);
-            task.setTelegramFileId(response.getTelegramFileId());
+
+            // Short DB phase #2: persist success result.
+            GenerationTaskEntity taskToUpdate = taskRepository.findByTaskId(request.getTaskId())
+                    .orElseThrow(() -> new IllegalArgumentException("Task not found: " + request.getTaskId()));
+            taskToUpdate.setTelegramFileId(response.getTelegramFileId());
             try {
                 metadata.put("save_to_set", saveResult.payload());
-                task.setMetadata(objectMapper.writeValueAsString(metadata));
+                taskToUpdate.setMetadata(objectMapper.writeValueAsString(metadata));
             } catch (Exception e) {
                 LOGGER.warn("Failed to serialize save-to-set metadata: {}", e.getMessage());
             }
-            taskRepository.save(task);
+            taskRepository.save(taskToUpdate);
         } else {
             generationAuditService.addStageEvent(request.getTaskId(), GenerationAuditStage.STICKER_PROCESSOR_SAVE_TO_SET,
                     GenerationAuditEventStatus.FAILED, saveResult.payload(), ERROR_STICKER_PROCESSOR_FAILED, "HTTP " + saveResult.httpStatus());
