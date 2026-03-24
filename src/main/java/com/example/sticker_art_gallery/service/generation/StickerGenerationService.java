@@ -25,7 +25,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -255,12 +254,9 @@ public class StickerGenerationService {
         OffsetDateTime auditExpiresAt = OffsetDateTime.now().plusDays(90);
         generationAuditService.startSession(taskId, userId, request.getPrompt(), metadata, auditExpiresAt);
 
-        processPromptAsyncV2(taskId, userId, request.getStylePresetId());
         return taskId;
     }
 
-    @Async("generationTaskExecutor")
-    @Transactional
     public CompletableFuture<Void> processPromptAsync(String taskId, Long userId, Long stylePresetId) {
         try {
             GenerationTaskEntity task = taskRepository.findByTaskId(taskId)
@@ -314,8 +310,6 @@ public class StickerGenerationService {
         return CompletableFuture.completedFuture(null);
     }
 
-    @Async("generationTaskExecutor")
-    @Transactional
     public CompletableFuture<Void> processPromptAsyncV2(String taskId, Long userId, Long stylePresetId) {
         try {
             GenerationTaskEntity task = taskRepository.findByTaskId(taskId)
@@ -347,8 +341,6 @@ public class StickerGenerationService {
         return CompletableFuture.completedFuture(null);
     }
 
-    @Async("generationTaskExecutor")
-    @Transactional
     public CompletableFuture<Void> runGenerationAsync(String taskId) {
         try {
             runGeneration(taskId);
@@ -358,8 +350,6 @@ public class StickerGenerationService {
         return CompletableFuture.completedFuture(null);
     }
 
-    @Async("generationTaskExecutor")
-    @Transactional
     public CompletableFuture<Void> runGenerationV2Async(String taskId) {
         try {
             runGenerationV2(taskId);

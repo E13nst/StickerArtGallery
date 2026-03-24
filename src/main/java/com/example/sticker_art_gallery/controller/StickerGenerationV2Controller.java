@@ -6,6 +6,7 @@ import com.example.sticker_art_gallery.dto.generation.GenerationHistoryResponse;
 import com.example.sticker_art_gallery.dto.generation.GenerationStatusResponse;
 import com.example.sticker_art_gallery.dto.generation.SaveToSetV2Request;
 import com.example.sticker_art_gallery.dto.generation.SaveToSetV2Response;
+import com.example.sticker_art_gallery.service.generation.StickerGenerationAsyncDispatcher;
 import com.example.sticker_art_gallery.service.generation.StickerGenerationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -34,9 +35,12 @@ public class StickerGenerationV2Controller {
     private static final Logger LOGGER = LoggerFactory.getLogger(StickerGenerationV2Controller.class);
 
     private final StickerGenerationService generationService;
+    private final StickerGenerationAsyncDispatcher generationAsyncDispatcher;
 
-    public StickerGenerationV2Controller(StickerGenerationService generationService) {
+    public StickerGenerationV2Controller(StickerGenerationService generationService,
+                                         StickerGenerationAsyncDispatcher generationAsyncDispatcher) {
         this.generationService = generationService;
+        this.generationAsyncDispatcher = generationAsyncDispatcher;
     }
 
     @PostMapping("/generate")
@@ -61,6 +65,7 @@ public class StickerGenerationV2Controller {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         String taskId = generationService.startGenerationV2(userId, request);
+        generationAsyncDispatcher.processPromptAsyncV2(taskId, userId, request.getStylePresetId());
         LOGGER.info("Generation v2 started: taskId={}, userId={}", taskId, userId);
         return ResponseEntity.ok(new GenerateStickerResponse(taskId));
     }
