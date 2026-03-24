@@ -21,8 +21,7 @@ public class SaveToSetV2Request {
     @NotBlank(message = "name обязателен")
     private String name;
 
-    @Schema(description = "Title стикерсета", example = "My Pack")
-    @NotBlank(message = "title обязателен")
+    @Schema(description = "Title стикерсета (нужен при создании нового, опционален для существующего)", example = "My Pack")
     private String title;
 
     @Schema(description = "Эмодзи для привязки стикера", example = "😀", defaultValue = "😀")

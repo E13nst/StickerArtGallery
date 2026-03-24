@@ -102,7 +102,9 @@ public class StickerProcessorGenerationClient {
         payload.put("file_id", fileId);
         payload.put("user_id", userId);
         payload.put("name", name);
-        payload.put("title", title);
+        if (title != null && !title.isBlank()) {
+            payload.put("title", title);
+        }
         payload.put("emoji", emoji);
         payload.put("wait_timeout_sec", waitTimeoutSec);
 
