@@ -30,7 +30,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -238,9 +240,8 @@ public class StickerGenerationService {
         metadata.put("num_images", request.getNumImages());
         metadata.put("strength", request.getStrength());
         metadata.put("remove_background", request.getRemoveBackground());
-        metadata.put("source_image_url", request.getSourceImageUrl());
-        metadata.put("source_image_base64", request.getSourceImageBase64() != null ? "[base64]" : null);
-        metadata.put("image", request.getImage());
+        metadata.put("image_id", request.getImageId());
+        metadata.put("image_ids", request.getImageIds());
         metadata.put("stylePresetId", request.getStylePresetId());
         try {
             task.setMetadata(objectMapper.writeValueAsString(metadata));
@@ -606,9 +607,7 @@ public class StickerGenerationService {
             request.setNumImages(metadata.get("num_images") instanceof Number ? ((Number) metadata.get("num_images")).intValue() : 1);
             request.setStrength(metadata.get("strength") instanceof Number ? ((Number) metadata.get("strength")).doubleValue() : 0.8);
             request.setRemoveBackground(Boolean.TRUE.equals(metadata.get("remove_background")));
-            request.setSourceImageUrl(metadata.get("source_image_url") != null ? metadata.get("source_image_url").toString() : null);
-            request.setSourceImageBase64(null);
-            request.setImage(metadata.get("image") != null ? metadata.get("image").toString() : null);
+            request.setImageIds(resolveSourceImageIds(metadata));
 
             StickerProcessorGenerationClient.SubmitResult submit = stickerProcessorGenerationClient.submitGenerate(request);
             if (submit.fileId() == null || submit.fileId().isBlank()) {
@@ -671,13 +670,16 @@ public class StickerGenerationService {
                 if (statusCode == 202 || statusCode == 0) {
                     continue;
                 }
-                if (statusCode == 404 || statusCode == 410 || statusCode == 422 || statusCode == 424) {
+                if (statusCode == 400 || statusCode == 404 || statusCode == 410 || statusCode == 422 || statusCode == 424) {
+                    String terminalReason = statusCode == 404
+                            ? "Uploaded image not found (expired TTL or invalid image_id)"
+                            : "Terminal status: " + statusCode;
                     generationAuditService.addStageEvent(taskId, GenerationAuditStage.STICKER_PROCESSOR_RESULT,
-                            GenerationAuditEventStatus.FAILED, poll.getPayload(), ERROR_STICKER_PROCESSOR_FAILED, "Terminal status: " + statusCode);
+                            GenerationAuditEventStatus.FAILED, poll.getPayload(), ERROR_STICKER_PROCESSOR_FAILED, terminalReason);
                     task.setStatus(GenerationTaskStatus.FAILED);
-                    task.setErrorMessage("STICKER_PROCESSOR terminal status: " + statusCode);
+                    task.setErrorMessage("STICKER_PROCESSOR: " + terminalReason);
                     taskRepository.save(task);
-                    generationAuditService.finishFailure(taskId, ERROR_STICKER_PROCESSOR_FAILED, "Terminal status: " + statusCode, poll.getPayload());
+                    generationAuditService.finishFailure(taskId, ERROR_STICKER_PROCESSOR_FAILED, terminalReason, poll.getPayload());
                     return;
                 }
             }
@@ -830,5 +832,37 @@ public class StickerGenerationService {
                 ? stickerProcessorBaseUrl.substring(0, stickerProcessorBaseUrl.length() - 1)
                 : stickerProcessorBaseUrl;
         return baseUrl + "/stickers/wavespeed/" + providerFileId;
+    }
+
+    private List<String> resolveSourceImageIds(Map<String, Object> metadata) {
+        List<String> imageIds = asStringList(metadata.get("image_ids"));
+        if (!imageIds.isEmpty()) {
+            return imageIds;
+        }
+
+        Object singleImageId = metadata.get("image_id");
+        if (singleImageId != null && !singleImageId.toString().isBlank()) {
+            return List.of(singleImageId.toString());
+        }
+
+        throw new IllegalStateException("image_id/image_ids is required for generation-v2");
+    }
+
+    private List<String> asStringList(Object value) {
+        if (!(value instanceof List<?> rawList)) {
+            return List.of();
+        }
+
+        List<String> normalized = new ArrayList<>();
+        for (Object item : rawList) {
+            if (item == null) {
+                continue;
+            }
+            String itemAsString = item.toString().trim();
+            if (!itemAsString.isEmpty()) {
+                normalized.add(itemAsString);
+            }
+        }
+        return normalized;
     }
 }

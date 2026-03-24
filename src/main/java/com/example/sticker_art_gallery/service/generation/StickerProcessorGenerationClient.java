@@ -47,9 +47,7 @@ public class StickerProcessorGenerationClient {
         payload.put("num_images", request.getNumImages());
         payload.put("strength", request.getStrength());
         payload.put("remove_background", request.getRemoveBackground());
-        payload.put("source_image_url", request.getSourceImageUrl());
-        payload.put("source_image_base64", request.getSourceImageBase64());
-        payload.put("image", request.getImage());
+        payload.put("source_image_ids", request.getImageIds());
 
         try {
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, jsonHeaders());

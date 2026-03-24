@@ -4,12 +4,15 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+
+import java.util.List;
 
 @Schema(description = "Запрос на генерацию стикера через Sticker Processor (v2)")
 public class GenerateStickerV2Request {
@@ -46,16 +49,17 @@ public class GenerateStickerV2Request {
     @Schema(description = "Удалить фон", example = "true", defaultValue = "false")
     private Boolean removeBackground = false;
 
-    @JsonProperty("source_image_url")
-    @Schema(description = "URL исходного изображения для image-edit", example = "https://example.com/input.png")
-    private String sourceImageUrl;
+    @JsonProperty("image_id")
+    @Schema(description = "ID загруженного изображения для single-image генерации", example = "img_abc123")
+    @Pattern(regexp = "^img_[A-Za-z0-9_-]+$", message = "image_id должен иметь формат img_...")
+    private String imageId;
 
-    @JsonProperty("source_image_base64")
-    @Schema(description = "Base64 исходного изображения для image-edit")
-    private String sourceImageBase64;
-
-    @Schema(description = "Legacy alias исходного изображения (не рекомендуется для новых интеграций)")
-    private String image;
+    @JsonProperty("image_ids")
+    @Schema(description = "Список ID загруженных изображений для multi-image генерации")
+    @Size(max = 10, message = "image_ids поддерживает не более 10 элементов")
+    private List<
+            @Pattern(regexp = "^img_[A-Za-z0-9_-]+$", message = "Каждый image_id должен иметь формат img_...")
+            String> imageIds;
 
     @Schema(description = "ID legacy style preset. Пресет будет применен на этапе prompt processing перед вызовом sticker-processor", example = "1")
     private Long stylePresetId;
@@ -116,28 +120,20 @@ public class GenerateStickerV2Request {
         this.removeBackground = removeBackground;
     }
 
-    public String getSourceImageUrl() {
-        return sourceImageUrl;
+    public String getImageId() {
+        return imageId;
     }
 
-    public void setSourceImageUrl(String sourceImageUrl) {
-        this.sourceImageUrl = sourceImageUrl;
+    public void setImageId(String imageId) {
+        this.imageId = imageId;
     }
 
-    public String getSourceImageBase64() {
-        return sourceImageBase64;
+    public List<String> getImageIds() {
+        return imageIds;
     }
 
-    public void setSourceImageBase64(String sourceImageBase64) {
-        this.sourceImageBase64 = sourceImageBase64;
-    }
-
-    public String getImage() {
-        return image;
-    }
-
-    public void setImage(String image) {
-        this.image = image;
+    public void setImageIds(List<String> imageIds) {
+        this.imageIds = imageIds;
     }
 
     public Long getStylePresetId() {
@@ -146,5 +142,13 @@ public class GenerateStickerV2Request {
 
     public void setStylePresetId(Long stylePresetId) {
         this.stylePresetId = stylePresetId;
+    }
+
+    @AssertTrue(message = "Нужно передать image_id или непустой image_ids")
+    public boolean isImageInputValid() {
+        if (imageIds != null && !imageIds.isEmpty()) {
+            return true;
+        }
+        return imageId != null && !imageId.isBlank();
     }
 }

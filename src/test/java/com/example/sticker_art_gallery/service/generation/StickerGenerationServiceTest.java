@@ -1,7 +1,9 @@
 package com.example.sticker_art_gallery.service.generation;
 
 import com.example.sticker_art_gallery.dto.generation.GenerateStickerRequest;
+import com.example.sticker_art_gallery.dto.generation.GenerateStickerV2Request;
 import com.example.sticker_art_gallery.model.generation.GenerationTaskEntity;
+import com.example.sticker_art_gallery.model.generation.GenerationTaskStatus;
 import com.example.sticker_art_gallery.model.profile.ArtTransactionEntity;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.model.storage.CachedImageEntity;
@@ -25,6 +27,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -132,9 +135,10 @@ class StickerGenerationServiceTest {
         when(userProfileService.getOrCreateDefaultForUpdate(userId)).thenReturn(profile);
         when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        var request = new com.example.sticker_art_gallery.dto.generation.GenerateStickerV2Request();
+        GenerateStickerV2Request request = new GenerateStickerV2Request();
         request.setPrompt("v2 prompt");
         request.setModel("flux-schnell");
+        request.setImageId("img_single");
 
         stickerGenerationService.startGenerationV2(userId, request);
         verify(artRewardService, never()).award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong());
@@ -152,14 +156,15 @@ class StickerGenerationServiceTest {
         task.setTaskId(taskId);
         task.setUserProfile(profile);
         task.setPrompt("processed prompt");
-        task.setStatus(com.example.sticker_art_gallery.model.generation.GenerationTaskStatus.PENDING);
+        task.setStatus(GenerationTaskStatus.PENDING);
         task.setMetadata(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(Map.of(
                 "model", "flux-schnell",
                 "size", "512*512",
                 "seed", -1,
                 "num_images", 1,
                 "strength", 0.8,
-                "remove_background", true
+                "remove_background", true,
+                "image_id", "img_123"
         )));
 
         when(taskRepository.findByTaskId(taskId)).thenReturn(Optional.of(task));
@@ -183,7 +188,72 @@ class StickerGenerationServiceTest {
 
         stickerGenerationService.runGenerationV2(taskId);
 
+        ArgumentCaptor<GenerateStickerV2Request> submitCaptor = ArgumentCaptor.forClass(GenerateStickerV2Request.class);
+        verify(stickerProcessorGenerationClient).submitGenerate(submitCaptor.capture());
+        assertEquals(java.util.List.of("img_123"), submitCaptor.getValue().getImageIds());
         verify(artRewardService).award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("runGenerationV2: polling 400 завершает задачу как FAILED")
+    void runGenerationV2_shouldFailOnPolling400() throws Exception {
+        String taskId = "task-v2-400";
+        GenerationTaskEntity task = createV2Task(taskId, 888L, "img_400");
+        when(taskRepository.findByTaskId(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(stickerProcessorGenerationClient.submitGenerate(any())).thenReturn(
+                new StickerProcessorGenerationClient.SubmitResult("ws_400", "pending", "req_400")
+        );
+        when(stickerProcessorGenerationClient.pollResult("ws_400")).thenReturn(
+                StickerProcessorGenerationClient.PollResult.jsonStatus(400, Map.of("detail", "validation failed"))
+        );
+
+        stickerGenerationService.runGenerationV2(taskId);
+
+        assertEquals(GenerationTaskStatus.FAILED, task.getStatus());
+        verify(artRewardService, never()).award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("runGenerationV2: polling 404 завершает задачу как FAILED (image not found)")
+    void runGenerationV2_shouldFailOnPolling404() throws Exception {
+        String taskId = "task-v2-404";
+        GenerationTaskEntity task = createV2Task(taskId, 999L, "img_404");
+        when(taskRepository.findByTaskId(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(stickerProcessorGenerationClient.submitGenerate(any())).thenReturn(
+                new StickerProcessorGenerationClient.SubmitResult("ws_404", "pending", "req_404")
+        );
+        when(stickerProcessorGenerationClient.pollResult("ws_404")).thenReturn(
+                StickerProcessorGenerationClient.PollResult.jsonStatus(404, Map.of("detail", "Uploaded image not found"))
+        );
+
+        stickerGenerationService.runGenerationV2(taskId);
+
+        assertEquals(GenerationTaskStatus.FAILED, task.getStatus());
+        assertEquals("STICKER_PROCESSOR: Uploaded image not found (expired TTL or invalid image_id)", task.getErrorMessage());
+        verify(artRewardService, never()).award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong());
+    }
+
+    private GenerationTaskEntity createV2Task(String taskId, long userId, String imageId) throws Exception {
+        UserProfileEntity profile = new UserProfileEntity();
+        profile.setUserId(userId);
+
+        GenerationTaskEntity task = new GenerationTaskEntity();
+        task.setTaskId(taskId);
+        task.setUserProfile(profile);
+        task.setPrompt("processed prompt");
+        task.setStatus(GenerationTaskStatus.PENDING);
+        task.setMetadata(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(Map.of(
+                "model", "flux-schnell",
+                "size", "512*512",
+                "seed", -1,
+                "num_images", 1,
+                "strength", 0.8,
+                "remove_background", true,
+                "image_id", imageId
+        )));
+        return task;
     }
 
     private static void assertWithinRange(OffsetDateTime value, OffsetDateTime minInclusive, OffsetDateTime maxInclusive) {

@@ -35,6 +35,184 @@
 Для v2 ART списываются только при успешном завершении генерации (`COMPLETED`).
 При terminal fail/timeout списание не выполняется.
 
+## Полная документация новых ручек (`/api/generation/v2/*`)
+
+Базовый URL приложения (локально): `http://localhost:8080`
+
+### Авторизация
+
+Все ручки требуют заголовок:
+
+- `X-Telegram-Init-Data: <initData>`
+
+Пример:
+
+```bash
+-H "X-Telegram-Init-Data: user=...&hash=..."
+```
+
+### 1) `POST /api/generation/v2/generate`
+
+Запускает асинхронную генерацию.  
+Внутри перед отправкой в `sticker-processor` выполняется:
+
+1. Prompt Enhancers пользователя (если есть и включены)
+2. Style Preset по `stylePresetId` (если передан)
+3. Отправка обработанного промпта в upstream
+
+#### Тело запроса
+
+Обязательные поля:
+
+- `prompt: string`
+- `model: "flux-schnell" | "nanabanana"`
+
+Опциональные:
+
+- `size: string` (default `512*512`)
+- `seed: int` (default `-1`)
+- `num_images: int` (сейчас `1`)
+- `strength: float` (default `0.8`)
+- `remove_background: bool` (default `false`)
+- `image_id: string` (формат `img_...`, single-image)
+- `image_ids: string[]` (multi-image; если передан непустой массив — он приоритетнее `image_id`)
+- `stylePresetId: long` (legacy-compatible, но рабочий)
+
+#### Пример запроса (single-image + legacy preset)
+
+```bash
+curl -X POST "http://localhost:8080/api/generation/v2/generate" \
+  -H "accept: application/json" \
+  -H "Content-Type: application/json" \
+  -H "X-Telegram-Init-Data: <INIT_DATA>" \
+  -d '{
+    "prompt": "gold dragonfly sticker, transparent background",
+    "model": "flux-schnell",
+    "remove_background": true,
+    "stylePresetId": 1,
+    "image_id": "img_9f7ab3c2"
+  }'
+```
+
+#### Успешный ответ
+
+```json
+{
+  "taskId": "2fde3696-5478-4d65-a0c4-30b8203a319c"
+}
+```
+
+---
+
+### 2) `GET /api/generation/v2/status/{taskId}`
+
+Возвращает текущее состояние задачи.
+
+Статусы:
+
+- `PROCESSING_PROMPT`
+- `PENDING`
+- `GENERATING`
+- `COMPLETED`
+- `FAILED`
+- `TIMEOUT`
+
+#### Пример запроса
+
+```bash
+curl -X GET "http://localhost:8080/api/generation/v2/status/<TASK_ID>" \
+  -H "accept: application/json" \
+  -H "X-Telegram-Init-Data: <INIT_DATA>"
+```
+
+#### Пример ответа `COMPLETED`
+
+```json
+{
+  "taskId": "6a6eb6a5-7269-477a-a816-5c5d99f2657e",
+  "status": "COMPLETED",
+  "imageUrl": "https://stickerartgallery-e13nst.amvera.io/api/images/3ab68a46-0826-47fe-9db6-83dbd9c1e0bc.webp",
+  "originalImageUrl": "https://sticker-processor-e13nst.amvera.io/stickers/wavespeed/ws_e4acfbe8c7d4609ff12bab5b",
+  "errorMessage": null
+}
+```
+
+---
+
+### 3) `GET /api/generation/v2/history`
+
+История генераций текущего пользователя только для нового flow (`generation-v2`).
+
+Query params:
+
+- `page` (default `0`)
+- `size` (default `20`)
+
+#### Пример запроса
+
+```bash
+curl -X GET "http://localhost:8080/api/generation/v2/history?page=0&size=20" \
+  -H "accept: application/json" \
+  -H "X-Telegram-Init-Data: <INIT_DATA>"
+```
+
+Ответ: пагинированный список `GenerationStatusResponse`.
+
+---
+
+### 4) `POST /api/generation/v2/save-to-set`
+
+Сохраняет сгенерированный стикер в Telegram set через `sticker-processor`.
+
+#### Тело запроса
+
+- `taskId: string` (ID задачи gallery)
+- `userId: long` (Telegram user ID)
+- `name: string` (short name)
+- `title: string`
+- `emoji: string` (default `😀`)
+- `wait_timeout_sec: int` (default `60`)
+
+#### Пример запроса
+
+```bash
+curl -X POST "http://localhost:8080/api/generation/v2/save-to-set" \
+  -H "accept: application/json" \
+  -H "Content-Type: application/json" \
+  -H "X-Telegram-Init-Data: <INIT_DATA>" \
+  -d '{
+    "taskId": "6a6eb6a5-7269-477a-a816-5c5d99f2657e",
+    "userId": 141614461,
+    "name": "my_pack_by_bot",
+    "title": "My Pack",
+    "emoji": "😀",
+    "wait_timeout_sec": 60
+  }'
+```
+
+#### Ответ
+
+- `200` — сохранено
+- `202` — не готово в пределах wait timeout
+- `400/404/410/422/424` — terminal ошибки upstream
+
+## Рекомендуемый client flow (v2)
+
+1. `POST /api/generation/v2/generate` -> получить `taskId`
+2. Poll `GET /api/generation/v2/status/{taskId}` до terminal статуса
+3. При `COMPLETED` использовать:
+   - `imageUrl` для фронта/превью
+   - `originalImageUrl` как upstream источник
+4. Опционально вызвать `POST /api/generation/v2/save-to-set`
+
+## Ошибки и диагностика
+
+- Если задача падает сразу с `FAILED` и `400 BAD_REQUEST` от sticker-processor, проверьте корректность `image_id/image_ids`.
+- Если задача падает с `404`, проверьте TTL загруженного изображения и корректность `img_...` идентификатора.
+- Для анализа пайплайна используйте админ-логи:
+  - `/api/admin/generation-logs` (audit timeline)
+  - `/api/admin/generation-v2` (история новых задач)
+
 ## Endpoint-ы
 
 - `POST /stickers/wavespeed/generate` - отправка задачи генерации, получение синтетического `ws_...` file id
@@ -50,7 +228,7 @@
 3. Выполнять polling `GET /stickers/wavespeed/{file_id}` с retry/backoff
 4. Если ответ `200`, сохранить/передать байты WebP
 5. Если ответ `202`, продолжать polling
-6. Если ответ terminal `4xx/5xx` (`404`, `410`, `422`, `424`) - завершить задачу как failed
+6. Если ответ terminal `4xx/5xx` (`400`, `404`, `410`, `422`, `424`) - завершить задачу как failed
 7. (Опционально) Вызвать `POST /stickers/wavespeed/save-to-set` для автоматического добавления в стикерсет
 
 ## Модель запроса: `POST /stickers/wavespeed/generate`
@@ -67,16 +245,14 @@
 - `num_images: int` (сейчас должен быть `1`)
 - `strength: float` (по умолчанию: `0.8`)
 - `remove_background: bool` (по умолчанию: `false`)
-- `source_image_url: string` (опционально, для img2img/edit)
-- `source_image_base64: string` (опционально, для img2img/edit)
-- `image: string` (legacy-алиас; для новых интеграций не рекомендуется)
+- `source_image_ids: string[]` (опционально для text2img, обязательно для image-edit; элементы в формате `img_...`)
 
 ### Выбор режима Nano Banana
 
 Для `model="nanabanana"` режим выбирается автоматически:
 
-- если передан source image (`source_image_url` или `source_image_base64`) -> режим image edit
-- если source image не передан -> режим text-to-image
+- если передан непустой `source_image_ids` -> режим image edit
+- если `source_image_ids` не передан -> режим text-to-image
 
 ## Модель ответа: `POST /stickers/wavespeed/generate`
 
@@ -175,7 +351,7 @@ loop до дедлайна:
   GET /stickers/wavespeed/{file_id}
   if 200: done
   if 202: wait(backoff+jitter), continue
-  if 404/410/422/424: terminal fail
+  if 400/404/410/422/424: terminal fail
   else: retry по вашей platform policy
 ```
 
@@ -211,7 +387,7 @@ curl -X POST "http://127.0.0.1:8081/stickers/wavespeed/generate" \
   }'
 ```
 
-### 3) nanabanana image edit (source URL)
+### 3) nanabanana image edit (source image ids)
 
 ```bash
 curl -X POST "http://127.0.0.1:8081/stickers/wavespeed/generate" \
@@ -220,7 +396,7 @@ curl -X POST "http://127.0.0.1:8081/stickers/wavespeed/generate" \
   -d '{
     "prompt": "Turn this image into telegram sticker style",
     "model": "nanabanana",
-    "source_image_url": "https://example.com/input.png",
+    "source_image_ids": ["img_e7d0aa12"],
     "remove_background": true
   }'
 ```
@@ -258,4 +434,4 @@ curl -X POST "http://127.0.0.1:8081/stickers/wavespeed/save-to-set" \
 - `file_id` синтетический и namespaced (`ws_...`), это не Telegram `file_id`.
 - Финальный результат нормализуется в Telegram-compatible WebP (canvas 512x512 с сохранением пропорций).
 - Сгенерированные файлы кешируются; повторные `GET` для готовых задач быстрые.
-- В production-клиентах не отправляйте Swagger placeholder-строки вроде `"source_image_url": "string"`.
+- В production-клиентах передавайте только реальные `img_...` ID в `image_id/image_ids` (или `source_image_ids` для прямой интеграции).
