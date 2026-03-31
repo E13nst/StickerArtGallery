@@ -17,8 +17,7 @@ import java.util.List;
 public class GenerateStickerV2Request {
 
     @Schema(description = "Промпт для генерации", example = "gold dragonfly sticker, transparent background", maxLength = 1000)
-    @NotBlank(message = "Промпт не может быть пустым")
-    @Size(min = 1, max = 1000, message = "Промпт должен быть от 1 до 1000 символов")
+    @Size(max = 1000, message = "Промпт не должен превышать 1000 символов")
     private String prompt;
 
     @Schema(description = "Модель генерации", allowableValues = {"flux-schnell", "nanabanana"}, example = "flux-schnell")

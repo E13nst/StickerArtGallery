@@ -49,9 +49,9 @@ public class PromptProcessingService {
     @Transactional(readOnly = true)
     public String processPrompt(String userPrompt, Long userId, Long stylePresetId) {
         LOGGER.info("Processing prompt for user {}: original_length={}, stylePresetId={}",
-                userId, userPrompt.length(), stylePresetId);
+                userId, userPrompt != null ? userPrompt.length() : 0, stylePresetId);
 
-        String processedPrompt = userPrompt;
+        String processedPrompt = userPrompt != null ? userPrompt : "";
 
         // Шаг 1: Применение PromptEnhancer (AI-обработка)
         processedPrompt = applyEnhancers(processedPrompt, userId);

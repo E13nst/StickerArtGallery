@@ -220,7 +220,7 @@ public class StickerGenerationService {
     @Transactional
     public String startGenerationV2(Long userId, GenerateStickerV2Request request) {
         LOGGER.info("Starting generation v2 for user {}: prompt_length={}, model={}",
-                userId, request.getPrompt().length(), request.getModel());
+                userId, request.getPrompt() != null ? request.getPrompt().length() : 0, request.getModel());
 
         UserProfileEntity profile = userProfileService.getOrCreateDefaultForUpdate(userId);
         String taskId = UUID.randomUUID().toString();
@@ -273,7 +273,7 @@ public class StickerGenerationService {
             );
             
             LOGGER.info("Prompt processed for task {}: original_length={}, processed_length={}",
-                    taskId, originalPrompt.length(), processedPrompt.length());
+                    taskId, originalPrompt != null ? originalPrompt.length() : 0, processedPrompt != null ? processedPrompt.length() : 0);
 
             // Обновляем задачу с обработанным промптом
             task.setPrompt(processedPrompt); // Заменяем на обработанный
