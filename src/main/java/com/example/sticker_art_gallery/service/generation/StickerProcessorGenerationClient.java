@@ -18,6 +18,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -47,7 +48,8 @@ public class StickerProcessorGenerationClient {
         payload.put("num_images", request.getNumImages());
         payload.put("strength", request.getStrength());
         payload.put("remove_background", request.getRemoveBackground());
-        payload.put("source_image_ids", request.getImageIds());
+        List<String> sourceImageIds = request.getImageIds();
+        payload.put("source_image_ids", (sourceImageIds != null && !sourceImageIds.isEmpty()) ? sourceImageIds : null);
 
         try {
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, jsonHeaders());
@@ -123,7 +125,7 @@ public class StickerProcessorGenerationClient {
     private HttpHeaders jsonHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON, MediaType.valueOf("image/webp")));
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON, MediaType.valueOf("image/webp")));
         return headers;
     }
 

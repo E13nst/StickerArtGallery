@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -144,11 +143,4 @@ public class GenerateStickerV2Request {
         this.stylePresetId = stylePresetId;
     }
 
-    @AssertTrue(message = "Нужно передать image_id или непустой image_ids")
-    public boolean isImageInputValid() {
-        if (imageIds != null && !imageIds.isEmpty()) {
-            return true;
-        }
-        return imageId != null && !imageId.isBlank();
-    }
 }

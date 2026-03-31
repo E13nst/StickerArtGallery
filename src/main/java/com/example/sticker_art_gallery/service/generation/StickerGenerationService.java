@@ -840,7 +840,7 @@ public class StickerGenerationService {
             return List.of(singleImageId.toString());
         }
 
-        throw new IllegalStateException("image_id/image_ids is required for generation-v2");
+        return null;
     }
 
     private List<String> asStringList(Object value) {
