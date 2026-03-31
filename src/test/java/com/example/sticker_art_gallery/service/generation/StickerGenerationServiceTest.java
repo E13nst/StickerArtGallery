@@ -211,6 +211,7 @@ class StickerGenerationServiceTest {
         stickerGenerationService.runGenerationV2(taskId);
 
         assertEquals(GenerationTaskStatus.FAILED, task.getStatus());
+        assertEquals("STICKER_PROCESSOR: validation failed", task.getErrorMessage());
         verify(artRewardService, never()).award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong());
     }
 
@@ -231,7 +232,37 @@ class StickerGenerationServiceTest {
         stickerGenerationService.runGenerationV2(taskId);
 
         assertEquals(GenerationTaskStatus.FAILED, task.getStatus());
-        assertEquals("STICKER_PROCESSOR: Uploaded image not found (expired TTL or invalid image_id)", task.getErrorMessage());
+        assertEquals("STICKER_PROCESSOR: Uploaded image not found", task.getErrorMessage());
+        verify(artRewardService, never()).award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("runGenerationV2: polling 424 пробрасывает detail.message")
+    void runGenerationV2_shouldUseNestedDetailMessageOnPolling424() throws Exception {
+        String taskId = "task-v2-424";
+        GenerationTaskEntity task = createV2Task(taskId, 111L, "img_424");
+        when(taskRepository.findByTaskId(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(stickerProcessorGenerationClient.submitGenerate(any())).thenReturn(
+                new StickerProcessorGenerationClient.SubmitResult("ws_424", "pending", "req_424")
+        );
+        when(stickerProcessorGenerationClient.pollResult("ws_424")).thenReturn(
+                StickerProcessorGenerationClient.PollResult.jsonStatus(
+                        424,
+                        Map.of("detail", Map.of(
+                                "code", "generation_failed",
+                                "message", "Content flagged as potentially sensitive. Please try different prompts or images."
+                        ))
+                )
+        );
+
+        stickerGenerationService.runGenerationV2(taskId);
+
+        assertEquals(GenerationTaskStatus.FAILED, task.getStatus());
+        assertEquals(
+                "STICKER_PROCESSOR: Content flagged as potentially sensitive. Please try different prompts or images.",
+                task.getErrorMessage()
+        );
         verify(artRewardService, never()).award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong());
     }
 

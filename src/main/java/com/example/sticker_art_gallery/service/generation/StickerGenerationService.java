@@ -660,10 +660,8 @@ public class StickerGenerationService {
                 if (statusCode == 202 || statusCode == 0) {
                     continue;
                 }
-                if (statusCode == 400 || statusCode == 404 || statusCode == 410 || statusCode == 422 || statusCode == 424) {
-                    String terminalReason = statusCode == 404
-                            ? "Uploaded image not found (expired TTL or invalid image_id)"
-                            : "Terminal status: " + statusCode;
+                if (statusCode >= 400 && statusCode < 500) {
+                    String terminalReason = StickerProcessorErrorMessage.humanMessageOrFallback(poll.getPayload(), statusCode);
                     generationAuditService.addStageEvent(taskId, GenerationAuditStage.STICKER_PROCESSOR_RESULT,
                             GenerationAuditEventStatus.FAILED, poll.getPayload(), ERROR_STICKER_PROCESSOR_FAILED, terminalReason);
                     task.setStatus(GenerationTaskStatus.FAILED);

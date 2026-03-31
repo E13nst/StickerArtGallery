@@ -61,8 +61,10 @@ public class StickerProcessorGenerationClient {
                     data.get("provider_request_id") != null ? data.get("provider_request_id").toString() : null
             );
         } catch (HttpStatusCodeException e) {
-            String body = e.getResponseBodyAsString();
-            throw new RuntimeException("STICKER_PROCESSOR submit failed: " + e.getStatusCode() + " " + body, e);
+            int statusCode = e.getStatusCode().value();
+            Map<String, Object> body = toMap(e.getResponseBodyAsString());
+            String reason = StickerProcessorErrorMessage.humanMessageOrFallback(body, statusCode);
+            throw new RuntimeException("STICKER_PROCESSOR submit failed: " + reason, e);
         } catch (ResourceAccessException e) {
             throw new RuntimeException("STICKER_PROCESSOR submit timeout/network error: " + e.getMessage(), e);
         }
