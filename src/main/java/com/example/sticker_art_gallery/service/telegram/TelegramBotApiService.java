@@ -667,6 +667,63 @@ public class TelegramBotApiService {
     }
 
     /**
+     * Отправляет текстовое сообщение пользователю через Telegram Bot API.
+     *
+     * @param chatId     числовой chat_id получателя
+     * @param text       текст сообщения
+     * @param parseMode  режим разметки: "HTML", "MarkdownV2" или null для plain text
+     * @return message_id отправленного сообщения или -1 при ошибке
+     */
+    public int sendMessage(Long chatId, String text, String parseMode) {
+        try {
+            String botToken = appConfig.getTelegram().getBotToken();
+            if (botToken == null || botToken.trim().isEmpty()) {
+                throw new IllegalStateException("Токен бота не настроен (app.telegram.bot-token)");
+            }
+
+            String url = TELEGRAM_API_URL + botToken + "/sendMessage";
+
+            java.util.Map<String, Object> requestBody = new java.util.LinkedHashMap<>();
+            requestBody.put("chat_id", chatId);
+            requestBody.put("text", text);
+            if (parseMode != null && !parseMode.isBlank() && !"plain".equalsIgnoreCase(parseMode)) {
+                requestBody.put("parse_mode", parseMode);
+            }
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            String jsonBody = objectMapper.writeValueAsString(requestBody);
+            HttpEntity<String> entity = new HttpEntity<>(jsonBody, headers);
+
+            LOGGER.debug("📤 sendMessage → chatId={}, textLen={}, parseMode={}", chatId, text.length(), parseMode);
+
+            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+            String responseBody = response.getBody();
+
+            if (response.getStatusCode().is2xxSuccessful() && responseBody != null) {
+                JsonNode json = objectMapper.readTree(responseBody);
+                if (json.has("ok") && json.get("ok").asBoolean()) {
+                    int messageId = json.path("result").path("message_id").asInt(-1);
+                    LOGGER.info("✅ sendMessage OK: chatId={}, messageId={}", chatId, messageId);
+                    return messageId;
+                }
+                String desc = json.path("description").asText("unknown error");
+                LOGGER.warn("⚠️ Telegram sendMessage error: chatId={}, description={}", chatId, desc);
+                throw new RuntimeException("Telegram sendMessage error: " + desc);
+            }
+            throw new RuntimeException("HTTP error: " + response.getStatusCode());
+        } catch (RestClientException e) {
+            LOGGER.error("❌ Network error in sendMessage: chatId={}, error={}", chatId, e.getMessage());
+            throw new RuntimeException("Network error in sendMessage", e);
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            LOGGER.error("❌ Unexpected error in sendMessage: {}", e.getMessage(), e);
+            throw new RuntimeException("Unexpected error in sendMessage", e);
+        }
+    }
+
+    /**
      * Создает invoice link для оплаты Telegram Stars
      * 
      * @param title название товара

@@ -13,6 +13,7 @@ public class AppConfig {
     private Telegram telegram = new Telegram();
     private Referral referral = new Referral();
     private StickerBot stickerbot = new StickerBot();
+    private Webhook webhook = new Webhook();
     
     public String getUrl() {
         return url;
@@ -61,7 +62,15 @@ public class AppConfig {
     public void setStickerbot(StickerBot stickerbot) {
         this.stickerbot = stickerbot;
     }
-    
+
+    public Webhook getWebhook() {
+        return webhook;
+    }
+
+    public void setWebhook(Webhook webhook) {
+        this.webhook = webhook;
+    }
+
     public static class MiniApp {
         private String url;
         
@@ -78,7 +87,19 @@ public class AppConfig {
         private String botToken;
         private String botUsername;
         private String defaultStickerSetTitle;
-        
+
+        /** Java создаёт invoice напрямую через Bot API, минуя StickerBot */
+        private boolean nativePaymentEnabled = false;
+
+        /** Java отправляет сообщения напрямую через Bot API, минуя StickerBot */
+        private boolean nativeMessagingEnabled = false;
+
+        /**
+         * Текущий владелец входящих Telegram updates.
+         * Значения: "stickerbot" (по умолчанию) или "java" (после cutover).
+         */
+        private String webhookOwner = "stickerbot";
+
         public String getBotToken() {
             return botToken;
         }
@@ -101,6 +122,57 @@ public class AppConfig {
 
         public void setDefaultStickerSetTitle(String defaultStickerSetTitle) {
             this.defaultStickerSetTitle = defaultStickerSetTitle;
+        }
+
+        public boolean isNativePaymentEnabled() {
+            return nativePaymentEnabled;
+        }
+
+        public void setNativePaymentEnabled(boolean nativePaymentEnabled) {
+            this.nativePaymentEnabled = nativePaymentEnabled;
+        }
+
+        public boolean isNativeMessagingEnabled() {
+            return nativeMessagingEnabled;
+        }
+
+        public void setNativeMessagingEnabled(boolean nativeMessagingEnabled) {
+            this.nativeMessagingEnabled = nativeMessagingEnabled;
+        }
+
+        public String getWebhookOwner() {
+            return webhookOwner;
+        }
+
+        public void setWebhookOwner(String webhookOwner) {
+            this.webhookOwner = webhookOwner;
+        }
+    }
+
+    /**
+     * Настройки безопасности webhook-колбэков от StickerBot → Java.
+     */
+    public static class Webhook {
+        /** Секрет для HMAC-SHA256 проверки X-Webhook-Signature */
+        private String hmacSecret;
+
+        /** true = отклонять запросы без валидной HMAC подписи */
+        private boolean hmacEnforced = false;
+
+        public String getHmacSecret() {
+            return hmacSecret;
+        }
+
+        public void setHmacSecret(String hmacSecret) {
+            this.hmacSecret = hmacSecret;
+        }
+
+        public boolean isHmacEnforced() {
+            return hmacEnforced;
+        }
+
+        public void setHmacEnforced(boolean hmacEnforced) {
+            this.hmacEnforced = hmacEnforced;
         }
     }
     

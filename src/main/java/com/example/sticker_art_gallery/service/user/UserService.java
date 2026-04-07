@@ -1,10 +1,12 @@
 package com.example.sticker_art_gallery.service.user;
 
+import com.example.sticker_art_gallery.config.AppConfig;
 import com.example.sticker_art_gallery.dto.messaging.SendBotMessageRequest;
 import com.example.sticker_art_gallery.dto.messaging.SendBotMessageResponse;
 import com.example.sticker_art_gallery.model.user.UserEntity;
 import com.example.sticker_art_gallery.repository.UserRepository;
 import com.example.sticker_art_gallery.service.messaging.StickerBotMessageService;
+import com.example.sticker_art_gallery.service.messaging.TelegramMessageService;
 import com.example.sticker_art_gallery.service.telegram.TelegramBotApiService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,14 +33,20 @@ public class UserService {
     private final UserRepository userRepository;
     private final TelegramBotApiService telegramBotApiService;
     private final StickerBotMessageService stickerBotMessageService;
+    private final TelegramMessageService telegramMessageService;
+    private final AppConfig appConfig;
 
     @Autowired
     public UserService(UserRepository userRepository,
                        TelegramBotApiService telegramBotApiService,
-                       StickerBotMessageService stickerBotMessageService) {
+                       StickerBotMessageService stickerBotMessageService,
+                       TelegramMessageService telegramMessageService,
+                       AppConfig appConfig) {
         this.userRepository = userRepository;
         this.telegramBotApiService = telegramBotApiService;
         this.stickerBotMessageService = stickerBotMessageService;
+        this.telegramMessageService = telegramMessageService;
+        this.appConfig = appConfig;
     }
     
     /**
@@ -108,20 +116,30 @@ public class UserService {
     }
     
     /**
-     * Отправить произвольное сообщение пользователю от бота через внешний StickerBot API.
-     * Используется бизнес-логикой для уведомлений (например, после оплаты или модерации).
+     * Отправить произвольное сообщение пользователю от бота.
+     * При TELEGRAM_NATIVE_MESSAGING_ENABLED=true — напрямую через Telegram Bot API.
+     * При TELEGRAM_NATIVE_MESSAGING_ENABLED=false — через внешний StickerBot API (legacy).
      *
      * @param request запрос с текстом, user_id и опционально parse_mode
      * @return ответ API (chat_id, message_id) при успехе
      */
     public SendBotMessageResponse sendBotMessageToUser(SendBotMessageRequest request) {
+        if (appConfig.getTelegram().isNativeMessagingEnabled()) {
+            LOGGER.debug("📤 Отправка сообщения через Telegram Bot API (native): userId={}", request.getUserId());
+            return telegramMessageService.sendToUser(request);
+        }
+        LOGGER.debug("📤 Отправка сообщения через StickerBot API (legacy): userId={}", request.getUserId());
         return stickerBotMessageService.sendToUser(request);
     }
 
     /**
-     * Отправить текстовое сообщение пользователю (plain, без разметки).
+     * Отправить текстовое plain-сообщение пользователю.
+     * При TELEGRAM_NATIVE_MESSAGING_ENABLED=true — напрямую через Telegram Bot API.
      */
     public SendBotMessageResponse sendPlainBotMessageToUser(Long userId, String text) {
+        if (appConfig.getTelegram().isNativeMessagingEnabled()) {
+            return telegramMessageService.sendPlainTextToUser(userId, text);
+        }
         return stickerBotMessageService.sendPlainTextToUser(userId, text);
     }
 

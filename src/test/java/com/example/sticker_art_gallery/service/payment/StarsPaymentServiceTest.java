@@ -16,6 +16,7 @@ import com.example.sticker_art_gallery.repository.StarsPackageRepository;
 import com.example.sticker_art_gallery.repository.StarsPurchaseRepository;
 import com.example.sticker_art_gallery.repository.UserRepository;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
+import com.example.sticker_art_gallery.service.telegram.TelegramBotApiService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -64,6 +65,9 @@ class StarsPaymentServiceTest {
     @Mock
     private AppConfig appConfig;
 
+    @Mock
+    private TelegramBotApiService telegramBotApiService;
+
     @InjectMocks
     private StarsPaymentService starsPaymentService;
 
@@ -84,6 +88,11 @@ class StarsPaymentServiceTest {
         user = new UserEntity();
         user.setId(77L);
         user.setUsername("user77");
+
+        // AppConfig.Telegram mock: native payment disabled by default (legacy path).
+        // lenient() — stub не используется в тестах, которые бросают исключение раньше.
+        AppConfig.Telegram telegramConfig = new AppConfig.Telegram();
+        lenient().when(appConfig.getTelegram()).thenReturn(telegramConfig);
     }
 
     @Test

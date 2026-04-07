@@ -7,6 +7,7 @@ import com.example.sticker_art_gallery.model.user.UserEntity;
 import com.example.sticker_art_gallery.repository.*;
 import com.example.sticker_art_gallery.config.AppConfig;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
+import com.example.sticker_art_gallery.service.telegram.TelegramBotApiService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +48,7 @@ public class StarsPaymentService {
     private final ArtRewardService artRewardService;
     private final RestTemplate restTemplate;
     private final AppConfig appConfig;
+    private final TelegramBotApiService telegramBotApiService;
 
     public StarsPaymentService(StarsPackageRepository starsPackageRepository,
                                StarsInvoiceIntentRepository starsInvoiceIntentRepository,
@@ -53,7 +56,8 @@ public class StarsPaymentService {
                                UserRepository userRepository,
                                ArtRewardService artRewardService,
                                RestTemplate restTemplate,
-                               AppConfig appConfig) {
+                               AppConfig appConfig,
+                               TelegramBotApiService telegramBotApiService) {
         this.starsPackageRepository = starsPackageRepository;
         this.starsInvoiceIntentRepository = starsInvoiceIntentRepository;
         this.purchaseRepository = purchaseRepository;
@@ -61,6 +65,7 @@ public class StarsPaymentService {
         this.artRewardService = artRewardService;
         this.restTemplate = restTemplate;
         this.appConfig = appConfig;
+        this.telegramBotApiService = telegramBotApiService;
     }
 
     /**
@@ -143,57 +148,84 @@ public class StarsPaymentService {
 
         intent = starsInvoiceIntentRepository.save(intent);
 
-        String stickerBotApiUrl = appConfig.getStickerbot().getApiUrl();
-        if (stickerBotApiUrl == null || stickerBotApiUrl.isBlank()) {
-            throw new IllegalStateException("StickerBot API URL не настроен (app.stickerbot.api-url)");
-        }
-        String appUrl = appConfig.getUrl();
-        if (appUrl == null || appUrl.isBlank()) {
-            throw new IllegalStateException("App URL не настроен (app.url)");
-        }
-
-        String webhookUrl = appUrl.replaceAll("/$", "") + "/api/internal/webhooks/stars-payment";
-        String url = stickerBotApiUrl.replaceAll("/$", "") + "/api/payments/create-invoice";
-
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("user_id", userId);
-        requestBody.put("title", starsPackage.getName());
-        requestBody.put("description", starsPackage.getDescription());
-        requestBody.put("amount_stars", starsPackage.getStarsPrice());
-        requestBody.put("payload", invoicePayload);
-        requestBody.put("return_link", true);
-        requestBody.put("backend_webhook_url", webhookUrl);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("X-Telegram-Init-Data", telegramInitData);
-
         String invoiceUrl;
-        try {
-            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.POST,
-                    new HttpEntity<>(requestBody, headers),
-                    new ParameterizedTypeReference<>() {}
-            );
-            Map<String, Object> responseBody = response.getBody();
-            if (responseBody == null) {
-                throw new RuntimeException("Пустой ответ от StickerBot API");
+
+        if (appConfig.getTelegram().isNativePaymentEnabled()) {
+            // Нативный путь: Java → Telegram Bot API напрямую
+            LOGGER.info("💳 Создание invoice через Telegram Bot API (native): userId={}, packageCode={}",
+                    userId, starsPackage.getCode());
+            try {
+                List<TelegramBotApiService.LabeledPrice> prices = Collections.singletonList(
+                        new TelegramBotApiService.LabeledPrice(starsPackage.getName(), starsPackage.getStarsPrice())
+                );
+                invoiceUrl = telegramBotApiService.createInvoiceLink(
+                        starsPackage.getName(),
+                        starsPackage.getDescription(),
+                        invoicePayload,
+                        "XTR",
+                        prices
+                );
+                if (invoiceUrl == null || invoiceUrl.isBlank()) {
+                    throw new RuntimeException("Telegram Bot API не вернул invoice_link");
+                }
+            } catch (Exception e) {
+                throw new RuntimeException("Ошибка создания invoice через Telegram Bot API: " + e.getMessage(), e);
             }
-            Object okValue = responseBody.get("ok");
-            boolean ok = okValue instanceof Boolean && (Boolean) okValue;
-            if (!ok) {
-                Object error = responseBody.get("error");
-                throw new IllegalArgumentException("StickerBot API error: " + (error != null ? error : "unknown error"));
+        } else {
+            // Legacy путь: Java → StickerBot API → Telegram Bot API
+            LOGGER.info("💳 Создание invoice через StickerBot API (legacy): userId={}, packageCode={}",
+                    userId, starsPackage.getCode());
+
+            String stickerBotApiUrl = appConfig.getStickerbot().getApiUrl();
+            if (stickerBotApiUrl == null || stickerBotApiUrl.isBlank()) {
+                throw new IllegalStateException("StickerBot API URL не настроен (app.stickerbot.api-url)");
+            }
+            String appUrl = appConfig.getUrl();
+            if (appUrl == null || appUrl.isBlank()) {
+                throw new IllegalStateException("App URL не настроен (app.url)");
             }
 
-            Object invoiceLink = responseBody.get("invoice_link");
-            if (!(invoiceLink instanceof String) || ((String) invoiceLink).isBlank()) {
-                throw new RuntimeException("StickerBot API не вернул invoice_link");
+            String webhookUrl = appUrl.replaceAll("/$", "") + "/api/internal/webhooks/stars-payment";
+            String url = stickerBotApiUrl.replaceAll("/$", "") + "/api/payments/create-invoice";
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("user_id", userId);
+            requestBody.put("title", starsPackage.getName());
+            requestBody.put("description", starsPackage.getDescription());
+            requestBody.put("amount_stars", starsPackage.getStarsPrice());
+            requestBody.put("payload", invoicePayload);
+            requestBody.put("return_link", true);
+            requestBody.put("backend_webhook_url", webhookUrl);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("X-Telegram-Init-Data", telegramInitData);
+
+            try {
+                ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                        url,
+                        HttpMethod.POST,
+                        new HttpEntity<>(requestBody, headers),
+                        new ParameterizedTypeReference<>() {}
+                );
+                Map<String, Object> responseBody = response.getBody();
+                if (responseBody == null) {
+                    throw new RuntimeException("Пустой ответ от StickerBot API");
+                }
+                Object okValue = responseBody.get("ok");
+                boolean ok = okValue instanceof Boolean && (Boolean) okValue;
+                if (!ok) {
+                    Object error = responseBody.get("error");
+                    throw new IllegalArgumentException("StickerBot API error: " + (error != null ? error : "unknown error"));
+                }
+                Object invoiceLink = responseBody.get("invoice_link");
+                if (!(invoiceLink instanceof String) || ((String) invoiceLink).isBlank()) {
+                    throw new RuntimeException("StickerBot API не вернул invoice_link");
+                }
+                invoiceUrl = (String) invoiceLink;
+            } catch (RestClientException e) {
+                throw new RuntimeException("Ошибка вызова StickerBot API: " + e.getMessage(), e);
             }
-            invoiceUrl = (String) invoiceLink;
-        } catch (RestClientException e) {
-            throw new RuntimeException("Ошибка вызова StickerBot API: " + e.getMessage(), e);
         }
 
         intent.setInvoiceUrl(invoiceUrl);

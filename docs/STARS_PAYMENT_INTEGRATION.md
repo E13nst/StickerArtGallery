@@ -2,18 +2,40 @@
 
 ## Обзор
 
-Интеграция Telegram Stars для покупки ART-баллов. Python бот получает webhook события от Telegram и передает их в Java API для обработки.
+Интеграция Telegram Stars для покупки ART-баллов. Поддерживает два режима работы:
+
+- **Legacy (по умолчанию)**: Python StickerBot получает webhook от Telegram и пересылает в Java.
+- **Native (целевой)**: Java Backend напрямую работает с Telegram Bot API, StickerBot не задействован.
+
+Подробнее о миграции: [TELEGRAM_WEBHOOK_OWNERSHIP.md](./TELEGRAM_WEBHOOK_OWNERSHIP.md)
 
 ## Архитектура
+
+### Legacy (TELEGRAM_NATIVE_PAYMENT_ENABLED=false)
 
 ```
 Mini App → Java REST API → StickerBot API (create-invoice)
                                     ↓
                             Telegram Payment
                                     ↓
-                            Python Bot (webhook)
+                         StickerBot (webhook owner)
                                     ↓
-                            Java Internal API
+                   POST /api/internal/webhooks/stars-payment
+                   X-Service-Token + X-Webhook-Signature
+                                    ↓
+                            StarsPaymentService
+                                    ↓
+                            ArtRewardService (начисление ART)
+```
+
+### Native (TELEGRAM_NATIVE_PAYMENT_ENABLED=true, после cutover)
+
+```
+Mini App → Java REST API → Telegram Bot API (createInvoiceLink)
+                                    ↓
+                            Telegram Payment
+                                    ↓
+                   Java Backend (webhook owner, TELEGRAM_WEBHOOK_OWNER=java)
                                     ↓
                             StarsPaymentService
                                     ↓
@@ -71,11 +93,21 @@ SERVICE_TOKEN=your-service-token-from-java-config
 - `PATCH /api/admin/stars/packages/{id}/toggle` - включить/выключить пакет
 - `GET /api/admin/stars/purchases` - все покупки
 
-### Internal API (для Python бота)
+### Internal API (для Python бота / Java-обработки)
 
 - `POST /api/internal/webhooks/stars-payment` - webhook обработки успешного платежа
 
-Internal endpoint требует заголовок `X-Service-Token`.
+Internal endpoint требует:
+- `X-Service-Token` — межсервисный токен (всегда обязателен)
+- `X-Webhook-Signature` — HMAC-SHA256 подпись тела (опционально при `WEBHOOK_HMAC_ENFORCED=false`, обязательно при `true`)
+
+### Admin API управления webhook ownership
+
+- `GET /api/internal/telegram/ownership/status` — текущий webhook info + bot status
+- `DELETE /api/internal/telegram/ownership/webhook` — удалить webhook (шаг 1 cutover)
+- `POST /api/internal/telegram/ownership/webhook` — зарегистрировать webhook на Java URL (шаг 2 cutover)
+
+Эти endpoints защищены `X-Service-Token`.
 
 ## База данных
 
@@ -88,10 +120,22 @@ Internal endpoint требует заголовок `X-Service-Token`.
 
 ## Безопасность
 
-1. **Service Token** - все internal endpoints защищены токеном
-2. **Идемпотентность** - используется `telegram_payment_id` и `telegram_charge_id` как уникальные ключи
-3. **Транзакционность** - все операции начисления ART в `@Transactional`
-4. **Валидация** - проверка суммы и пакета перед оплатой
+1. **Service Token** (`X-Service-Token`) — все internal endpoints защищены токеном `SERVICE_API_TOKEN`
+2. **HMAC подпись** (`X-Webhook-Signature`) — HMAC-SHA256 тела запроса с ключом `WEBHOOK_HMAC_SECRET`
+   - Вычисляется как `HMAC-SHA256(secret, canonical_json)`, где canonical JSON — ключи по алфавиту, без пробелов
+   - Верификатор: `WebhookHmacVerifier.java`
+3. **Идемпотентность** — `telegram_charge_id` как уникальный ключ защищает от двойного начисления
+4. **Транзакционность** — все операции начисления ART в `@Transactional`
+5. **Валидация суммы** — стоимость пакета сверяется с полученной `amount_stars`
+6. **Shadow-сверка** — `PaymentShadowValidationService` логирует расхождения ([SHADOW_MISMATCH]) без влияния на ответ
+
+### Переменные окружения для security
+
+| Переменная | Обязательность | Описание |
+|---|---|---|
+| `SERVICE_API_TOKEN` | Обязательна | Токен для X-Service-Token |
+| `WEBHOOK_HMAC_SECRET` | Рекомендована | Секрет для X-Webhook-Signature HMAC проверки |
+| `WEBHOOK_HMAC_ENFORCED` | По умолчанию `false` | `true` = отклонять запросы без HMAC |
 
 ## Расширяемость
 

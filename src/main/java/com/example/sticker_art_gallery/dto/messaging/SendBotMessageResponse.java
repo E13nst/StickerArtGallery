@@ -33,4 +33,11 @@ public class SendBotMessageResponse {
     public boolean isSent() {
         return "sent".equals(status);
     }
+
+    /**
+     * Фабричный метод: создать успешный ответ от нативного Telegram API.
+     */
+    public static SendBotMessageResponse sent(Long chatId, int messageId) {
+        return new SendBotMessageResponse("sent", chatId, (long) messageId, null);
+    }
 }

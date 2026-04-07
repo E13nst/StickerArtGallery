@@ -8,6 +8,18 @@ app:
     bot-token: ${TELEGRAM_BOT_TOKEN}
     bot-username: ${TELEGRAM_BOT_USERNAME:stixlybot}
     default-sticker-set-title: ${STICKER_SET_DEFAULT_TITLE:Styxly Generated}
+    # Этапы миграции StickerBot → Java
+    # true = Java создаёт invoice напрямую через Telegram Bot API (Stage 2→5 миграции)
+    native-payment-enabled: ${TELEGRAM_NATIVE_PAYMENT_ENABLED:false}
+    # true = Java отправляет сообщения напрямую через Telegram Bot API
+    native-messaging-enabled: ${TELEGRAM_NATIVE_MESSAGING_ENABLED:false}
+    # stickerbot | java — текущий владелец updates (меняется на cutover)
+    webhook-owner: ${TELEGRAM_WEBHOOK_OWNER:stickerbot}
+  webhook:
+    # HMAC-SHA256 секрет для проверки X-Webhook-Signature от StickerBot
+    hmac-secret: ${WEBHOOK_HMAC_SECRET:}
+    # true = отклонять запросы без валидной HMAC подписи
+    hmac-enforced: ${WEBHOOK_HMAC_ENFORCED:false}
   referral:
     daily-referrer-reward-cap: ${REFERRAL_DAILY_CAP:50}
     attribution-window-days: ${REFERRAL_ATTRIBUTION_WINDOW_DAYS:7}
