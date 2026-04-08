@@ -723,6 +723,234 @@ public class TelegramBotApiService {
         }
     }
 
+    public int sendMessage(Long chatId, String text, String parseMode, Object replyMarkup, Long replyToMessageId, Integer messageThreadId) {
+        java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("chat_id", chatId);
+        payload.put("text", text);
+        if (parseMode != null && !parseMode.isBlank() && !"plain".equalsIgnoreCase(parseMode)) {
+            payload.put("parse_mode", parseMode);
+        }
+        if (replyMarkup != null) {
+            payload.put("reply_markup", replyMarkup);
+        }
+        if (replyToMessageId != null) {
+            payload.put("reply_to_message_id", replyToMessageId);
+        }
+        if (messageThreadId != null) {
+            payload.put("message_thread_id", messageThreadId);
+        }
+        JsonNode result = callTelegramApi("sendMessage", payload);
+        return result.path("message_id").asInt(-1);
+    }
+
+    public int sendSticker(Long chatId, String stickerFileId, Object replyMarkup, Integer messageThreadId) {
+        java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("chat_id", chatId);
+        payload.put("sticker", stickerFileId);
+        if (replyMarkup != null) {
+            payload.put("reply_markup", replyMarkup);
+        }
+        if (messageThreadId != null) {
+            payload.put("message_thread_id", messageThreadId);
+        }
+        JsonNode result = callTelegramApi("sendSticker", payload);
+        return result.path("message_id").asInt(-1);
+    }
+
+    public int sendPhoto(Long chatId, String photoFileId, String caption, String parseMode, Object replyMarkup, Integer messageThreadId) {
+        java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("chat_id", chatId);
+        payload.put("photo", photoFileId);
+        if (caption != null && !caption.isBlank()) {
+            payload.put("caption", caption);
+        }
+        if (parseMode != null && !parseMode.isBlank() && !"plain".equalsIgnoreCase(parseMode)) {
+            payload.put("parse_mode", parseMode);
+        }
+        if (replyMarkup != null) {
+            payload.put("reply_markup", replyMarkup);
+        }
+        if (messageThreadId != null) {
+            payload.put("message_thread_id", messageThreadId);
+        }
+        JsonNode result = callTelegramApi("sendPhoto", payload);
+        return result.path("message_id").asInt(-1);
+    }
+
+    public int sendDocument(Long chatId, String documentFileId, String caption, String parseMode, Object replyMarkup, Integer messageThreadId) {
+        java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("chat_id", chatId);
+        payload.put("document", documentFileId);
+        if (caption != null && !caption.isBlank()) {
+            payload.put("caption", caption);
+        }
+        if (parseMode != null && !parseMode.isBlank() && !"plain".equalsIgnoreCase(parseMode)) {
+            payload.put("parse_mode", parseMode);
+        }
+        if (replyMarkup != null) {
+            payload.put("reply_markup", replyMarkup);
+        }
+        if (messageThreadId != null) {
+            payload.put("message_thread_id", messageThreadId);
+        }
+        JsonNode result = callTelegramApi("sendDocument", payload);
+        return result.path("message_id").asInt(-1);
+    }
+
+    public int sendVoice(Long chatId, String voiceFileId, String caption, String parseMode, Object replyMarkup, Integer messageThreadId) {
+        java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("chat_id", chatId);
+        payload.put("voice", voiceFileId);
+        if (caption != null && !caption.isBlank()) {
+            payload.put("caption", caption);
+        }
+        if (parseMode != null && !parseMode.isBlank() && !"plain".equalsIgnoreCase(parseMode)) {
+            payload.put("parse_mode", parseMode);
+        }
+        if (replyMarkup != null) {
+            payload.put("reply_markup", replyMarkup);
+        }
+        if (messageThreadId != null) {
+            payload.put("message_thread_id", messageThreadId);
+        }
+        JsonNode result = callTelegramApi("sendVoice", payload);
+        return result.path("message_id").asInt(-1);
+    }
+
+    public int sendVideo(Long chatId, String videoFileId, String caption, String parseMode, Object replyMarkup, Integer messageThreadId) {
+        java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("chat_id", chatId);
+        payload.put("video", videoFileId);
+        if (caption != null && !caption.isBlank()) {
+            payload.put("caption", caption);
+        }
+        if (parseMode != null && !parseMode.isBlank() && !"plain".equalsIgnoreCase(parseMode)) {
+            payload.put("parse_mode", parseMode);
+        }
+        if (replyMarkup != null) {
+            payload.put("reply_markup", replyMarkup);
+        }
+        if (messageThreadId != null) {
+            payload.put("message_thread_id", messageThreadId);
+        }
+        JsonNode result = callTelegramApi("sendVideo", payload);
+        return result.path("message_id").asInt(-1);
+    }
+
+    public void answerCallbackQuery(String callbackQueryId, String text, Boolean showAlert) {
+        java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("callback_query_id", callbackQueryId);
+        if (text != null && !text.isBlank()) {
+            payload.put("text", text);
+        }
+        if (showAlert != null) {
+            payload.put("show_alert", showAlert);
+        }
+        callTelegramApi("answerCallbackQuery", payload);
+    }
+
+    public void answerPreCheckoutQuery(String preCheckoutQueryId, boolean ok, String errorMessage) {
+        java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("pre_checkout_query_id", preCheckoutQueryId);
+        payload.put("ok", ok);
+        if (!ok && errorMessage != null && !errorMessage.isBlank()) {
+            payload.put("error_message", errorMessage);
+        }
+        callTelegramApi("answerPreCheckoutQuery", payload);
+    }
+
+    public void setMessageReaction(Long chatId, Long messageId, String emoji) {
+        java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("chat_id", chatId);
+        payload.put("message_id", messageId);
+        payload.put("reaction", java.util.List.of(java.util.Map.of("type", "emoji", "emoji", emoji)));
+        callTelegramApi("setMessageReaction", payload);
+    }
+
+    public Integer createForumTopic(Long chatId, String name) {
+        java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("chat_id", chatId);
+        payload.put("name", name);
+        JsonNode result = callTelegramApi("createForumTopic", payload);
+        if (result.has("message_thread_id")) {
+            return result.get("message_thread_id").asInt();
+        }
+        return null;
+    }
+
+    public void answerInlineQuery(String inlineQueryId, java.util.List<java.util.Map<String, Object>> results,
+                                  Integer cacheTime, Boolean isPersonal, String nextOffset, Object button) {
+        java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("inline_query_id", inlineQueryId);
+        payload.put("results", results != null ? results : java.util.List.of());
+        if (cacheTime != null) {
+            payload.put("cache_time", cacheTime);
+        }
+        if (isPersonal != null) {
+            payload.put("is_personal", isPersonal);
+        }
+        if (nextOffset != null) {
+            payload.put("next_offset", nextOffset);
+        }
+        if (button != null) {
+            payload.put("button", button);
+        }
+        callTelegramApi("answerInlineQuery", payload);
+    }
+
+    public void answerWebAppQuery(String webAppQueryId, java.util.Map<String, Object> result) {
+        java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("web_app_query_id", webAppQueryId);
+        payload.put("result", result);
+        callTelegramApi("answerWebAppQuery", payload);
+    }
+
+    public void editMessageText(Long chatId, Long messageId, String text, String parseMode, Object replyMarkup) {
+        java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("chat_id", chatId);
+        payload.put("message_id", messageId);
+        payload.put("text", text);
+        if (parseMode != null && !parseMode.isBlank() && !"plain".equalsIgnoreCase(parseMode)) {
+            payload.put("parse_mode", parseMode);
+        }
+        if (replyMarkup != null) {
+            payload.put("reply_markup", replyMarkup);
+        }
+        callTelegramApi("editMessageText", payload);
+    }
+
+    private JsonNode callTelegramApi(String method, java.util.Map<String, Object> requestBody) {
+        try {
+            String botToken = appConfig.getTelegram().getBotToken();
+            if (botToken == null || botToken.trim().isEmpty()) {
+                throw new IllegalStateException("Токен бота не настроен (app.telegram.bot-token)");
+            }
+
+            String url = TELEGRAM_API_URL + botToken + "/" + method;
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            String jsonBody = objectMapper.writeValueAsString(requestBody != null ? requestBody : java.util.Map.of());
+            HttpEntity<String> entity = new HttpEntity<>(jsonBody, headers);
+
+            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                throw new RuntimeException("Telegram API HTTP error in " + method + ": " + response.getStatusCode());
+            }
+
+            JsonNode root = objectMapper.readTree(response.getBody());
+            if (!root.path("ok").asBoolean(false)) {
+                String description = root.path("description").asText("unknown Telegram API error");
+                throw new RuntimeException("Telegram API " + method + " error: " + description);
+            }
+
+            return root.path("result");
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Telegram API call failed for method " + method + ": " + e.getMessage(), e);
+        }
+    }
+
     /**
      * Создает invoice link для оплаты Telegram Stars
      * 

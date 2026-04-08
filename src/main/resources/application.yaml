@@ -15,6 +15,12 @@ app:
     native-messaging-enabled: ${TELEGRAM_NATIVE_MESSAGING_ENABLED:false}
     # stickerbot | java — текущий владелец updates (меняется на cutover)
     webhook-owner: ${TELEGRAM_WEBHOOK_OWNER:stickerbot}
+    # secret token от Telegram webhook (X-Telegram-Bot-Api-Secret-Token)
+    webhook-secret-token: ${TELEGRAM_WEBHOOK_SECRET_TOKEN:}
+    # support bridge
+    support-enabled: ${TELEGRAM_SUPPORT_ENABLED:false}
+    support-chat-id: ${TELEGRAM_SUPPORT_CHAT_ID:}
+    support-use-topics: ${TELEGRAM_SUPPORT_USE_TOPICS:true}
   webhook:
     # HMAC-SHA256 секрет для проверки X-Webhook-Signature от StickerBot
     hmac-secret: ${WEBHOOK_HMAC_SECRET:}

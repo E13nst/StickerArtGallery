@@ -100,6 +100,27 @@ public class AppConfig {
          */
         private String webhookOwner = "stickerbot";
 
+        /**
+         * Secret token для Telegram webhook.
+         * Проверяется по заголовку X-Telegram-Bot-Api-Secret-Token.
+         */
+        private String webhookSecretToken;
+
+        /**
+         * Chat ID операторского чата поддержки.
+         */
+        private Long supportChatId;
+
+        /**
+         * Включает обработчики режима поддержки в inbound Telegram updates.
+         */
+        private boolean supportEnabled = false;
+
+        /**
+         * Использовать forum topics для маршрутизации обращений поддержки.
+         */
+        private boolean supportUseTopics = true;
+
         public String getBotToken() {
             return botToken;
         }
@@ -146,6 +167,38 @@ public class AppConfig {
 
         public void setWebhookOwner(String webhookOwner) {
             this.webhookOwner = webhookOwner;
+        }
+
+        public String getWebhookSecretToken() {
+            return webhookSecretToken;
+        }
+
+        public void setWebhookSecretToken(String webhookSecretToken) {
+            this.webhookSecretToken = webhookSecretToken;
+        }
+
+        public Long getSupportChatId() {
+            return supportChatId;
+        }
+
+        public void setSupportChatId(Long supportChatId) {
+            this.supportChatId = supportChatId;
+        }
+
+        public boolean isSupportEnabled() {
+            return supportEnabled;
+        }
+
+        public void setSupportEnabled(boolean supportEnabled) {
+            this.supportEnabled = supportEnabled;
+        }
+
+        public boolean isSupportUseTopics() {
+            return supportUseTopics;
+        }
+
+        public void setSupportUseTopics(boolean supportUseTopics) {
+            this.supportUseTopics = supportUseTopics;
         }
     }
 

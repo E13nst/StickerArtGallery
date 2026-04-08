@@ -90,8 +90,8 @@ public class TelegramOwnershipAdminController {
         try {
             List<String> allowedUpdates = request.allowedUpdates() != null
                     ? request.allowedUpdates()
-                    : List.of("message", "pre_checkout_query", "successful_payment",
-                            "callback_query", "inline_query", "chosen_inline_result");
+                    : List.of("message", "pre_checkout_query",
+                            "callback_query", "inline_query", "chosen_inline_result", "web_app_query");
 
             ownershipService.setWebhook(request.webhookUrl(), request.secretToken(), allowedUpdates);
 

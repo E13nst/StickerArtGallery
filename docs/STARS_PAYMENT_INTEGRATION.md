@@ -42,6 +42,18 @@ Mini App → Java REST API → Telegram Bot API (createInvoiceLink)
                             ArtRewardService (начисление ART)
 ```
 
+### Native inbound updates (wave1)
+
+После wave1 входящие payment updates идут напрямую через Telegram webhook в Java:
+
+```
+Telegram -> POST /api/telegram/updates
+           -> pre_checkout_query  -> answerPreCheckoutQuery (<=10s)
+           -> message.successful_payment -> StarsPaymentService.processWebhookPayment
+```
+
+Это снимает зависимость от StickerBot для оплаты и исключает dual-webhook конфликт на одном bot token.
+
 ## Python Bot Integration
 
 ### Установка handlers
@@ -96,6 +108,7 @@ SERVICE_TOKEN=your-service-token-from-java-config
 ### Internal API (для Python бота / Java-обработки)
 
 - `POST /api/internal/webhooks/stars-payment` - webhook обработки успешного платежа
+- `POST /api/telegram/updates` - основной webhook Telegram (native inbound updates)
 
 Internal endpoint требует:
 - `X-Service-Token` — межсервисный токен (всегда обязателен)
