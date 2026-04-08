@@ -107,6 +107,16 @@ public class AppConfig {
         private String webhookSecretToken;
 
         /**
+         * Явный URL webhook (опционально). Если пусто, строится как {app.url}/api/telegram/updates.
+         */
+        private String webhookUrl;
+
+        /**
+         * Автоматически регистрировать Telegram webhook на старте сервиса.
+         */
+        private boolean webhookAutoRegisterOnStartup = true;
+
+        /**
          * Chat ID операторского чата поддержки.
          */
         private Long supportChatId;
@@ -175,6 +185,22 @@ public class AppConfig {
 
         public void setWebhookSecretToken(String webhookSecretToken) {
             this.webhookSecretToken = webhookSecretToken;
+        }
+
+        public String getWebhookUrl() {
+            return webhookUrl;
+        }
+
+        public void setWebhookUrl(String webhookUrl) {
+            this.webhookUrl = webhookUrl;
+        }
+
+        public boolean isWebhookAutoRegisterOnStartup() {
+            return webhookAutoRegisterOnStartup;
+        }
+
+        public void setWebhookAutoRegisterOnStartup(boolean webhookAutoRegisterOnStartup) {
+            this.webhookAutoRegisterOnStartup = webhookAutoRegisterOnStartup;
         }
 
         public Long getSupportChatId() {

@@ -17,6 +17,10 @@ app:
     webhook-owner: ${TELEGRAM_WEBHOOK_OWNER:stickerbot}
     # secret token от Telegram webhook (X-Telegram-Bot-Api-Secret-Token)
     webhook-secret-token: ${TELEGRAM_WEBHOOK_SECRET_TOKEN:}
+    # optional explicit webhook URL; default uses app.url + /api/telegram/updates
+    webhook-url: ${TELEGRAM_WEBHOOK_URL:}
+    # auto-register Telegram webhook on service startup (used when webhook-owner=java)
+    webhook-auto-register-on-startup: ${TELEGRAM_WEBHOOK_AUTO_REGISTER_ON_STARTUP:true}
     # support bridge
     support-enabled: ${TELEGRAM_SUPPORT_ENABLED:false}
     support-chat-id: ${TELEGRAM_SUPPORT_CHAT_ID:}
