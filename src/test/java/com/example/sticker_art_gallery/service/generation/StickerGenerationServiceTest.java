@@ -38,6 +38,7 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -266,6 +267,58 @@ class StickerGenerationServiceTest {
                 task.getErrorMessage()
         );
         verify(artRewardService, never()).award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("runGenerationV2: background remover failure retries once without background removal")
+    void runGenerationV2_shouldRetryWithoutBackgroundWhenBackgroundRemovalFails() throws Exception {
+        String taskId = "task-v2-bg-fallback";
+        GenerationTaskEntity task = createV2Task(taskId, 444L, "img_bg");
+        when(taskRepository.findByTaskId(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(stickerProcessorGenerationClient.submitGenerate(any())).thenReturn(
+                new StickerProcessorGenerationClient.SubmitResult("ws_bg_fail", "pending", "req_bg_fail"),
+                new StickerProcessorGenerationClient.SubmitResult("ws_bg_ok", "pending", "req_bg_ok")
+        );
+        when(stickerProcessorGenerationClient.pollResult("ws_bg_fail")).thenReturn(
+                StickerProcessorGenerationClient.PollResult.jsonStatus(
+                        424,
+                        Map.of("detail", Map.of(
+                                "code", "background_removal_failed",
+                                "message", "StickerProcessorBackgroundRemoverFailed"
+                        ))
+                )
+        );
+        when(stickerProcessorGenerationClient.pollResult("ws_bg_ok")).thenReturn(
+                StickerProcessorGenerationClient.PollResult.imageReady("img".getBytes())
+        );
+
+        CachedImageEntity cached = new CachedImageEntity();
+        cached.setId(UUID.randomUUID());
+        cached.setFileName(cached.getId() + ".webp");
+        when(imageStorageService.storeBytes(anyString(), any(), anyString())).thenReturn(cached);
+        when(imageStorageService.getPublicUrl(any())).thenReturn("http://localhost/api/images/" + cached.getFileName());
+
+        ArtTransactionEntity transaction = new ArtTransactionEntity();
+        transaction.setId(123L);
+        when(artRewardService.award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong())).thenReturn(transaction);
+
+        stickerGenerationService.runGenerationV2(taskId);
+
+        ArgumentCaptor<GenerateStickerV2Request> submitCaptor = ArgumentCaptor.forClass(GenerateStickerV2Request.class);
+        verify(stickerProcessorGenerationClient, times(2)).submitGenerate(submitCaptor.capture());
+        assertEquals(true, submitCaptor.getAllValues().get(0).getRemoveBackground());
+        assertEquals(false, submitCaptor.getAllValues().get(1).getRemoveBackground());
+        assertEquals(GenerationTaskStatus.COMPLETED, task.getStatus());
+        assertEquals(null, task.getErrorMessage());
+        verify(artRewardService).award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong());
+
+        Map<?, ?> metadata = new com.fasterxml.jackson.databind.ObjectMapper().readValue(task.getMetadata(), Map.class);
+        assertEquals(false, metadata.get("remove_background"));
+        assertEquals(true, metadata.get("remove_background_requested"));
+        assertEquals(true, metadata.get("background_remove_fallback_applied"));
+        assertEquals("background_removal_failed", metadata.get("background_remove_failure_code"));
+        assertEquals("ws_bg_ok", metadata.get("provider_file_id"));
     }
 
     @Test

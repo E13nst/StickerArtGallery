@@ -35,6 +35,27 @@ public final class StickerProcessorErrorMessage {
         return null;
     }
 
+    @SuppressWarnings("unchecked")
+    public static String extractDetailCode(Map<String, Object> payload) {
+        if (payload == null || payload.isEmpty()) {
+            return null;
+        }
+
+        Object detail = payload.get("detail");
+        if (detail instanceof Map<?, ?> detailMapRaw) {
+            Map<String, Object> detailMap = (Map<String, Object>) detailMapRaw;
+            Object code = detailMap.get("code");
+            if (code != null) {
+                String text = code.toString().trim();
+                if (!text.isEmpty()) {
+                    return text;
+                }
+            }
+        }
+
+        return null;
+    }
+
     public static String fallbackForStatus(int statusCode) {
         return switch (statusCode) {
             case 400 -> "Invalid file_id format (expected ws_...)";
@@ -49,5 +70,26 @@ public final class StickerProcessorErrorMessage {
     public static String humanMessageOrFallback(Map<String, Object> payload, int statusCode) {
         String extracted = extractHumanMessage(payload);
         return extracted != null ? extracted : fallbackForStatus(statusCode);
+    }
+
+    public static boolean isBackgroundRemovalFailure(Map<String, Object> payload) {
+        String code = extractDetailCode(payload);
+        if (code != null) {
+            String normalized = code.trim().toLowerCase();
+            if ("background_removal_failed".equals(normalized)
+                    || "stickerprocessorbackgroundremoverfailed".equals(normalized)) {
+                return true;
+            }
+        }
+
+        String message = extractHumanMessage(payload);
+        if (message == null) {
+            return false;
+        }
+
+        String normalizedMessage = message.trim().toLowerCase();
+        return normalizedMessage.contains("background removal failed")
+                || normalizedMessage.contains("backgroundremoverfailed")
+                || normalizedMessage.contains("stickerprocessorbackgroundremoverfailed");
     }
 }

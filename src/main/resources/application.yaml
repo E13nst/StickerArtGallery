@@ -176,7 +176,7 @@ sticker:
 wavespeed:
   api-key: ${WAVESPEED_API_KEY:}
   base-url: ${WAVESPEED_BASE_URL:https://api.wavespeed.ai/api/v3}
-  max-poll-seconds: ${WAVESPEED_MAX_POLL_SECONDS:300}
+  max-poll-seconds: ${WAVESPEED_MAX_POLL_SECONDS:600}
   bg-remove-enabled: ${WAVESPEED_BG_REMOVE_ENABLED:true}
   retry:
     max-attempts: ${WAVESPEED_RETRY_MAX_ATTEMPTS:3}

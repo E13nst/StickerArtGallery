@@ -201,9 +201,14 @@ curl -X POST "http://localhost:8080/api/generation/v2/save-to-set" \
 1. `POST /api/generation/v2/generate` -> получить `taskId`
 2. Poll `GET /api/generation/v2/status/{taskId}` до terminal статуса
 3. При `COMPLETED` использовать:
-   - `imageUrl` для фронта/превью
-   - `originalImageUrl` как upstream источник
+  - `imageUrl` для фронта/превью
+  - `originalImageUrl` как upstream источник
 4. Опционально вызвать `POST /api/generation/v2/save-to-set`
+
+Примечание по `remove_background`:
+
+- если upstream не смог удалить фон, `sticker-art-gallery` автоматически делает один fallback-повтор без удаления фона;
+- если fallback успешен, задача всё равно завершится `COMPLETED`, а детали fallback будут в `metadata`.
 
 ## Ошибки и диагностика
 

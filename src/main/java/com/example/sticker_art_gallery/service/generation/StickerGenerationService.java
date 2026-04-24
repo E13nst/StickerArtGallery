@@ -621,84 +621,132 @@ public class StickerGenerationService {
             request.setStrength(metadata.get("strength") instanceof Number ? ((Number) metadata.get("strength")).doubleValue() : 0.8);
             request.setRemoveBackground(Boolean.TRUE.equals(metadata.get("remove_background")));
             request.setImageIds(resolveSourceImageIds(metadata));
+            boolean allowRetryWithoutBackground = Boolean.TRUE.equals(request.getRemoveBackground());
 
-            StickerProcessorGenerationClient.SubmitResult submit = stickerProcessorGenerationClient.submitGenerate(request);
-            if (submit.fileId() == null || submit.fileId().isBlank()) {
-                throw new IllegalStateException("STICKER_PROCESSOR did not return file_id");
-            }
-
-            metadata.put("provider", "sticker-processor");
-            metadata.put("provider_file_id", submit.fileId());
-            metadata.put("provider_request_id", submit.providerRequestId());
-            task.setMetadata(objectMapper.writeValueAsString(metadata));
-            taskRepository.save(task);
-            Map<String, Object> submitPayload = new HashMap<>();
-            submitPayload.put("file_id", submit.fileId());
-            if (submit.providerRequestId() != null) {
-                submitPayload.put("provider_request_id", submit.providerRequestId());
-            }
-            generationAuditService.addStageEvent(taskId, GenerationAuditStage.STICKER_PROCESSOR_SUBMIT, GenerationAuditEventStatus.SUCCEEDED,
-                    submitPayload, null, null);
-
-            long deadlineMs = System.currentTimeMillis() + (maxPollSeconds * 1000L);
-            while (System.currentTimeMillis() < deadlineMs) {
-                try {
-                    Thread.sleep(1500);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
+            while (true) {
+                StickerProcessorGenerationClient.SubmitResult submit = stickerProcessorGenerationClient.submitGenerate(request);
+                if (submit.fileId() == null || submit.fileId().isBlank()) {
+                    throw new IllegalStateException("STICKER_PROCESSOR did not return file_id");
                 }
 
-                StickerProcessorGenerationClient.PollResult poll = stickerProcessorGenerationClient.pollResult(submit.fileId());
-                if (poll.isImageReady()) {
-                    generationAuditService.addStageEvent(taskId, GenerationAuditStage.STICKER_PROCESSOR_RESULT,
-                            GenerationAuditEventStatus.SUCCEEDED, Map.of("file_id", submit.fileId()), null, null);
-                    String providerSource = buildStickerProcessorResultUrl(submit.fileId());
-                    CachedImageEntity cachedImage = imageStorageService.storeBytes(providerSource, poll.getImageBytes(), "image/webp");
-                    String localImageUrl = imageStorageService.getPublicUrl(cachedImage);
+                metadata = parseMetadata(task.getMetadata());
+                metadata.put("provider", "sticker-processor");
+                metadata.put("provider_file_id", submit.fileId());
+                metadata.put("provider_request_id", submit.providerRequestId());
+                metadata.put("remove_background", Boolean.TRUE.equals(request.getRemoveBackground()));
+                task.setMetadata(objectMapper.writeValueAsString(metadata));
+                taskRepository.save(task);
 
-                    ArtTransactionEntity transaction = artRewardService.award(
-                            task.getUserProfile().getUserId(),
-                            ArtRewardService.RULE_GENERATE_STICKER,
-                            null,
-                            objectMapper.writeValueAsString(Map.of("taskId", taskId, "providerFileId", submit.fileId())),
-                            "generation-success:" + taskId,
-                            task.getUserProfile().getUserId()
-                    );
+                Map<String, Object> submitPayload = new HashMap<>();
+                submitPayload.put("file_id", submit.fileId());
+                submitPayload.put("remove_background", Boolean.TRUE.equals(request.getRemoveBackground()));
+                if (submit.providerRequestId() != null) {
+                    submitPayload.put("provider_request_id", submit.providerRequestId());
+                }
+                generationAuditService.addStageEvent(taskId, GenerationAuditStage.STICKER_PROCESSOR_SUBMIT,
+                        GenerationAuditEventStatus.SUCCEEDED, submitPayload, null, null);
 
-                    Map<String, Object> updatedMetadata = parseMetadata(task.getMetadata());
-                    updatedMetadata.put("originalImageUrl", providerSource);
-                    task.setMetadata(objectMapper.writeValueAsString(updatedMetadata));
-                    task.setCachedImageId(cachedImage.getId());
-                    task.setArtTransaction(transaction);
-                    task.setImageUrl(localImageUrl);
-                    task.setStatus(GenerationTaskStatus.COMPLETED);
-                    task.setCompletedAt(OffsetDateTime.now());
+                boolean retryWithoutBackground = false;
+                String terminalReason = null;
+                Map<String, Object> terminalPayload = null;
+
+                long deadlineMs = System.currentTimeMillis() + (maxPollSeconds * 1000L);
+                while (System.currentTimeMillis() < deadlineMs) {
+                    try {
+                        Thread.sleep(1500);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+
+                    StickerProcessorGenerationClient.PollResult poll = stickerProcessorGenerationClient.pollResult(submit.fileId());
+                    if (poll.isImageReady()) {
+                        generationAuditService.addStageEvent(taskId, GenerationAuditStage.STICKER_PROCESSOR_RESULT,
+                                GenerationAuditEventStatus.SUCCEEDED, Map.of("file_id", submit.fileId()), null, null);
+                        String providerSource = buildStickerProcessorResultUrl(submit.fileId());
+                        CachedImageEntity cachedImage = imageStorageService.storeBytes(providerSource, poll.getImageBytes(), "image/webp");
+                        String localImageUrl = imageStorageService.getPublicUrl(cachedImage);
+
+                        ArtTransactionEntity transaction = artRewardService.award(
+                                task.getUserProfile().getUserId(),
+                                ArtRewardService.RULE_GENERATE_STICKER,
+                                null,
+                                objectMapper.writeValueAsString(Map.of("taskId", taskId, "providerFileId", submit.fileId())),
+                                "generation-success:" + taskId,
+                                task.getUserProfile().getUserId()
+                        );
+
+                        Map<String, Object> updatedMetadata = parseMetadata(task.getMetadata());
+                        updatedMetadata.put("originalImageUrl", providerSource);
+                        task.setMetadata(objectMapper.writeValueAsString(updatedMetadata));
+                        task.setCachedImageId(cachedImage.getId());
+                        task.setArtTransaction(transaction);
+                        task.setImageUrl(localImageUrl);
+                        task.setStatus(GenerationTaskStatus.COMPLETED);
+                        task.setCompletedAt(OffsetDateTime.now());
+                        task.setErrorMessage(null);
+                        taskRepository.save(task);
+                        generationAuditService.finishSuccess(taskId, Map.of("imageUrl", localImageUrl, "providerFileId", submit.fileId()));
+                        return;
+                    }
+
+                    int statusCode = poll.getHttpStatus();
+                    if (statusCode == 202 || statusCode == 0) {
+                        continue;
+                    }
+                    if (statusCode >= 400 && statusCode < 500) {
+                        terminalReason = StickerProcessorErrorMessage.humanMessageOrFallback(poll.getPayload(), statusCode);
+                        terminalPayload = poll.getPayload();
+                        generationAuditService.addStageEvent(taskId, GenerationAuditStage.STICKER_PROCESSOR_RESULT,
+                                GenerationAuditEventStatus.FAILED, terminalPayload, ERROR_STICKER_PROCESSOR_FAILED, terminalReason);
+
+                        if (allowRetryWithoutBackground && StickerProcessorErrorMessage.isBackgroundRemovalFailure(terminalPayload)) {
+                            retryWithoutBackground = true;
+                            break;
+                        }
+
+                        task.setStatus(GenerationTaskStatus.FAILED);
+                        task.setErrorMessage("STICKER_PROCESSOR: " + terminalReason);
+                        taskRepository.save(task);
+                        generationAuditService.finishFailure(taskId, ERROR_STICKER_PROCESSOR_FAILED, terminalReason, terminalPayload);
+                        return;
+                    }
+                }
+
+                if (retryWithoutBackground) {
+                    metadata = parseMetadata(task.getMetadata());
+                    metadata.put("remove_background_requested", true);
+                    metadata.put("remove_background", false);
+                    metadata.put("background_remove_fallback_applied", true);
+                    metadata.put("background_remove_failure_reason", terminalReason);
+                    String detailCode = StickerProcessorErrorMessage.extractDetailCode(terminalPayload);
+                    if (detailCode != null && !detailCode.isBlank()) {
+                        metadata.put("background_remove_failure_code", detailCode);
+                    }
+                    task.setMetadata(objectMapper.writeValueAsString(metadata));
                     taskRepository.save(task);
-                    generationAuditService.finishSuccess(taskId, Map.of("imageUrl", localImageUrl, "providerFileId", submit.fileId()));
-                    return;
-                }
 
-                int statusCode = poll.getHttpStatus();
-                if (statusCode == 202 || statusCode == 0) {
+                    Map<String, Object> retryPayload = new HashMap<>();
+                    retryPayload.put("reason", terminalReason);
+                    retryPayload.put("retry_with_remove_background", false);
+                    retryPayload.put("source_provider_file_id", submit.fileId());
+                    if (detailCode != null && !detailCode.isBlank()) {
+                        retryPayload.put("detail_code", detailCode);
+                    }
+                    generationAuditService.addStageEvent(taskId, GenerationAuditStage.BACKGROUND_REMOVE,
+                            GenerationAuditEventStatus.RETRY, retryPayload, null, null);
+
+                    request.setRemoveBackground(false);
+                    allowRetryWithoutBackground = false;
                     continue;
                 }
-                if (statusCode >= 400 && statusCode < 500) {
-                    String terminalReason = StickerProcessorErrorMessage.humanMessageOrFallback(poll.getPayload(), statusCode);
-                    generationAuditService.addStageEvent(taskId, GenerationAuditStage.STICKER_PROCESSOR_RESULT,
-                            GenerationAuditEventStatus.FAILED, poll.getPayload(), ERROR_STICKER_PROCESSOR_FAILED, terminalReason);
-                    task.setStatus(GenerationTaskStatus.FAILED);
-                    task.setErrorMessage("STICKER_PROCESSOR: " + terminalReason);
-                    taskRepository.save(task);
-                    generationAuditService.finishFailure(taskId, ERROR_STICKER_PROCESSOR_FAILED, terminalReason, poll.getPayload());
-                    return;
-                }
-            }
 
-            task.setStatus(GenerationTaskStatus.TIMEOUT);
-            task.setErrorMessage("Timed out while waiting STICKER_PROCESSOR result");
-            taskRepository.save(task);
-            generationAuditService.finishFailure(taskId, ERROR_STICKER_PROCESSOR_TIMEOUT, "Timed out", null);
+                task.setStatus(GenerationTaskStatus.TIMEOUT);
+                task.setErrorMessage("Timed out while waiting STICKER_PROCESSOR result");
+                taskRepository.save(task);
+                generationAuditService.finishFailure(taskId, ERROR_STICKER_PROCESSOR_TIMEOUT, "Timed out", null);
+                return;
+            }
         } catch (Exception e) {
             task.setStatus(GenerationTaskStatus.FAILED);
             task.setErrorMessage("Error occurred: " + e.getMessage());
