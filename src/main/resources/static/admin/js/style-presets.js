@@ -57,7 +57,7 @@ function renderPresets() {
                     </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
-                    <span class="text-gray-400">—</span>
+                    ${renderRemoveBackgroundPolicy(preset.removeBackground)}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${preset.sortOrder}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
@@ -83,6 +83,7 @@ function openAddModal() {
     document.getElementById('modal-title').textContent = 'Добавить пресет';
     document.getElementById('preset-form').reset();
     document.getElementById('preset-id').value = '';
+    document.getElementById('preset-remove-background').value = '';
     document.getElementById('preset-enabled').checked = true;
     document.getElementById('edit-modal').classList.remove('hidden');
 }
@@ -98,7 +99,7 @@ function editPreset(id) {
     document.getElementById('preset-name').value = preset.name;
     document.getElementById('preset-description').value = preset.description || '';
     document.getElementById('preset-style-prompt').value = preset.promptSuffix;
-    document.getElementById('preset-thumbnail').value = '';
+    document.getElementById('preset-remove-background').value = toRemoveBackgroundFormValue(preset.removeBackground);
     document.getElementById('preset-display-order').value = preset.sortOrder;
     document.getElementById('preset-enabled').checked = preset.isEnabled;
     document.getElementById('edit-modal').classList.remove('hidden');
@@ -119,6 +120,7 @@ async function savePreset(event) {
         name: document.getElementById('preset-name').value.trim(),
         description: document.getElementById('preset-description').value.trim() || null,
         promptSuffix: document.getElementById('preset-style-prompt').value.trim(),
+        removeBackground: parseRemoveBackgroundValue(document.getElementById('preset-remove-background').value),
         sortOrder: parseInt(document.getElementById('preset-display-order').value)
     };
     const enabled = document.getElementById('preset-enabled').checked;
@@ -180,3 +182,33 @@ document.getElementById('preset-form').addEventListener('submit', savePreset);
 
 // Загрузка при старте
 loadPresets();
+
+function parseRemoveBackgroundValue(value) {
+    if (value === 'true') {
+        return true;
+    }
+    if (value === 'false') {
+        return false;
+    }
+    return null;
+}
+
+function toRemoveBackgroundFormValue(value) {
+    if (value === true) {
+        return 'true';
+    }
+    if (value === false) {
+        return 'false';
+    }
+    return '';
+}
+
+function renderRemoveBackgroundPolicy(value) {
+    if (value === true) {
+        return '<span class="px-2 py-1 text-xs font-semibold text-blue-800 bg-blue-100 rounded-full">Удалять</span>';
+    }
+    if (value === false) {
+        return '<span class="px-2 py-1 text-xs font-semibold text-orange-800 bg-orange-100 rounded-full">Не удалять</span>';
+    }
+    return '<span class="text-gray-400">Fallback</span>';
+}

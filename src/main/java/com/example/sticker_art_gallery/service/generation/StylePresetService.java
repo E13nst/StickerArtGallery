@@ -85,6 +85,7 @@ public class StylePresetService {
         preset.setName(request.getName());
         preset.setDescription(request.getDescription());
         preset.setPromptSuffix(request.getPromptSuffix());
+        preset.setRemoveBackground(request.getRemoveBackground());
         preset.setIsGlobal(true);
         preset.setOwner(null);
         preset.setIsEnabled(true);
@@ -115,6 +116,7 @@ public class StylePresetService {
         preset.setName(request.getName());
         preset.setDescription(request.getDescription());
         preset.setPromptSuffix(request.getPromptSuffix());
+        preset.setRemoveBackground(request.getRemoveBackground());
         preset.setIsGlobal(false);
         preset.setOwner(profile);
         preset.setIsEnabled(true);
@@ -146,6 +148,7 @@ public class StylePresetService {
         preset.setName(request.getName());
         preset.setDescription(request.getDescription());
         preset.setPromptSuffix(request.getPromptSuffix());
+        preset.setRemoveBackground(request.getRemoveBackground());
         if (request.getSortOrder() != null) {
             preset.setSortOrder(request.getSortOrder());
         }

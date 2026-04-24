@@ -23,6 +23,9 @@ public class StylePresetDto {
     @Schema(description = "Текст, добавляемый к промпту")
     private String promptSuffix;
 
+    @Schema(description = "Политика удаления фона: true/false или null для fallback по запросу")
+    private Boolean removeBackground;
+
     @Schema(description = "Глобальный или персональный пресет")
     private Boolean isGlobal;
 
@@ -45,13 +48,14 @@ public class StylePresetDto {
     }
 
     public StylePresetDto(Long id, String code, String name, String description, String promptSuffix,
-                         Boolean isGlobal, Long ownerId, Boolean isEnabled, Integer sortOrder,
+                         Boolean removeBackground, Boolean isGlobal, Long ownerId, Boolean isEnabled, Integer sortOrder,
                          OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         this.id = id;
         this.code = code;
         this.name = name;
         this.description = description;
         this.promptSuffix = promptSuffix;
+        this.removeBackground = removeBackground;
         this.isGlobal = isGlobal;
         this.ownerId = ownerId;
         this.isEnabled = isEnabled;
@@ -74,6 +78,7 @@ public class StylePresetDto {
                 entity.getName(),
                 entity.getDescription(),
                 entity.getPromptSuffix(),
+                entity.getRemoveBackground(),
                 entity.getIsGlobal(),
                 entity.getOwner() != null ? entity.getOwner().getUserId() : null,
                 entity.getIsEnabled(),
@@ -122,6 +127,14 @@ public class StylePresetDto {
 
     public void setPromptSuffix(String promptSuffix) {
         this.promptSuffix = promptSuffix;
+    }
+
+    public Boolean getRemoveBackground() {
+        return removeBackground;
+    }
+
+    public void setRemoveBackground(Boolean removeBackground) {
+        this.removeBackground = removeBackground;
     }
 
     public Boolean getIsGlobal() {

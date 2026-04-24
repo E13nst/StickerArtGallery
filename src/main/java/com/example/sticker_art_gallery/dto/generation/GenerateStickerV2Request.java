@@ -44,7 +44,7 @@ public class GenerateStickerV2Request {
     private Double strength = 0.8;
 
     @JsonProperty("remove_background")
-    @Schema(description = "Удалить фон", example = "true", defaultValue = "false")
+    @Schema(description = "Удалить фон. Используется как fallback, если выбранный пресет не задает removeBackground", example = "true", defaultValue = "false")
     private Boolean removeBackground = false;
 
     @JsonProperty("image_id")

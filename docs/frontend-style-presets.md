@@ -69,6 +69,7 @@ Pipeline такой:
 - `name` - отображаемое имя
 - `description` - короткое описание
 - `promptSuffix` - текст, который дописывается к prompt
+- `removeBackground` - политика удаления фона: `true`, `false` или `null` для fallback к значению запроса
 - `sortOrder` - порядок сортировки
 
 В ответе бэкенд отдаёт:
@@ -78,6 +79,7 @@ Pipeline такой:
 - `name`
 - `description`
 - `promptSuffix`
+- `removeBackground`
 - `isGlobal`
 - `ownerId`
 - `isEnabled`
@@ -105,6 +107,7 @@ Pipeline такой:
 Для генерации нужно передавать:
 
 - `stylePresetId`
+- `removeBackground` / `remove_background` только как fallback, если выбранный пресет не задает свою политику
 
 Это поле есть в:
 
@@ -116,6 +119,8 @@ Pipeline такой:
 2. Показываешь карточки по `id`, `code`, `name`, `description`.
 3. При выборе карточки сохраняешь `stylePresetId`.
 4. При генерации отправляешь выбранный `stylePresetId` вместе с `prompt`.
+5. Если пресет выбран и у него есть `removeBackground`, backend использует его.
+6. Если пресет не выбран или у пресета `removeBackground = null`, backend использует значение кнопки `RemoveBackground`.
 
 Важно: для генерации сейчас нужен именно `id`, не `code`.
 Поэтому на фронте лучше не хардкодить айдишники, а всегда сначала получать список с бэка и уже потом искать нужный пресет по `code`.

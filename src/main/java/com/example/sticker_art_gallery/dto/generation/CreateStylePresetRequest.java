@@ -24,6 +24,9 @@ public class CreateStylePresetRequest {
     @NotBlank(message = "Suffix промпта не может быть пустым")
     private String promptSuffix;
 
+    @Schema(description = "Политика удаления фона: true/false или null для fallback по запросу", example = "true")
+    private Boolean removeBackground;
+
     @Schema(description = "Порядок сортировки", example = "1", required = false, defaultValue = "0")
     private Integer sortOrder = 0;
 
@@ -60,6 +63,14 @@ public class CreateStylePresetRequest {
 
     public void setPromptSuffix(String promptSuffix) {
         this.promptSuffix = promptSuffix;
+    }
+
+    public Boolean getRemoveBackground() {
+        return removeBackground;
+    }
+
+    public void setRemoveBackground(Boolean removeBackground) {
+        this.removeBackground = removeBackground;
     }
 
     public Integer getSortOrder() {

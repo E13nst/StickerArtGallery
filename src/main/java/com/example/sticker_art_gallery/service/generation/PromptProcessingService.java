@@ -28,6 +28,9 @@ public class PromptProcessingService {
     private final StylePresetRepository presetRepository;
     private final AIService aiService;
 
+    public record PromptProcessingResult(String prompt, Boolean removeBackgroundOverride) {
+    }
+
     @Autowired
     public PromptProcessingService(
             PromptEnhancerRepository enhancerRepository,
@@ -47,11 +50,12 @@ public class PromptProcessingService {
      * @return обработанный промпт, готовый для отправки в WaveSpeed
      */
     @Transactional(readOnly = true)
-    public String processPrompt(String userPrompt, Long userId, Long stylePresetId) {
+    public PromptProcessingResult processPrompt(String userPrompt, Long userId, Long stylePresetId) {
         LOGGER.info("Processing prompt for user {}: original_length={}, stylePresetId={}",
                 userId, userPrompt != null ? userPrompt.length() : 0, stylePresetId);
 
         String processedPrompt = userPrompt != null ? userPrompt : "";
+        StylePresetEntity preset = null;
 
         // Шаг 1: Применение PromptEnhancer (AI-обработка)
         processedPrompt = applyEnhancers(processedPrompt, userId);
@@ -59,12 +63,16 @@ public class PromptProcessingService {
 
         // Шаг 2: Применение StylePreset (добавление стиля)
         if (stylePresetId != null) {
-            processedPrompt = applyStylePreset(processedPrompt, stylePresetId, userId);
+            preset = getAccessiblePreset(stylePresetId, userId);
+            processedPrompt = applyStylePreset(processedPrompt, preset);
             LOGGER.debug("After style preset: prompt_length={}", processedPrompt.length());
         }
 
         LOGGER.info("Prompt processing completed: final_length={}", processedPrompt.length());
-        return processedPrompt;
+        return new PromptProcessingResult(
+                processedPrompt,
+                preset != null && preset.getIsEnabled() ? preset.getRemoveBackground() : null
+        );
     }
 
     /**
@@ -109,7 +117,7 @@ public class PromptProcessingService {
     /**
      * Применяет пресет стиля к промпту
      */
-    private String applyStylePreset(String prompt, Long stylePresetId, Long userId) {
+    private StylePresetEntity getAccessiblePreset(Long stylePresetId, Long userId) {
         StylePresetEntity preset = presetRepository.findById(stylePresetId)
                 .orElseThrow(() -> new IllegalArgumentException("Style preset not found: " + stylePresetId));
 
@@ -118,6 +126,10 @@ public class PromptProcessingService {
             throw new IllegalArgumentException("Style preset is not accessible for user: " + userId);
         }
 
+        return preset;
+    }
+
+    private String applyStylePreset(String prompt, StylePresetEntity preset) {
         if (!preset.getIsEnabled()) {
             LOGGER.warn("Style preset '{}' is disabled, skipping", preset.getCode());
             return prompt;

@@ -32,6 +32,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -264,6 +266,36 @@ class StickerGenerationServiceTest {
                 task.getErrorMessage()
         );
         verify(artRewardService, never()).award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("processPromptAsyncV2: пресет переопределяет remove background в metadata")
+    void shouldOverrideRemoveBackgroundFromPresetDuringPromptProcessingV2() throws Exception {
+        String taskId = "task-v2-preset-bg";
+        long userId = 222L;
+        GenerationTaskEntity task = new GenerationTaskEntity();
+        task.setTaskId(taskId);
+        task.setUserProfile(new UserProfileEntity());
+        task.setPrompt("raw prompt");
+        task.setStatus(GenerationTaskStatus.PROCESSING_PROMPT);
+        task.setMetadata(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(Map.of(
+                "remove_background", false,
+                "stylePresetId", 9L
+        )));
+
+        when(taskRepository.findByTaskId(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(promptProcessingService.processPrompt("raw prompt", userId, 9L))
+                .thenReturn(new PromptProcessingService.PromptProcessingResult("processed prompt", true));
+        doCallRealMethod().when(stickerGenerationService).processPromptAsyncV2(taskId, userId, 9L);
+        doReturn(CompletableFuture.completedFuture(null)).when(stickerGenerationService).runGenerationV2Async(taskId);
+
+        stickerGenerationService.processPromptAsyncV2(taskId, userId, 9L);
+
+        Map<?, ?> metadata = new com.fasterxml.jackson.databind.ObjectMapper().readValue(task.getMetadata(), Map.class);
+        assertEquals("processed prompt", task.getPrompt());
+        assertEquals(GenerationTaskStatus.PENDING, task.getStatus());
+        assertEquals(true, metadata.get("remove_background"));
     }
 
     private GenerationTaskEntity createV2Task(String taskId, long userId, String imageId) throws Exception {

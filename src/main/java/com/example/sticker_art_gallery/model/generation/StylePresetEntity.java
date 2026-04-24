@@ -26,6 +26,9 @@ public class StylePresetEntity {
     @Column(name = "prompt_suffix", nullable = false, columnDefinition = "TEXT")
     private String promptSuffix;
 
+    @Column(name = "remove_background")
+    private Boolean removeBackground;
+
     @Column(name = "is_global", nullable = false)
     private Boolean isGlobal = false;
 
@@ -96,6 +99,14 @@ public class StylePresetEntity {
 
     public void setPromptSuffix(String promptSuffix) {
         this.promptSuffix = promptSuffix;
+    }
+
+    public Boolean getRemoveBackground() {
+        return removeBackground;
+    }
+
+    public void setRemoveBackground(Boolean removeBackground) {
+        this.removeBackground = removeBackground;
     }
 
     public Boolean getIsGlobal() {

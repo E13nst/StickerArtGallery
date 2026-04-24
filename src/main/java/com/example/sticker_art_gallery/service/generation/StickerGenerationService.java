@@ -266,11 +266,12 @@ public class StickerGenerationService {
             generationAuditService.addStageEvent(taskId, GenerationAuditStage.PROMPT_PROCESSING_STARTED, GenerationAuditEventStatus.STARTED, null, null, null);
 
             String originalPrompt = task.getPrompt();
-            String processedPrompt = promptProcessingService.processPrompt(
+            PromptProcessingService.PromptProcessingResult promptResult = promptProcessingService.processPrompt(
                     originalPrompt,
                     userId,
                     stylePresetId
             );
+            String processedPrompt = promptResult.prompt();
             
             LOGGER.info("Prompt processed for task {}: original_length={}, processed_length={}",
                     taskId, originalPrompt != null ? originalPrompt.length() : 0, processedPrompt != null ? processedPrompt.length() : 0);
@@ -283,6 +284,7 @@ public class StickerGenerationService {
             Map<String, Object> metadata = parseMetadata(task.getMetadata());
             metadata.put("originalPrompt", originalPrompt); // Сохраняем исходный
             metadata.put("processedPrompt", processedPrompt); // Сохраняем обработанный
+            applyResolvedRemoveBackground(metadata, "removeBackground", promptResult.removeBackgroundOverride());
             try {
                 task.setMetadata(objectMapper.writeValueAsString(metadata));
             } catch (Exception e) {
@@ -291,7 +293,8 @@ public class StickerGenerationService {
             
             task = taskRepository.save(task);
             LOGGER.info("Prompt processing completed for task: {}", taskId);
-            generationAuditService.markPromptProcessed(taskId, processedPrompt, null);
+            generationAuditService.markPromptProcessed(taskId, processedPrompt,
+                    buildPromptProcessingAuditPayload(promptResult.removeBackgroundOverride()));
 
             // Запускаем генерацию
             runGenerationAsync(taskId);
@@ -317,16 +320,20 @@ public class StickerGenerationService {
             generationAuditService.addStageEvent(taskId, GenerationAuditStage.PROMPT_PROCESSING_STARTED, GenerationAuditEventStatus.STARTED, null, null, null);
 
             String originalPrompt = task.getPrompt();
-            String processedPrompt = promptProcessingService.processPrompt(originalPrompt, userId, stylePresetId);
+            PromptProcessingService.PromptProcessingResult promptResult =
+                    promptProcessingService.processPrompt(originalPrompt, userId, stylePresetId);
+            String processedPrompt = promptResult.prompt();
             task.setPrompt(processedPrompt);
             task.setStatus(GenerationTaskStatus.PENDING);
 
             Map<String, Object> metadata = parseMetadata(task.getMetadata());
             metadata.put("originalPrompt", originalPrompt);
             metadata.put("processedPrompt", processedPrompt);
+            applyResolvedRemoveBackground(metadata, "remove_background", promptResult.removeBackgroundOverride());
             task.setMetadata(objectMapper.writeValueAsString(metadata));
             taskRepository.save(task);
-            generationAuditService.markPromptProcessed(taskId, processedPrompt, null);
+            generationAuditService.markPromptProcessed(taskId, processedPrompt,
+                    buildPromptProcessingAuditPayload(promptResult.removeBackgroundOverride()));
             runGenerationV2Async(taskId);
         } catch (Exception e) {
             generationAuditService.addStageEvent(taskId, GenerationAuditStage.PROMPT_PROCESSING_FAILED, GenerationAuditEventStatus.FAILED, null, ERROR_PROMPT_PROCESSING, e.getMessage());
@@ -357,6 +364,22 @@ public class StickerGenerationService {
             LOGGER.error("Error in async generation v2 for task {}: {}", taskId, e.getMessage(), e);
         }
         return CompletableFuture.completedFuture(null);
+    }
+
+    private void applyResolvedRemoveBackground(Map<String, Object> metadata, String key, Boolean resolvedValue) {
+        if (resolvedValue != null) {
+            metadata.put(key, resolvedValue);
+        }
+    }
+
+    private Map<String, Object> buildPromptProcessingAuditPayload(Boolean resolvedRemoveBackground) {
+        if (resolvedRemoveBackground == null) {
+            return null;
+        }
+        return Map.of(
+                "resolvedRemoveBackground", resolvedRemoveBackground,
+                "removeBackgroundSource", "preset"
+        );
     }
 
     @Transactional

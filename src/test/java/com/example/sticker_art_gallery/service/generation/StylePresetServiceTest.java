@@ -74,6 +74,25 @@ class StylePresetServiceTest {
         verify(presetRepository).delete(preset);
     }
 
+    @Test
+    @DisplayName("Сохраняет политику remove background при создании пользовательского пресета")
+    void shouldPersistRemoveBackgroundWhenCreatingUserPreset() {
+        CreateStylePresetRequest request = request();
+        request.setRemoveBackground(false);
+
+        UserProfileEntity owner = new UserProfileEntity();
+        owner.setUserId(42L);
+
+        when(userProfileService.getOrCreateDefaultForUpdate(42L)).thenReturn(owner);
+        when(presetRepository.findByCodeAndOwner_UserId("anime", 42L)).thenReturn(Optional.empty());
+        when(presetRepository.save(org.mockito.ArgumentMatchers.any(StylePresetEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = stylePresetService.createUserPreset(42L, request);
+
+        assertEquals(false, result.getRemoveBackground());
+    }
+
     private CreateStylePresetRequest request() {
         CreateStylePresetRequest request = new CreateStylePresetRequest();
         request.setCode("anime");

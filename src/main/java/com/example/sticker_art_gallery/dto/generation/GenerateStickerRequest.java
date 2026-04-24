@@ -19,7 +19,7 @@ public class GenerateStickerRequest {
     @Schema(description = "ID пресета стиля (опционально, legacy)", example = "1", deprecated = true)
     private Long stylePresetId;
 
-    @Schema(description = "Удалять фон после генерации", example = "true", defaultValue = "true")
+    @Schema(description = "Удалять фон после генерации. Используется как fallback, если выбранный пресет не задает removeBackground", example = "true", defaultValue = "true")
     private Boolean removeBackground = true;
 
     public GenerateStickerRequest() {
