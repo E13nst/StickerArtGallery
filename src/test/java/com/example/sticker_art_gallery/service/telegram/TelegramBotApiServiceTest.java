@@ -41,7 +41,6 @@ class TelegramBotApiServiceTest {
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        when(appConfig.getTelegram()).thenReturn(telegramConfig);
         telegramBotApiService = new TelegramBotApiService(appConfig, objectMapper, restTemplate);
     }
 
@@ -96,12 +95,7 @@ class TelegramBotApiServiceTest {
     @DisplayName("extractTitleFromStickerSetInfo без поля title должен возвращать null")
     void extractTitleFromStickerSetInfo_WithoutTitleField_ShouldReturnNull() {
         // Given
-        Object stickerSetInfo = new Object() {
-            @Override
-            public String toString() {
-                return "{\"name\":\"no-title\"}";
-            }
-        };
+        Object stickerSetInfo = java.util.Map.of("name", "no-title");
 
         // When
         String result = telegramBotApiService.extractTitleFromStickerSetInfo(stickerSetInfo);
@@ -183,6 +177,7 @@ class TelegramBotApiServiceTest {
     @Test
     @DisplayName("getRequiredChannelMembershipStatus использует chat_id канала")
     void getRequiredChannelMembershipStatus_ShouldUseChannelChatId() {
+        when(appConfig.getTelegram()).thenReturn(telegramConfig);
         when(telegramConfig.getBotToken()).thenReturn("bot-token");
         when(telegramConfig.getRequiredChannelId()).thenReturn(-1001234567890L);
 
@@ -205,6 +200,7 @@ class TelegramBotApiServiceTest {
     @Test
     @DisplayName("getUserInfo сохраняет legacy private-chat поведение")
     void getUserInfo_ShouldKeepLegacyPrivateChatLookup() {
+        when(appConfig.getTelegram()).thenReturn(telegramConfig);
         when(telegramConfig.getBotToken()).thenReturn("bot-token");
         when(restTemplate.getForEntity(contains("/getChatMember?chat_id=777&user_id=777"), eq(String.class)))
                 .thenReturn(new ResponseEntity<>("{\"ok\":true,\"result\":{\"status\":\"member\"}}", HttpStatus.OK));
@@ -216,11 +212,6 @@ class TelegramBotApiServiceTest {
     }
 
     private Object createMockStickerSetInfo(String title) {
-        return new Object() {
-            @Override
-            public String toString() {
-                return "{\"title\":\"" + title + "\"}";
-            }
-        };
+        return java.util.Map.of("title", title);
     }
 }
