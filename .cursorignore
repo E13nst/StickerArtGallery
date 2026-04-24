@@ -1,0 +1,26 @@
+# Java / Spring Boot build output
+**/target/
+**/build/
+**/.gradle/
+
+# IDE metadata
+**/.idea/
+**/*.iml
+
+# Project logs and temporary frontend dependencies
+**/logs/
+**/*.log
+**/node_modules/
+**/.vite/
+
+# Binary files and generated archives
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.webp
+**/*.jar
+**/*.war
+
+# OS and service files
+**/.DS_Store
+**/Thumbs.db

@@ -121,13 +121,20 @@ async function savePreset(event) {
         promptSuffix: document.getElementById('preset-style-prompt').value.trim(),
         sortOrder: parseInt(document.getElementById('preset-display-order').value)
     };
+    const enabled = document.getElementById('preset-enabled').checked;
     
     try {
         if (editingPresetId) {
-            await api.updateGlobalStylePreset(editingPresetId, data);
+            const updatedPreset = await api.updateGlobalStylePreset(editingPresetId, data);
+            if (!!updatedPreset?.isEnabled !== enabled) {
+                await api.toggleGlobalStylePreset(editingPresetId, enabled);
+            }
             showNotification('Пресет успешно обновлен', 'success');
         } else {
-            await api.createGlobalStylePreset(data);
+            const createdPreset = await api.createGlobalStylePreset(data);
+            if (!!createdPreset?.isEnabled !== enabled) {
+                await api.toggleGlobalStylePreset(createdPreset.id, enabled);
+            }
             showNotification('Пресет успешно создан', 'success');
         }
         

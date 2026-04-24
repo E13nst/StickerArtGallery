@@ -91,7 +91,7 @@ public class UpdateRouterService {
                 String text = message.path("text").asText("");
                 long chatId = message.path("chat").path("id").asLong();
                 long userId = message.path("from").path("id").asLong();
-                switch (text) {
+                switch (extractCommand(text)) {
                     case "/start" -> {
                         stickerGalleryFlowService.handleStart(message);
                         return;
@@ -124,5 +124,22 @@ public class UpdateRouterService {
                 stickerGalleryFlowService.handleIncomingSticker(message);
             }
         }
+    }
+
+    private String extractCommand(String text) {
+        if (text == null) {
+            return "";
+        }
+        String trimmed = text.trim();
+        if (trimmed.isEmpty() || !trimmed.startsWith("/")) {
+            return "";
+        }
+        int spaceIndex = trimmed.indexOf(' ');
+        String commandToken = spaceIndex >= 0 ? trimmed.substring(0, spaceIndex) : trimmed;
+        int mentionIndex = commandToken.indexOf('@');
+        if (mentionIndex >= 0) {
+            return commandToken.substring(0, mentionIndex);
+        }
+        return commandToken;
     }
 }

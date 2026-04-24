@@ -37,7 +37,11 @@ public class TelegramBotApiService {
     
     @Autowired
     public TelegramBotApiService(AppConfig appConfig, ObjectMapper objectMapper) {
-        this.restTemplate = new RestTemplate();
+        this(appConfig, objectMapper, new RestTemplate());
+    }
+
+    TelegramBotApiService(AppConfig appConfig, ObjectMapper objectMapper, RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
         this.appConfig = appConfig;
         this.objectMapper = objectMapper;
     }
@@ -119,15 +123,24 @@ public class TelegramBotApiService {
         LOGGER.info("🗑️ Очистка всего кэша стикерсетов");
     }
     
+    @Cacheable(value = "userInfo", key = "#userId", unless = "#result == null")
+    public Object getUserInfo(Long userId) {
+        return getPrivateChatMemberInfo(userId);
+    }
+
     /**
-     * Получает информацию о пользователе через Telegram Bot API
-     * Результат кэшируется в Caffeine на 15 минут
-     * 
+     * Legacy helper для inline/private-chat сценариев.
+     * Использует getChatMember с chat_id = user_id, чтобы проверить доступность пользователя
+     * в его личном чате с ботом и быстро адресовать результат обратно в приватный диалог.
+     *
+     * Важно: это не проверка подписки на канал. Для канала используйте
+     * {@link #getRequiredChannelMembershipStatus(Long)}.
+     *
      * @param userId ID пользователя в Telegram
      * @return JSON объект с информацией о пользователе или null если ошибка
      */
     @Cacheable(value = "userInfo", key = "#userId", unless = "#result == null")
-    public Object getUserInfo(Long userId) {
+    public Object getPrivateChatMemberInfo(Long userId) {
         try {
             LOGGER.debug("🔍 Получение информации о пользователе '{}' (запрос к Telegram API)", userId);
             
@@ -919,6 +932,45 @@ public class TelegramBotApiService {
         callTelegramApi("editMessageText", payload);
     }
 
+    public ChannelMembershipStatus getRequiredChannelMembershipStatus(Long userId) {
+        AppConfig.Telegram telegramConfig = appConfig.getTelegram();
+        if (userId == null || userId <= 0 || telegramConfig == null) {
+            return ChannelMembershipStatus.UNKNOWN;
+        }
+
+        Object chatId = telegramConfig.getRequiredChannelId();
+        if (chatId == null) {
+            String username = telegramConfig.getRequiredChannelUsername();
+            if (username == null || username.isBlank()) {
+                return ChannelMembershipStatus.UNKNOWN;
+            }
+            chatId = username.startsWith("@") ? username : "@" + username;
+        }
+
+        java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("chat_id", chatId);
+        payload.put("user_id", userId);
+
+        try {
+            JsonNode result = callTelegramApi("getChatMember", payload);
+            String status = result.path("status").asText("");
+            if ("member".equals(status)
+                    || "administrator".equals(status)
+                    || "creator".equals(status)
+                    || "restricted".equals(status)) {
+                return ChannelMembershipStatus.SUBSCRIBED;
+            }
+            if ("left".equals(status) || "kicked".equals(status)) {
+                return ChannelMembershipStatus.NOT_SUBSCRIBED;
+            }
+            LOGGER.warn("⚠️ Неизвестный статус участника канала: userId={}, status={}", userId, status);
+            return ChannelMembershipStatus.UNKNOWN;
+        } catch (RuntimeException e) {
+            LOGGER.warn("⚠️ Не удалось проверить подписку на канал: userId={}, error={}", userId, e.getMessage());
+            return ChannelMembershipStatus.UNKNOWN;
+        }
+    }
+
     private JsonNode callTelegramApi(String method, java.util.Map<String, Object> requestBody) {
         try {
             String botToken = appConfig.getTelegram().getBotToken();
@@ -1079,5 +1131,11 @@ public class TelegramBotApiService {
         public String getName() { return name; }
         public int getStickerCount() { return stickerCount; }
         public boolean exists() { return exists; }
+    }
+
+    public enum ChannelMembershipStatus {
+        SUBSCRIBED,
+        NOT_SUBSCRIBED,
+        UNKNOWN
     }
 }

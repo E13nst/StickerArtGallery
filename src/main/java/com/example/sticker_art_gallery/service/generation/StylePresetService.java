@@ -136,7 +136,9 @@ public class StylePresetService {
                 .orElseThrow(() -> new IllegalArgumentException("Preset not found: " + presetId));
 
         // Проверяем доступ
-        if (!isAdmin && (!preset.getIsGlobal() && (preset.getOwner() == null || !preset.getOwner().getUserId().equals(userId)))) {
+        if (!isAdmin && (Boolean.TRUE.equals(preset.getIsGlobal())
+                || preset.getOwner() == null
+                || !preset.getOwner().getUserId().equals(userId))) {
             throw new IllegalArgumentException("Access denied: preset is not accessible for user");
         }
 
@@ -164,7 +166,9 @@ public class StylePresetService {
                 .orElseThrow(() -> new IllegalArgumentException("Preset not found: " + presetId));
 
         // Проверяем доступ
-        if (!isAdmin && (!preset.getIsGlobal() && (preset.getOwner() == null || !preset.getOwner().getUserId().equals(userId)))) {
+        if (!isAdmin && (Boolean.TRUE.equals(preset.getIsGlobal())
+                || preset.getOwner() == null
+                || !preset.getOwner().getUserId().equals(userId))) {
             throw new IllegalArgumentException("Access denied: preset is not accessible for user");
         }
 

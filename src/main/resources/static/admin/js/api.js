@@ -48,15 +48,22 @@ class AdminApiClient {
                 throw new Error('Forbidden');
             }
             
-            // Если 204 No Content - возвращаем null
-            if (response.status === 204) {
-                return null;
+            let data = null;
+            if (response.status !== 204) {
+                const responseText = await response.text();
+                if (responseText && responseText.trim()) {
+                    try {
+                        data = JSON.parse(responseText);
+                    } catch (parseError) {
+                        console.warn('Failed to parse response as JSON:', parseError);
+                        data = responseText;
+                    }
+                }
             }
             
-            const data = await response.json();
-            
             if (!response.ok) {
-                const errorMessage = data.message || data.error || `HTTP error! status: ${response.status}`;
+                const errorMessage = (data && typeof data === 'object' && (data.message || data.error))
+                    || `HTTP error! status: ${response.status}`;
                 const error = new Error(errorMessage);
                 error.status = response.status;
                 error.data = data;

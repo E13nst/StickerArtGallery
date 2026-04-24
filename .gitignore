@@ -46,6 +46,7 @@ gradle-app.setting
 
 ### Cursor ###
 .cursor/
+.cursor/rules/
 
 ### Logs ###
 *.log

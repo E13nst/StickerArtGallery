@@ -1,19 +1,18 @@
 package com.example.sticker_art_gallery.service.telegram;
 
 import com.example.sticker_art_gallery.config.AppConfig;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -30,18 +29,20 @@ class TelegramBotApiServiceTest {
     private RestTemplate restTemplate;
 
     @Mock
-    private AppConfig.Telegram telegramConfig;
+    private AppConfig appConfig;
 
     @Mock
+    private AppConfig.Telegram telegramConfig;
+
     private ObjectMapper objectMapper;
 
-    @InjectMocks
     private TelegramBotApiService telegramBotApiService;
 
     @BeforeEach
     void setUp() {
-        // Настройка моков будет выполняться в каждом тесте индивидуально
-        // чтобы избежать UnnecessaryStubbingException
+        objectMapper = new ObjectMapper();
+        when(appConfig.getTelegram()).thenReturn(telegramConfig);
+        telegramBotApiService = new TelegramBotApiService(appConfig, objectMapper, restTemplate);
     }
 
     @Test
@@ -70,26 +71,15 @@ class TelegramBotApiServiceTest {
 
     @Test
     @DisplayName("extractTitleFromStickerSetInfo с валидной информацией должен извлечь title")
-    void extractTitleFromStickerSetInfo_WithValidInfo_ShouldExtractTitle() throws Exception {
+    void extractTitleFromStickerSetInfo_WithValidInfo_ShouldExtractTitle() {
         // Given
         Object stickerSetInfo = createMockStickerSetInfo("Test Stickers");
-        JsonNode jsonNode = mock(JsonNode.class);
-        JsonNode titleNode = mock(JsonNode.class);
-        
-        when(objectMapper.valueToTree(stickerSetInfo)).thenReturn(jsonNode);
-        when(jsonNode.has("title")).thenReturn(true);
-        when(jsonNode.get("title")).thenReturn(titleNode);
-        when(titleNode.asText()).thenReturn("Test Stickers");
 
         // When
         String result = telegramBotApiService.extractTitleFromStickerSetInfo(stickerSetInfo);
 
         // Then
         assertEquals("Test Stickers", result);
-        verify(objectMapper).valueToTree(stickerSetInfo);
-        verify(jsonNode).has("title");
-        verify(jsonNode).get("title");
-        verify(titleNode).asText();
     }
 
     @Test
@@ -104,52 +94,43 @@ class TelegramBotApiServiceTest {
 
     @Test
     @DisplayName("extractTitleFromStickerSetInfo без поля title должен возвращать null")
-    void extractTitleFromStickerSetInfo_WithoutTitleField_ShouldReturnNull() throws Exception {
+    void extractTitleFromStickerSetInfo_WithoutTitleField_ShouldReturnNull() {
         // Given
-        Object stickerSetInfo = new Object();
-        JsonNode jsonNode = mock(JsonNode.class);
-        
-        when(objectMapper.valueToTree(stickerSetInfo)).thenReturn(jsonNode);
-        when(jsonNode.has("title")).thenReturn(false);
+        Object stickerSetInfo = new Object() {
+            @Override
+            public String toString() {
+                return "{\"name\":\"no-title\"}";
+            }
+        };
 
         // When
         String result = telegramBotApiService.extractTitleFromStickerSetInfo(stickerSetInfo);
 
         // Then
         assertNull(result);
-        verify(objectMapper).valueToTree(stickerSetInfo);
-        verify(jsonNode).has("title");
-        verify(jsonNode, never()).get("title");
     }
 
     @Test
     @DisplayName("extractTitleFromStickerSetInfo с ошибкой парсинга должен возвращать null")
-    void extractTitleFromStickerSetInfo_WithParsingError_ShouldReturnNull() throws Exception {
+    void extractTitleFromStickerSetInfo_WithParsingError_ShouldReturnNull() {
         // Given
+        ObjectMapper failingObjectMapper = mock(ObjectMapper.class);
+        TelegramBotApiService failingService = new TelegramBotApiService(appConfig, failingObjectMapper, restTemplate);
         Object stickerSetInfo = new Object();
-        when(objectMapper.valueToTree(stickerSetInfo))
-                .thenThrow(new RuntimeException("Parsing error"));
+        when(failingObjectMapper.valueToTree(stickerSetInfo)).thenThrow(new RuntimeException("Parsing error"));
 
         // When
-        String result = telegramBotApiService.extractTitleFromStickerSetInfo(stickerSetInfo);
+        String result = failingService.extractTitleFromStickerSetInfo(stickerSetInfo);
 
         // Then
         assertNull(result);
-        verify(objectMapper).valueToTree(stickerSetInfo);
     }
 
     @Test
     @DisplayName("extractTitleFromStickerSetInfo с пустым title должен возвращать пустую строку")
-    void extractTitleFromStickerSetInfo_WithEmptyTitle_ShouldReturnEmptyString() throws Exception {
+    void extractTitleFromStickerSetInfo_WithEmptyTitle_ShouldReturnEmptyString() {
         // Given
         Object stickerSetInfo = createMockStickerSetInfo("");
-        JsonNode jsonNode = mock(JsonNode.class);
-        JsonNode titleNode = mock(JsonNode.class);
-        
-        when(objectMapper.valueToTree(stickerSetInfo)).thenReturn(jsonNode);
-        when(jsonNode.has("title")).thenReturn(true);
-        when(jsonNode.get("title")).thenReturn(titleNode);
-        when(titleNode.asText()).thenReturn("");
 
         // When
         String result = telegramBotApiService.extractTitleFromStickerSetInfo(stickerSetInfo);
@@ -160,16 +141,9 @@ class TelegramBotApiServiceTest {
 
     @Test
     @DisplayName("extractTitleFromStickerSetInfo с title из пробелов должен возвращать строку из пробелов")
-    void extractTitleFromStickerSetInfo_WithWhitespaceTitle_ShouldReturnWhitespaceString() throws Exception {
+    void extractTitleFromStickerSetInfo_WithWhitespaceTitle_ShouldReturnWhitespaceString() {
         // Given
         Object stickerSetInfo = createMockStickerSetInfo("   ");
-        JsonNode jsonNode = mock(JsonNode.class);
-        JsonNode titleNode = mock(JsonNode.class);
-        
-        when(objectMapper.valueToTree(stickerSetInfo)).thenReturn(jsonNode);
-        when(jsonNode.has("title")).thenReturn(true);
-        when(jsonNode.get("title")).thenReturn(titleNode);
-        when(titleNode.asText()).thenReturn("   ");
 
         // When
         String result = telegramBotApiService.extractTitleFromStickerSetInfo(stickerSetInfo);
@@ -180,17 +154,10 @@ class TelegramBotApiServiceTest {
 
     @Test
     @DisplayName("extractTitleFromStickerSetInfo с многоязычным title должен корректно извлечь")
-    void extractTitleFromStickerSetInfo_WithMultilingualTitle_ShouldExtractCorrectly() throws Exception {
+    void extractTitleFromStickerSetInfo_WithMultilingualTitle_ShouldExtractCorrectly() {
         // Given
         String multilingualTitle = "Тестовые стикеры 🎨 Test Stickers";
         Object stickerSetInfo = createMockStickerSetInfo(multilingualTitle);
-        JsonNode jsonNode = mock(JsonNode.class);
-        JsonNode titleNode = mock(JsonNode.class);
-        
-        when(objectMapper.valueToTree(stickerSetInfo)).thenReturn(jsonNode);
-        when(jsonNode.has("title")).thenReturn(true);
-        when(jsonNode.get("title")).thenReturn(titleNode);
-        when(titleNode.asText()).thenReturn(multilingualTitle);
 
         // When
         String result = telegramBotApiService.extractTitleFromStickerSetInfo(stickerSetInfo);
@@ -201,23 +168,51 @@ class TelegramBotApiServiceTest {
 
     @Test
     @DisplayName("extractTitleFromStickerSetInfo с длинным title должен корректно извлечь")
-    void extractTitleFromStickerSetInfo_WithLongTitle_ShouldExtractCorrectly() throws Exception {
+    void extractTitleFromStickerSetInfo_WithLongTitle_ShouldExtractCorrectly() {
         // Given
         String longTitle = "Очень длинное название стикерсета с множеством слов и символов для тестирования извлечения title";
         Object stickerSetInfo = createMockStickerSetInfo(longTitle);
-        JsonNode jsonNode = mock(JsonNode.class);
-        JsonNode titleNode = mock(JsonNode.class);
-        
-        when(objectMapper.valueToTree(stickerSetInfo)).thenReturn(jsonNode);
-        when(jsonNode.has("title")).thenReturn(true);
-        when(jsonNode.get("title")).thenReturn(titleNode);
-        when(titleNode.asText()).thenReturn(longTitle);
 
         // When
         String result = telegramBotApiService.extractTitleFromStickerSetInfo(stickerSetInfo);
 
         // Then
         assertEquals(longTitle, result);
+    }
+
+    @Test
+    @DisplayName("getRequiredChannelMembershipStatus использует chat_id канала")
+    void getRequiredChannelMembershipStatus_ShouldUseChannelChatId() {
+        when(telegramConfig.getBotToken()).thenReturn("bot-token");
+        when(telegramConfig.getRequiredChannelId()).thenReturn(-1001234567890L);
+
+        when(restTemplate.postForEntity(contains("/getChatMember"), any(HttpEntity.class), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("{\"ok\":true,\"result\":{\"status\":\"member\"}}", HttpStatus.OK));
+
+        TelegramBotApiService.ChannelMembershipStatus status = telegramBotApiService.getRequiredChannelMembershipStatus(777L);
+
+        assertEquals(TelegramBotApiService.ChannelMembershipStatus.SUBSCRIBED, status);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<HttpEntity<String>> entityCaptor = ArgumentCaptor.forClass((Class) HttpEntity.class);
+        verify(restTemplate).postForEntity(contains("/getChatMember"), entityCaptor.capture(), eq(String.class));
+        String json = entityCaptor.getValue().getBody();
+        assertNotNull(json);
+        assertTrue(json.contains("\"chat_id\":-1001234567890"));
+        assertTrue(json.contains("\"user_id\":777"));
+    }
+
+    @Test
+    @DisplayName("getUserInfo сохраняет legacy private-chat поведение")
+    void getUserInfo_ShouldKeepLegacyPrivateChatLookup() {
+        when(telegramConfig.getBotToken()).thenReturn("bot-token");
+        when(restTemplate.getForEntity(contains("/getChatMember?chat_id=777&user_id=777"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("{\"ok\":true,\"result\":{\"status\":\"member\"}}", HttpStatus.OK));
+
+        Object result = telegramBotApiService.getUserInfo(777L);
+
+        assertNotNull(result);
+        verify(restTemplate).getForEntity(contains("/getChatMember?chat_id=777&user_id=777"), eq(String.class));
     }
 
     private Object createMockStickerSetInfo(String title) {

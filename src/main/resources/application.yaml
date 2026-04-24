@@ -8,6 +8,10 @@ app:
     bot-token: ${TELEGRAM_BOT_TOKEN}
     bot-username: ${TELEGRAM_BOT_USERNAME:stixlybot}
     default-sticker-set-title: ${STICKER_SET_DEFAULT_TITLE:Styxly Generated}
+    channel-subscription-required: ${TELEGRAM_CHANNEL_SUBSCRIPTION_REQUIRED:true}
+    required-channel-id: ${TELEGRAM_REQUIRED_CHANNEL_ID:}
+    required-channel-username: ${TELEGRAM_REQUIRED_CHANNEL_USERNAME:stixlyofficial}
+    required-channel-url: ${TELEGRAM_REQUIRED_CHANNEL_URL:https://t.me/stixlyofficial}
     # Этапы миграции StickerBot → Java
     # true = Java создаёт invoice напрямую через Telegram Bot API (Stage 2→5 миграции)
     native-payment-enabled: ${TELEGRAM_NATIVE_PAYMENT_ENABLED:false}

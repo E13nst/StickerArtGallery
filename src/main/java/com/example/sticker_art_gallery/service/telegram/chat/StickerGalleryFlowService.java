@@ -1,5 +1,6 @@
 package com.example.sticker_art_gallery.service.telegram.chat;
 
+import com.example.sticker_art_gallery.config.AppConfig;
 import com.example.sticker_art_gallery.dto.CreateStickerSetDto;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
@@ -18,14 +19,18 @@ import java.util.Map;
 public class StickerGalleryFlowService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StickerGalleryFlowService.class);
+    private static final String CHECK_CHANNEL_SUBSCRIPTION = "check_channel_subscription";
 
+    private final AppConfig appConfig;
     private final StickerSetRepository stickerSetRepository;
     private final StickerSetService stickerSetService;
     private final TelegramBotApiService telegramBotApiService;
 
-    public StickerGalleryFlowService(StickerSetRepository stickerSetRepository,
+    public StickerGalleryFlowService(AppConfig appConfig,
+                                     StickerSetRepository stickerSetRepository,
                                      StickerSetService stickerSetService,
                                      TelegramBotApiService telegramBotApiService) {
+        this.appConfig = appConfig;
         this.stickerSetRepository = stickerSetRepository;
         this.stickerSetService = stickerSetService;
         this.telegramBotApiService = telegramBotApiService;
@@ -33,8 +38,9 @@ public class StickerGalleryFlowService {
 
     public void handleStart(JsonNode message) {
         long chatId = message.path("chat").path("id").asLong();
+        long userId = message.path("from").path("id").asLong();
         String firstName = message.path("from").path("first_name").asText("друг");
-        telegramBotApiService.sendMessage(chatId, startText(firstName), "HTML", mainMenuKeyboard(), null, null);
+        showStartScreen(chatId, userId, firstName, null);
     }
 
     public void handleHelp(JsonNode message) {
@@ -97,15 +103,55 @@ public class StickerGalleryFlowService {
     public boolean handleCallback(JsonNode callbackQuery) {
         String data = callbackQuery.path("data").asText("");
         String callbackId = callbackQuery.path("id").asText();
+        long chatId = callbackQuery.path("message").path("chat").path("id").asLong();
+        long messageId = callbackQuery.path("message").path("message_id").asLong();
+        long userId = callbackQuery.path("from").path("id").asLong();
+        String firstName = callbackQuery.path("from").path("first_name").asText("друг");
+        if (CHECK_CHANNEL_SUBSCRIPTION.equals(data)) {
+            TelegramBotApiService.ChannelMembershipStatus membershipStatus = getRequiredChannelMembershipStatus(userId);
+            if (membershipStatus == TelegramBotApiService.ChannelMembershipStatus.SUBSCRIBED) {
+                showMainMenu(chatId, firstName, messageId);
+                telegramBotApiService.answerCallbackQuery(callbackId, "Подписка подтверждена", false);
+            } else if (membershipStatus == TelegramBotApiService.ChannelMembershipStatus.UNKNOWN) {
+                telegramBotApiService.answerCallbackQuery(callbackId, "Не удалось проверить подписку. Попробуйте еще раз.", true);
+            } else {
+                telegramBotApiService.answerCallbackQuery(callbackId, "Сначала подпишитесь на канал", true);
+            }
+            return true;
+        }
+        if ("start_generation_entry".equals(data)) {
+            telegramBotApiService.answerCallbackQuery(callbackId, null, false);
+            telegramBotApiService.sendMessage(
+                    chatId,
+                    "🎨 Отправьте идею для стикера в формате:\n"
+                            + "<code>gen: кот в очках, мем-стиль</code>\n\n"
+                            + "Или откройте inline в любом чате: <code>@stixlybot gen: ваш запрос</code>",
+                    "HTML",
+                    null,
+                    null,
+                    null
+            );
+            return true;
+        }
+        if ("upload_stickers_entry".equals(data)) {
+            telegramBotApiService.answerCallbackQuery(callbackId, null, false);
+            telegramBotApiService.sendMessage(
+                    chatId,
+                    "📥 Раздел добавления готовых стикеров.\n\n"
+                            + "Отправьте сюда любой стикер из набора — предложу добавить стикерпак в галерею.",
+                    null,
+                    null,
+                    null,
+                    null
+            );
+            return true;
+        }
         if ("manage_stickers_menu".equals(data)) {
             telegramBotApiService.answerCallbackQuery(callbackId, "Этот раздел переносится во 2-ю волну.", false);
             return true;
         }
         if ("back_to_main".equals(data)) {
-            long chatId = callbackQuery.path("message").path("chat").path("id").asLong();
-            long messageId = callbackQuery.path("message").path("message_id").asLong();
-            String firstName = callbackQuery.path("from").path("first_name").asText("друг");
-            telegramBotApiService.editMessageText(chatId, messageId, startText(firstName), "HTML", mainMenuKeyboard());
+            showStartScreen(chatId, userId, firstName, messageId);
             telegramBotApiService.answerCallbackQuery(callbackId, null, false);
             return true;
         }
@@ -113,9 +159,7 @@ public class StickerGalleryFlowService {
             return false;
         }
 
-        long userId = callbackQuery.path("from").path("id").asLong();
-        long chatId = callbackQuery.path("message").path("chat").path("id").asLong();
-        long callbackMessageId = callbackQuery.path("message").path("message_id").asLong();
+        long callbackMessageId = messageId;
         try {
             String[] parts = data.split(":");
             String setName = parts.length > 1 ? parts[1] : "";
@@ -154,13 +198,66 @@ public class StickerGalleryFlowService {
         }
     }
 
+    private void showStartScreen(long chatId, long userId, String firstName, Long messageId) {
+        if (isChannelSubscriptionRequired()) {
+            TelegramBotApiService.ChannelMembershipStatus membershipStatus = getRequiredChannelMembershipStatus(userId);
+            if (membershipStatus != TelegramBotApiService.ChannelMembershipStatus.SUBSCRIBED) {
+                showSubscriptionGate(
+                        chatId,
+                        messageId,
+                        membershipStatus == TelegramBotApiService.ChannelMembershipStatus.UNKNOWN
+                );
+                return;
+            }
+        }
+        showMainMenu(chatId, firstName, messageId);
+    }
+
+    private void showMainMenu(long chatId, String firstName, Long messageId) {
+        if (messageId == null) {
+            telegramBotApiService.sendMessage(chatId, startText(firstName), "HTML", mainMenuKeyboard(), null, null);
+            return;
+        }
+        telegramBotApiService.editMessageText(chatId, messageId, startText(firstName), "HTML", mainMenuKeyboard());
+    }
+
+    private void showSubscriptionGate(long chatId, Long messageId, boolean unknownStatus) {
+        String text = unknownStatus ? subscriptionCheckErrorText() : subscriptionRequiredText();
+        if (messageId == null) {
+            telegramBotApiService.sendMessage(chatId, text, "HTML", subscriptionKeyboard(), null, null);
+            return;
+        }
+        telegramBotApiService.editMessageText(chatId, messageId, text, "HTML", subscriptionKeyboard());
+    }
+
+    private boolean isChannelSubscriptionRequired() {
+        return appConfig.getTelegram() != null && appConfig.getTelegram().isChannelSubscriptionRequired();
+    }
+
+    private TelegramBotApiService.ChannelMembershipStatus getRequiredChannelMembershipStatus(long userId) {
+        if (!isChannelSubscriptionRequired()) {
+            return TelegramBotApiService.ChannelMembershipStatus.SUBSCRIBED;
+        }
+        return telegramBotApiService.getRequiredChannelMembershipStatus(userId);
+    }
+
     private String startText(String name) {
         return "Йо, " + name + "!\n"
-                + "Ты в зоне Stixly — комьюнити самой большой галереи стикеров.\n\n"
-                + "<b>Сейчас можно:</b>\n"
-                + "• Найти стикер в галерее\n"
-                + "• Добавить стикерсет в галерею (+10 ART)\n\n"
-                + "❓ Помощь: /help | 📞 Поддержка: /support";
+                + "Я помогу быстро сделать стикер.\n\n"
+                + "<b>Главный сценарий:</b>\n"
+                + "• Нажмите <b>Создать стикер</b>\n"
+                + "• Отправьте идею в формате <code>gen: ...</code>\n\n"
+                + "Готовые стикеры можно отдельно добавить в галерею.";
+    }
+
+    private String subscriptionRequiredText() {
+        return "Чтобы открыть меню бота, сначала подпишитесь на наш канал.\n\n"
+                + "После подписки нажмите <b>Проверить подписку</b>.";
+    }
+
+    private String subscriptionCheckErrorText() {
+        return "Не удалось проверить подписку автоматически.\n\n"
+                + "Убедитесь, что вы вступили в канал, и нажмите <b>Проверить подписку</b> еще раз.";
     }
 
     private String helpText() {
@@ -169,15 +266,17 @@ public class StickerGalleryFlowService {
                 + "/help - справка\n"
                 + "/support - связь с поддержкой\n"
                 + "/cancel - отмена\n\n"
-                + "Пришлите любой стикер в ЛС — бот проверит набор в галерее.";
+                + "Для генерации: <code>gen: ваш запрос</code>\n"
+                + "Для добавления набора: пришлите любой стикер из набора в ЛС.";
     }
 
     private Object mainMenuKeyboard() {
         return Map.of(
                 "inline_keyboard",
                 List.of(
-                        List.of(Map.of("text", "🔍 Найти стикер в галерее", "url", "https://stickerartgallery-e13nst.amvera.io/mini-app/")),
-                        List.of(Map.of("text", "🛠 Управление стикерами", "callback_data", "manage_stickers_menu")),
+                        List.of(Map.of("text", "🎨 Создать стикер", "callback_data", "start_generation_entry")),
+                        List.of(Map.of("text", "📥 Добавить свои стикеры", "callback_data", "upload_stickers_entry")),
+                        List.of(Map.of("text", "🔍 Найти стикеры в галерее", "url", "https://stickerartgallery-e13nst.amvera.io/mini-app/")),
                         List.of(Map.of("text", "📞 Поддержка", "callback_data", "enter_support")),
                         List.of(Map.of("text", "📢 Telegram-канал", "url", "https://t.me/stixlyofficial"))
                 )
@@ -192,6 +291,28 @@ public class StickerGalleryFlowService {
                         List.of(Map.of("text", "Главное меню", "callback_data", "back_to_main"))
                 )
         );
+    }
+
+    private Object subscriptionKeyboard() {
+        return Map.of(
+                "inline_keyboard",
+                List.of(
+                        List.of(Map.of("text", "Подписаться", "url", requiredChannelUrl())),
+                        List.of(Map.of("text", "Проверить подписку", "callback_data", CHECK_CHANNEL_SUBSCRIPTION))
+                )
+        );
+    }
+
+    private String requiredChannelUrl() {
+        String configuredUrl = appConfig.getTelegram() != null ? appConfig.getTelegram().getRequiredChannelUrl() : null;
+        if (configuredUrl != null && !configuredUrl.isBlank()) {
+            return configuredUrl;
+        }
+        String username = appConfig.getTelegram() != null ? appConfig.getTelegram().getRequiredChannelUsername() : null;
+        if (username == null || username.isBlank()) {
+            return "https://t.me/stixlyofficial";
+        }
+        return "https://t.me/" + username.replaceFirst("^@", "");
     }
 
     private Object existingSetKeyboard(String setName) {

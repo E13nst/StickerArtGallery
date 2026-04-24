@@ -87,6 +87,10 @@ public class AppConfig {
         private String botToken;
         private String botUsername;
         private String defaultStickerSetTitle;
+        private boolean channelSubscriptionRequired = false;
+        private Long requiredChannelId;
+        private String requiredChannelUsername;
+        private String requiredChannelUrl;
 
         /** Java создаёт invoice напрямую через Bot API, минуя StickerBot */
         private boolean nativePaymentEnabled = false;
@@ -153,6 +157,38 @@ public class AppConfig {
 
         public void setDefaultStickerSetTitle(String defaultStickerSetTitle) {
             this.defaultStickerSetTitle = defaultStickerSetTitle;
+        }
+
+        public boolean isChannelSubscriptionRequired() {
+            return channelSubscriptionRequired;
+        }
+
+        public void setChannelSubscriptionRequired(boolean channelSubscriptionRequired) {
+            this.channelSubscriptionRequired = channelSubscriptionRequired;
+        }
+
+        public Long getRequiredChannelId() {
+            return requiredChannelId;
+        }
+
+        public void setRequiredChannelId(Long requiredChannelId) {
+            this.requiredChannelId = requiredChannelId;
+        }
+
+        public String getRequiredChannelUsername() {
+            return requiredChannelUsername;
+        }
+
+        public void setRequiredChannelUsername(String requiredChannelUsername) {
+            this.requiredChannelUsername = requiredChannelUsername;
+        }
+
+        public String getRequiredChannelUrl() {
+            return requiredChannelUrl;
+        }
+
+        public void setRequiredChannelUrl(String requiredChannelUrl) {
+            this.requiredChannelUrl = requiredChannelUrl;
         }
 
         public boolean isNativePaymentEnabled() {
