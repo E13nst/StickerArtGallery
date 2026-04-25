@@ -47,6 +47,9 @@ function renderPresets() {
         .map(preset => `
             <tr class="hover:bg-gray-50">
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${preset.id}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    ${renderPreview(preset)}
+                </td>
                 <td class="px-6 py-4 text-sm">
                     <div class="font-medium text-gray-900">${escapeHtml(preset.name)}</div>
                     ${preset.description ? `<div class="text-xs text-gray-500 mt-1">${escapeHtml(preset.description)}</div>` : ''}
@@ -85,6 +88,8 @@ function openAddModal() {
     document.getElementById('preset-id').value = '';
     document.getElementById('preset-remove-background').value = '';
     document.getElementById('preset-enabled').checked = true;
+    document.getElementById('current-preview-wrap').classList.add('hidden');
+    document.getElementById('current-preview-img').src = '';
     document.getElementById('edit-modal').classList.remove('hidden');
 }
 
@@ -102,6 +107,15 @@ function editPreset(id) {
     document.getElementById('preset-remove-background').value = toRemoveBackgroundFormValue(preset.removeBackground);
     document.getElementById('preset-display-order').value = preset.sortOrder;
     document.getElementById('preset-enabled').checked = preset.isEnabled;
+    const previewUrl = getPresetPreviewUrl(preset);
+    if (previewUrl) {
+        document.getElementById('current-preview-img').src = previewUrl;
+        document.getElementById('current-preview-wrap').classList.remove('hidden');
+    } else {
+        document.getElementById('current-preview-wrap').classList.add('hidden');
+        document.getElementById('current-preview-img').src = '';
+    }
+    document.getElementById('preset-preview').value = '';
     document.getElementById('edit-modal').classList.remove('hidden');
 }
 
@@ -124,8 +138,10 @@ async function savePreset(event) {
         sortOrder: parseInt(document.getElementById('preset-display-order').value)
     };
     const enabled = document.getElementById('preset-enabled').checked;
+    const previewFile = document.getElementById('preset-preview').files[0] || null;
     
     try {
+        let savedPresetId = editingPresetId;
         if (editingPresetId) {
             const updatedPreset = await api.updateGlobalStylePreset(editingPresetId, data);
             if (!!updatedPreset?.isEnabled !== enabled) {
@@ -134,10 +150,16 @@ async function savePreset(event) {
             showNotification('Пресет успешно обновлен', 'success');
         } else {
             const createdPreset = await api.createGlobalStylePreset(data);
+            savedPresetId = createdPreset.id;
             if (!!createdPreset?.isEnabled !== enabled) {
                 await api.toggleGlobalStylePreset(createdPreset.id, enabled);
             }
             showNotification('Пресет успешно создан', 'success');
+        }
+
+        if (previewFile && savedPresetId) {
+            await api.uploadGlobalStylePresetPreview(savedPresetId, previewFile);
+            showNotification('Превью пресета загружено', 'success');
         }
         
         closeModal();
@@ -211,4 +233,21 @@ function renderRemoveBackgroundPolicy(value) {
         return '<span class="px-2 py-1 text-xs font-semibold text-orange-800 bg-orange-100 rounded-full">Не удалять</span>';
     }
     return '<span class="text-gray-400">Fallback</span>';
+}
+
+function getPresetPreviewUrl(preset) {
+    return preset.previewWebpUrl || preset.previewUrl || preset.thumbnailUrl || null;
+}
+
+function renderPreview(preset) {
+    const previewUrl = getPresetPreviewUrl(preset);
+    if (previewUrl) {
+        return `<img src="${escapeHtml(previewUrl)}" alt="${escapeHtml(preset.name)}" class="h-14 w-14 rounded-lg object-cover border border-gray-200">`;
+    }
+    const letter = (preset.name || preset.code || '?').trim().charAt(0).toUpperCase();
+    return `
+        <div class="h-14 w-14 rounded-lg bg-gradient-to-br from-gray-100 to-gray-300 border border-gray-200 flex items-center justify-center text-gray-500 font-semibold">
+            ${escapeHtml(letter)}
+        </div>
+    `;
 }

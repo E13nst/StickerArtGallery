@@ -5,6 +5,8 @@ import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.repository.StylePresetRepository;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
+import com.example.sticker_art_gallery.service.storage.ImageStorageService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +18,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -29,6 +32,15 @@ class StylePresetServiceTest {
 
     @Mock
     private UserProfileService userProfileService;
+
+    @Mock
+    private ImageStorageService imageStorageService;
+
+    @Mock
+    private ObjectMapper objectMapper;
+
+    @Mock
+    private StylePresetPromptComposer presetPromptComposer;
 
     @InjectMocks
     private StylePresetService stylePresetService;
@@ -87,6 +99,7 @@ class StylePresetServiceTest {
         when(presetRepository.findByCodeAndOwner_UserId("anime", 42L)).thenReturn(Optional.empty());
         when(presetRepository.save(org.mockito.ArgumentMatchers.any(StylePresetEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        when(presetPromptComposer.parsePromptInput(any(StylePresetEntity.class))).thenReturn(null);
 
         var result = stylePresetService.createUserPreset(42L, request);
 

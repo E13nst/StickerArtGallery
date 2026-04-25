@@ -237,7 +237,7 @@ public class StylePresetPromptComposer {
             var def = new StylePresetPromptInputDto();
             def.setEnabled(true);
             def.setRequired(true);
-            def.setMaxLength(1000);
+            def.setMaxLength(8000);
             return def;
         }
         return objectMapper.convertValue(preset.getPromptInputJson(), StylePresetPromptInputDto.class);

@@ -31,6 +31,9 @@ class PromptProcessingServiceTest {
     @Mock
     private AIService aiService;
 
+    @Mock
+    private StylePresetPromptComposer presetPromptComposer;
+
     @InjectMocks
     private PromptProcessingService promptProcessingService;
 
@@ -47,6 +50,7 @@ class PromptProcessingServiceTest {
 
         when(enhancerRepository.findAvailableForUser(10L)).thenReturn(Collections.emptyList());
         when(presetRepository.findById(5L)).thenReturn(Optional.of(preset));
+        when(presetPromptComposer.buildRawPrompt(preset, "cute cat", null)).thenReturn("cute cat");
 
         PromptProcessingService.PromptProcessingResult result =
                 promptProcessingService.processPrompt("cute cat", 10L, 5L);
@@ -68,6 +72,7 @@ class PromptProcessingServiceTest {
 
         when(enhancerRepository.findAvailableForUser(11L)).thenReturn(Collections.emptyList());
         when(presetRepository.findById(6L)).thenReturn(Optional.of(preset));
+        when(presetPromptComposer.buildRawPrompt(preset, "fox", null)).thenReturn("fox");
 
         PromptProcessingService.PromptProcessingResult result =
                 promptProcessingService.processPrompt("fox", 11L, 6L);

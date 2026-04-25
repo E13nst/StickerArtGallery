@@ -73,7 +73,7 @@ public class ImageController {
 
         return ResponseEntity.ok()
                 .contentType(mediaType)
-                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400") // Кэш на 1 день
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=31536000, immutable")
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.fileName() + "\"")
                 .body(resource.resource());
     }

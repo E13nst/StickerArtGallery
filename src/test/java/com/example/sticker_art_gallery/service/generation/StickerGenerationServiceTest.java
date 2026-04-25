@@ -22,6 +22,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,6 +36,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.lenient;
@@ -277,10 +280,14 @@ class StickerGenerationServiceTest {
         GenerationTaskEntity task = createV2Task(taskId, 444L, "img_bg");
         when(taskRepository.findByTaskId(taskId)).thenReturn(Optional.of(task));
         when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(stickerProcessorGenerationClient.submitGenerate(any())).thenReturn(
-                new StickerProcessorGenerationClient.SubmitResult("ws_bg_fail", "pending", "req_bg_fail"),
-                new StickerProcessorGenerationClient.SubmitResult("ws_bg_ok", "pending", "req_bg_ok")
-        );
+        List<Boolean> submittedRemoveBackground = new ArrayList<>();
+        doAnswer(inv -> {
+            GenerateStickerV2Request submitted = inv.getArgument(0);
+            submittedRemoveBackground.add(submitted.getRemoveBackground());
+            return submittedRemoveBackground.size() == 1
+                    ? new StickerProcessorGenerationClient.SubmitResult("ws_bg_fail", "pending", "req_bg_fail")
+                    : new StickerProcessorGenerationClient.SubmitResult("ws_bg_ok", "pending", "req_bg_ok");
+        }).when(stickerProcessorGenerationClient).submitGenerate(any());
         when(stickerProcessorGenerationClient.pollResult("ws_bg_fail")).thenReturn(
                 StickerProcessorGenerationClient.PollResult.jsonStatus(
                         424,
@@ -306,10 +313,8 @@ class StickerGenerationServiceTest {
 
         stickerGenerationService.runGenerationV2(taskId);
 
-        ArgumentCaptor<GenerateStickerV2Request> submitCaptor = ArgumentCaptor.forClass(GenerateStickerV2Request.class);
-        verify(stickerProcessorGenerationClient, times(2)).submitGenerate(submitCaptor.capture());
-        assertEquals(true, submitCaptor.getAllValues().get(0).getRemoveBackground());
-        assertEquals(false, submitCaptor.getAllValues().get(1).getRemoveBackground());
+        verify(stickerProcessorGenerationClient, times(2)).submitGenerate(any());
+        assertEquals(List.of(true, false), submittedRemoveBackground);
         assertEquals(GenerationTaskStatus.COMPLETED, task.getStatus());
         assertEquals(null, task.getErrorMessage());
         verify(artRewardService).award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong());
