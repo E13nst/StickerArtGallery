@@ -42,6 +42,7 @@ import static com.example.sticker_art_gallery.service.generation.GenerationAudit
 public class StickerGenerationService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StickerGenerationService.class);
+    private static final int STICKER_PROCESSOR_PROMPT_MAX_LENGTH = 1000;
 
     private final GenerationTaskRepository taskRepository;
     @SuppressWarnings("deprecation")
@@ -624,7 +625,8 @@ public class StickerGenerationService {
         Map<String, Object> metadata = parseMetadata(task.getMetadata());
         try {
             GenerateStickerV2Request request = new GenerateStickerV2Request();
-            request.setPrompt(task.getPrompt());
+            String providerPrompt = limitStickerProcessorPrompt(task.getPrompt(), metadata);
+            request.setPrompt(providerPrompt);
             request.setModel(metadata.get("model") != null ? metadata.get("model").toString() : "flux-schnell");
             request.setSize(metadata.get("size") != null ? metadata.get("size").toString() : "512*512");
             request.setSeed(metadata.get("seed") instanceof Number ? ((Number) metadata.get("seed")).intValue() : -1);
@@ -632,6 +634,10 @@ public class StickerGenerationService {
             request.setStrength(metadata.get("strength") instanceof Number ? ((Number) metadata.get("strength")).doubleValue() : 0.8);
             request.setRemoveBackground(Boolean.TRUE.equals(metadata.get("remove_background")));
             request.setImageIds(resolveSourceImageIds(metadata));
+            if (Boolean.TRUE.equals(metadata.get("sticker_processor_prompt_truncated"))) {
+                task.setMetadata(objectMapper.writeValueAsString(metadata));
+                taskRepository.save(task);
+            }
             boolean allowRetryWithoutBackground = Boolean.TRUE.equals(request.getRemoveBackground());
 
             while (true) {
@@ -939,5 +945,20 @@ public class StickerGenerationService {
             }
         }
         return normalized;
+    }
+
+    private String limitStickerProcessorPrompt(String prompt, Map<String, Object> metadata) {
+        if (prompt == null || prompt.length() <= STICKER_PROCESSOR_PROMPT_MAX_LENGTH) {
+            return prompt;
+        }
+
+        metadata.put("sticker_processor_prompt_truncated", true);
+        metadata.put("sticker_processor_prompt_original_length", prompt.length());
+        LOGGER.warn(
+                "Sticker processor prompt exceeds {} chars; truncating outbound prompt from {} chars",
+                STICKER_PROCESSOR_PROMPT_MAX_LENGTH,
+                prompt.length()
+        );
+        return prompt.substring(0, STICKER_PROCESSOR_PROMPT_MAX_LENGTH);
     }
 }

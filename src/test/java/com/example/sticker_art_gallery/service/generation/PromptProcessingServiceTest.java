@@ -1,6 +1,7 @@
 package com.example.sticker_art_gallery.service.generation;
 
 import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
+import com.example.sticker_art_gallery.model.generation.StylePresetRemoveBackgroundMode;
 import com.example.sticker_art_gallery.repository.PromptEnhancerRepository;
 import com.example.sticker_art_gallery.repository.StylePresetRepository;
 import com.example.sticker_art_gallery.service.ai.AIService;
@@ -45,6 +46,7 @@ class PromptProcessingServiceTest {
         preset.setCode("telegram_sticker");
         preset.setPromptSuffix(", transparent background");
         preset.setRemoveBackground(true);
+        preset.setRemoveBackgroundMode(StylePresetRemoveBackgroundMode.FORCE_ON);
         preset.setIsGlobal(true);
         preset.setIsEnabled(true);
 

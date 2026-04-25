@@ -202,6 +202,45 @@ class StickerGenerationServiceTest {
     }
 
     @Test
+    @DisplayName("runGenerationV2: обрезает prompt до лимита sticker-processor")
+    void runGenerationV2_shouldTruncatePromptForStickerProcessorLimit() throws Exception {
+        String taskId = "task-v2-long-prompt";
+        GenerationTaskEntity task = createV2Task(taskId, 333L, "img_123");
+        task.setPrompt("a".repeat(1200));
+
+        when(taskRepository.findByTaskId(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        List<String> submittedPrompts = new ArrayList<>();
+        doAnswer(inv -> {
+            GenerateStickerV2Request submitted = inv.getArgument(0);
+            submittedPrompts.add(submitted.getPrompt());
+            return new StickerProcessorGenerationClient.SubmitResult("ws_123", "pending", "req_1");
+        }).when(stickerProcessorGenerationClient).submitGenerate(any());
+        when(stickerProcessorGenerationClient.pollResult("ws_123")).thenReturn(
+                StickerProcessorGenerationClient.PollResult.imageReady("img".getBytes())
+        );
+
+        CachedImageEntity cached = new CachedImageEntity();
+        cached.setId(UUID.randomUUID());
+        cached.setFileName(cached.getId() + ".webp");
+        when(imageStorageService.storeBytes(anyString(), any(), anyString())).thenReturn(cached);
+        when(imageStorageService.getPublicUrl(any())).thenReturn("http://localhost/api/images/" + cached.getFileName());
+
+        ArtTransactionEntity transaction = new ArtTransactionEntity();
+        transaction.setId(99L);
+        when(artRewardService.award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong())).thenReturn(transaction);
+
+        stickerGenerationService.runGenerationV2(taskId);
+
+        assertEquals(1000, submittedPrompts.get(0).length());
+        assertEquals(1200, task.getPrompt().length());
+        Map<?, ?> metadata = new com.fasterxml.jackson.databind.ObjectMapper().readValue(task.getMetadata(), Map.class);
+        assertEquals(true, metadata.get("sticker_processor_prompt_truncated"));
+        assertEquals(1200, metadata.get("sticker_processor_prompt_original_length"));
+    }
+
+    @Test
     @DisplayName("runGenerationV2: polling 400 завершает задачу как FAILED")
     void runGenerationV2_shouldFailOnPolling400() throws Exception {
         String taskId = "task-v2-400";
