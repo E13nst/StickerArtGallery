@@ -118,7 +118,6 @@ function openAddModal() {
     document.getElementById('preset-id').value = '';
     document.getElementById('preset-remove-background').value = '';
     document.getElementById('preset-enabled').checked = true;
-    document.getElementById('preset-ui-mode').value = 'STRUCTURED_FIELDS';
     applyPromptInputToForm(DEFAULT_PROMPT_INPUT);
     renderFieldEditor(DEFAULT_FIELDS);
     document.getElementById('current-preview-wrap').classList.add('hidden');
@@ -140,7 +139,6 @@ function editPreset(id) {
     document.getElementById('preset-remove-background').value = toRemoveBackgroundFormValue(preset.removeBackground);
     document.getElementById('preset-display-order').value = preset.sortOrder;
     document.getElementById('preset-enabled').checked = preset.isEnabled;
-    document.getElementById('preset-ui-mode').value = preset.uiMode || 'STYLE_WITH_PROMPT';
     applyPromptInputToForm(preset.promptInput || DEFAULT_PROMPT_INPUT);
     renderFieldEditor(Array.isArray(preset.fields) ? preset.fields : []);
     const previewUrl = getPresetPreviewUrl(preset);
@@ -248,6 +246,20 @@ async function deletePreset(id) {
 // Event listeners
 document.getElementById('add-preset-btn').addEventListener('click', openAddModal);
 document.getElementById('preset-form').addEventListener('submit', savePreset);
+
+document.getElementById('preset-prompt-enabled').addEventListener('change', function () {
+    const opts = document.getElementById('prompt-options');
+    if (this.checked) {
+        opts.classList.remove('hidden');
+    } else {
+        opts.classList.add('hidden');
+        document.getElementById('preset-prompt-required').checked = false;
+    }
+    updateModeBadge();
+});
+
+document.getElementById('preset-style-prompt').addEventListener('input', updateModeBadge);
+
 document.getElementById('add-field-btn').addEventListener('click', () => {
     const fields = readFieldsFromForm();
     fields.push({
@@ -315,10 +327,18 @@ function renderPreview(preset) {
 
 function applyPromptInputToForm(promptInput) {
     const input = promptInput || DEFAULT_PROMPT_INPUT;
-    document.getElementById('preset-prompt-enabled').checked = input.enabled !== false;
+    const enabled = input.enabled !== false;
+    document.getElementById('preset-prompt-enabled').checked = enabled;
     document.getElementById('preset-prompt-required').checked = !!input.required;
     document.getElementById('preset-prompt-placeholder').value = input.placeholder || '';
     document.getElementById('preset-prompt-max-length').value = input.maxLength || '';
+    const opts = document.getElementById('prompt-options');
+    if (enabled) {
+        opts.classList.remove('hidden');
+    } else {
+        opts.classList.add('hidden');
+    }
+    updateModeBadge();
 }
 
 function readPromptInputFromForm() {
@@ -335,11 +355,13 @@ function readPromptInputFromForm() {
 function renderFieldEditor(fields) {
     const list = document.getElementById('preset-fields-list');
     if (!fields || fields.length === 0) {
-        list.innerHTML = '<div class="text-xs text-gray-400">Поля не заданы. Добавь поле, если в шаблоне есть плейсхолдеры вроде {{emotion}}.</div>';
+        list.innerHTML = '<div class="text-xs text-gray-400 py-2">Поля не заданы. Добавь поле, если в шаблоне есть плейсхолдеры вроде <code>{{emotion}}</code>.</div>';
+        updateModeBadge();
         return;
     }
 
     list.innerHTML = fields.map((field, index) => renderFieldRow(field, index)).join('');
+    updateModeBadge();
 }
 
 function renderFieldRow(field, index) {
@@ -402,6 +424,46 @@ function removePresetField(index) {
     const fields = readFieldsFromForm();
     fields.splice(index, 1);
     renderFieldEditor(fields);
+}
+
+function deriveUiMode(template, promptEnabled, fields) {
+    const placeholders = extractTemplatePlaceholders(template);
+    const hasFields = fields.length > 0;
+    const templateHasNonPromptPlaceholders = [...placeholders].some(k => k !== 'prompt');
+
+    if (hasFields || templateHasNonPromptPlaceholders) {
+        if (promptEnabled) {
+            return 'STRUCTURED_FIELDS';
+        }
+        return 'LOCKED_TEMPLATE';
+    }
+    if (promptEnabled) {
+        return 'STYLE_WITH_PROMPT';
+    }
+    return 'LOCKED_TEMPLATE';
+}
+
+function updateModeBadge() {
+    const template = document.getElementById('preset-style-prompt').value;
+    const promptEnabled = document.getElementById('preset-prompt-enabled').checked;
+    const fields = readFieldsFromForm();
+    const mode = deriveUiMode(template, promptEnabled, fields);
+
+    document.getElementById('preset-ui-mode').value = mode;
+
+    const badge = document.getElementById('mode-badge');
+    const text = document.getElementById('mode-badge-text');
+    badge.classList.remove('hidden');
+
+    const labels = {
+        STYLE_WITH_PROMPT: { label: 'Свободный текст + суффикс стиля', cls: 'bg-blue-100 text-blue-700' },
+        STRUCTURED_FIELDS: { label: 'Шаблон с полями и текстом', cls: 'bg-green-100 text-green-700' },
+        LOCKED_TEMPLATE: { label: 'Фиксированный шаблон без ввода', cls: 'bg-yellow-100 text-yellow-700' },
+        CUSTOM_PROMPT: { label: 'Кастомный prompt', cls: 'bg-gray-100 text-gray-700' }
+    };
+    const l = labels[mode] || labels.STYLE_WITH_PROMPT;
+    text.textContent = 'Режим: ' + l.label;
+    text.className = 'text-xs px-2 py-1 rounded-full font-medium ' + l.cls;
 }
 
 function validatePresetUiContract(promptSuffix, promptInput, fields) {

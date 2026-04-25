@@ -61,103 +61,103 @@
                 <h3 id="modal-title" class="text-xl font-bold text-gray-800">Добавить пресет</h3>
                 <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
             </div>
-            <form id="preset-form" class="p-6 space-y-4">
+            <form id="preset-form" class="p-6 space-y-5">
                 <input type="hidden" id="preset-id">
-                
+                <!-- uiMode управляется JS, скрыт от пользователя -->
+                <input type="hidden" id="preset-ui-mode" value="STYLE_WITH_PROMPT">
+
+                <!-- Превью -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Превью пресета</label>
                     <input type="file" id="preset-preview" accept="image/png,image/jpeg,image/webp" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <p class="text-xs text-gray-500 mt-1">PNG, JPEG или WebP до 3 MB. Новая картинка заменит текущее превью после сохранения.</p>
+                    <p class="text-xs text-gray-500 mt-1">PNG, JPEG или WebP до 3 MB. Отображается как карточка в miniapp.</p>
                     <div id="current-preview-wrap" class="hidden mt-2">
                         <img id="current-preview-img" src="" alt="Текущее превью" class="h-20 w-20 rounded-lg object-cover border border-gray-200">
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Название*</label>
-                    <input type="text" id="preset-name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Например: Минимализм">
+                <!-- Название / описание -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Название*</label>
+                        <input type="text" id="preset-name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Например: Мем-стикер">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+                        <input type="text" id="preset-description" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Краткое описание стиля">
+                    </div>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Описание (опционально)</label>
-                    <textarea id="preset-description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Краткое описание стиля"></textarea>
-                </div>
-
+                <!-- Шаблон промпта -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Шаблон промпта*</label>
                     <textarea id="preset-style-prompt" rows="6" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm" placeholder="User idea: {{prompt}}&#10;Emotion: {{emotion}}&#10;Product name: {{productName}}"></textarea>
-                    <p class="text-xs text-gray-500 mt-1">Можно использовать плейсхолдеры из полей ниже: <code>{{prompt}}</code>, <code>{{emotion}}</code>, <code>{{productName}}</code>. Backend подставит значения в эти места.</p>
+                    <div class="mt-1.5 text-xs text-gray-500 space-y-0.5">
+                        <p>Используй <code class="bg-gray-100 px-1 rounded">{{ключ}}</code> чтобы вставить значение поля в нужное место.</p>
+                        <p><code class="bg-gray-100 px-1 rounded">{{prompt}}</code> — куда встраивается свободный текст пользователя &nbsp;·&nbsp; <code class="bg-gray-100 px-1 rounded">{{emotion}}</code> — поле из списка ниже.</p>
+                        <p>Если в шаблоне нет плейсхолдеров — он добавляется в конец к тексту пользователя.</p>
+                    </div>
+                    <div id="mode-badge" class="mt-2 hidden">
+                        <span id="mode-badge-text" class="text-xs px-2 py-1 rounded-full font-medium"></span>
+                    </div>
                 </div>
 
-                <div class="border border-gray-200 rounded-lg p-4 space-y-3 bg-gray-50">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Режим ввода</label>
-                        <select id="preset-ui-mode" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="STYLE_WITH_PROMPT">Обычный prompt + стиль в конце</option>
-                            <option value="STRUCTURED_FIELDS">Шаблон с полями</option>
-                            <option value="CUSTOM_PROMPT">Кастомный prompt / фиксированный шаблон</option>
-                            <option value="LOCKED_TEMPLATE">Только фиксированный шаблон</option>
-                        </select>
-                        <p class="text-xs text-gray-500 mt-1">Для точного контроля подстановок используй “Шаблон с полями”.</p>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-                        <label class="flex items-center gap-2 text-sm text-gray-700">
-                            <input type="checkbox" id="preset-prompt-enabled" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
-                            Показывать prompt
-                        </label>
+                <!-- Свободный текст пользователя -->
+                <div class="border border-blue-100 bg-blue-50 rounded-lg p-4 space-y-3">
+                    <label class="flex items-start gap-3 cursor-pointer">
+                        <input type="checkbox" id="preset-prompt-enabled" class="mt-0.5 h-4 w-4 text-blue-600 border-gray-300 rounded">
+                        <div>
+                            <div class="text-sm font-medium text-gray-800">Пользователь вводит свободный текст</div>
+                            <div class="text-xs text-gray-500 mt-0.5">Если включено — фронт показывает поле "Опиши идею". Подставляется в&nbsp;<code class="bg-white px-1 rounded">{{prompt}}</code> или добавляется в конец.</div>
+                        </div>
+                    </label>
+                    <div id="prompt-options" class="hidden grid grid-cols-1 md:grid-cols-3 gap-3 pt-1 border-t border-blue-200">
                         <label class="flex items-center gap-2 text-sm text-gray-700">
                             <input type="checkbox" id="preset-prompt-required" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
-                            Обязателен
+                            Обязательно заполнить
                         </label>
-                        <input type="number" id="preset-prompt-max-length" min="1" max="1000" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Max length">
-                        <input type="text" id="preset-prompt-placeholder" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Placeholder для prompt">
+                        <input type="number" id="preset-prompt-max-length" min="1" max="1000" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Макс. символов">
+                        <input type="text" id="preset-prompt-placeholder" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Подсказка внутри поля">
                     </div>
                 </div>
 
+                <!-- Дополнительные поля -->
                 <div class="border border-gray-200 rounded-lg p-4 space-y-3">
-                    <div class="flex items-center justify-between">
+                    <div class="flex items-start justify-between gap-4">
                         <div>
-                            <h4 class="text-sm font-semibold text-gray-800">Поля для фронта и шаблона</h4>
-                            <p class="text-xs text-gray-500 mt-1">Ключ поля используется как плейсхолдер: key <code>emotion</code> → <code>{{emotion}}</code>.</p>
+                            <h4 class="text-sm font-semibold text-gray-800">Дополнительные поля</h4>
+                            <p class="text-xs text-gray-500 mt-0.5">Каждое поле — отдельный инпут на фронте. Ключ поля = плейсхолдер в шаблоне: <code class="bg-gray-100 px-1 rounded">emotion</code> → <code class="bg-gray-100 px-1 rounded">{{emotion}}</code>.</p>
                         </div>
-                        <button type="button" id="add-field-btn" class="px-3 py-1.5 text-xs bg-gray-800 text-white rounded hover:bg-gray-900">
-                            + Поле
-                        </button>
+                        <button type="button" id="add-field-btn" class="shrink-0 px-3 py-1.5 text-xs bg-gray-800 text-white rounded hover:bg-gray-900">+ Поле</button>
                     </div>
                     <div id="preset-fields-list" class="space-y-3"></div>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Удаление фона</label>
-                    <select id="preset-remove-background" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="">Не задавать, использовать fallback из запроса</option>
-                        <option value="true">Всегда удалять фон</option>
-                        <option value="false">Никогда не удалять фон</option>
-                    </select>
-                    <p class="text-xs text-gray-500 mt-1">Если пресет выбран, это значение переопределяет отдельный флаг remove background в генерации.</p>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
+                <!-- Настройки генерации -->
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Порядок отображения*</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Удаление фона</label>
+                        <select id="preset-remove-background" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">По умолчанию из запроса</option>
+                            <option value="true">Всегда удалять</option>
+                            <option value="false">Никогда не удалять</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Порядок*</label>
                         <input type="number" id="preset-display-order" required min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" value="0">
                     </div>
-                    <div class="flex items-center">
-                        <div>
+                    <div class="flex items-end pb-2">
+                        <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                             <input type="checkbox" id="preset-enabled" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                            <label for="preset-enabled" class="ml-2 text-sm text-gray-700">Активен (доступен пользователям)</label>
-                        </div>
+                            Активен
+                        </label>
                     </div>
                 </div>
 
-                <div class="flex space-x-3 pt-4 border-t">
-                    <button type="button" onclick="closeModal()" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
-                        Отмена
-                    </button>
-                    <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                        Сохранить
-                    </button>
+                <div class="flex space-x-3 pt-2 border-t">
+                    <button type="button" onclick="closeModal()" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">Отмена</button>
+                    <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Сохранить</button>
                 </div>
             </form>
         </div>
