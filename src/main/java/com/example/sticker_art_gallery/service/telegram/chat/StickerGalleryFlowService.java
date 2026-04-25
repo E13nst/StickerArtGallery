@@ -20,6 +20,7 @@ public class StickerGalleryFlowService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StickerGalleryFlowService.class);
     private static final String CHECK_CHANNEL_SUBSCRIPTION = "check_channel_subscription";
+    private static final String MINI_APP_BASE_URL = "https://stixly.fun/miniapp/";
 
     private final AppConfig appConfig;
     private final StickerSetRepository stickerSetRepository;
@@ -274,9 +275,9 @@ public class StickerGalleryFlowService {
         return Map.of(
                 "inline_keyboard",
                 List.of(
-                        List.of(Map.of("text", "🎨 Создать стикер", "callback_data", "start_generation_entry")),
+                        List.of(Map.of("text", "🎨 Создать стикер", "web_app", Map.of("url", MINI_APP_BASE_URL))),
                         List.of(Map.of("text", "📥 Добавить свои стикеры", "callback_data", "upload_stickers_entry")),
-                        List.of(Map.of("text", "🔍 Найти стикеры в галерее", "url", "https://stickerartgallery-e13nst.amvera.io/mini-app/")),
+                        List.of(Map.of("text", "🔍 Найти стикеры в галерее", "url", MINI_APP_BASE_URL)),
                         List.of(Map.of("text", "📞 Поддержка", "callback_data", "enter_support")),
                         List.of(Map.of("text", "📢 Telegram-канал", "url", "https://t.me/stixlyofficial"))
                 )
@@ -332,7 +333,7 @@ public class StickerGalleryFlowService {
         return Map.of(
                 "inline_keyboard",
                 List.of(
-                        List.of(Map.of("text", "Посмотреть в Stixly", "url", "https://stickerartgallery-e13nst.amvera.io/mini-app/gallery?set_id=" + setId)),
+                        List.of(Map.of("text", "Посмотреть в Stixly", "url", MINI_APP_BASE_URL + "gallery?set_id=" + setId)),
                         List.of(Map.of("text", "Главное меню", "callback_data", "back_to_main"))
                 )
         );

@@ -113,8 +113,17 @@ public class StylePresetPromptComposer {
     }
 
     private String buildStructured(StylePresetEntity preset, String prompt, Map<String, Object> fields, String template) {
-        if (!prompt.isEmpty()) {
+        boolean templateUsesPrompt = extractPlaceholders(template).contains("prompt");
+        var input = parsePromptInput(preset);
+        boolean promptAllowed = templateUsesPrompt && Boolean.TRUE.equals(input.getEnabled());
+        if (!prompt.isEmpty() && !promptAllowed) {
             throw new IllegalArgumentException("This preset is structured: free text is not allowed");
+        }
+        if (Boolean.TRUE.equals(input.getRequired()) && promptAllowed && prompt.isEmpty()) {
+            throw new IllegalArgumentException("Prompt is required for this preset");
+        }
+        if (input.getMaxLength() != null && !prompt.isEmpty() && prompt.length() > input.getMaxLength()) {
+            throw new IllegalArgumentException("Prompt is too long for this preset (max " + input.getMaxLength() + ")");
         }
         List<StylePresetFieldDto> defs = parseStructuredFields(preset);
         if (defs.isEmpty()) {
@@ -122,11 +131,11 @@ public class StylePresetPromptComposer {
                 throw new IllegalArgumentException("No structured fields defined for preset");
             }
             Set<String> ph = extractPlaceholders(template);
-            validateNoExtraKeys(fields, ph);
-            return applyTemplate(template, fields);
+            validateNoExtraKeys(fields, ph.stream().filter(k -> !"prompt".equals(k)).collect(Collectors.toSet()));
+            return applyTemplate(template, templateValues(fields, prompt));
         }
         validateStructured(defs, fields, template);
-        return composeStructuredString(defs, fields, template);
+        return composeStructuredString(defs, fields, template, prompt);
     }
 
     private void validateStructured(
@@ -165,6 +174,9 @@ public class StylePresetPromptComposer {
         if (!template.isEmpty() && containsPlaceholders(template)) {
             Set<String> ph = extractPlaceholders(template);
             for (String k : ph) {
+                if ("prompt".equals(k)) {
+                    continue;
+                }
                 if (!keys.contains(k)) {
                     throw new IllegalArgumentException("Unknown template placeholder: " + k);
                 }
@@ -175,10 +187,11 @@ public class StylePresetPromptComposer {
     private String composeStructuredString(
             List<StylePresetFieldDto> defs,
             Map<String, Object> fields,
-            String template
+            String template,
+            String prompt
     ) {
         if (containsPlaceholders(template)) {
-            return applyTemplate(template, fields);
+            return applyTemplate(template, templateValues(fields, prompt, defs));
         }
         StringBuilder sb = new StringBuilder();
         for (var def : defs) {
@@ -212,6 +225,26 @@ public class StylePresetPromptComposer {
         return template + sb;
     }
 
+    private static Map<String, Object> templateValues(Map<String, Object> fields, String prompt) {
+        Map<String, Object> values = new HashMap<>(fields);
+        values.put("prompt", prompt == null ? "" : prompt.trim());
+        return values;
+    }
+
+    private static Map<String, Object> templateValues(
+            Map<String, Object> fields,
+            String prompt,
+            List<StylePresetFieldDto> defs
+    ) {
+        Map<String, Object> values = templateValues(fields, prompt);
+        for (StylePresetFieldDto def : defs) {
+            if (def.getKey() != null && !def.getKey().isBlank()) {
+                values.putIfAbsent(def.getKey(), "");
+            }
+        }
+        return values;
+    }
+
     private void validateAllPlaceholdersPresent(Map<String, Object> fields, Set<String> placeholders) {
         validateNoExtraKeys(fields, placeholders);
         for (String key : placeholders) {
@@ -237,7 +270,7 @@ public class StylePresetPromptComposer {
             var def = new StylePresetPromptInputDto();
             def.setEnabled(true);
             def.setRequired(true);
-            def.setMaxLength(8000);
+            def.setMaxLength(1000);
             return def;
         }
         return objectMapper.convertValue(preset.getPromptInputJson(), StylePresetPromptInputDto.class);

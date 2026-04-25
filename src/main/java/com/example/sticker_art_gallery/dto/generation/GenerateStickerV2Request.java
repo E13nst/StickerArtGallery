@@ -17,8 +17,8 @@ import java.util.Map;
 @Schema(description = "Запрос на генерацию стикера через Sticker Processor (v2)")
 public class GenerateStickerV2Request {
 
-    @Schema(description = "Промпт для генерации", example = "gold dragonfly sticker, transparent background", maxLength = 8000)
-    @Size(max = 8000, message = "Промпт не должен превышать 8000 символов")
+    @Schema(description = "Промпт для генерации", example = "gold dragonfly sticker, transparent background", maxLength = 1000)
+    @Size(max = 1000, message = "Промпт не должен превышать 1000 символов")
     private String prompt;
 
     @Schema(description = "Модель генерации", allowableValues = {"flux-schnell", "nanabanana"}, example = "flux-schnell")

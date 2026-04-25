@@ -16,7 +16,7 @@ public class StylePresetPromptInputDto {
     @Schema(description = "Placeholder для input", example = "Опиши персонажа")
     private String placeholder;
 
-    @Schema(description = "Максимальная длина, если задана", example = "8000")
+    @Schema(description = "Максимальная длина, если задана", example = "1000")
     private Integer maxLength;
 
     public Boolean getEnabled() {

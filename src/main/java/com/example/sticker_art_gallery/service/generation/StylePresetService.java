@@ -22,6 +22,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -245,6 +247,7 @@ public class StylePresetService {
     }
 
     private void applyUiFields(StylePresetEntity preset, CreateStylePresetRequest request) {
+        validateUiContract(request);
         preset.setRemoveBackground(request.getRemoveBackground());
         StylePresetRemoveBackgroundMode mode = resolveRemoveBackgroundMode(
                 request.getRemoveBackgroundMode(),
@@ -270,6 +273,33 @@ public class StylePresetService {
             preset.setStructuredFieldsJson(list);
         } else {
             preset.setStructuredFieldsJson(null);
+        }
+    }
+
+    private void validateUiContract(CreateStylePresetRequest request) {
+        List<StylePresetFieldDto> fields = request.getFields() == null ? List.of() : request.getFields();
+        Set<String> keys = new HashSet<>();
+        for (StylePresetFieldDto field : fields) {
+            if (field.getKey() == null || field.getKey().isBlank()) {
+                throw new IllegalArgumentException("Style preset field key is required");
+            }
+            String key = field.getKey().trim();
+            if (!keys.add(key)) {
+                throw new IllegalArgumentException("Duplicate style preset field key: " + key);
+            }
+        }
+
+        Set<String> placeholders = StylePresetPromptComposer.extractPlaceholders(request.getPromptSuffix());
+        for (String placeholder : placeholders) {
+            if ("prompt".equals(placeholder)) {
+                if (request.getPromptInput() != null && Boolean.FALSE.equals(request.getPromptInput().getEnabled())) {
+                    throw new IllegalArgumentException("Template uses {{prompt}}, but prompt input is disabled");
+                }
+                continue;
+            }
+            if (!keys.contains(placeholder)) {
+                throw new IllegalArgumentException("Template placeholder has no matching field: " + placeholder);
+            }
         }
     }
 

@@ -15,7 +15,13 @@ public class StylePresetFieldDto {
     @Schema(description = "Подпись в UI", example = "Текст мема")
     private String label;
 
-    @Schema(description = "text | select", example = "text")
+    @Schema(description = "Описание/подсказка под полем в UI", example = "Добавь, какую эмоцию должен изображать персонаж")
+    private String description;
+
+    @Schema(description = "Placeholder для input", example = "Например: радость")
+    private String placeholder;
+
+    @Schema(description = "text | select | emoji", example = "text")
     private String type;
 
     @Schema(description = "Обязательное поле", example = "true")
@@ -41,6 +47,22 @@ public class StylePresetFieldDto {
 
     public void setLabel(String label) {
         this.label = label;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getPlaceholder() {
+        return placeholder;
+    }
+
+    public void setPlaceholder(String placeholder) {
+        this.placeholder = placeholder;
     }
 
     public String getType() {

@@ -7,9 +7,9 @@ import jakarta.validation.constraints.Size;
 @Schema(description = "Запрос на генерацию стикера")
 public class GenerateStickerRequest {
 
-    @Schema(description = "Промпт для генерации изображения", example = "A cute cat wearing a hat", maxLength = 8000)
+    @Schema(description = "Промпт для генерации изображения", example = "A cute cat wearing a hat", maxLength = 1000)
     @NotBlank(message = "Промпт не может быть пустым")
-    @Size(min = 1, max = 8000, message = "Промпт должен быть от 1 до 8000 символов")
+    @Size(min = 1, max = 1000, message = "Промпт должен быть от 1 до 1000 символов")
     private String prompt;
 
     @Schema(description = "Seed для генерации (опционально, -1 = случайный)", example = "42")

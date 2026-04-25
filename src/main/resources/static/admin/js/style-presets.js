@@ -6,6 +6,36 @@ checkAuth();
 let presets = [];
 let editingPresetId = null;
 
+const DEFAULT_PROMPT_INPUT = {
+    enabled: true,
+    required: false,
+    placeholder: 'Опиши идею',
+    maxLength: 500
+};
+
+const DEFAULT_FIELDS = [
+    {
+        key: 'emotion',
+        label: 'Эмоция',
+        description: 'Добавь, какую эмоцию должен изображать персонаж',
+        placeholder: 'Например: радость',
+        type: 'emoji',
+        required: true,
+        maxLength: 40,
+        options: []
+    },
+    {
+        key: 'productName',
+        label: 'Название продукта',
+        description: 'Введи название продукта или объекта, если оно должно попасть в результат',
+        placeholder: 'Например: Stixly',
+        type: 'text',
+        required: false,
+        maxLength: 60,
+        options: []
+    }
+];
+
 // Загрузка пресетов
 async function loadPresets() {
     try {
@@ -88,6 +118,9 @@ function openAddModal() {
     document.getElementById('preset-id').value = '';
     document.getElementById('preset-remove-background').value = '';
     document.getElementById('preset-enabled').checked = true;
+    document.getElementById('preset-ui-mode').value = 'STRUCTURED_FIELDS';
+    applyPromptInputToForm(DEFAULT_PROMPT_INPUT);
+    renderFieldEditor(DEFAULT_FIELDS);
     document.getElementById('current-preview-wrap').classList.add('hidden');
     document.getElementById('current-preview-img').src = '';
     document.getElementById('edit-modal').classList.remove('hidden');
@@ -107,6 +140,9 @@ function editPreset(id) {
     document.getElementById('preset-remove-background').value = toRemoveBackgroundFormValue(preset.removeBackground);
     document.getElementById('preset-display-order').value = preset.sortOrder;
     document.getElementById('preset-enabled').checked = preset.isEnabled;
+    document.getElementById('preset-ui-mode').value = preset.uiMode || 'STYLE_WITH_PROMPT';
+    applyPromptInputToForm(preset.promptInput || DEFAULT_PROMPT_INPUT);
+    renderFieldEditor(Array.isArray(preset.fields) ? preset.fields : []);
     const previewUrl = getPresetPreviewUrl(preset);
     if (previewUrl) {
         document.getElementById('current-preview-img').src = previewUrl;
@@ -128,14 +164,25 @@ function closeModal() {
 // Сохранить пресет
 async function savePreset(event) {
     event.preventDefault();
+    const promptInput = readPromptInputFromForm();
+    const fields = readFieldsFromForm();
+    const promptSuffix = document.getElementById('preset-style-prompt').value.trim();
+    const validationError = validatePresetUiContract(promptSuffix, promptInput, fields);
+    if (validationError) {
+        showNotification(validationError, 'error');
+        return;
+    }
     
     const data = {
         code: editingPresetId ? presets.find(p => p.id === editingPresetId)?.code : 'preset_' + Date.now(),
         name: document.getElementById('preset-name').value.trim(),
         description: document.getElementById('preset-description').value.trim() || null,
-        promptSuffix: document.getElementById('preset-style-prompt').value.trim(),
+        promptSuffix,
         removeBackground: parseRemoveBackgroundValue(document.getElementById('preset-remove-background').value),
-        sortOrder: parseInt(document.getElementById('preset-display-order').value)
+        sortOrder: parseInt(document.getElementById('preset-display-order').value),
+        uiMode: document.getElementById('preset-ui-mode').value,
+        promptInput,
+        fields
     };
     const enabled = document.getElementById('preset-enabled').checked;
     const previewFile = document.getElementById('preset-preview').files[0] || null;
@@ -201,6 +248,20 @@ async function deletePreset(id) {
 // Event listeners
 document.getElementById('add-preset-btn').addEventListener('click', openAddModal);
 document.getElementById('preset-form').addEventListener('submit', savePreset);
+document.getElementById('add-field-btn').addEventListener('click', () => {
+    const fields = readFieldsFromForm();
+    fields.push({
+        key: '',
+        label: '',
+        description: '',
+        placeholder: '',
+        type: 'text',
+        required: false,
+        maxLength: 80,
+        options: []
+    });
+    renderFieldEditor(fields);
+});
 
 // Загрузка при старте
 loadPresets();
@@ -250,4 +311,145 @@ function renderPreview(preset) {
             ${escapeHtml(letter)}
         </div>
     `;
+}
+
+function applyPromptInputToForm(promptInput) {
+    const input = promptInput || DEFAULT_PROMPT_INPUT;
+    document.getElementById('preset-prompt-enabled').checked = input.enabled !== false;
+    document.getElementById('preset-prompt-required').checked = !!input.required;
+    document.getElementById('preset-prompt-placeholder').value = input.placeholder || '';
+    document.getElementById('preset-prompt-max-length').value = input.maxLength || '';
+}
+
+function readPromptInputFromForm() {
+    const maxLengthRaw = document.getElementById('preset-prompt-max-length').value;
+    const enabled = document.getElementById('preset-prompt-enabled').checked;
+    return {
+        enabled,
+        required: enabled && document.getElementById('preset-prompt-required').checked,
+        placeholder: document.getElementById('preset-prompt-placeholder').value.trim() || null,
+        maxLength: maxLengthRaw ? parseInt(maxLengthRaw, 10) : null
+    };
+}
+
+function renderFieldEditor(fields) {
+    const list = document.getElementById('preset-fields-list');
+    if (!fields || fields.length === 0) {
+        list.innerHTML = '<div class="text-xs text-gray-400">Поля не заданы. Добавь поле, если в шаблоне есть плейсхолдеры вроде {{emotion}}.</div>';
+        return;
+    }
+
+    list.innerHTML = fields.map((field, index) => renderFieldRow(field, index)).join('');
+}
+
+function renderFieldRow(field, index) {
+    const options = Array.isArray(field.options) ? field.options.join(', ') : '';
+    const type = field.type || 'text';
+    return `
+        <div class="field-row border border-gray-200 rounded-lg p-3 bg-white space-y-3" data-field-row>
+            <div class="flex items-center justify-between gap-3">
+                <div class="text-xs font-semibold text-gray-500">Поле #${index + 1}</div>
+                <button type="button" onclick="removePresetField(${index})" class="text-xs text-red-600 hover:text-red-800">Удалить</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <input data-field-key value="${escapeHtml(field.key || '')}" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="key: emotion">
+                <input data-field-label value="${escapeHtml(field.label || '')}" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Название для UI">
+                <select data-field-type class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="text" ${type === 'text' ? 'selected' : ''}>text</option>
+                    <option value="emoji" ${type === 'emoji' ? 'selected' : ''}>emoji</option>
+                    <option value="select" ${type === 'select' ? 'selected' : ''}>select</option>
+                </select>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input data-field-placeholder value="${escapeHtml(field.placeholder || '')}" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Placeholder">
+                <input data-field-description value="${escapeHtml(field.description || '')}" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Описание/подсказка для фронта">
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <label class="flex items-center gap-2 text-sm text-gray-700">
+                    <input data-field-required type="checkbox" ${field.required ? 'checked' : ''} class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+                    Обязательное
+                </label>
+                <input data-field-max-length type="number" min="1" max="1000" value="${field.maxLength || ''}" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Max length">
+                <input data-field-options value="${escapeHtml(options)}" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Options через запятую">
+            </div>
+        </div>
+    `;
+}
+
+function readFieldsFromForm() {
+    return Array.from(document.querySelectorAll('[data-field-row]'))
+        .map(row => {
+            const key = row.querySelector('[data-field-key]').value.trim();
+            const maxLengthRaw = row.querySelector('[data-field-max-length]').value;
+            const optionsRaw = row.querySelector('[data-field-options]').value.trim();
+            return {
+                key,
+                label: row.querySelector('[data-field-label]').value.trim() || null,
+                description: row.querySelector('[data-field-description]').value.trim() || null,
+                placeholder: row.querySelector('[data-field-placeholder]').value.trim() || null,
+                type: row.querySelector('[data-field-type]').value,
+                required: row.querySelector('[data-field-required]').checked,
+                maxLength: maxLengthRaw ? parseInt(maxLengthRaw, 10) : null,
+                options: optionsRaw
+                    ? optionsRaw.split(',').map(v => v.trim()).filter(Boolean)
+                    : null
+            };
+        })
+        .filter(field => field.key);
+}
+
+function removePresetField(index) {
+    const fields = readFieldsFromForm();
+    fields.splice(index, 1);
+    renderFieldEditor(fields);
+}
+
+function validatePresetUiContract(promptSuffix, promptInput, fields) {
+    const uiMode = document.getElementById('preset-ui-mode').value;
+    if (uiMode !== 'STRUCTURED_FIELDS' && uiMode !== 'LOCKED_TEMPLATE' && uiMode !== 'CUSTOM_PROMPT') {
+        return null;
+    }
+
+    const placeholders = extractTemplatePlaceholders(promptSuffix);
+    const fieldKeys = new Set(fields.map(field => field.key));
+    for (const key of placeholders) {
+        if (key === 'prompt') {
+            continue;
+        }
+        if (!fieldKeys.has(key)) {
+            return `В шаблоне есть {{${key}}}, но поле "${key}" не описано ниже`;
+        }
+    }
+
+    if (placeholders.has('prompt') && !promptInput.enabled) {
+        return 'В шаблоне используется {{prompt}}, но поле prompt выключено';
+    }
+
+    const duplicateKey = findDuplicateFieldKey(fields);
+    if (duplicateKey) {
+        return `Поле "${duplicateKey}" указано несколько раз`;
+    }
+
+    return null;
+}
+
+function extractTemplatePlaceholders(template) {
+    const result = new Set();
+    const regex = /\{\{\s*([a-zA-Z0-9_]+)\s*}}/g;
+    let match;
+    while ((match = regex.exec(template || '')) !== null) {
+        result.add(match[1]);
+    }
+    return result;
+}
+
+function findDuplicateFieldKey(fields) {
+    const seen = new Set();
+    for (const field of fields) {
+        if (seen.has(field.key)) {
+            return field.key;
+        }
+        seen.add(field.key);
+    }
+    return null;
 }
