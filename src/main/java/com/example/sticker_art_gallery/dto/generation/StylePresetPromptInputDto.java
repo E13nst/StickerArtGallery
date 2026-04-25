@@ -19,6 +19,9 @@ public class StylePresetPromptInputDto {
     @Schema(description = "Максимальная длина, если задана", example = "1000")
     private Integer maxLength;
 
+    @Schema(description = "Настройки референсных изображений для пресета")
+    private StylePresetReferenceInputDto referenceImages;
+
     public Boolean getEnabled() {
         return enabled;
     }
@@ -49,5 +52,13 @@ public class StylePresetPromptInputDto {
 
     public void setMaxLength(Integer maxLength) {
         this.maxLength = maxLength;
+    }
+
+    public StylePresetReferenceInputDto getReferenceImages() {
+        return referenceImages;
+    }
+
+    public void setReferenceImages(StylePresetReferenceInputDto referenceImages) {
+        this.referenceImages = referenceImages;
     }
 }

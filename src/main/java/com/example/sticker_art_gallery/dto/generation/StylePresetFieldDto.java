@@ -15,10 +15,10 @@ public class StylePresetFieldDto {
     @Schema(description = "Подпись в UI", example = "Текст мема")
     private String label;
 
-    @Schema(description = "Описание/подсказка под полем в UI", example = "Добавь, какую эмоцию должен изображать персонаж")
+    @Schema(description = "Описание/подсказка под полем в UI (legacy, не используется в MVP)", example = "Добавь, какую эмоцию должен изображать персонаж", deprecated = true)
     private String description;
 
-    @Schema(description = "Placeholder для input", example = "Например: радость")
+    @Schema(description = "Placeholder для input (legacy, не используется в MVP)", example = "Например: радость", deprecated = true)
     private String placeholder;
 
     @Schema(description = "text | select | emoji", example = "text")
@@ -27,10 +27,10 @@ public class StylePresetFieldDto {
     @Schema(description = "Обязательное поле", example = "true")
     private Boolean required;
 
-    @Schema(description = "maxLength для text", example = "80")
+    @Schema(description = "maxLength для text (legacy, не используется в MVP)", example = "80", deprecated = true)
     private Integer maxLength;
 
-    @Schema(description = "Варианты для type=select", example = "[\"angry\", \"happy\"]")
+    @Schema(description = "Варианты для type=select (legacy, не используется в MVP)", example = "[\"angry\", \"happy\"]", deprecated = true)
     private List<String> options;
 
     public String getKey() {

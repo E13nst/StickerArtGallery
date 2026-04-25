@@ -17,22 +17,14 @@ const DEFAULT_FIELDS = [
     {
         key: 'emotion',
         label: 'Эмоция',
-        description: 'Добавь, какую эмоцию должен изображать персонаж',
-        placeholder: 'Например: радость',
         type: 'emoji',
-        required: true,
-        maxLength: 40,
-        options: []
+        required: true
     },
     {
         key: 'productName',
         label: 'Название продукта',
-        description: 'Введи название продукта или объекта, если оно должно попасть в результат',
-        placeholder: 'Например: Stixly',
         type: 'text',
-        required: false,
-        maxLength: 60,
-        options: []
+        required: false
     }
 ];
 
@@ -265,12 +257,8 @@ document.getElementById('add-field-btn').addEventListener('click', () => {
     fields.push({
         key: '',
         label: '',
-        description: '',
-        placeholder: '',
         type: 'text',
-        required: false,
-        maxLength: 80,
-        options: []
+        required: false
     });
     renderFieldEditor(fields);
 });
@@ -344,11 +332,18 @@ function applyPromptInputToForm(promptInput) {
 function readPromptInputFromForm() {
     const maxLengthRaw = document.getElementById('preset-prompt-max-length').value;
     const enabled = document.getElementById('preset-prompt-enabled').checked;
+    const referenceImages = {
+        enabled: true,
+        required: false,
+        minCount: 0,
+        maxCount: 10
+    };
     return {
         enabled,
         required: enabled && document.getElementById('preset-prompt-required').checked,
         placeholder: document.getElementById('preset-prompt-placeholder').value.trim() || null,
-        maxLength: maxLengthRaw ? parseInt(maxLengthRaw, 10) : null
+        maxLength: maxLengthRaw ? parseInt(maxLengthRaw, 10) : null,
+        referenceImages
     };
 }
 
@@ -365,7 +360,6 @@ function renderFieldEditor(fields) {
 }
 
 function renderFieldRow(field, index) {
-    const options = Array.isArray(field.options) ? field.options.join(', ') : '';
     const type = field.type || 'text';
     return `
         <div class="field-row border border-gray-200 rounded-lg p-3 bg-white space-y-3" data-field-row>
@@ -375,24 +369,18 @@ function renderFieldRow(field, index) {
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <input data-field-key value="${escapeHtml(field.key || '')}" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="key: emotion">
-                <input data-field-label value="${escapeHtml(field.label || '')}" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Название для UI">
+                <input data-field-label value="${escapeHtml(field.label || '')}" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Как поле увидит пользователь">
                 <select data-field-type class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="text" ${type === 'text' ? 'selected' : ''}>text</option>
                     <option value="emoji" ${type === 'emoji' ? 'selected' : ''}>emoji</option>
                     <option value="select" ${type === 'select' ? 'selected' : ''}>select</option>
                 </select>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <input data-field-placeholder value="${escapeHtml(field.placeholder || '')}" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Placeholder">
-                <input data-field-description value="${escapeHtml(field.description || '')}" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Описание/подсказка для фронта">
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="grid grid-cols-1 md:grid-cols-1 gap-3">
                 <label class="flex items-center gap-2 text-sm text-gray-700">
                     <input data-field-required type="checkbox" ${field.required ? 'checked' : ''} class="h-4 w-4 text-blue-600 border-gray-300 rounded">
                     Обязательное
                 </label>
-                <input data-field-max-length type="number" min="1" max="1000" value="${field.maxLength || ''}" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Max length">
-                <input data-field-options value="${escapeHtml(options)}" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Options через запятую">
             </div>
         </div>
     `;
@@ -402,19 +390,11 @@ function readFieldsFromForm() {
     return Array.from(document.querySelectorAll('[data-field-row]'))
         .map(row => {
             const key = row.querySelector('[data-field-key]').value.trim();
-            const maxLengthRaw = row.querySelector('[data-field-max-length]').value;
-            const optionsRaw = row.querySelector('[data-field-options]').value.trim();
             return {
                 key,
                 label: row.querySelector('[data-field-label]').value.trim() || null,
-                description: row.querySelector('[data-field-description]').value.trim() || null,
-                placeholder: row.querySelector('[data-field-placeholder]').value.trim() || null,
                 type: row.querySelector('[data-field-type]').value,
-                required: row.querySelector('[data-field-required]').checked,
-                maxLength: maxLengthRaw ? parseInt(maxLengthRaw, 10) : null,
-                options: optionsRaw
-                    ? optionsRaw.split(',').map(v => v.trim()).filter(Boolean)
-                    : null
+                required: row.querySelector('[data-field-required]').checked
             };
         })
         .filter(field => field.key);

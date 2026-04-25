@@ -2,6 +2,7 @@ package com.example.sticker_art_gallery.service.generation;
 
 import com.example.sticker_art_gallery.dto.generation.StylePresetFieldDto;
 import com.example.sticker_art_gallery.dto.generation.StylePresetPromptInputDto;
+import com.example.sticker_art_gallery.dto.generation.StylePresetReferenceInputDto;
 import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
 import com.example.sticker_art_gallery.model.generation.StylePresetUiMode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -271,9 +272,25 @@ public class StylePresetPromptComposer {
             def.setEnabled(true);
             def.setRequired(true);
             def.setMaxLength(1000);
+            StylePresetReferenceInputDto refs = new StylePresetReferenceInputDto();
+            refs.setEnabled(true);
+            refs.setRequired(false);
+            refs.setMinCount(0);
+            refs.setMaxCount(10);
+            def.setReferenceImages(refs);
             return def;
         }
-        return objectMapper.convertValue(preset.getPromptInputJson(), StylePresetPromptInputDto.class);
+        StylePresetPromptInputDto parsed =
+                objectMapper.convertValue(preset.getPromptInputJson(), StylePresetPromptInputDto.class);
+        if (parsed.getReferenceImages() == null) {
+            StylePresetReferenceInputDto refs = new StylePresetReferenceInputDto();
+            refs.setEnabled(true);
+            refs.setRequired(false);
+            refs.setMinCount(0);
+            refs.setMaxCount(10);
+            parsed.setReferenceImages(refs);
+        }
+        return parsed;
     }
 
     public List<StylePresetFieldDto> parseStructuredFields(StylePresetEntity preset) {
