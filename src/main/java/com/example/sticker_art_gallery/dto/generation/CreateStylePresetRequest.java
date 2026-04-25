@@ -1,8 +1,11 @@
 package com.example.sticker_art_gallery.dto.generation;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+
+import java.util.List;
 
 @Schema(description = "Запрос на создание пресета стиля")
 public class CreateStylePresetRequest {
@@ -29,6 +32,19 @@ public class CreateStylePresetRequest {
 
     @Schema(description = "Порядок сортировки", example = "1", required = false, defaultValue = "0")
     private Integer sortOrder = 0;
+
+    @Schema(description = "Режим UI (CUSTOM_PROMPT, STYLE_WITH_PROMPT, LOCKED_TEMPLATE, STRUCTURED_FIELDS)")
+    private String uiMode;
+
+    @Schema(description = "Настройки свободного prompt")
+    private StylePresetPromptInputDto promptInput;
+
+    @Schema(description = "Поля для STRUCTURED_FIELDS / плейсхолдеров")
+    @JsonProperty("fields")
+    private List<StylePresetFieldDto> fields;
+
+    @Schema(description = "PRESET_DEFAULT | FORCE_ON | FORCE_OFF (приоритетнее removeBackground)")
+    private String removeBackgroundMode;
 
     public CreateStylePresetRequest() {
     }
@@ -79,5 +95,37 @@ public class CreateStylePresetRequest {
 
     public void setSortOrder(Integer sortOrder) {
         this.sortOrder = sortOrder != null ? sortOrder : 0;
+    }
+
+    public String getUiMode() {
+        return uiMode;
+    }
+
+    public void setUiMode(String uiMode) {
+        this.uiMode = uiMode;
+    }
+
+    public StylePresetPromptInputDto getPromptInput() {
+        return promptInput;
+    }
+
+    public void setPromptInput(StylePresetPromptInputDto promptInput) {
+        this.promptInput = promptInput;
+    }
+
+    public List<StylePresetFieldDto> getFields() {
+        return fields;
+    }
+
+    public void setFields(List<StylePresetFieldDto> fields) {
+        this.fields = fields;
+    }
+
+    public String getRemoveBackgroundMode() {
+        return removeBackgroundMode;
+    }
+
+    public void setRemoveBackgroundMode(String removeBackgroundMode) {
+        this.removeBackgroundMode = removeBackgroundMode;
     }
 }

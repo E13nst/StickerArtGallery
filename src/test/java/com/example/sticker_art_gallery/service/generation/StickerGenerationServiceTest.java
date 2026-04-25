@@ -32,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.atLeastOnce;
@@ -338,7 +339,7 @@ class StickerGenerationServiceTest {
 
         when(taskRepository.findByTaskId(taskId)).thenReturn(Optional.of(task));
         when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(promptProcessingService.processPrompt("raw prompt", userId, 9L))
+        when(promptProcessingService.processPrompt(eq("raw prompt"), any(), eq(userId), eq(9L)))
                 .thenReturn(new PromptProcessingService.PromptProcessingResult("processed prompt", true));
         doCallRealMethod().when(stickerGenerationService).processPromptAsyncV2(taskId, userId, 9L);
         doReturn(CompletableFuture.completedFuture(null)).when(stickerGenerationService).runGenerationV2Async(taskId);

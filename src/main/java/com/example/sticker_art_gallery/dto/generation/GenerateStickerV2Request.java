@@ -12,6 +12,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
+import java.util.Map;
 
 @Schema(description = "Запрос на генерацию стикера через Sticker Processor (v2)")
 public class GenerateStickerV2Request {
@@ -61,6 +62,10 @@ public class GenerateStickerV2Request {
 
     @Schema(description = "ID legacy style preset. Пресет будет применен на этапе prompt processing перед вызовом sticker-processor", example = "1")
     private Long stylePresetId;
+
+    @JsonProperty("preset_fields")
+    @Schema(description = "Значения структурированных полей пресета (если UI это предполагает)")
+    private Map<String, Object> presetFields;
 
     public String getPrompt() {
         return prompt;
@@ -140,6 +145,14 @@ public class GenerateStickerV2Request {
 
     public void setStylePresetId(Long stylePresetId) {
         this.stylePresetId = stylePresetId;
+    }
+
+    public Map<String, Object> getPresetFields() {
+        return presetFields;
+    }
+
+    public void setPresetFields(Map<String, Object> presetFields) {
+        this.presetFields = presetFields;
     }
 
 }

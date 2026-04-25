@@ -3,6 +3,7 @@ package com.example.sticker_art_gallery.repository;
 import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -22,16 +23,21 @@ public interface StylePresetRepository extends JpaRepository<StylePresetEntity, 
            "ORDER BY sp.sortOrder ASC, sp.name ASC")
     List<StylePresetEntity> findAvailableForUser(Long userId);
 
+    @Query("SELECT sp FROM StylePresetEntity sp LEFT JOIN FETCH sp.previewImage " +
+            "WHERE (sp.isGlobal = true OR sp.owner.userId = :userId) AND sp.isEnabled = true " +
+            "ORDER BY sp.sortOrder ASC, sp.name ASC")
+    List<StylePresetEntity> findAvailableForUserWithPreview(@Param("userId") Long userId);
+
     /**
      * Находит все глобальные пресеты (для админа)
      */
-    @Query("SELECT sp FROM StylePresetEntity sp WHERE sp.isGlobal = true ORDER BY sp.sortOrder ASC, sp.name ASC")
+    @Query("SELECT sp FROM StylePresetEntity sp LEFT JOIN FETCH sp.previewImage WHERE sp.isGlobal = true ORDER BY sp.sortOrder ASC, sp.name ASC")
     List<StylePresetEntity> findAllGlobal();
 
     /**
      * Находит все персональные пресеты пользователя
      */
-    @Query("SELECT sp FROM StylePresetEntity sp WHERE sp.owner.userId = :userId ORDER BY sp.sortOrder ASC, sp.name ASC")
+    @Query("SELECT sp FROM StylePresetEntity sp LEFT JOIN FETCH sp.previewImage WHERE sp.owner.userId = :userId ORDER BY sp.sortOrder ASC, sp.name ASC")
     List<StylePresetEntity> findByOwnerUserId(Long userId);
 
     /**

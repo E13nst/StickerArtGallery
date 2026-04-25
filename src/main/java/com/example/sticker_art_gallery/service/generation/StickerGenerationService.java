@@ -242,6 +242,9 @@ public class StickerGenerationService {
         metadata.put("image_id", request.getImageId());
         metadata.put("image_ids", request.getImageIds());
         metadata.put("stylePresetId", request.getStylePresetId());
+        if (request.getPresetFields() != null) {
+            metadata.put("preset_fields", request.getPresetFields());
+        }
         try {
             task.setMetadata(objectMapper.writeValueAsString(metadata));
         } catch (Exception e) {
@@ -320,13 +323,21 @@ public class StickerGenerationService {
             generationAuditService.addStageEvent(taskId, GenerationAuditStage.PROMPT_PROCESSING_STARTED, GenerationAuditEventStatus.STARTED, null, null, null);
 
             String originalPrompt = task.getPrompt();
+            Map<String, Object> metadata = parseMetadata(task.getMetadata());
+            @SuppressWarnings("unchecked")
+            Map<String, Object> presetFields = metadata.get("preset_fields") instanceof Map
+                    ? (Map<String, Object>) metadata.get("preset_fields")
+                    : null;
+            Long stylePresetIdResolved = stylePresetId;
+            if (stylePresetIdResolved == null && metadata.get("stylePresetId") instanceof Number) {
+                stylePresetIdResolved = ((Number) metadata.get("stylePresetId")).longValue();
+            }
             PromptProcessingService.PromptProcessingResult promptResult =
-                    promptProcessingService.processPrompt(originalPrompt, userId, stylePresetId);
+                    promptProcessingService.processPrompt(originalPrompt, presetFields, userId, stylePresetIdResolved);
             String processedPrompt = promptResult.prompt();
             task.setPrompt(processedPrompt);
             task.setStatus(GenerationTaskStatus.PENDING);
 
-            Map<String, Object> metadata = parseMetadata(task.getMetadata());
             metadata.put("originalPrompt", originalPrompt);
             metadata.put("processedPrompt", processedPrompt);
             applyResolvedRemoveBackground(metadata, "remove_background", promptResult.removeBackgroundOverride());

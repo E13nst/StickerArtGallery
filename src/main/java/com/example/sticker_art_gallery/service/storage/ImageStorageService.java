@@ -170,6 +170,19 @@ public class ImageStorageService {
      */
     @Transactional
     public CachedImageEntity storeBytes(String originalUrl, byte[] imageBytes, String contentType) {
+        return storeBytes(originalUrl, imageBytes, contentType, retentionDays);
+    }
+
+    /**
+     * Превью пресетов: длительное хранение (отдельно от кэша генераций).
+     */
+    @Transactional
+    public CachedImageEntity storeStylePresetPreview(long presetId, byte[] imageBytes, String contentType) {
+        String originalUrl = "style-preset-preview:" + presetId + ":" + System.currentTimeMillis();
+        return storeBytes(originalUrl, imageBytes, contentType, 4000);
+    }
+
+    private CachedImageEntity storeBytes(String originalUrl, byte[] imageBytes, String contentType, long retentionDaysForImage) {
         if (imageBytes == null || imageBytes.length == 0) {
             throw new IllegalArgumentException("imageBytes is empty");
         }
@@ -201,7 +214,7 @@ public class ImageStorageService {
             entity.setFileName(fileName);
             entity.setContentType(effectiveContentType);
             entity.setFileSize((long) imageBytes.length);
-            entity.setExpiresAt(OffsetDateTime.now().plusDays(retentionDays));
+            entity.setExpiresAt(OffsetDateTime.now().plusDays(retentionDaysForImage));
             return cachedImageRepository.save(entity);
         } catch (Exception e) {
             throw new RuntimeException("Failed to store image bytes: " + e.getMessage(), e);

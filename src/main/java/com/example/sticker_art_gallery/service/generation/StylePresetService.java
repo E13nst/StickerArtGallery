@@ -2,17 +2,26 @@ package com.example.sticker_art_gallery.service.generation;
 
 import com.example.sticker_art_gallery.dto.generation.CreateStylePresetRequest;
 import com.example.sticker_art_gallery.dto.generation.StylePresetDto;
+import com.example.sticker_art_gallery.dto.generation.StylePresetFieldDto;
 import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
+import com.example.sticker_art_gallery.model.generation.StylePresetRemoveBackgroundMode;
+import com.example.sticker_art_gallery.model.generation.StylePresetUiMode;
+import com.example.sticker_art_gallery.model.storage.CachedImageEntity;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.repository.StylePresetRepository;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
+import com.example.sticker_art_gallery.service.storage.ImageStorageService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,176 +31,265 @@ public class StylePresetService {
 
     private final StylePresetRepository presetRepository;
     private final UserProfileService userProfileService;
+    private final ImageStorageService imageStorageService;
+    private final ObjectMapper objectMapper;
+    private final StylePresetPromptComposer presetPromptComposer;
 
     @Autowired
     public StylePresetService(
             StylePresetRepository presetRepository,
-            UserProfileService userProfileService) {
+            UserProfileService userProfileService,
+            ImageStorageService imageStorageService,
+            ObjectMapper objectMapper,
+            StylePresetPromptComposer presetPromptComposer) {
         this.presetRepository = presetRepository;
         this.userProfileService = userProfileService;
+        this.imageStorageService = imageStorageService;
+        this.objectMapper = objectMapper;
+        this.presetPromptComposer = presetPromptComposer;
     }
 
-    /**
-     * Получает все доступные пресеты для пользователя (глобальные + персональные)
-     */
     @Transactional(readOnly = true)
-    public List<StylePresetDto> getAvailablePresets(Long userId) {
-        LOGGER.info("Getting available presets for user {}", userId);
-        List<StylePresetEntity> presets = presetRepository.findAvailableForUser(userId);
+    public List<StylePresetDto> getAvailablePresets(Long userId, boolean includeUi) {
+        LOGGER.info("Getting available presets for user {} includeUi={}", userId, includeUi);
+        List<StylePresetEntity> presets = includeUi
+                ? presetRepository.findAvailableForUserWithPreview(userId)
+                : presetRepository.findAvailableForUser(userId);
         return presets.stream()
-                .map(StylePresetDto::fromEntity)
+                .map(p -> toDto(p, includeUi))
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Получает все глобальные пресеты (для админа)
-     */
     @Transactional(readOnly = true)
     public List<StylePresetDto> getAllGlobalPresets() {
-        LOGGER.info("Getting all global presets");
-        List<StylePresetEntity> presets = presetRepository.findAllGlobal();
-        return presets.stream()
-                .map(StylePresetDto::fromEntity)
+        return presetRepository.findAllGlobal().stream()
+                .map(p -> toDto(p, true))
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Получает персональные пресеты пользователя
-     */
     @Transactional(readOnly = true)
     public List<StylePresetDto> getUserPresets(Long userId) {
-        LOGGER.info("Getting user presets for user {}", userId);
-        List<StylePresetEntity> presets = presetRepository.findByOwnerUserId(userId);
-        return presets.stream()
-                .map(StylePresetDto::fromEntity)
+        return presetRepository.findByOwnerUserId(userId).stream()
+                .map(p -> toDto(p, true))
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Создает глобальный пресет (только для админа)
-     */
     @Transactional
     public StylePresetDto createGlobalPreset(CreateStylePresetRequest request) {
         LOGGER.info("Creating global preset: code={}", request.getCode());
-
-        // Проверяем уникальность кода для глобальных пресетов
         presetRepository.findByCodeAndIsGlobalTrue(request.getCode())
                 .ifPresent(p -> {
                     throw new IllegalArgumentException("Global preset with code '" + request.getCode() + "' already exists");
                 });
-
         StylePresetEntity preset = new StylePresetEntity();
         preset.setCode(request.getCode());
         preset.setName(request.getName());
         preset.setDescription(request.getDescription());
         preset.setPromptSuffix(request.getPromptSuffix());
-        preset.setRemoveBackground(request.getRemoveBackground());
+        applyUiFields(preset, request);
         preset.setIsGlobal(true);
         preset.setOwner(null);
         preset.setIsEnabled(true);
         preset.setSortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0);
-
         preset = presetRepository.save(preset);
         LOGGER.info("Created global preset: id={}, code={}", preset.getId(), preset.getCode());
-        return StylePresetDto.fromEntity(preset);
+        return toDto(preset, true);
     }
 
-    /**
-     * Создает персональный пресет для пользователя
-     */
     @Transactional
     public StylePresetDto createUserPreset(Long userId, CreateStylePresetRequest request) {
         LOGGER.info("Creating user preset for user {}: code={}", userId, request.getCode());
-
         UserProfileEntity profile = userProfileService.getOrCreateDefaultForUpdate(userId);
-
-        // Проверяем уникальность кода для персональных пресетов пользователя
         presetRepository.findByCodeAndOwner_UserId(request.getCode(), userId)
                 .ifPresent(p -> {
                     throw new IllegalArgumentException("User preset with code '" + request.getCode() + "' already exists");
                 });
-
         StylePresetEntity preset = new StylePresetEntity();
         preset.setCode(request.getCode());
         preset.setName(request.getName());
         preset.setDescription(request.getDescription());
         preset.setPromptSuffix(request.getPromptSuffix());
-        preset.setRemoveBackground(request.getRemoveBackground());
+        applyUiFields(preset, request);
         preset.setIsGlobal(false);
         preset.setOwner(profile);
         preset.setIsEnabled(true);
         preset.setSortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0);
-
         preset = presetRepository.save(preset);
-        LOGGER.info("Created user preset: id={}, code={}, userId={}", preset.getId(), preset.getCode(), userId);
-        return StylePresetDto.fromEntity(preset);
+        return toDto(preset, true);
     }
 
-    /**
-     * Обновляет пресет (только если пользователь имеет доступ)
-     */
     @Transactional
     public StylePresetDto updatePreset(Long presetId, Long userId, CreateStylePresetRequest request, boolean isAdmin) {
-        LOGGER.info("Updating preset: id={}, userId={}, isAdmin={}", presetId, userId, isAdmin);
-
         StylePresetEntity preset = presetRepository.findById(presetId)
                 .orElseThrow(() -> new IllegalArgumentException("Preset not found: " + presetId));
-
-        // Проверяем доступ
         if (!isAdmin && (Boolean.TRUE.equals(preset.getIsGlobal())
                 || preset.getOwner() == null
                 || !preset.getOwner().getUserId().equals(userId))) {
             throw new IllegalArgumentException("Access denied: preset is not accessible for user");
         }
-
-        // Обновляем поля (код не меняем)
         preset.setName(request.getName());
         preset.setDescription(request.getDescription());
         preset.setPromptSuffix(request.getPromptSuffix());
-        preset.setRemoveBackground(request.getRemoveBackground());
+        applyUiFields(preset, request);
         if (request.getSortOrder() != null) {
             preset.setSortOrder(request.getSortOrder());
         }
-
         preset = presetRepository.save(preset);
-        LOGGER.info("Updated preset: id={}", presetId);
-        return StylePresetDto.fromEntity(preset);
+        return toDto(preset, true);
     }
 
-    /**
-     * Удаляет пресет (только если пользователь имеет доступ)
-     */
     @Transactional
     public void deletePreset(Long presetId, Long userId, boolean isAdmin) {
-        LOGGER.info("Deleting preset: id={}, userId={}, isAdmin={}", presetId, userId, isAdmin);
-
         StylePresetEntity preset = presetRepository.findById(presetId)
                 .orElseThrow(() -> new IllegalArgumentException("Preset not found: " + presetId));
-
-        // Проверяем доступ
         if (!isAdmin && (Boolean.TRUE.equals(preset.getIsGlobal())
                 || preset.getOwner() == null
                 || !preset.getOwner().getUserId().equals(userId))) {
             throw new IllegalArgumentException("Access denied: preset is not accessible for user");
         }
-
+        if (preset.getPreviewImage() != null) {
+            imageStorageService.deleteById(preset.getPreviewImage().getId());
+        }
         presetRepository.delete(preset);
-        LOGGER.info("Deleted preset: id={}", presetId);
     }
 
-    /**
-     * Включает/выключает пресет (только для админа)
-     */
     @Transactional
     public StylePresetDto togglePresetEnabled(Long presetId, boolean enabled) {
-        LOGGER.info("Toggling preset enabled: id={}, enabled={}", presetId, enabled);
-
         StylePresetEntity preset = presetRepository.findById(presetId)
                 .orElseThrow(() -> new IllegalArgumentException("Preset not found: " + presetId));
-
         preset.setIsEnabled(enabled);
         preset = presetRepository.save(preset);
-        LOGGER.info("Toggled preset enabled: id={}, enabled={}", presetId, enabled);
-        return StylePresetDto.fromEntity(preset);
+        return toDto(preset, true);
+    }
+
+    @Transactional
+    public StylePresetDto uploadPreviewForGlobal(Long presetId, MultipartFile file) {
+        StylePresetEntity preset = presetRepository.findById(presetId)
+                .orElseThrow(() -> new IllegalArgumentException("Preset not found: " + presetId));
+        if (!Boolean.TRUE.equals(preset.getIsGlobal())) {
+            throw new IllegalArgumentException("Only global presets use admin preview upload in this version");
+        }
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Empty file");
+        }
+        String ct = file.getContentType() != null ? file.getContentType() : "";
+        if (!ct.equals("image/png") && !ct.equals("image/webp") && !ct.equals("image/jpeg")) {
+            throw new IllegalArgumentException("Supported types: image/png, image/webp, image/jpeg");
+        }
+        if (file.getSize() > 3 * 1024 * 1024) {
+            throw new IllegalArgumentException("File too large (max 3MB)");
+        }
+        try {
+            byte[] bytes = file.getBytes();
+            if (preset.getPreviewImage() != null) {
+                imageStorageService.deleteById(preset.getPreviewImage().getId());
+                preset.setPreviewImage(null);
+            }
+            CachedImageEntity stored = imageStorageService.storeStylePresetPreview(presetId, bytes, ct);
+            preset.setPreviewImage(stored);
+            preset = presetRepository.save(preset);
+            return toDto(preset, true);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to store preview: " + e.getMessage());
+        }
+    }
+
+    public StylePresetDto toDto(StylePresetEntity entity, boolean includeUi) {
+        if (entity == null) {
+            return null;
+        }
+        StylePresetDto d = new StylePresetDto();
+        d.setId(entity.getId());
+        d.setCode(entity.getCode());
+        d.setName(entity.getName());
+        d.setDescription(entity.getDescription());
+        d.setPromptSuffix(entity.getPromptSuffix());
+        d.setRemoveBackground(entity.getRemoveBackground());
+        d.setIsGlobal(entity.getIsGlobal());
+        d.setOwnerId(entity.getOwner() != null ? entity.getOwner().getUserId() : null);
+        d.setIsEnabled(entity.getIsEnabled());
+        d.setSortOrder(entity.getSortOrder());
+        d.setCreatedAt(entity.getCreatedAt());
+        d.setUpdatedAt(entity.getUpdatedAt());
+        d.setUiMode(entity.getUiMode() != null ? entity.getUiMode().name() : StylePresetUiMode.STYLE_WITH_PROMPT.name());
+        d.setRemoveBackgroundMode(
+                entity.getRemoveBackgroundMode() != null
+                        ? entity.getRemoveBackgroundMode().name()
+                        : StylePresetRemoveBackgroundMode.PRESET_DEFAULT.name()
+        );
+        if (includeUi) {
+            d.setPromptInput(presetPromptComposer.parsePromptInput(entity));
+            d.setFields(parseFieldDtos(entity));
+            if (entity.getPreviewImage() != null) {
+                String url = imageStorageService.getPublicUrl(entity.getPreviewImage());
+                d.setPreviewUrl(url);
+                d.setPreviewMimeType(entity.getPreviewImage().getContentType());
+                if (entity.getPreviewImage().getContentType() != null
+                        && entity.getPreviewImage().getContentType().toLowerCase().contains("webp")) {
+                    d.setPreviewWebpUrl(url);
+                } else {
+                    d.setPreviewWebpUrl(null);
+                }
+            }
+        }
+        return d;
+    }
+
+    private List<StylePresetFieldDto> parseFieldDtos(StylePresetEntity entity) {
+        if (entity.getStructuredFieldsJson() == null) {
+            return null;
+        }
+        return entity.getStructuredFieldsJson().stream()
+                .map(m -> objectMapper.convertValue(m, StylePresetFieldDto.class))
+                .toList();
+    }
+
+    private void applyUiFields(StylePresetEntity preset, CreateStylePresetRequest request) {
+        preset.setRemoveBackground(request.getRemoveBackground());
+        StylePresetRemoveBackgroundMode mode = resolveRemoveBackgroundMode(
+                request.getRemoveBackgroundMode(),
+                request.getRemoveBackground()
+        );
+        preset.setRemoveBackgroundMode(mode);
+        syncLegacyRemoveBackground(preset, mode);
+        if (request.getUiMode() != null && !request.getUiMode().isBlank()) {
+            preset.setUiMode(StylePresetUiMode.valueOf(request.getUiMode().trim().toUpperCase()));
+        } else {
+            preset.setUiMode(StylePresetUiMode.STYLE_WITH_PROMPT);
+        }
+        if (request.getPromptInput() != null) {
+            preset.setPromptInputJson(
+                    objectMapper.convertValue(request.getPromptInput(), new TypeReference<Map<String, Object>>() { }));
+        } else {
+            preset.setPromptInputJson(null);
+        }
+        if (request.getFields() != null && !request.getFields().isEmpty()) {
+            List<Map<String, Object>> list = request.getFields().stream()
+                    .map(f -> objectMapper.convertValue(f, new TypeReference<Map<String, Object>>() { }))
+                    .toList();
+            preset.setStructuredFieldsJson(list);
+        } else {
+            preset.setStructuredFieldsJson(null);
+        }
+    }
+
+    private void syncLegacyRemoveBackground(StylePresetEntity entity, StylePresetRemoveBackgroundMode mode) {
+        switch (mode) {
+            case FORCE_ON -> entity.setRemoveBackground(true);
+            case FORCE_OFF -> entity.setRemoveBackground(false);
+            case PRESET_DEFAULT -> entity.setRemoveBackground(null);
+        }
+    }
+
+    private static StylePresetRemoveBackgroundMode resolveRemoveBackgroundMode(
+            String modeStr,
+            Boolean legacy) {
+        if (modeStr != null && !modeStr.isBlank()) {
+            return StylePresetRemoveBackgroundMode.valueOf(modeStr.trim().toUpperCase());
+        }
+        if (legacy == null) {
+            return StylePresetRemoveBackgroundMode.PRESET_DEFAULT;
+        }
+        return legacy ? StylePresetRemoveBackgroundMode.FORCE_ON : StylePresetRemoveBackgroundMode.FORCE_OFF;
     }
 }

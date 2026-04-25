@@ -16,11 +16,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -43,7 +45,8 @@ public class StylePresetController {
     @GetMapping
     @Operation(
         summary = "Получить доступные пресеты",
-        description = "Возвращает список всех доступных пресетов для пользователя (глобальные + персональные)"
+        description = "Возвращает список всех доступных пресетов для пользователя (глобальные + персональные). " +
+                "includeUi=true добавляет URL превью, uiMode, promptInput, fields (для miniapp)"
     )
     @ApiResponses(value = {
         @ApiResponse(
@@ -52,15 +55,30 @@ public class StylePresetController {
             content = @Content(schema = @Schema(implementation = StylePresetDto.class))
         )
     })
-    public ResponseEntity<List<StylePresetDto>> getAvailablePresets() {
+    public ResponseEntity<List<StylePresetDto>> getAvailablePresets(
+            @Parameter(description = "Включить полные UI-метаданные + превью (для Generate page в miniapp)")
+            @RequestParam(name = "includeUi", defaultValue = "false") boolean includeUi) {
         Long userId = extractUserIdFromAuthentication();
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        List<StylePresetDto> presets = presetService.getAvailablePresets(userId);
-        LOGGER.info("Returning {} available presets for user {}", presets.size(), userId);
+        List<StylePresetDto> presets = presetService.getAvailablePresets(userId, includeUi);
+        LOGGER.info("Returning {} available presets for user {} includeUi={}", presets.size(), userId, includeUi);
         return ResponseEntity.ok(presets);
+    }
+
+    @PostMapping(value = "/{id}/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Загрузить превью (PNG/JPEG/WebP) для глобального пресета", description = "Одна картинка; прежний файл заменяется")
+    public ResponseEntity<StylePresetDto> uploadPreview(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) {
+        try {
+            return ResponseEntity.ok(presetService.uploadPreviewForGlobal(id, file));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @GetMapping("/my")

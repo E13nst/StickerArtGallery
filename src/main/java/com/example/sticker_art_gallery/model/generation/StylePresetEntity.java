@@ -1,9 +1,15 @@
 package com.example.sticker_art_gallery.model.generation;
 
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
+import com.example.sticker_art_gallery.model.storage.CachedImageEntity;
 import jakarta.persistence.*;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Map;
 
 @Entity
 @Table(name = "style_presets")
@@ -28,6 +34,26 @@ public class StylePresetEntity {
 
     @Column(name = "remove_background")
     private Boolean removeBackground;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "remove_background_mode", nullable = false, length = 32)
+    private StylePresetRemoveBackgroundMode removeBackgroundMode = StylePresetRemoveBackgroundMode.PRESET_DEFAULT;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ui_mode", nullable = false, length = 32)
+    private StylePresetUiMode uiMode = StylePresetUiMode.STYLE_WITH_PROMPT;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "prompt_input_json", columnDefinition = "jsonb")
+    private Map<String, Object> promptInputJson;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "structured_fields_json", columnDefinition = "jsonb")
+    private List<Map<String, Object>> structuredFieldsJson;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "preview_cached_image_id")
+    private CachedImageEntity previewImage;
 
     @Column(name = "is_global", nullable = false)
     private Boolean isGlobal = false;
@@ -107,6 +133,46 @@ public class StylePresetEntity {
 
     public void setRemoveBackground(Boolean removeBackground) {
         this.removeBackground = removeBackground;
+    }
+
+    public StylePresetRemoveBackgroundMode getRemoveBackgroundMode() {
+        return removeBackgroundMode;
+    }
+
+    public void setRemoveBackgroundMode(StylePresetRemoveBackgroundMode removeBackgroundMode) {
+        this.removeBackgroundMode = removeBackgroundMode;
+    }
+
+    public StylePresetUiMode getUiMode() {
+        return uiMode;
+    }
+
+    public void setUiMode(StylePresetUiMode uiMode) {
+        this.uiMode = uiMode;
+    }
+
+    public Map<String, Object> getPromptInputJson() {
+        return promptInputJson;
+    }
+
+    public void setPromptInputJson(Map<String, Object> promptInputJson) {
+        this.promptInputJson = promptInputJson;
+    }
+
+    public List<Map<String, Object>> getStructuredFieldsJson() {
+        return structuredFieldsJson;
+    }
+
+    public void setStructuredFieldsJson(List<Map<String, Object>> structuredFieldsJson) {
+        this.structuredFieldsJson = structuredFieldsJson;
+    }
+
+    public CachedImageEntity getPreviewImage() {
+        return previewImage;
+    }
+
+    public void setPreviewImage(CachedImageEntity previewImage) {
+        this.previewImage = previewImage;
     }
 
     public Boolean getIsGlobal() {
