@@ -10,7 +10,9 @@ import com.example.sticker_art_gallery.model.generation.GenerationTaskStatus;
 import com.example.sticker_art_gallery.model.generation.GenerationAuditEventStatus;
 import com.example.sticker_art_gallery.model.generation.GenerationAuditStage;
 import com.example.sticker_art_gallery.model.generation.GenerationTaskEntity;
+import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
 import com.example.sticker_art_gallery.repository.GenerationTaskRepository;
+import com.example.sticker_art_gallery.repository.StylePresetRepository;
 import com.example.sticker_art_gallery.model.profile.ArtTransactionEntity;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
@@ -54,6 +56,8 @@ public class StickerGenerationService {
     private final ReferralService referralService;
     private final GenerationAuditService generationAuditService;
     private final StickerProcessorGenerationClient stickerProcessorGenerationClient;
+    private final StylePresetRepository stylePresetRepository;
+    private final StylePresetPromptComposer stylePresetPromptComposer;
     private final ObjectMapper objectMapper;
 
     @Value("${wavespeed.max-poll-seconds:300}")
@@ -77,7 +81,9 @@ public class StickerGenerationService {
             PromptProcessingService promptProcessingService,
             ReferralService referralService,
             GenerationAuditService generationAuditService,
-            StickerProcessorGenerationClient stickerProcessorGenerationClient) {
+            StickerProcessorGenerationClient stickerProcessorGenerationClient,
+            StylePresetRepository stylePresetRepository,
+            StylePresetPromptComposer stylePresetPromptComposer) {
         this.taskRepository = taskRepository;
         this.waveSpeedClient = waveSpeedClient;
         this.artRewardService = artRewardService;
@@ -87,6 +93,8 @@ public class StickerGenerationService {
         this.referralService = referralService;
         this.generationAuditService = generationAuditService;
         this.stickerProcessorGenerationClient = stickerProcessorGenerationClient;
+        this.stylePresetRepository = stylePresetRepository;
+        this.stylePresetPromptComposer = stylePresetPromptComposer;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -240,8 +248,22 @@ public class StickerGenerationService {
         metadata.put("num_images", request.getNumImages());
         metadata.put("strength", request.getStrength());
         metadata.put("remove_background", request.getRemoveBackground());
-        metadata.put("image_id", request.getImageId());
-        metadata.put("image_ids", request.getImageIds());
+        StylePresetEntity presetForImages = null;
+        if (request.getStylePresetId() != null) {
+            presetForImages = stylePresetRepository.findById(request.getStylePresetId()).orElse(null);
+        }
+        List<String> resolvedImageIds = stylePresetPromptComposer.resolveV2SourceImageIds(
+                presetForImages,
+                request.getPresetFields(),
+                request.getImageIds(),
+                request.getImageId());
+        if (!resolvedImageIds.isEmpty()) {
+            metadata.put("image_ids", resolvedImageIds);
+            metadata.put("image_id", null);
+        } else {
+            metadata.put("image_ids", request.getImageIds());
+            metadata.put("image_id", request.getImageId());
+        }
         metadata.put("stylePresetId", request.getStylePresetId());
         if (request.getPresetFields() != null) {
             metadata.put("preset_fields", request.getPresetFields());

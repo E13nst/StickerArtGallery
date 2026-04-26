@@ -75,8 +75,17 @@
 - `strength: float` (default `0.8`)
 - `remove_background: bool` (default `false`)
 - `image_id: string` (формат `img_...`, single-image)
-- `image_ids: string[]` (multi-image; если передан непустой массив — он приоритетнее `image_id`)
+- `image_ids: string[]` (multi-image; до **14** id; если передан непустой массив — он приоритетнее `image_id`, см. ниже про пресеты)
 - `stylePresetId: long` (legacy-compatible, но рабочий)
+- `preset_fields: object` (значения полей пресета: текст/emoji/select и **reference**-слоты)
+
+##### Пресеты с полями `type: "reference"`
+
+В `StylePresetDto.fields` поле с `type: "reference"` задаёт слот для одного или нескольких `img_`*. В шаблоне пресета используется плейсхолдер `{{key}}`: в итоговый промпт подставляется **текст** (по умолчанию `Image {index}`), а не сам id. Индекс **1-based** считается по **каноническому списку уникальных** изображений: обход слотов в порядке полей в пресете, внутри слота — порядок id; повтор одного и того же `img_`* в разных слотах **не дублирует** позицию в `source_image_ids`.
+
+При генерации v2, если у пресета есть reference-поля и в `preset_fields` для них переданы непустые значения (строка или массив строк `img_...`), **итоговый** список `image_ids` в метаданных задачи строится из этих слотов; плоский `image_ids` из тела запроса в этом случае не используется. Если слоты пусты, сохраняется прежнее поведение: используются `image_ids` / `image_id` из запроса.
+
+**Miniapp:** брать лимит вложений из `preset.promptInput.referenceImages.maxCount` (не выше 14) и описание слотов из `fields` с `type: "reference"`; в `preset_fields` отправлять для каждого ключа строку `img_...` или массив строк.
 
 #### Пример запроса (single-image + legacy preset)
 
@@ -440,3 +449,4 @@ curl -X POST "http://127.0.0.1:8081/stickers/wavespeed/save-to-set" \
 - Финальный результат нормализуется в Telegram-compatible WebP (canvas 512x512 с сохранением пропорций).
 - Сгенерированные файлы кешируются; повторные `GET` для готовых задач быстрые.
 - В production-клиентах передавайте только реальные `img_...` ID в `image_id/image_ids` (или `source_image_ids` для прямой интеграции).
+

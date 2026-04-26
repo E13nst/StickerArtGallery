@@ -21,8 +21,17 @@ public class StylePresetFieldDto {
     @Schema(description = "Placeholder для input (legacy, не используется в MVP)", example = "Например: радость", deprecated = true)
     private String placeholder;
 
-    @Schema(description = "text | select | emoji", example = "text")
+    @Schema(description = "text | select | emoji | reference (референсное изображение, плейсхолдер — текст Image N)", example = "text")
     private String type;
+
+    @Schema(description = "Минимум изображений в слоте (type=reference)", example = "0")
+    private Integer minImages;
+
+    @Schema(description = "Максимум изображений в слоте (type=reference)", example = "1")
+    private Integer maxImages;
+
+    @Schema(description = "Шаблон подстановки в промпт; {index} → 1-based номер в каноническом списке уникальных id", example = "Image {index}")
+    private String promptTemplate;
 
     @Schema(description = "Обязательное поле", example = "true")
     private Boolean required;
@@ -71,6 +80,30 @@ public class StylePresetFieldDto {
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    public Integer getMinImages() {
+        return minImages;
+    }
+
+    public void setMinImages(Integer minImages) {
+        this.minImages = minImages;
+    }
+
+    public Integer getMaxImages() {
+        return maxImages;
+    }
+
+    public void setMaxImages(Integer maxImages) {
+        this.maxImages = maxImages;
+    }
+
+    public String getPromptTemplate() {
+        return promptTemplate;
+    }
+
+    public void setPromptTemplate(String promptTemplate) {
+        this.promptTemplate = promptTemplate;
     }
 
     public Boolean getRequired() {

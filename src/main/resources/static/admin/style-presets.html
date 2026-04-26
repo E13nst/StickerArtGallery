@@ -119,6 +119,17 @@
                         <input type="number" id="preset-prompt-max-length" min="1" max="1000" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Макс. символов">
                         <input type="text" id="preset-prompt-placeholder" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Подсказка внутри поля">
                     </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-blue-200 mt-2">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-0.5">Референсы: мин. шт.</label>
+                            <input type="number" id="preset-ref-min-count" min="0" max="14" value="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-0.5">Референсы: макс. шт. (≤14)</label>
+                            <input type="number" id="preset-ref-max-count" min="0" max="14" value="14" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <p class="text-xs text-gray-500 self-end">Лимит для miniapp; сумма maxImages по полям type=reference не должна превышать это значение.</p>
+                    </div>
                 </div>
 
                 <!-- Дополнительные поля -->
@@ -126,7 +137,7 @@
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <h4 class="text-sm font-semibold text-gray-800">Дополнительные поля</h4>
-                            <p class="text-xs text-gray-500 mt-0.5">MVP: у поля задаются только ключ, подпись, тип и обязательность. Ключ = плейсхолдер в шаблоне: <code class="bg-gray-100 px-1 rounded">emotion</code> → <code class="bg-gray-100 px-1 rounded">{{emotion}}</code>.</p>
+                            <p class="text-xs text-gray-500 mt-0.5">Ключ = плейсхолдер <code class="bg-gray-100 px-1 rounded">{{emotion}}</code>. Тип <code class="bg-gray-100 px-1 rounded">reference</code> — слот референсного фото; в промпт подставляется текст <code class="bg-gray-100 px-1 rounded">Image {index}</code> (или свой шаблон).</p>
                         </div>
                         <button type="button" id="add-field-btn" class="shrink-0 px-3 py-1.5 text-xs bg-gray-800 text-white rounded hover:bg-gray-900">+ Поле</button>
                     </div>

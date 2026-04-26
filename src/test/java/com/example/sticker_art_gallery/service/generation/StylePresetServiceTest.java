@@ -1,6 +1,9 @@
 package com.example.sticker_art_gallery.service.generation;
 
 import com.example.sticker_art_gallery.dto.generation.CreateStylePresetRequest;
+import com.example.sticker_art_gallery.dto.generation.StylePresetFieldDto;
+import com.example.sticker_art_gallery.dto.generation.StylePresetPromptInputDto;
+import com.example.sticker_art_gallery.dto.generation.StylePresetReferenceInputDto;
 import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.repository.StylePresetRepository;
@@ -14,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -84,6 +88,35 @@ class StylePresetServiceTest {
         stylePresetService.deletePreset(12L, 42L, true);
 
         verify(presetRepository).delete(preset);
+    }
+
+    @Test
+    @DisplayName("Отклоняет пресет, если сумма maxImages по reference-слотам превышает referenceImages.maxCount")
+    void createGlobalPreset_shouldRejectWhenReferenceSlotsExceedPresetCap() {
+        ObjectMapper realMapper = new ObjectMapper();
+        StylePresetPromptComposer realComposer = new StylePresetPromptComposer(realMapper);
+        StylePresetService svc = new StylePresetService(
+                presetRepository, userProfileService, imageStorageService, realMapper, realComposer);
+
+        when(presetRepository.findByCodeAndIsGlobalTrue("ref_cap")).thenReturn(Optional.empty());
+
+        CreateStylePresetRequest req = new CreateStylePresetRequest();
+        req.setCode("ref_cap");
+        req.setName("Ref cap");
+        req.setPromptSuffix("{{a}}");
+        StylePresetPromptInputDto pi = new StylePresetPromptInputDto();
+        StylePresetReferenceInputDto ri = new StylePresetReferenceInputDto();
+        ri.setMaxCount(2);
+        pi.setReferenceImages(ri);
+        req.setPromptInput(pi);
+        StylePresetFieldDto f = new StylePresetFieldDto();
+        f.setKey("a");
+        f.setType("reference");
+        f.setMinImages(0);
+        f.setMaxImages(3);
+        req.setFields(List.of(f));
+
+        assertThrows(IllegalArgumentException.class, () -> svc.createGlobalPreset(req));
     }
 
     @Test

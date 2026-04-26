@@ -54,8 +54,8 @@ public class GenerateStickerV2Request {
     private String imageId;
 
     @JsonProperty("image_ids")
-    @Schema(description = "Список ID загруженных изображений для multi-image генерации")
-    @Size(max = 10, message = "image_ids поддерживает не более 10 элементов")
+    @Schema(description = "Список ID загруженных изображений для multi-image генерации (до 14, порядок важен)")
+    @Size(max = 14, message = "image_ids поддерживает не более 14 элементов")
     private List<
             @Pattern(regexp = "^img_[A-Za-z0-9_-]+$", message = "Каждый image_id должен иметь формат img_...")
             String> imageIds;

@@ -154,7 +154,13 @@ function closeModal() {
 // Сохранить пресет
 async function savePreset(event) {
     event.preventDefault();
-    const promptInput = readPromptInputFromForm();
+    let promptInput;
+    try {
+        promptInput = readPromptInputFromForm();
+    } catch (e) {
+        showNotification(e.message || 'Некорректные настройки референсов', 'error');
+        return;
+    }
     const fields = readFieldsFromForm();
     const promptSuffix = document.getElementById('preset-style-prompt').value.trim();
     const validationError = validatePresetUiContract(promptSuffix, promptInput, fields);
@@ -320,6 +326,9 @@ function applyPromptInputToForm(promptInput) {
     document.getElementById('preset-prompt-required').checked = !!input.required;
     document.getElementById('preset-prompt-placeholder').value = input.placeholder || '';
     document.getElementById('preset-prompt-max-length').value = input.maxLength || '';
+    const refs = input.referenceImages || {};
+    document.getElementById('preset-ref-min-count').value = refs.minCount != null ? refs.minCount : 0;
+    document.getElementById('preset-ref-max-count').value = refs.maxCount != null ? refs.maxCount : 14;
     const opts = document.getElementById('prompt-options');
     if (enabled) {
         opts.classList.remove('hidden');
@@ -329,14 +338,27 @@ function applyPromptInputToForm(promptInput) {
     updateModeBadge();
 }
 
+const MAX_PRESET_REFERENCE_IMAGES = 14;
+
 function readPromptInputFromForm() {
     const maxLengthRaw = document.getElementById('preset-prompt-max-length').value;
     const enabled = document.getElementById('preset-prompt-enabled').checked;
+    const refMinRaw = document.getElementById('preset-ref-min-count').value;
+    const refMaxRaw = document.getElementById('preset-ref-max-count').value;
+    const refMin = refMinRaw === '' ? 0 : parseInt(refMinRaw, 10);
+    let refMax = refMaxRaw === '' ? MAX_PRESET_REFERENCE_IMAGES : parseInt(refMaxRaw, 10);
+    if (!Number.isFinite(refMin) || refMin < 0) {
+        throw new Error('Некорректный минимум референсов');
+    }
+    if (!Number.isFinite(refMax)) {
+        refMax = MAX_PRESET_REFERENCE_IMAGES;
+    }
+    refMax = Math.min(MAX_PRESET_REFERENCE_IMAGES, Math.max(0, refMax));
     const referenceImages = {
         enabled: true,
         required: false,
-        minCount: 0,
-        maxCount: 10
+        minCount: refMin,
+        maxCount: refMax
     };
     return {
         enabled,
@@ -356,11 +378,27 @@ function renderFieldEditor(fields) {
     }
 
     list.innerHTML = fields.map((field, index) => renderFieldRow(field, index)).join('');
+    list.querySelectorAll('[data-field-type]').forEach((sel) => {
+        sel.addEventListener('change', () => syncRefFieldOptionsVisibility(sel.closest('[data-field-row]')));
+    });
+    list.querySelectorAll('[data-field-row]').forEach((row) => syncRefFieldOptionsVisibility(row));
     updateModeBadge();
+}
+
+function syncRefFieldOptionsVisibility(row) {
+    if (!row) return;
+    const typeEl = row.querySelector('[data-field-type]');
+    const opts = row.querySelector('[data-field-ref-opts]');
+    if (!typeEl || !opts) return;
+    const isRef = typeEl.value === 'reference';
+    opts.classList.toggle('hidden', !isRef);
 }
 
 function renderFieldRow(field, index) {
     const type = field.type || 'text';
+    const minImg = field.minImages != null ? field.minImages : 0;
+    const maxImg = field.maxImages != null ? field.maxImages : 1;
+    const ptmpl = field.promptTemplate != null ? field.promptTemplate : '';
     return `
         <div class="field-row border border-gray-200 rounded-lg p-3 bg-white space-y-3" data-field-row>
             <div class="flex items-center justify-between gap-3">
@@ -374,7 +412,22 @@ function renderFieldRow(field, index) {
                     <option value="text" ${type === 'text' ? 'selected' : ''}>text</option>
                     <option value="emoji" ${type === 'emoji' ? 'selected' : ''}>emoji</option>
                     <option value="select" ${type === 'select' ? 'selected' : ''}>select</option>
+                    <option value="reference" ${type === 'reference' ? 'selected' : ''}>reference</option>
                 </select>
+            </div>
+            <div data-field-ref-opts class="grid grid-cols-1 md:grid-cols-3 gap-3 ${type === 'reference' ? '' : 'hidden'}">
+                <div>
+                    <label class="block text-xs text-gray-500 mb-0.5">minImages</label>
+                    <input data-field-min-images type="number" min="0" max="14" value="${minImg}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-0.5">maxImages</label>
+                    <input data-field-max-images type="number" min="1" max="14" value="${maxImg}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-0.5">promptTemplate</label>
+                    <input data-field-prompt-template type="text" value="${escapeHtml(ptmpl)}" placeholder="Image {index}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono">
+                </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-1 gap-3">
                 <label class="flex items-center gap-2 text-sm text-gray-700">
@@ -390,12 +443,27 @@ function readFieldsFromForm() {
     return Array.from(document.querySelectorAll('[data-field-row]'))
         .map(row => {
             const key = row.querySelector('[data-field-key]').value.trim();
-            return {
+            const type = row.querySelector('[data-field-type]').value;
+            const base = {
                 key,
                 label: row.querySelector('[data-field-label]').value.trim() || null,
-                type: row.querySelector('[data-field-type]').value,
+                type,
                 required: row.querySelector('[data-field-required]').checked
             };
+            if (type === 'reference') {
+                const minEl = row.querySelector('[data-field-min-images]');
+                const maxEl = row.querySelector('[data-field-max-images]');
+                const tplEl = row.querySelector('[data-field-prompt-template]');
+                const minV = minEl ? parseInt(minEl.value, 10) : 0;
+                const maxV = maxEl ? parseInt(maxEl.value, 10) : 1;
+                base.minImages = Number.isFinite(minV) ? minV : 0;
+                base.maxImages = Number.isFinite(maxV) ? maxV : 1;
+                const tpl = tplEl && tplEl.value.trim() ? tplEl.value.trim() : null;
+                if (tpl) {
+                    base.promptTemplate = tpl;
+                }
+            }
+            return base;
         })
         .filter(field => field.key);
 }
@@ -470,6 +538,20 @@ function validatePresetUiContract(promptSuffix, promptInput, fields) {
     const duplicateKey = findDuplicateFieldKey(fields);
     if (duplicateKey) {
         return `Поле "${duplicateKey}" указано несколько раз`;
+    }
+
+    const presetRefMax = promptInput.referenceImages && promptInput.referenceImages.maxCount != null
+        ? promptInput.referenceImages.maxCount
+        : MAX_PRESET_REFERENCE_IMAGES;
+    let refMaxSum = 0;
+    for (const f of fields) {
+        if (f.type === 'reference') {
+            const mx = f.maxImages != null ? f.maxImages : 1;
+            refMaxSum += mx;
+        }
+    }
+    if (refMaxSum > presetRefMax) {
+        return `Сумма maxImages по reference-полям (${refMaxSum}) больше referenceImages.maxCount (${presetRefMax})`;
     }
 
     return null;

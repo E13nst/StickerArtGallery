@@ -16,7 +16,7 @@ public class StylePresetReferenceInputDto {
     @Schema(description = "Минимум референсов (если required=true, обычно >= 1)", example = "0")
     private Integer minCount;
 
-    @Schema(description = "Максимум референсов, поддерживаемый бэкендом", example = "10")
+    @Schema(description = "Максимум референсов для пресета (не больше 14)", example = "14")
     private Integer maxCount;
 
     public Boolean getEnabled() {

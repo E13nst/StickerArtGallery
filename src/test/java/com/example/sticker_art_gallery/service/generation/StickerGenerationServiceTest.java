@@ -4,10 +4,14 @@ import com.example.sticker_art_gallery.dto.generation.GenerateStickerRequest;
 import com.example.sticker_art_gallery.dto.generation.GenerateStickerV2Request;
 import com.example.sticker_art_gallery.model.generation.GenerationTaskEntity;
 import com.example.sticker_art_gallery.model.generation.GenerationTaskStatus;
+import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
 import com.example.sticker_art_gallery.model.profile.ArtTransactionEntity;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.model.storage.CachedImageEntity;
 import com.example.sticker_art_gallery.repository.GenerationTaskRepository;
+import com.example.sticker_art_gallery.repository.StylePresetRepository;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
 import com.example.sticker_art_gallery.service.referral.ReferralService;
@@ -68,11 +72,15 @@ class StickerGenerationServiceTest {
     private GenerationAuditService generationAuditService;
     @Mock
     private StickerProcessorGenerationClient stickerProcessorGenerationClient;
+    @Mock
+    private StylePresetRepository stylePresetRepository;
 
     private StickerGenerationService stickerGenerationService;
 
     @BeforeEach
     void setUp() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        StylePresetPromptComposer stylePresetPromptComposer = new StylePresetPromptComposer(objectMapper);
         stickerGenerationService = spy(new StickerGenerationService(
                 taskRepository,
                 waveSpeedClient,
@@ -82,7 +90,9 @@ class StickerGenerationServiceTest {
                 promptProcessingService,
                 referralService,
                 generationAuditService,
-                stickerProcessorGenerationClient
+                stickerProcessorGenerationClient,
+                stylePresetRepository,
+                stylePresetPromptComposer
         ));
 
         // Избегаем запуска полного async pipeline в unit-тесте startGeneration
@@ -90,6 +100,7 @@ class StickerGenerationServiceTest {
                 .when(stickerGenerationService).processPromptAsync(anyString(), anyLong(), any());
         lenient().doReturn(CompletableFuture.completedFuture(null))
                 .when(stickerGenerationService).processPromptAsyncV2(anyString(), anyLong(), any());
+        lenient().when(stylePresetRepository.findById(anyLong())).thenReturn(Optional.empty());
         ReflectionTestUtils.setField(stickerGenerationService, "maxPollSeconds", 5);
         ReflectionTestUtils.setField(stickerGenerationService, "stickerProcessorBaseUrl", "https://sticker-processor.example");
     }
@@ -149,6 +160,45 @@ class StickerGenerationServiceTest {
 
         stickerGenerationService.startGenerationV2(userId, request);
         verify(artRewardService, never()).award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("startGenerationV2: нормализует image_ids из preset_fields по reference-слотам пресета")
+    void startGenerationV2_shouldNormalizeImageIdsFromReferenceSlots() throws Exception {
+        long userId = 556L;
+        UserProfileEntity profile = new UserProfileEntity();
+        profile.setUserId(userId);
+        when(userProfileService.getOrCreateDefaultForUpdate(userId)).thenReturn(profile);
+        when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ObjectMapper om = new ObjectMapper();
+        StylePresetEntity preset = new StylePresetEntity();
+        preset.setId(42L);
+        preset.setStructuredFieldsJson(om.convertValue(List.of(
+                Map.of(
+                        "key", "slot_a",
+                        "type", "reference",
+                        "label", "A",
+                        "required", false,
+                        "minImages", 0,
+                        "maxImages", 1
+                )
+        ), new TypeReference<>() { }));
+        when(stylePresetRepository.findById(42L)).thenReturn(Optional.of(preset));
+
+        GenerateStickerV2Request request = new GenerateStickerV2Request();
+        request.setPrompt("p");
+        request.setModel("flux-schnell");
+        request.setStylePresetId(42L);
+        request.setPresetFields(Map.of("slot_a", "img_from_slot"));
+        request.setImageIds(List.of("img_flat_ignored"));
+
+        stickerGenerationService.startGenerationV2(userId, request);
+
+        ArgumentCaptor<GenerationTaskEntity> taskCaptor = ArgumentCaptor.forClass(GenerationTaskEntity.class);
+        verify(taskRepository).save(taskCaptor.capture());
+        Map<?, ?> metadata = om.readValue(taskCaptor.getValue().getMetadata(), Map.class);
+        assertEquals(List.of("img_from_slot"), metadata.get("image_ids"));
     }
 
     @Test

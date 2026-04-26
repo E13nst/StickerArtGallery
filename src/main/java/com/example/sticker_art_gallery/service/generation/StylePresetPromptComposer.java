@@ -25,6 +25,7 @@ import org.springframework.stereotype.Component;
 public class StylePresetPromptComposer {
 
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{\\s*([a-zA-Z0-9_]+)\\s*}}");
+    private static final Pattern SOURCE_IMAGE_ID = Pattern.compile("^img_[A-Za-z0-9_-]+$");
     private final ObjectMapper objectMapper;
 
     public StylePresetPromptComposer(ObjectMapper objectMapper) {
@@ -65,7 +66,7 @@ public class StylePresetPromptComposer {
         }
         if (!template.isEmpty()) {
             if (containsPlaceholders(template)) {
-                return applyTemplate(template, fields);
+                return applyTemplate(template, prepareTemplateFieldMap(preset, prompt, fields));
             }
             if (!prompt.isEmpty()) {
                 return prompt;
@@ -109,8 +110,8 @@ public class StylePresetPromptComposer {
         if (ph.isEmpty()) {
             throw new IllegalArgumentException("LOCKED template must contain {{placeholders}} or use a different mode");
         }
-        validateAllPlaceholdersPresent(fields, ph);
-        return applyTemplate(template, fields);
+        validatePlaceholderInputs(preset, fields, ph, "");
+        return applyTemplate(template, prepareTemplateFieldMap(preset, "", fields));
     }
 
     private String buildStructured(StylePresetEntity preset, String prompt, Map<String, Object> fields, String template) {
@@ -136,7 +137,7 @@ public class StylePresetPromptComposer {
             return applyTemplate(template, templateValues(fields, prompt));
         }
         validateStructured(defs, fields, template);
-        return composeStructuredString(defs, fields, template, prompt);
+        return composeStructuredString(preset, defs, fields, template, prompt);
     }
 
     private void validateStructured(
@@ -153,6 +154,23 @@ public class StylePresetPromptComposer {
         validateNoExtraKeys(fields, keys);
         for (var def : defs) {
             Object val = fields.get(def.getKey());
+            if (isReferenceField(def)) {
+                List<String> ids = parseReferenceIds(val);
+                int minRef = effectiveMinImages(def);
+                int maxRef = effectiveMaxImages(def);
+                if (ids.size() < minRef) {
+                    throw new IllegalArgumentException("Not enough reference images for field: " + def.getKey());
+                }
+                if (ids.size() > maxRef) {
+                    throw new IllegalArgumentException("Too many reference images for field: " + def.getKey());
+                }
+                for (String id : ids) {
+                    if (!SOURCE_IMAGE_ID.matcher(id).matches()) {
+                        throw new IllegalArgumentException("Invalid image id for field: " + def.getKey());
+                    }
+                }
+                continue;
+            }
             if (val == null || (val instanceof String s && s.isBlank())) {
                 if (Boolean.TRUE.equals(def.getRequired())) {
                     throw new IllegalArgumentException("Missing value for field: " + def.getKey());
@@ -186,16 +204,20 @@ public class StylePresetPromptComposer {
     }
 
     private String composeStructuredString(
+            StylePresetEntity preset,
             List<StylePresetFieldDto> defs,
             Map<String, Object> fields,
             String template,
             String prompt
     ) {
         if (containsPlaceholders(template)) {
-            return applyTemplate(template, templateValues(fields, prompt, defs));
+            return applyTemplate(template, prepareTemplateFieldMap(preset, prompt, fields));
         }
         StringBuilder sb = new StringBuilder();
         for (var def : defs) {
+            if (isReferenceField(def)) {
+                continue;
+            }
             Object val = fields.get(def.getKey());
             if (val == null) {
                 continue;
@@ -246,14 +268,34 @@ public class StylePresetPromptComposer {
         return values;
     }
 
-    private void validateAllPlaceholdersPresent(Map<String, Object> fields, Set<String> placeholders) {
+    private void validatePlaceholderInputs(
+            StylePresetEntity preset,
+            Map<String, Object> fields,
+            Set<String> placeholders,
+            String promptText
+    ) {
         validateNoExtraKeys(fields, placeholders);
+        List<StylePresetFieldDto> defs = parseStructuredFields(preset);
+        Map<String, StylePresetFieldDto> defByKey = defs.stream()
+                .filter(d -> d.getKey() != null && !d.getKey().isBlank())
+                .collect(Collectors.toMap(StylePresetFieldDto::getKey, d -> d, (a, b) -> a));
         for (String key : placeholders) {
+            if ("prompt".equals(key)) {
+                if (promptText == null || promptText.isBlank()) {
+                    throw new IllegalArgumentException("Missing value for: prompt");
+                }
+                continue;
+            }
             if (!fields.containsKey(key) || fields.get(key) == null) {
                 throw new IllegalArgumentException("Missing value for: " + key);
             }
-            if (valueToString(fields.get(key)).isEmpty()) {
-                throw new IllegalArgumentException("Empty value for: " + key);
+            StylePresetFieldDto def = defByKey.get(key);
+            if (def != null && isReferenceField(def)) {
+                validateReferenceSlotInput(def, fields.get(key));
+            } else {
+                if (valueToString(fields.get(key)).isEmpty()) {
+                    throw new IllegalArgumentException("Empty value for: " + key);
+                }
             }
         }
     }
@@ -266,6 +308,185 @@ public class StylePresetPromptComposer {
         }
     }
 
+    public Map<String, Object> prepareTemplateFieldMap(StylePresetEntity preset, String prompt, Map<String, Object> fields) {
+        List<StylePresetFieldDto> defs = parseStructuredFields(preset);
+        Map<String, Object> base = templateValues(normalizeFields(fields), prompt, defs);
+        List<StylePresetFieldDto> refDefs = defs.stream().filter(this::isReferenceField).toList();
+        if (refDefs.isEmpty()) {
+            return base;
+        }
+        List<String> canonical = buildCanonicalUniqueOrder(refDefs, normalizeFields(fields));
+        if (canonical.size() > GenerationV2Constants.MAX_SOURCE_IMAGE_IDS) {
+            throw new IllegalArgumentException("Too many unique reference images (max "
+                    + GenerationV2Constants.MAX_SOURCE_IMAGE_IDS + ")");
+        }
+        Map<String, Object> out = new HashMap<>(base);
+        for (StylePresetFieldDto def : refDefs) {
+            String key = def.getKey().trim();
+            List<String> slotIds = parseReferenceIds(fields.get(key));
+            String sub = formatReferenceSubstitution(def, slotIds, canonical);
+            out.put(key, sub);
+        }
+        return out;
+    }
+
+    /**
+     * Канонический порядок уникальных source image id для v2: слоты по порядку в пресете, дубликаты id отбрасываются при сохранении порядка первого вхождения.
+     */
+    public List<String> resolveV2SourceImageIds(
+            StylePresetEntity preset,
+            Map<String, Object> presetFields,
+            List<String> flatImageIds,
+            String singleImageId
+    ) {
+        if (preset == null) {
+            return validateAndCopyImageIds(dedupeIds(flattenLegacyIds(flatImageIds, singleImageId)));
+        }
+        List<StylePresetFieldDto> refDefs = parseStructuredFields(preset).stream()
+                .filter(this::isReferenceField)
+                .toList();
+        if (refDefs.isEmpty()) {
+            return validateAndCopyImageIds(dedupeIds(flattenLegacyIds(flatImageIds, singleImageId)));
+        }
+        Map<String, Object> fields = normalizeFields(presetFields);
+        boolean anySlot = refDefs.stream()
+                .anyMatch(d -> !parseReferenceIds(fields.get(d.getKey())).isEmpty());
+        List<String> canonical = anySlot
+                ? buildCanonicalUniqueOrder(refDefs, fields)
+                : dedupeIds(flattenLegacyIds(flatImageIds, singleImageId));
+        return validateAndCopyImageIds(canonical);
+    }
+
+    private List<String> validateAndCopyImageIds(List<String> canonical) {
+        if (canonical.size() > GenerationV2Constants.MAX_SOURCE_IMAGE_IDS) {
+            throw new IllegalArgumentException("Too many reference images (max "
+                    + GenerationV2Constants.MAX_SOURCE_IMAGE_IDS + ")");
+        }
+        for (String id : canonical) {
+            if (!SOURCE_IMAGE_ID.matcher(id).matches()) {
+                throw new IllegalArgumentException("Invalid image id: " + id);
+            }
+        }
+        return new ArrayList<>(canonical);
+    }
+
+    private boolean isReferenceField(StylePresetFieldDto def) {
+        return def.getType() != null && "reference".equalsIgnoreCase(def.getType().trim());
+    }
+
+    private void validateReferenceSlotInput(StylePresetFieldDto def, Object raw) {
+        List<String> ids = parseReferenceIds(raw);
+        int minRef = effectiveMinImages(def);
+        int maxRef = effectiveMaxImages(def);
+        if (ids.size() < minRef) {
+            throw new IllegalArgumentException("Not enough reference images for field: " + def.getKey());
+        }
+        if (ids.size() > maxRef) {
+            throw new IllegalArgumentException("Too many reference images for field: " + def.getKey());
+        }
+        for (String id : ids) {
+            if (!SOURCE_IMAGE_ID.matcher(id).matches()) {
+                throw new IllegalArgumentException("Invalid image id for field: " + def.getKey());
+            }
+        }
+    }
+
+    private static int effectiveMinImages(StylePresetFieldDto def) {
+        int r = Boolean.TRUE.equals(def.getRequired()) ? 1 : 0;
+        if (def.getMinImages() != null) {
+            r = Math.max(r, def.getMinImages());
+        }
+        return r;
+    }
+
+    private static int effectiveMaxImages(StylePresetFieldDto def) {
+        return def.getMaxImages() != null ? def.getMaxImages() : 1;
+    }
+
+    static List<String> parseReferenceIds(Object raw) {
+        if (raw == null) {
+            return List.of();
+        }
+        if (raw instanceof String s) {
+            String t = s.trim();
+            return t.isEmpty() ? List.of() : List.of(t);
+        }
+        if (raw instanceof List<?> list) {
+            List<String> out = new ArrayList<>();
+            for (Object o : list) {
+                if (o == null) {
+                    continue;
+                }
+                String t = o.toString().trim();
+                if (!t.isEmpty()) {
+                    out.add(t);
+                }
+            }
+            return out;
+        }
+        String t = raw.toString().trim();
+        return t.isEmpty() ? List.of() : List.of(t);
+    }
+
+    private List<String> buildCanonicalUniqueOrder(List<StylePresetFieldDto> refDefs, Map<String, Object> fields) {
+        List<String> order = new ArrayList<>();
+        for (StylePresetFieldDto def : refDefs) {
+            for (String id : parseReferenceIds(fields.get(def.getKey()))) {
+                if (!order.contains(id)) {
+                    order.add(id);
+                }
+            }
+        }
+        return order;
+    }
+
+    private String formatReferenceSubstitution(StylePresetFieldDto def, List<String> slotIds, List<String> canonical) {
+        if (slotIds.isEmpty()) {
+            return "";
+        }
+        String tpl = def.getPromptTemplate();
+        if (tpl == null || tpl.isBlank()) {
+            tpl = "Image {index}";
+        }
+        List<String> parts = new ArrayList<>();
+        for (String id : slotIds) {
+            int idx = canonical.indexOf(id);
+            if (idx < 0) {
+                throw new IllegalArgumentException("Reference image not in canonical order: " + id);
+            }
+            parts.add(tpl.replace("{index}", String.valueOf(idx + 1)));
+        }
+        return String.join(", ", parts);
+    }
+
+    private static List<String> flattenLegacyIds(List<String> flatImageIds, String singleImageId) {
+        List<String> out = new ArrayList<>();
+        if (flatImageIds != null) {
+            for (String id : flatImageIds) {
+                if (id != null && !id.isBlank()) {
+                    out.add(id.trim());
+                }
+            }
+        }
+        if (singleImageId != null && !singleImageId.isBlank()) {
+            String t = singleImageId.trim();
+            if (out.isEmpty()) {
+                out.add(t);
+            }
+        }
+        return out;
+    }
+
+    private static List<String> dedupeIds(List<String> ids) {
+        List<String> deduped = new ArrayList<>();
+        for (String id : ids) {
+            if (!deduped.contains(id)) {
+                deduped.add(id);
+            }
+        }
+        return deduped;
+    }
+
     public StylePresetPromptInputDto parsePromptInput(StylePresetEntity preset) {
         if (preset.getPromptInputJson() == null) {
             var def = new StylePresetPromptInputDto();
@@ -276,7 +497,7 @@ public class StylePresetPromptComposer {
             refs.setEnabled(true);
             refs.setRequired(false);
             refs.setMinCount(0);
-            refs.setMaxCount(10);
+            refs.setMaxCount(GenerationV2Constants.MAX_SOURCE_IMAGE_IDS);
             def.setReferenceImages(refs);
             return def;
         }
@@ -287,7 +508,7 @@ public class StylePresetPromptComposer {
             refs.setEnabled(true);
             refs.setRequired(false);
             refs.setMinCount(0);
-            refs.setMaxCount(10);
+            refs.setMaxCount(GenerationV2Constants.MAX_SOURCE_IMAGE_IDS);
             parsed.setReferenceImages(refs);
         }
         return parsed;

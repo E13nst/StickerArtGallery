@@ -20,6 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.example.sticker_art_gallery.dto.generation.StylePresetPromptInputDto;
+import com.example.sticker_art_gallery.dto.generation.StylePresetReferenceInputDto;
+
 import java.util.List;
 import java.util.Map;
 import java.util.HashSet;
@@ -300,6 +303,46 @@ public class StylePresetService {
             if (!keys.contains(placeholder)) {
                 throw new IllegalArgumentException("Template placeholder has no matching field: " + placeholder);
             }
+        }
+
+        validateReferenceFields(request, fields);
+    }
+
+    private void validateReferenceFields(CreateStylePresetRequest request, List<StylePresetFieldDto> fields) {
+        StylePresetPromptInputDto promptInput = request.getPromptInput();
+        int presetMaxRef = GenerationV2Constants.MAX_SOURCE_IMAGE_IDS;
+        if (promptInput != null && promptInput.getReferenceImages() != null) {
+            StylePresetReferenceInputDto ref = promptInput.getReferenceImages();
+            if (ref.getMaxCount() != null) {
+                if (ref.getMaxCount() > GenerationV2Constants.MAX_SOURCE_IMAGE_IDS) {
+                    throw new IllegalArgumentException("referenceImages.maxCount cannot exceed "
+                            + GenerationV2Constants.MAX_SOURCE_IMAGE_IDS);
+                }
+                presetMaxRef = ref.getMaxCount();
+            }
+            if (ref.getMinCount() != null && ref.getMinCount() < 0) {
+                throw new IllegalArgumentException("referenceImages.minCount cannot be negative");
+            }
+        }
+
+        int sumMax = 0;
+        for (StylePresetFieldDto field : fields) {
+            if (field.getType() == null || !"reference".equalsIgnoreCase(field.getType().trim())) {
+                continue;
+            }
+            int minImg = field.getMinImages() != null ? field.getMinImages() : 0;
+            int maxImg = field.getMaxImages() != null ? field.getMaxImages() : 1;
+            if (minImg < 0 || maxImg < 1) {
+                throw new IllegalArgumentException("Invalid minImages/maxImages for reference field: " + field.getKey());
+            }
+            if (minImg > maxImg) {
+                throw new IllegalArgumentException("minImages cannot exceed maxImages for field: " + field.getKey());
+            }
+            sumMax += maxImg;
+        }
+        if (sumMax > presetMaxRef) {
+            throw new IllegalArgumentException("Sum of reference slot maxImages (" + sumMax
+                    + ") exceeds referenceImages.maxCount (" + presetMaxRef + ")");
         }
     }
 
