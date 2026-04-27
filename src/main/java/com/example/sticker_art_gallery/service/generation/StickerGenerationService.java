@@ -276,7 +276,26 @@ public class StickerGenerationService {
         }
 
         task.setExpiresAt(OffsetDateTime.now().plusHours(24));
-        taskRepository.save(task);
+        task = taskRepository.save(task);
+
+        try {
+            String metadataForArt = objectMapper.writeValueAsString(
+                    Map.of("taskId", taskId, "flow", "generation-v2", "prompt", request.getPrompt() != null ? request.getPrompt() : ""));
+            ArtTransactionEntity transaction = artRewardService.award(
+                    userId,
+                    ArtRewardService.RULE_GENERATE_STICKER,
+                    null,
+                    metadataForArt,
+                    taskId,
+                    userId
+            );
+            task.setArtTransaction(transaction);
+            task = taskRepository.save(task);
+        } catch (Exception e) {
+            LOGGER.error("Failed to deduct ART for v2 task {}: {}", taskId, e.getMessage(), e);
+            taskRepository.delete(task);
+            throw new IllegalStateException("Недостаточно ART-баллов для генерации: " + e.getMessage(), e);
+        }
 
         OffsetDateTime auditExpiresAt = OffsetDateTime.now().plusDays(90);
         generationAuditService.startSession(taskId, userId, request.getPrompt(), metadata, auditExpiresAt);
@@ -657,8 +676,12 @@ public class StickerGenerationService {
             request.setStrength(metadata.get("strength") instanceof Number ? ((Number) metadata.get("strength")).doubleValue() : 0.8);
             request.setRemoveBackground(Boolean.TRUE.equals(metadata.get("remove_background")));
             List<String> resolvedSourceIds = resolveSourceImageIds(metadata);
-            request.setImageIds(resolvedSourceIds);
-            List<String> stickerProcessorSourceUrls = resolveStickerProcessorSourceImageUrls(resolvedSourceIds);
+            ProcessorSourceImages processorSources = splitSourceImagesForProcessor(resolvedSourceIds);
+            // В sticker-processor `source_image_ids` — это id, ранее загруженные в его Redis (POST /images/upload).
+            // Synthetic `img_sagref_*` живут только в нашем кэше, поэтому отправляем их через `source_image_urls`,
+            // и НЕ кладём в `source_image_ids` (иначе processor не найдёт их в Redis и вернёт 404 Uploaded image not found).
+            request.setImageIds(processorSources.ids);
+            List<String> stickerProcessorSourceUrls = processorSources.urls;
             if (Boolean.TRUE.equals(metadata.get("sticker_processor_prompt_truncated"))) {
                 task.setMetadata(objectMapper.writeValueAsString(metadata));
                 taskRepository.save(task);
@@ -710,20 +733,23 @@ public class StickerGenerationService {
                         CachedImageEntity cachedImage = imageStorageService.storeBytes(providerSource, poll.getImageBytes(), "image/webp");
                         String localImageUrl = imageStorageService.getPublicUrl(cachedImage);
 
-                        ArtTransactionEntity transaction = artRewardService.award(
-                                task.getUserProfile().getUserId(),
-                                ArtRewardService.RULE_GENERATE_STICKER,
-                                null,
-                                objectMapper.writeValueAsString(Map.of("taskId", taskId, "providerFileId", submit.fileId())),
-                                "generation-success:" + taskId,
-                                task.getUserProfile().getUserId()
-                        );
+                        if (task.getArtTransaction() == null) {
+                            ArtTransactionEntity transaction = artRewardService.award(
+                                    task.getUserProfile().getUserId(),
+                                    ArtRewardService.RULE_GENERATE_STICKER,
+                                    null,
+                                    objectMapper.writeValueAsString(
+                                            Map.of("taskId", taskId, "providerFileId", submit.fileId())),
+                                    "generation-success:" + taskId,
+                                    task.getUserProfile().getUserId()
+                            );
+                            task.setArtTransaction(transaction);
+                        }
 
                         Map<String, Object> updatedMetadata = parseMetadata(task.getMetadata());
                         updatedMetadata.put("originalImageUrl", providerSource);
                         task.setMetadata(objectMapper.writeValueAsString(updatedMetadata));
                         task.setCachedImageId(cachedImage.getId());
-                        task.setArtTransaction(transaction);
                         task.setImageUrl(localImageUrl);
                         task.setStatus(GenerationTaskStatus.COMPLETED);
                         task.setCompletedAt(OffsetDateTime.now());
@@ -956,36 +982,48 @@ public class StickerGenerationService {
     }
 
     /**
-     * Параллельные публичные URL для synthetic id {@code img_sagref_*} (кэш галереи), чтобы sticker-processor мог скачать байты.
+     * Делит canonical список image id'ов галереи на два массива для sticker-processor:
+     * <ul>
+     *   <li>{@code ids} — обычные {@code img_*}, заранее загруженные в Redis sticker-processor через
+     *       {@code POST /images/upload}; уезжают в поле {@code source_image_ids}.</li>
+     *   <li>{@code urls} — публичные URL для synthetic {@code img_sagref_*} (кэш StickerArtGallery, недоступен
+     *       sticker-processor по id); уезжают в поле {@code source_image_urls} (max 4 combined с ids).</li>
+     * </ul>
+     * Если для synthetic id не удаётся получить публичный URL из {@link ImageStorageService}, бросаем
+     * {@link IllegalStateException} ещё до отправки запроса в sticker-processor (иначе он бы отдал 404).
      */
-    private List<String> resolveStickerProcessorSourceImageUrls(List<String> imageIds) {
+    private ProcessorSourceImages splitSourceImagesForProcessor(List<String> imageIds) {
         if (imageIds == null || imageIds.isEmpty()) {
-            return null;
+            return ProcessorSourceImages.EMPTY;
         }
-        List<String> urls = new ArrayList<>(imageIds.size());
-        boolean hasSyntheticIds = false;
+        List<String> ids = new ArrayList<>();
+        List<String> urls = new ArrayList<>();
         List<String> missingSyntheticIds = new ArrayList<>();
         for (String imageId : imageIds) {
             Optional<UUID> cached = StylePresetReferenceImageId.parseCachedImageId(imageId);
             if (cached.isPresent()) {
-                hasSyntheticIds = true;
                 Optional<String> url = imageStorageService.getPublicUrlIfPresent(cached.get());
                 if (url.isPresent()) {
                     urls.add(url.get());
                 } else {
                     missingSyntheticIds.add(imageId);
-                    urls.add("");
                 }
             } else {
-                // Sticker-processor (Pydantic) не принимает null в source_image_urls — только строки
-                urls.add("");
+                ids.add(imageId);
             }
         }
         if (!missingSyntheticIds.isEmpty()) {
             throw new IllegalStateException("Missing source image URL(s) for synthetic id(s): "
                     + String.join(", ", missingSyntheticIds));
         }
-        return hasSyntheticIds ? urls : null;
+        return new ProcessorSourceImages(
+                ids.isEmpty() ? null : List.copyOf(ids),
+                urls.isEmpty() ? null : List.copyOf(urls)
+        );
+    }
+
+    private record ProcessorSourceImages(List<String> ids, List<String> urls) {
+        private static final ProcessorSourceImages EMPTY = new ProcessorSourceImages(null, null);
     }
 
     private List<String> asStringList(Object value) {

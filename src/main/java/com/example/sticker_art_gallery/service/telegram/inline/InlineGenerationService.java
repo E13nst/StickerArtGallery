@@ -86,6 +86,15 @@ public class InlineGenerationService {
 
             waitAndPublishResult(taskId, userId, chatId, prompt, token);
             return true;
+        } catch (IllegalStateException e) {
+            if (e.getMessage() != null && e.getMessage().contains("Недостаточно ART")) {
+                LOGGER.warn("Inline generation: insufficient ART: {}", e.getMessage());
+                telegramBotApiService.answerCallbackQuery(callbackId, "Недостаточно ART для генерации", true);
+                return true;
+            }
+            LOGGER.error("Inline generation failed to start: {}", e.getMessage(), e);
+            telegramBotApiService.answerCallbackQuery(callbackId, "Не удалось запустить генерацию", true);
+            return true;
         } catch (Exception e) {
             LOGGER.error("Inline generation failed to start: {}", e.getMessage(), e);
             telegramBotApiService.answerCallbackQuery(callbackId, "Не удалось запустить генерацию", true);

@@ -57,17 +57,25 @@ public class StickerGenerationV2Controller {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Генерация запущена"),
             @ApiResponse(responseCode = "400", description = "Неверные входные данные"),
-            @ApiResponse(responseCode = "401", description = "Не авторизован")
+            @ApiResponse(responseCode = "401", description = "Не авторизован"),
+            @ApiResponse(responseCode = "402", description = "Недостаточно ART-баллов")
     })
     public ResponseEntity<GenerateStickerResponse> generateV2(@Valid @RequestBody GenerateStickerV2Request request) {
         Long userId = extractUserIdFromAuthentication();
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        String taskId = generationService.startGenerationV2(userId, request);
-        generationAsyncDispatcher.processPromptAsyncV2(taskId, userId, request.getStylePresetId());
-        LOGGER.info("Generation v2 started: taskId={}, userId={}", taskId, userId);
-        return ResponseEntity.ok(new GenerateStickerResponse(taskId));
+        try {
+            String taskId = generationService.startGenerationV2(userId, request);
+            generationAsyncDispatcher.processPromptAsyncV2(taskId, userId, request.getStylePresetId());
+            LOGGER.info("Generation v2 started: taskId={}, userId={}", taskId, userId);
+            return ResponseEntity.ok(new GenerateStickerResponse(taskId));
+        } catch (IllegalStateException e) {
+            if (e.getMessage() != null && e.getMessage().contains("Недостаточно ART")) {
+                return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).build();
+            }
+            throw e;
+        }
     }
 
     @GetMapping("/history")

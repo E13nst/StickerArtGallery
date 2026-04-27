@@ -43,9 +43,12 @@ public class StickerProcessorGenerationClient {
     }
 
     /**
-     * @param sourceImageUrls параллельно {@code source_image_ids}: публичные URL для id вида {@code img_sagref_*}
-     *                      (кэш StickerArtGallery); в остальных позициях {@code null}. Необязательно для sticker-processor,
-     *                      пока поддерживает поле {@code source_image_urls}.
+     * Отправляет запрос на генерацию в sticker-processor.
+     *
+     * @param sourceImageUrls независимый от {@code request.imageIds} список публичных URL источников для img2img/edit.
+     *                        Используется для synthetic id вида {@code img_sagref_*} (кэш StickerArtGallery), которых
+     *                        нет в Redis sticker-processor: для них передаём только URL, без id. {@code source_image_ids}
+     *                        и {@code source_image_urls} в payload — два независимых канала (max 4 combined).
      */
     public SubmitResult submitGenerate(GenerateStickerV2Request request, List<String> sourceImageUrls) {
         String url = stickerProcessorUrl + "/stickers/wavespeed/generate";
@@ -58,11 +61,10 @@ public class StickerProcessorGenerationClient {
         payload.put("strength", request.getStrength());
         payload.put("remove_background", request.getRemoveBackground());
         List<String> sourceImageIds = request.getImageIds();
-        payload.put("source_image_ids", (sourceImageIds != null && !sourceImageIds.isEmpty()) ? sourceImageIds : null);
-        if (sourceImageUrls != null
-                && sourceImageIds != null
-                && sourceImageIds.size() == sourceImageUrls.size()
-                && sourceImageUrls.stream().anyMatch(s -> s != null && !s.isBlank())) {
+        if (sourceImageIds != null && !sourceImageIds.isEmpty()) {
+            payload.put("source_image_ids", sourceImageIds);
+        }
+        if (sourceImageUrls != null && !sourceImageUrls.isEmpty()) {
             payload.put("source_image_urls", sourceImageUrls);
         }
 

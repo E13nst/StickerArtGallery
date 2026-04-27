@@ -39,6 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doAnswer;
@@ -146,13 +147,16 @@ class StickerGenerationServiceTest {
     }
 
     @Test
-    @DisplayName("startGenerationV2: ART не списывается на submit")
-    void startGenerationV2_shouldNotChargeArtOnSubmit() {
+    @DisplayName("startGenerationV2: списывает ART на submit (как v1), externalId = taskId")
+    void startGenerationV2_shouldChargeArtOnSubmitWithTaskIdAsExternalId() {
         long userId = 555L;
         UserProfileEntity profile = new UserProfileEntity();
         profile.setUserId(userId);
         when(userProfileService.getOrCreateDefaultForUpdate(userId)).thenReturn(profile);
         when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+        ArtTransactionEntity art = new ArtTransactionEntity();
+        art.setId(42L);
+        when(artRewardService.award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong())).thenReturn(art);
 
         GenerateStickerV2Request request = new GenerateStickerV2Request();
         request.setPrompt("v2 prompt");
@@ -160,7 +164,8 @@ class StickerGenerationServiceTest {
         request.setImageId("img_single");
 
         stickerGenerationService.startGenerationV2(userId, request);
-        verify(artRewardService, never()).award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong());
+        verify(artRewardService).award(
+                eq(userId), eq(ArtRewardService.RULE_GENERATE_STICKER), isNull(), anyString(), anyString(), eq(userId));
     }
 
     @Test
@@ -171,6 +176,9 @@ class StickerGenerationServiceTest {
         profile.setUserId(userId);
         when(userProfileService.getOrCreateDefaultForUpdate(userId)).thenReturn(profile);
         when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+        ArtTransactionEntity art = new ArtTransactionEntity();
+        art.setId(1L);
+        when(artRewardService.award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong())).thenReturn(art);
 
         ObjectMapper om = new ObjectMapper();
         StylePresetEntity preset = new StylePresetEntity();
@@ -203,18 +211,22 @@ class StickerGenerationServiceTest {
     }
 
     @Test
-    @DisplayName("runGenerationV2: ART списывается только при успехе")
-    void runGenerationV2_shouldChargeArtOnSuccess() throws Exception {
+    @DisplayName("runGenerationV2: при предоплате ART не списывает повторно при успехе")
+    void runGenerationV2_shouldNotChargeArtAgainWhenPrepaid() throws Exception {
         String taskId = "task-v2-1";
         long userId = 777L;
         UserProfileEntity profile = new UserProfileEntity();
         profile.setUserId(userId);
+
+        ArtTransactionEntity prepaid = new ArtTransactionEntity();
+        prepaid.setId(99L);
 
         GenerationTaskEntity task = new GenerationTaskEntity();
         task.setTaskId(taskId);
         task.setUserProfile(profile);
         task.setPrompt("processed prompt");
         task.setStatus(GenerationTaskStatus.PENDING);
+        task.setArtTransaction(prepaid);
         task.setMetadata(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(Map.of(
                 "model", "flux-schnell",
                 "size", "512*512",
@@ -240,16 +252,60 @@ class StickerGenerationServiceTest {
         when(imageStorageService.storeBytes(anyString(), any(), anyString())).thenReturn(cached);
         when(imageStorageService.getPublicUrl(any())).thenReturn("http://localhost/api/images/" + cached.getFileName());
 
-        ArtTransactionEntity transaction = new ArtTransactionEntity();
-        transaction.setId(99L);
-        when(artRewardService.award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong())).thenReturn(transaction);
-
         stickerGenerationService.runGenerationV2(taskId);
 
         ArgumentCaptor<GenerateStickerV2Request> submitCaptor = ArgumentCaptor.forClass(GenerateStickerV2Request.class);
         verify(stickerProcessorGenerationClient).submitGenerate(submitCaptor.capture(), any());
         assertEquals(java.util.List.of("img_123"), submitCaptor.getValue().getImageIds());
-        verify(artRewardService).award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong());
+        verify(artRewardService, never()).award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("runGenerationV2: legacy-задача без artTransaction — одно списание при успехе (мягкая миграция)")
+    void runGenerationV2_shouldChargeOnSuccessWhenNoPrepaidTransaction() throws Exception {
+        String taskId = "task-v2-legacy";
+        long userId = 778L;
+        UserProfileEntity profile = new UserProfileEntity();
+        profile.setUserId(userId);
+
+        GenerationTaskEntity task = new GenerationTaskEntity();
+        task.setTaskId(taskId);
+        task.setUserProfile(profile);
+        task.setPrompt("processed prompt");
+        task.setStatus(GenerationTaskStatus.PENDING);
+        task.setMetadata(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(Map.of(
+                "model", "flux-schnell",
+                "size", "512*512",
+                "seed", -1,
+                "num_images", 1,
+                "strength", 0.8,
+                "remove_background", true,
+                "image_id", "img_123"
+        )));
+
+        when(taskRepository.findByTaskId(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(stickerProcessorGenerationClient.submitGenerate(any(), any())).thenReturn(
+                new StickerProcessorGenerationClient.SubmitResult("ws_leg", "pending", "req_leg")
+        );
+        when(stickerProcessorGenerationClient.pollResult("ws_leg")).thenReturn(
+                StickerProcessorGenerationClient.PollResult.imageReady("img".getBytes())
+        );
+
+        CachedImageEntity cached = new CachedImageEntity();
+        cached.setId(UUID.randomUUID());
+        cached.setFileName(cached.getId() + ".webp");
+        when(imageStorageService.storeBytes(anyString(), any(), anyString())).thenReturn(cached);
+        when(imageStorageService.getPublicUrl(any())).thenReturn("http://localhost/api/images/" + cached.getFileName());
+
+        ArtTransactionEntity tx = new ArtTransactionEntity();
+        tx.setId(100L);
+        when(artRewardService.award(anyLong(), anyString(), any(), anyString(), eq("generation-success:" + taskId), anyLong())).thenReturn(tx);
+
+        stickerGenerationService.runGenerationV2(taskId);
+
+        verify(artRewardService).award(eq(userId), eq(ArtRewardService.RULE_GENERATE_STICKER), eq(null), anyString(),
+                eq("generation-success:" + taskId), eq(userId));
     }
 
     @Test
@@ -277,10 +333,6 @@ class StickerGenerationServiceTest {
         cached.setFileName(cached.getId() + ".webp");
         when(imageStorageService.storeBytes(anyString(), any(), anyString())).thenReturn(cached);
         when(imageStorageService.getPublicUrl(any())).thenReturn("http://localhost/api/images/" + cached.getFileName());
-
-        ArtTransactionEntity transaction = new ArtTransactionEntity();
-        transaction.setId(99L);
-        when(artRewardService.award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong())).thenReturn(transaction);
 
         stickerGenerationService.runGenerationV2(taskId);
 
@@ -384,6 +436,77 @@ class StickerGenerationServiceTest {
     }
 
     @Test
+    @DisplayName("runGenerationV2: synthetic img_sagref_* уходит ТОЛЬКО в source_image_urls, не в source_image_ids")
+    void runGenerationV2_shouldSendSyntheticImageOnlyAsSourceImageUrls() throws Exception {
+        String taskId = "task-v2-sagref-ok";
+        UUID cachedUuid = UUID.fromString("b1e5277a-83b3-4b34-a568-230694a1a113");
+        String syntheticImageId = StylePresetReferenceImageId.fromCachedImageId(cachedUuid);
+        String publicUrl = "https://stickerartgallery-e13nst.amvera.io/api/images/" + cachedUuid + ".png";
+        GenerationTaskEntity task = createV2Task(taskId, 444L, syntheticImageId);
+
+        when(taskRepository.findByTaskId(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(imageStorageService.getPublicUrlIfPresent(cachedUuid)).thenReturn(Optional.of(publicUrl));
+        when(stickerProcessorGenerationClient.submitGenerate(any(), any())).thenReturn(
+                new StickerProcessorGenerationClient.SubmitResult("ws_sagref_ok", "pending", "req_sagref_ok")
+        );
+        when(stickerProcessorGenerationClient.pollResult("ws_sagref_ok")).thenReturn(
+                StickerProcessorGenerationClient.PollResult.imageReady("img".getBytes())
+        );
+
+        CachedImageEntity cached = new CachedImageEntity();
+        cached.setId(UUID.randomUUID());
+        cached.setFileName(cached.getId() + ".webp");
+        when(imageStorageService.storeBytes(anyString(), any(), anyString())).thenReturn(cached);
+        when(imageStorageService.getPublicUrl(any())).thenReturn("http://localhost/api/images/" + cached.getFileName());
+
+        stickerGenerationService.runGenerationV2(taskId);
+
+        ArgumentCaptor<GenerateStickerV2Request> requestCaptor = ArgumentCaptor.forClass(GenerateStickerV2Request.class);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<String>> urlsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(stickerProcessorGenerationClient).submitGenerate(requestCaptor.capture(), urlsCaptor.capture());
+
+        GenerateStickerV2Request submitted = requestCaptor.getValue();
+        assertTrue(submitted.getImageIds() == null || submitted.getImageIds().isEmpty(),
+                "synthetic img_sagref_* must NOT be sent in source_image_ids, but was: " + submitted.getImageIds());
+        assertEquals(List.of(publicUrl), urlsCaptor.getValue());
+    }
+
+    @Test
+    @DisplayName("runGenerationV2: обычный img_* уходит в source_image_ids, source_image_urls остаётся null")
+    void runGenerationV2_shouldSendUploadedImageOnlyAsSourceImageIds() throws Exception {
+        String taskId = "task-v2-uploaded";
+        GenerationTaskEntity task = createV2Task(taskId, 555L, "img_uploaded_xyz");
+
+        when(taskRepository.findByTaskId(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(stickerProcessorGenerationClient.submitGenerate(any(), any())).thenReturn(
+                new StickerProcessorGenerationClient.SubmitResult("ws_up", "pending", "req_up")
+        );
+        when(stickerProcessorGenerationClient.pollResult("ws_up")).thenReturn(
+                StickerProcessorGenerationClient.PollResult.imageReady("img".getBytes())
+        );
+
+        CachedImageEntity cached = new CachedImageEntity();
+        cached.setId(UUID.randomUUID());
+        cached.setFileName(cached.getId() + ".webp");
+        when(imageStorageService.storeBytes(anyString(), any(), anyString())).thenReturn(cached);
+        when(imageStorageService.getPublicUrl(any())).thenReturn("http://localhost/api/images/" + cached.getFileName());
+
+        stickerGenerationService.runGenerationV2(taskId);
+
+        ArgumentCaptor<GenerateStickerV2Request> requestCaptor = ArgumentCaptor.forClass(GenerateStickerV2Request.class);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<String>> urlsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(stickerProcessorGenerationClient).submitGenerate(requestCaptor.capture(), urlsCaptor.capture());
+
+        assertEquals(List.of("img_uploaded_xyz"), requestCaptor.getValue().getImageIds());
+        assertTrue(urlsCaptor.getValue() == null || urlsCaptor.getValue().isEmpty(),
+                "expected no source_image_urls, but got: " + urlsCaptor.getValue());
+    }
+
+    @Test
     @DisplayName("runGenerationV2: background remover failure retries once without background removal")
     void runGenerationV2_shouldRetryWithoutBackgroundWhenBackgroundRemovalFails() throws Exception {
         String taskId = "task-v2-bg-fallback";
@@ -417,17 +540,13 @@ class StickerGenerationServiceTest {
         when(imageStorageService.storeBytes(anyString(), any(), anyString())).thenReturn(cached);
         when(imageStorageService.getPublicUrl(any())).thenReturn("http://localhost/api/images/" + cached.getFileName());
 
-        ArtTransactionEntity transaction = new ArtTransactionEntity();
-        transaction.setId(123L);
-        when(artRewardService.award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong())).thenReturn(transaction);
-
         stickerGenerationService.runGenerationV2(taskId);
 
         verify(stickerProcessorGenerationClient, times(2)).submitGenerate(any(), any());
         assertEquals(List.of(true, false), submittedRemoveBackground);
         assertEquals(GenerationTaskStatus.COMPLETED, task.getStatus());
         assertEquals(null, task.getErrorMessage());
-        verify(artRewardService).award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong());
+        verify(artRewardService, never()).award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong());
 
         Map<?, ?> metadata = new com.fasterxml.jackson.databind.ObjectMapper().readValue(task.getMetadata(), Map.class);
         assertEquals(false, metadata.get("remove_background"));
@@ -471,11 +590,15 @@ class StickerGenerationServiceTest {
         UserProfileEntity profile = new UserProfileEntity();
         profile.setUserId(userId);
 
+        ArtTransactionEntity prepaid = new ArtTransactionEntity();
+        prepaid.setId(1L);
+
         GenerationTaskEntity task = new GenerationTaskEntity();
         task.setTaskId(taskId);
         task.setUserProfile(profile);
         task.setPrompt("processed prompt");
         task.setStatus(GenerationTaskStatus.PENDING);
+        task.setArtTransaction(prepaid);
         task.setMetadata(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(Map.of(
                 "model", "flux-schnell",
                 "size", "512*512",
