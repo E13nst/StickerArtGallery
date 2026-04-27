@@ -8,6 +8,7 @@ import com.example.sticker_art_gallery.model.generation.StylePresetCategoryEntit
 import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.repository.StylePresetCategoryRepository;
+import com.example.sticker_art_gallery.repository.StylePresetRepository;
 import com.example.sticker_art_gallery.repository.generation.UserPresetLikeRepository;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
 import com.example.sticker_art_gallery.service.storage.ImageStorageService;
