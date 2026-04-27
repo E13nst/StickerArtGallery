@@ -348,8 +348,8 @@ public class StylePresetPromptComposer {
         if (refDefs.isEmpty()) {
             return validateAndCopyImageIds(dedupeIds(flattenLegacyIds(flatImageIds, singleImageId)));
         }
-        Map<String, Object> fields = normalizeFields(presetFields);
-        fields = applyPresetDefaultReference(preset, refDefs, fields);
+        final Map<String, Object> fields = applyPresetDefaultReference(
+                preset, refDefs, normalizeFields(presetFields));
         boolean anySlot = refDefs.stream()
                 .anyMatch(d -> !parseReferenceIds(fields.get(d.getKey())).isEmpty());
         List<String> canonical = anySlot
