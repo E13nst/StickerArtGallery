@@ -35,10 +35,10 @@ const tableColumns = [
         render: (row) => {
             const status = row.finalStatus || '-';
             const cls = status === 'SENT'
-                ? 'bg-green-100 text-green-800'
+                ? 'bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-200'
                 : status === 'FAILED'
-                    ? 'bg-red-100 text-red-800'
-                    : 'bg-gray-100 text-gray-800';
+                    ? 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-200'
+                    : 'bg-gray-100 text-gray-800 dark:bg-slate-700 dark:text-slate-200';
             return `<span class="inline-flex px-1.5 py-0.5 rounded text-xs font-medium ${cls}">${status}</span>`;
         }
     },
@@ -50,7 +50,7 @@ const tableColumns = [
             const msg = (row.errorMessage || '').substring(0, 60);
             const code = row.errorCode || '';
             const suffix = msg.length >= 60 ? '…' : '';
-            return `<span class="text-red-600 text-xs" title="${escapeHtml(row.errorMessage || '')}">${escapeHtml(code)} ${escapeHtml(msg)}${suffix}</span>`;
+            return `<span class="text-red-600 dark:text-red-400 text-xs" title="${escapeHtml(row.errorMessage || '')}">${escapeHtml(code)} ${escapeHtml(msg)}${suffix}</span>`;
         }
     },
     {
@@ -206,7 +206,7 @@ function openDetail(messageId) {
     if (!messageId) return;
     const content = document.getElementById('detail-content');
     const modal = document.getElementById('detail-modal');
-    content.innerHTML = '<p class="text-gray-500">Загрузка…</p>';
+    content.innerHTML = '<p class="text-gray-500 dark:text-slate-400">Загрузка…</p>';
     modal.classList.remove('hidden');
 
     (async function() {
@@ -216,14 +216,14 @@ function openDetail(messageId) {
                 api.getMessageLogEvents(messageId)
             ]);
             if (!session) {
-                content.innerHTML = '<p class="text-red-600">Сессия не найдена.</p>';
+                content.innerHTML = '<p class="text-red-600 dark:text-red-400">Сессия не найдена.</p>';
                 return;
             }
             const statusCls = session.finalStatus === 'SENT'
-                ? 'bg-green-100 text-green-800'
+                ? 'bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-200'
                 : session.finalStatus === 'FAILED'
-                    ? 'bg-red-100 text-red-800'
-                    : 'bg-gray-100 text-gray-800';
+                    ? 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-200'
+                    : 'bg-gray-100 text-gray-800 dark:bg-slate-700 dark:text-slate-200';
             let html = '<div class="space-y-4">';
             html += '<div><strong>Message ID:</strong> <code class="text-xs">' + escapeHtml(session.messageId || '') + '</code></div>';
             html += '<div><strong>User ID:</strong> ' + escapeHtml(String(session.userId || '-')) + '</div>';
@@ -235,22 +235,22 @@ function openDetail(messageId) {
             html += '<div><strong>Telegram chat_id:</strong> ' + escapeHtml(String(session.telegramChatId || '-')) + '</div>';
             html += '<div><strong>Telegram message_id:</strong> ' + escapeHtml(String(session.telegramMessageId || '-')) + '</div>';
             if (session.retryOfMessageId) html += '<div><strong>Retry исходной сессии:</strong> <code class="text-xs text-orange-600">' + escapeHtml(session.retryOfMessageId) + '</code></div>';
-            if (session.errorCode) html += '<div><strong>Код ошибки:</strong> <span class="text-red-600">' + escapeHtml(session.errorCode) + '</span></div>';
-            if (session.errorMessage) html += '<div><strong>Причина ошибки:</strong> <pre class="text-xs bg-gray-100 p-2 rounded overflow-x-auto">' + escapeHtml(session.errorMessage) + '</pre></div>';
-            html += '<div><strong>Текст сообщения:</strong><pre class="text-xs bg-gray-100 p-2 rounded whitespace-pre-wrap">' + escapeHtml(session.messageText || '') + '</pre></div>';
-            if (session.requestPayload) html += '<div><strong>Payload запроса:</strong><pre class="text-xs bg-gray-100 p-2 rounded whitespace-pre-wrap">' + escapeHtml(session.requestPayload) + '</pre></div>';
+            if (session.errorCode) html += '<div><strong>Код ошибки:</strong> <span class="text-red-600 dark:text-red-400">' + escapeHtml(session.errorCode) + '</span></div>';
+            if (session.errorMessage) html += '<div><strong>Причина ошибки:</strong> <pre class="text-xs bg-gray-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 p-2 rounded overflow-x-auto">' + escapeHtml(session.errorMessage) + '</pre></div>';
+            html += '<div><strong>Текст сообщения:</strong><pre class="text-xs bg-gray-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 p-2 rounded whitespace-pre-wrap">' + escapeHtml(session.messageText || '') + '</pre></div>';
+            if (session.requestPayload) html += '<div><strong>Payload запроса:</strong><pre class="text-xs bg-gray-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 p-2 rounded whitespace-pre-wrap">' + escapeHtml(session.requestPayload) + '</pre></div>';
             html += '<div class="pt-2"><strong>Таймлайн событий:</strong></div><ul class="list-disc pl-6 space-y-1">';
             (events || []).forEach(function(ev) {
-                html += '<li><span class="text-gray-600">' + formatDate(ev.createdAt) + '</span> ' +
+                html += '<li><span class="text-gray-600 dark:text-slate-400">' + formatDate(ev.createdAt) + '</span> ' +
                     escapeHtml(ev.stage || '') + ' / ' + escapeHtml(ev.eventStatus || '') +
-                    (ev.errorMessage ? ' <span class="text-red-600">' + escapeHtml(ev.errorMessage.substring(0, 100)) + '</span>' : '') +
+                    (ev.errorMessage ? ' <span class="text-red-600 dark:text-red-400">' + escapeHtml(ev.errorMessage.substring(0, 100)) + '</span>' : '') +
                     '</li>';
             });
             html += '</ul>';
 
             if (session.finalStatus === 'FAILED') {
                 const safeId = (session.messageId || '').replace(/'/g, "\\'");
-                html += '<div class="pt-4 border-t border-gray-200 mt-4">';
+                html += '<div class="pt-4 border-t border-gray-200 dark:border-slate-700 mt-4">';
                 html += '<button id="detail-retry-btn" onclick="retryMessage(\'' + safeId + '\')" ' +
                     'class="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed ' +
                     'text-white text-sm font-medium px-4 py-2 rounded transition-colors">' +

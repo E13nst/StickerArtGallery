@@ -5,9 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Стикерсеты - Админ панель</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' };
+    </script>
+    <script src="/admin/js/theme.js"></script>
     <link rel="stylesheet" href="/admin/css/admin.css">
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased">
     <!-- Layout with Sidebar -->
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar будет вставлен динамически через sidebar.js -->
@@ -16,12 +20,12 @@
         <main class="flex-1 overflow-y-auto">
             <div class="p-4">
                 <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-2xl font-bold text-gray-800">Стикерсеты</h2>
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-slate-100">Стикерсеты</h2>
                     <input 
                         type="text" 
                         id="search-input" 
                         placeholder="Поиск по названию..." 
-                        class="px-2 py-1 text-xs border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        class="px-2 py-1 text-xs border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                 </div>
                 
@@ -29,9 +33,9 @@
                 <div id="filters-container"></div>
                 
                 <!-- Bulk Actions -->
-                <div id="bulk-actions" class="hidden bg-blue-50 p-2 rounded-lg mb-2">
+                <div id="bulk-actions" class="hidden bg-blue-50 dark:bg-blue-950/40 p-2 rounded-lg mb-2 border border-blue-100 dark:border-blue-900/50">
                     <div class="flex items-center justify-between">
-                        <span class="text-xs text-gray-700">
+                        <span class="text-xs text-slate-700 dark:text-slate-200">
                             Выбрано: <span id="selected-count">0</span>
                         </span>
                         <div class="space-x-1">
@@ -60,19 +64,19 @@
     <!-- Edit Stickerset Modal -->
     <div id="edit-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal-backdrop z-50">
         <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg shadow-xl max-w-md w-full modal-content">
+            <div class="bg-white dark:bg-slate-900 rounded-lg shadow-xl max-w-md w-full modal-content border border-slate-200 dark:border-slate-700">
                 <div class="p-6">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Редактировать стикерсет</h3>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-slate-100 mb-4">Редактировать стикерсет</h3>
                     <form id="edit-form" class="space-y-4">
                         <input type="hidden" id="edit-sticker-id">
                         
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Название</label>
-                            <input type="text" id="edit-title" readonly class="mt-1 block w-full px-3 py-2 border rounded-md bg-gray-50">
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Название</label>
+                            <input type="text" id="edit-title" readonly class="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
                         </div>
                         
                         <div class="flex justify-end space-x-2 pt-4">
-                            <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">
+                            <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-md hover:bg-slate-300 dark:hover:bg-slate-600">
                                 Закрыть
                             </button>
                         </div>

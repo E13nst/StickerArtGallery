@@ -1,4 +1,24 @@
-/* Дополнительные стили для админ-панели */
+/* Админ-панель: семантические токены и тёмная тема по умолчанию (class "dark" на <html>) */
+
+html.dark {
+    color-scheme: dark;
+}
+
+html:not(.dark) {
+    color-scheme: light;
+}
+
+:root {
+    --admin-scrollbar-track: #f1f5f9;
+    --admin-scrollbar-thumb: #cbd5e1;
+    --admin-scrollbar-thumb-hover: #94a3b8;
+}
+
+html.dark {
+    --admin-scrollbar-track: #1e293b;
+    --admin-scrollbar-thumb: #475569;
+    --admin-scrollbar-thumb-hover: #64748b;
+}
 
 /* Контейнеры графиков на странице аналитики: фиксированная высота */
 .chart-container {
@@ -30,16 +50,16 @@
 }
 
 .sidebar-nav::-webkit-scrollbar-track {
-    background: #f1f5f9;
+    background: var(--admin-scrollbar-track);
 }
 
 .sidebar-nav::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
+    background: var(--admin-scrollbar-thumb);
     border-radius: 3px;
 }
 
 .sidebar-nav::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
+    background: var(--admin-scrollbar-thumb-hover);
 }
 
 .sidebar nav a {
@@ -71,7 +91,7 @@
     animation: slideInRight 0.3s ease-out;
 }
 
-/* Стили для sidebar */
+/* Стили для sidebar (мобильное скрытие) */
 .sidebar {
     transition: transform 0.3s ease-in-out;
 }
@@ -109,12 +129,17 @@
 }
 
 .spinner {
-    border: 2px solid #f3f3f3;
-    border-top: 2px solid #3B82F6;
+    border: 2px solid #e2e8f0;
+    border-top: 2px solid #3b82f6;
     border-radius: 50%;
     width: 20px;
     height: 20px;
     animation: spin 1s linear infinite;
+}
+
+html.dark .spinner {
+    border-color: #334155;
+    border-top-color: #60a5fa;
 }
 
 @keyframes spin {
@@ -162,18 +187,26 @@
     font-size: 0.7rem;
 }
 
-/* Компактная пагинация */
+/* Компактная пагинация (DataTable) */
+.admin-table-container .bg-white.px-2,
 .admin-table-container .bg-white.px-4,
+#users-table .bg-white.px-2,
 #users-table .bg-white.px-4,
+#stickers-table .bg-white.px-2,
 #stickers-table .bg-white.px-4,
+#logs-table .bg-white.px-2,
 #logs-table .bg-white.px-4 {
     padding: 0.5rem 0.75rem;
     font-size: 0.75rem;
 }
 
+.admin-table-container .bg-white.px-2 button,
 .admin-table-container .bg-white.px-4 button,
+#users-table .bg-white.px-2 button,
 #users-table .bg-white.px-4 button,
+#stickers-table .bg-white.px-2 button,
 #stickers-table .bg-white.px-4 button,
+#logs-table .bg-white.px-2 button,
 #logs-table .bg-white.px-4 button {
     padding: 0.25rem 0.5rem;
     font-size: 0.75rem;
@@ -185,7 +218,7 @@
 }
 
 .admin-table-compact th {
-    padding: 0.5rem 0.75rem; /* немного больше для readability */
+    padding: 0.5rem 0.75rem;
     font-size: 0.7rem;
 }
 
@@ -212,4 +245,8 @@
 .action-dropdown[open] summary {
     border-color: #93c5fd;
     background-color: #eff6ff;
+}
+html.dark .action-dropdown[open] summary {
+    border-color: #3b82f6;
+    background-color: rgba(30, 58, 138, 0.35);
 }

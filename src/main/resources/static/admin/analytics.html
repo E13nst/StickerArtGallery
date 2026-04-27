@@ -5,27 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Аналитика - Админ панель</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' };
+    </script>
+    <script src="/admin/js/theme.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="/admin/css/admin.css">
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased">
     <div class="flex h-screen overflow-hidden">
         <main class="flex-1 overflow-y-auto">
             <div class="p-4">
-                <h2 class="text-2xl font-bold text-gray-800 mb-4">Аналитика</h2>
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-slate-100 mb-4">Аналитика</h2>
 
-                <div id="filters-container" class="bg-white p-4 rounded-lg shadow mb-4 flex flex-wrap items-end gap-4">
+                <div id="filters-container" class="bg-white dark:bg-slate-900 p-4 rounded-lg shadow mb-4 flex flex-wrap items-end gap-4 border border-slate-200 dark:border-slate-700">
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">От</label>
-                        <input type="datetime-local" id="filter-from" class="px-2 py-1.5 text-sm border rounded-md focus:ring-2 focus:ring-blue-500">
+                        <label class="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">От</label>
+                        <input type="datetime-local" id="filter-from" class="px-2 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">До</label>
-                        <input type="datetime-local" id="filter-to" class="px-2 py-1.5 text-sm border rounded-md focus:ring-2 focus:ring-blue-500">
+                        <label class="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">До</label>
+                        <input type="datetime-local" id="filter-to" class="px-2 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Гранулярность</label>
-                        <select id="filter-granularity" class="px-2 py-1.5 text-sm border rounded-md focus:ring-2 focus:ring-blue-500">
+                        <label class="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Гранулярность</label>
+                        <select id="filter-granularity" class="px-2 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500">
                             <option value="hour">По часам</option>
                             <option value="day" selected>По дням</option>
                             <option value="week">По неделям</option>
@@ -36,8 +40,8 @@
                     </button>
                 </div>
 
-                <div id="loading-state" class="hidden text-center py-12 text-gray-500">Загрузка...</div>
-                <div id="error-state" class="hidden text-center py-8 text-red-600 text-sm">
+                <div id="loading-state" class="hidden text-center py-12 text-slate-500 dark:text-slate-400">Загрузка...</div>
+                <div id="error-state" class="hidden text-center py-8 text-red-600 dark:text-red-400 text-sm">
                     Ошибка загрузки. <button id="error-retry-btn" class="underline">Повторить</button>
                 </div>
 
@@ -45,32 +49,32 @@
                     <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6" id="kpi-cards"></div>
 
                     <div class="space-y-4 mb-6">
-                        <div class="bg-white p-4 rounded-lg shadow">
-                            <h3 class="text-sm font-semibold text-gray-700 mb-2">Пользователи</h3>
+                        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg shadow border border-slate-200 dark:border-slate-700">
+                            <h3 class="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-2">Пользователи</h3>
                             <div class="chart-container h-[260px]">
                                 <canvas id="chart-users"></canvas>
                             </div>
                         </div>
-                        <div class="bg-white p-4 rounded-lg shadow">
-                            <h3 class="text-sm font-semibold text-gray-700 mb-2">Контент (стикерсеты, лайки, свайпы)</h3>
+                        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg shadow border border-slate-200 dark:border-slate-700">
+                            <h3 class="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-2">Контент (стикерсеты, лайки, свайпы)</h3>
                             <div class="chart-container h-[260px]">
                                 <canvas id="chart-content"></canvas>
                             </div>
                         </div>
-                        <div class="bg-white p-4 rounded-lg shadow">
-                            <h3 class="text-sm font-semibold text-gray-700 mb-2">ART (заработано / потрачено)</h3>
+                        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg shadow border border-slate-200 dark:border-slate-700">
+                            <h3 class="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-2">ART (заработано / потрачено)</h3>
                             <div class="chart-container h-[260px]">
                                 <canvas id="chart-art"></canvas>
                             </div>
                         </div>
-                        <div class="bg-white p-4 rounded-lg shadow">
-                            <h3 class="text-sm font-semibold text-gray-700 mb-2">Генерация</h3>
+                        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg shadow border border-slate-200 dark:border-slate-700">
+                            <h3 class="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-2">Генерация</h3>
                             <div class="chart-container h-[260px]">
                                 <canvas id="chart-generation"></canvas>
                             </div>
                         </div>
-                        <div class="bg-white p-4 rounded-lg shadow">
-                            <h3 class="text-sm font-semibold text-gray-700 mb-2">Реферальные события по бакетам</h3>
+                        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg shadow border border-slate-200 dark:border-slate-700">
+                            <h3 class="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-2">Реферальные события по бакетам</h3>
                             <div class="chart-container h-[260px]">
                                 <canvas id="chart-referrals"></canvas>
                             </div>
@@ -78,12 +82,12 @@
                     </div>
 
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        <div class="bg-white p-4 rounded-lg shadow">
-                            <h3 class="text-sm font-semibold text-gray-700 mb-2">Рефералы по типу события</h3>
+                        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg shadow border border-slate-200 dark:border-slate-700">
+                            <h3 class="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-2">Рефералы по типу события</h3>
                             <div id="breakdown-referral" class="text-xs"></div>
                         </div>
-                        <div class="bg-white p-4 rounded-lg shadow">
-                            <h3 class="text-sm font-semibold text-gray-700 mb-2">Генерация по этапу и статусу</h3>
+                        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg shadow border border-slate-200 dark:border-slate-700">
+                            <h3 class="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-2">Генерация по этапу и статусу</h3>
                             <div id="breakdown-generation" class="text-xs"></div>
                         </div>
                     </div>

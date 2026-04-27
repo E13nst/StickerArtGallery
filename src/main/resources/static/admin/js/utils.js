@@ -96,20 +96,20 @@ function setLocalStorage(key, value) {
 // Создать badge для статуса
 function createBadge(text, type) {
     const colors = {
-        'USER': 'bg-blue-100 text-blue-800',
-        'ADMIN': 'bg-purple-100 text-purple-800',
-        'ACTIVE': 'bg-green-100 text-green-800',
-        'BLOCKED': 'bg-red-100 text-red-800',
-        'DELETED': 'bg-gray-100 text-gray-800',
-        'PUBLIC': 'bg-green-100 text-green-800',
-        'PRIVATE': 'bg-gray-100 text-gray-800',
-        'OFFICIAL': 'bg-yellow-100 text-yellow-800',
-        'NONE': 'bg-gray-100 text-gray-800',
-        'EXPIRED': 'bg-red-100 text-red-800',
-        'CANCELLED': 'bg-gray-100 text-gray-800'
+        'USER': 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-200',
+        'ADMIN': 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-200',
+        'ACTIVE': 'bg-green-100 text-green-800 dark:bg-green-950/60 dark:text-green-200',
+        'BLOCKED': 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-200',
+        'DELETED': 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200',
+        'PUBLIC': 'bg-green-100 text-green-800 dark:bg-green-950/60 dark:text-green-200',
+        'PRIVATE': 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200',
+        'OFFICIAL': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/60 dark:text-yellow-200',
+        'NONE': 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200',
+        'EXPIRED': 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-200',
+        'CANCELLED': 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200'
     };
     
-    const colorClass = colors[text] || 'bg-gray-100 text-gray-800';
+    const colorClass = colors[text] || 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200';
     return `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${colorClass}">${text}</span>`;
 }
 
@@ -135,10 +135,10 @@ function renderActionDropdown(actions) {
     if (!actions || actions.length === 0) return '-';
     return `
         <details class="relative inline-block action-dropdown">
-            <summary class="list-none cursor-pointer px-2 py-1 text-gray-600 hover:bg-gray-100 rounded border border-gray-300 text-sm flex items-center justify-center w-8">⋮</summary>
-            <div class="action-dropdown-menu absolute right-0 mt-1 z-[100] bg-white border rounded-lg shadow-lg py-1 min-w-[140px]">
+            <summary class="list-none cursor-pointer px-2 py-1 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded border border-slate-300 dark:border-slate-600 text-sm flex items-center justify-center w-8">⋮</summary>
+            <div class="action-dropdown-menu absolute right-0 mt-1 z-[100] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 min-w-[140px]">
                 ${actions.map(a => `
-                    <button type="button" class="block w-full text-left px-3 py-2 text-xs hover:bg-gray-50 transition ${a.className || ''}" onclick="${a.onclick}; closeActionDropdown(this)">
+                    <button type="button" class="block w-full text-left px-3 py-2 text-xs text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition ${a.className || ''}" onclick="${a.onclick}; closeActionDropdown(this)">
                         ${escapeHtml(a.label)}
                     </button>
                 `).join('')}

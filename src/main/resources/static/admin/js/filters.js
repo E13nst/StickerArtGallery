@@ -16,12 +16,12 @@ class FiltersPanel {
         if (!this.container) return;
         
         this.container.innerHTML = `
-            <div class="bg-white p-2 rounded-lg shadow-md mb-4">
+            <div class="bg-white dark:bg-slate-900 p-2 rounded-lg shadow-md mb-4 border border-slate-200 dark:border-slate-700">
                 <div class="flex items-center justify-between mb-2">
-                    <h3 class="text-sm font-medium text-gray-900">Фильтры</h3>
+                    <h3 class="text-sm font-medium text-slate-900 dark:text-slate-100">Фильтры</h3>
                     <button 
                         id="reset-filters-btn"
-                        class="text-xs text-blue-600 hover:text-blue-800"
+                        class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                     >
                         Сбросить
                     </button>
@@ -67,7 +67,7 @@ class FiltersPanel {
     renderTextFilter(filter) {
         return `
             <div>
-                <label class="block text-xs font-medium text-gray-700 mb-0.5">
+                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-0.5">
                     ${filter.label}
                 </label>
                 <input 
@@ -75,7 +75,7 @@ class FiltersPanel {
                     id="filter-${filter.name}"
                     name="${filter.name}"
                     placeholder="${filter.placeholder || ''}"
-                    class="w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    class="w-full px-2 py-1 text-xs border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
             </div>
         `;
@@ -84,13 +84,13 @@ class FiltersPanel {
     renderSelectFilter(filter) {
         return `
             <div>
-                <label class="block text-xs font-medium text-gray-700 mb-0.5">
+                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-0.5">
                     ${filter.label}
                 </label>
                 <select 
                     id="filter-${filter.name}"
                     name="${filter.name}"
-                    class="w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    class="w-full px-2 py-1 text-xs border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
                     <option value="">Все</option>
                     ${filter.options.map(opt => `
@@ -104,7 +104,7 @@ class FiltersPanel {
     renderNumberFilter(filter) {
         return `
             <div>
-                <label class="block text-xs font-medium text-gray-700 mb-0.5">
+                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-0.5">
                     ${filter.label}
                 </label>
                 <input 
@@ -114,7 +114,7 @@ class FiltersPanel {
                     placeholder="${filter.placeholder || ''}"
                     min="${filter.min || ''}"
                     max="${filter.max || ''}"
-                    class="w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    class="w-full px-2 py-1 text-xs border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
             </div>
         `;
@@ -123,14 +123,14 @@ class FiltersPanel {
     renderDateFilter(filter) {
         return `
             <div>
-                <label class="block text-xs font-medium text-gray-700 mb-0.5">
+                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-0.5">
                     ${filter.label}
                 </label>
                 <input 
                     type="date"
                     id="filter-${filter.name}"
                     name="${filter.name}"
-                    class="w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    class="w-full px-2 py-1 text-xs border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
             </div>
         `;
@@ -139,14 +139,14 @@ class FiltersPanel {
     renderDatetimeFilter(filter) {
         return `
             <div>
-                <label class="block text-xs font-medium text-gray-700 mb-0.5">
+                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-0.5">
                     ${filter.label}
                 </label>
                 <input 
                     type="datetime-local"
                     id="filter-${filter.name}"
                     name="${filter.name}"
-                    class="w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    class="w-full px-2 py-1 text-xs border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
             </div>
         `;
@@ -159,9 +159,9 @@ class FiltersPanel {
                     type="checkbox"
                     id="filter-${filter.name}"
                     name="${filter.name}"
-                    class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    class="rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-blue-600 focus:ring-blue-500"
                 >
-                <label for="filter-${filter.name}" class="ml-2 text-xs text-gray-700">
+                <label for="filter-${filter.name}" class="ml-2 text-xs text-slate-700 dark:text-slate-300">
                     ${filter.label}
                 </label>
             </div>

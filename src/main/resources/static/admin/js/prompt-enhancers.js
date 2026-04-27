@@ -45,22 +45,22 @@ function renderEnhancers() {
     tbody.innerHTML = enhancers
         .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
         .map(enhancer => `
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${enhancer.id}</td>
+            <tr class="hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-slate-100">${enhancer.id}</td>
                 <td class="px-6 py-4 text-sm">
-                    <div class="font-medium text-gray-900">${escapeHtml(enhancer.name)}</div>
-                    ${enhancer.description ? `<div class="text-xs text-gray-500 mt-1">${escapeHtml(enhancer.description)}</div>` : ''}
+                    <div class="font-medium text-gray-900 dark:text-slate-100">${escapeHtml(enhancer.name)}</div>
+                    ${enhancer.description ? `<div class="text-xs text-gray-500 dark:text-slate-400 mt-1">${escapeHtml(enhancer.description)}</div>` : ''}
                 </td>
                 <td class="px-6 py-4 text-sm">
-                    <div class="font-mono text-xs bg-gray-50 p-2 rounded max-w-md overflow-x-auto">
-                        ${enhancer.systemPrompt ? escapeHtml(enhancer.systemPrompt.substring(0, 120)) + (enhancer.systemPrompt.length > 120 ? '...' : '') : '<span class="text-gray-400">—</span>'}
+                    <div class="font-mono text-xs bg-gray-50 dark:bg-slate-800 p-2 rounded max-w-md overflow-x-auto text-slate-800 dark:text-slate-200">
+                        ${enhancer.systemPrompt ? escapeHtml(enhancer.systemPrompt.substring(0, 120)) + (enhancer.systemPrompt.length > 120 ? '...' : '') : '<span class="text-gray-400 dark:text-slate-500">—</span>'}
                     </div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${enhancer.sortOrder ?? 0}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-slate-100">${enhancer.sortOrder ?? 0}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     ${enhancer.isEnabled 
-                        ? '<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Активен</span>'
-                        : '<span class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 rounded-full">Неактивен</span>'
+                        ? '<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 dark:text-green-200 dark:bg-green-950/50 rounded-full">Активен</span>'
+                        : '<span class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:text-slate-200 dark:bg-slate-700 rounded-full">Неактивен</span>'
                     }
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm">

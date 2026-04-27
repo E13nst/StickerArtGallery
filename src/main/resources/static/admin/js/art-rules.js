@@ -35,9 +35,9 @@ async function loadRules() {
 
 function renderDirectionBadge(direction) {
     if (direction === 'CREDIT') {
-        return '<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">CREDIT</span>';
+        return '<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 dark:text-green-200 dark:bg-green-950/50 rounded-full">CREDIT</span>';
     }
-    return '<span class="px-2 py-1 text-xs font-semibold text-red-800 bg-red-100 rounded-full">DEBIT</span>';
+    return '<span class="px-2 py-1 text-xs font-semibold text-red-800 bg-red-100 dark:text-red-200 dark:bg-red-950/50 rounded-full">DEBIT</span>';
 }
 
 // Отрисовка таблицы
@@ -52,25 +52,25 @@ function renderRules() {
     tbody.innerHTML = rules
         .sort((a, b) => (a.code || '').localeCompare(b.code || ''))
         .map(rule => `
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${rule.id}</td>
-                <td class="px-6 py-4 text-sm font-mono text-gray-900">
+            <tr class="hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-slate-100">${rule.id}</td>
+                <td class="px-6 py-4 text-sm font-mono text-gray-900 dark:text-slate-100">
                     ${escapeHtml(rule.code || '')}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                     ${renderDirectionBadge(rule.direction)}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${rule.amount ?? 0} ART</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-slate-100">${rule.amount ?? 0} ART</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-slate-100">
                     ${rule.description ? escapeHtml(rule.description) : '—'}
                 </td>
-                <td class="px-6 py-4 text-xs text-gray-700 max-w-xs">
+                <td class="px-6 py-4 text-xs text-gray-700 dark:text-slate-300 max-w-xs">
                     ${rule.metadataSchema ? `<span class="font-mono">${escapeHtml(rule.metadataSchema.substring(0, 80))}${rule.metadataSchema.length > 80 ? '...' : ''}</span>` : '—'}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     ${rule.isEnabled
-                        ? '<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Активно</span>'
-                        : '<span class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 rounded-full">Неактивно</span>'
+                        ? '<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 dark:text-green-200 dark:bg-green-950/50 rounded-full">Активно</span>'
+                        : '<span class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:text-slate-200 dark:bg-slate-700 rounded-full">Неактивно</span>'
                     }
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm">

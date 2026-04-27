@@ -45,22 +45,22 @@ function renderPackages() {
     tbody.innerHTML = packages
         .sort((a, b) => a.sortOrder - b.sortOrder)
         .map(pkg => `
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${pkg.id}</td>
+            <tr class="hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-slate-100">${pkg.id}</td>
                 <td class="px-6 py-4 text-sm">
-                    <div class="font-medium text-gray-900">${escapeHtml(pkg.name)}</div>
-                    ${pkg.description ? `<div class="text-xs text-gray-500">${escapeHtml(pkg.description)}</div>` : ''}
+                    <div class="font-medium text-gray-900 dark:text-slate-100">${escapeHtml(pkg.name)}</div>
+                    ${pkg.description ? `<div class="text-xs text-gray-500 dark:text-slate-400">${escapeHtml(pkg.description)}</div>` : ''}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${pkg.artAmount}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${pkg.starsPrice} ⭐</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-slate-100">${pkg.artAmount}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-slate-100">${pkg.starsPrice} ⭐</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
-                    <span class="text-gray-400">—</span>
+                    <span class="text-gray-400 dark:text-slate-500">—</span>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${pkg.sortOrder}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-slate-100">${pkg.sortOrder}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     ${pkg.isEnabled 
-                        ? '<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Активен</span>'
-                        : '<span class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 rounded-full">Неактивен</span>'
+                        ? '<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 dark:text-green-200 dark:bg-green-950/50 rounded-full">Активен</span>'
+                        : '<span class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:text-slate-200 dark:bg-slate-700 rounded-full">Неактивен</span>'
                     }
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm">

@@ -59,15 +59,15 @@ function renderCategoriesTable() {
     const tbody = document.getElementById('categories-table-body');
     if (!tbody) return;
     if (categories.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-2 text-xs text-gray-400">Нет категорий</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-2 text-xs text-gray-400 dark:text-slate-500">Нет категорий</td></tr>';
         return;
     }
     tbody.innerHTML = categories.map(c => `
-        <tr class="hover:bg-gray-50">
-            <td class="px-4 py-2 text-gray-700">${c.id}</td>
-            <td class="px-4 py-2 font-mono text-xs">${escapeHtml(c.code)}</td>
-            <td class="px-4 py-2">${escapeHtml(c.name)}</td>
-            <td class="px-4 py-2 text-gray-600">${c.sortOrder}</td>
+        <tr class="hover:bg-gray-50 dark:hover:bg-slate-800/50">
+            <td class="px-4 py-2 text-gray-700 dark:text-slate-300">${c.id}</td>
+            <td class="px-4 py-2 font-mono text-xs text-slate-800 dark:text-slate-200">${escapeHtml(c.code)}</td>
+            <td class="px-4 py-2 text-slate-800 dark:text-slate-200">${escapeHtml(c.name)}</td>
+            <td class="px-4 py-2 text-gray-600 dark:text-slate-400">${c.sortOrder}</td>
             <td class="px-4 py-2 whitespace-nowrap text-sm">
                 ${renderActionDropdown([
                     { label: 'Изменить', onclick: `editCategoryModal(${c.id})`, className: 'text-blue-600' },
@@ -129,31 +129,31 @@ function renderPresets() {
     
     tbody.innerHTML = sortPresetsForDisplay(presets)
         .map(preset => `
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${preset.id}</td>
+            <tr class="hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-slate-100">${preset.id}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     ${renderPreview(preset)}
                 </td>
-                <td class="px-6 py-4 text-sm text-gray-800">
-                    ${preset.category ? `<span class="text-sm">${escapeHtml(preset.category.name)}</span><div class="text-xs text-gray-500 font-mono">${escapeHtml(preset.category.code)}</div>` : '—'}
+                <td class="px-6 py-4 text-sm text-gray-800 dark:text-slate-200">
+                    ${preset.category ? `<span class="text-sm">${escapeHtml(preset.category.name)}</span><div class="text-xs text-gray-500 dark:text-slate-400 font-mono">${escapeHtml(preset.category.code)}</div>` : '—'}
                 </td>
                 <td class="px-6 py-4 text-sm">
-                    <div class="font-medium text-gray-900">${escapeHtml(preset.name)}</div>
-                    ${preset.description ? `<div class="text-xs text-gray-500 mt-1">${escapeHtml(preset.description)}</div>` : ''}
+                    <div class="font-medium text-gray-900 dark:text-slate-100">${escapeHtml(preset.name)}</div>
+                    ${preset.description ? `<div class="text-xs text-gray-500 dark:text-slate-400 mt-1">${escapeHtml(preset.description)}</div>` : ''}
                 </td>
                 <td class="px-6 py-4 text-sm">
-                    <div class="font-mono text-xs bg-gray-50 p-2 rounded max-w-xs overflow-x-auto">
-                        ${preset.promptSuffix ? escapeHtml(preset.promptSuffix.substring(0, 80)) + (preset.promptSuffix.length > 80 ? '...' : '') : '<span class="text-gray-400">—</span>'}
+                    <div class="font-mono text-xs bg-gray-50 dark:bg-slate-800 p-2 rounded max-w-xs overflow-x-auto text-slate-800 dark:text-slate-200">
+                        ${preset.promptSuffix ? escapeHtml(preset.promptSuffix.substring(0, 80)) + (preset.promptSuffix.length > 80 ? '...' : '') : '<span class="text-gray-400 dark:text-slate-500">—</span>'}
                     </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                     ${renderRemoveBackgroundPolicy(preset.removeBackground)}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title="Порядок внутри категории">${preset.sortOrder}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-slate-100" title="Порядок внутри категории">${preset.sortOrder}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     ${preset.isEnabled 
-                        ? '<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Активен</span>'
-                        : '<span class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 rounded-full">Неактивен</span>'
+                        ? '<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 dark:text-green-200 dark:bg-green-950/50 rounded-full">Активен</span>'
+                        : '<span class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:text-slate-200 dark:bg-slate-700 rounded-full">Неактивен</span>'
                     }
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
@@ -474,12 +474,12 @@ function toRemoveBackgroundFormValue(value) {
 
 function renderRemoveBackgroundPolicy(value) {
     if (value === true) {
-        return '<span class="px-2 py-1 text-xs font-semibold text-blue-800 bg-blue-100 rounded-full">Удалять</span>';
+        return '<span class="px-2 py-1 text-xs font-semibold text-blue-800 bg-blue-100 dark:text-blue-200 dark:bg-blue-950/50 rounded-full">Удалять</span>';
     }
     if (value === false) {
-        return '<span class="px-2 py-1 text-xs font-semibold text-orange-800 bg-orange-100 rounded-full">Не удалять</span>';
+        return '<span class="px-2 py-1 text-xs font-semibold text-orange-800 bg-orange-100 dark:text-orange-200 dark:bg-orange-950/50 rounded-full">Не удалять</span>';
     }
-    return '<span class="text-gray-400">Fallback</span>';
+    return '<span class="text-gray-400 dark:text-slate-500">Fallback</span>';
 }
 
 function getPresetPreviewUrl(preset) {
@@ -489,11 +489,11 @@ function getPresetPreviewUrl(preset) {
 function renderPreview(preset) {
     const previewUrl = getPresetPreviewUrl(preset);
     if (previewUrl) {
-        return `<img src="${escapeHtml(previewUrl)}" alt="${escapeHtml(preset.name)}" class="h-14 w-14 rounded-lg object-cover border border-gray-200">`;
+        return `<img src="${escapeHtml(previewUrl)}" alt="${escapeHtml(preset.name)}" class="h-14 w-14 rounded-lg object-cover border border-gray-200 dark:border-slate-600">`;
     }
     const letter = (preset.name || preset.code || '?').trim().charAt(0).toUpperCase();
     return `
-        <div class="h-14 w-14 rounded-lg bg-gradient-to-br from-gray-100 to-gray-300 border border-gray-200 flex items-center justify-center text-gray-500 font-semibold">
+        <div class="h-14 w-14 rounded-lg bg-gradient-to-br from-gray-100 to-gray-300 dark:from-slate-700 dark:to-slate-800 border border-gray-200 dark:border-slate-600 flex items-center justify-center text-gray-500 dark:text-slate-300 font-semibold">
             ${escapeHtml(letter)}
         </div>
     `;
@@ -552,7 +552,7 @@ function readPromptInputFromForm() {
 function renderFieldEditor(fields) {
     const list = document.getElementById('preset-fields-list');
     if (!fields || fields.length === 0) {
-        list.innerHTML = '<div class="text-xs text-gray-400 py-2">Поля не заданы. Добавь поле, если в шаблоне есть плейсхолдеры вроде <code>{{emotion}}</code>. Плейсхолдер <code>{{preset_ref}}</code> — только при загруженном референсе выше (поле создаётся автоматически).</div>';
+        list.innerHTML = '<div class="text-xs text-gray-400 dark:text-slate-500 py-2">Поля не заданы. Добавь поле, если в шаблоне есть плейсхолдеры вроде <code>{{emotion}}</code>. Плейсхолдер <code>{{preset_ref}}</code> — только при загруженном референсе выше (поле создаётся автоматически).</div>';
         updateModeBadge();
         return;
     }
@@ -578,13 +578,13 @@ function syncRefFieldOptionsVisibility(row) {
 
 function renderSystemPresetRefRow(field, index) {
     return `
-        <div class="field-row border border-indigo-100 rounded-lg p-3 bg-indigo-50/60 space-y-2" data-field-row data-field-system="true">
-            <div class="text-xs font-semibold text-indigo-800">Поле #${index + 1} — референс пресета (системное)</div>
-            <p class="text-xs text-indigo-900">
-                Ключ <code class="bg-white/80 px-1 rounded">preset_ref</code> — в шаблоне: <code class="bg-white/80 px-1 rounded">{{preset_ref}}</code>.
+        <div class="field-row border border-indigo-100 dark:border-indigo-900/50 rounded-lg p-3 bg-indigo-50/60 dark:bg-indigo-950/40 space-y-2" data-field-row data-field-system="true">
+            <div class="text-xs font-semibold text-indigo-800 dark:text-indigo-200">Поле #${index + 1} — референс пресета (системное)</div>
+            <p class="text-xs text-indigo-900 dark:text-indigo-100">
+                Ключ <code class="bg-white/80 dark:bg-slate-800/90 px-1 rounded">preset_ref</code> — в шаблоне: <code class="bg-white/80 dark:bg-slate-800/90 px-1 rounded">{{preset_ref}}</code>.
                 Настраивается только загрузкой «Референсного фото пресета» выше; в JSON пресета не сохраняется.
             </p>
-            <div class="text-xs text-gray-600">Подпись: ${escapeHtml(field.label || 'Референс пресета')}</div>
+            <div class="text-xs text-gray-600 dark:text-slate-400">Подпись: ${escapeHtml(field.label || 'Референс пресета')}</div>
         </div>
     `;
 }
@@ -594,15 +594,15 @@ function renderFieldRow(field, index) {
     const minImg = field.minImages != null ? field.minImages : 0;
     const maxImg = field.maxImages != null ? field.maxImages : 1;
     return `
-        <div class="field-row border border-gray-200 rounded-lg p-3 bg-white space-y-3" data-field-row>
+        <div class="field-row border border-gray-200 dark:border-slate-600 rounded-lg p-3 bg-white dark:bg-slate-900 space-y-3" data-field-row>
             <div class="flex items-center justify-between gap-3">
-                <div class="text-xs font-semibold text-gray-500">Поле #${index + 1}</div>
-                <button type="button" onclick="removePresetField(${index})" class="text-xs text-red-600 hover:text-red-800">Удалить</button>
+                <div class="text-xs font-semibold text-gray-500 dark:text-slate-400">Поле #${index + 1}</div>
+                <button type="button" onclick="removePresetField(${index})" class="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">Удалить</button>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <input data-field-key value="${escapeHtml(field.key || '')}" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="key: emotion">
-                <input data-field-label value="${escapeHtml(field.label || '')}" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Как поле увидит пользователь">
-                <select data-field-type class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input data-field-key value="${escapeHtml(field.key || '')}" class="px-3 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="key: emotion">
+                <input data-field-label value="${escapeHtml(field.label || '')}" class="px-3 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Как поле увидит пользователь">
+                <select data-field-type class="px-3 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="text" ${type === 'text' ? 'selected' : ''}>text</option>
                     <option value="emoji" ${type === 'emoji' ? 'selected' : ''}>emoji</option>
                     <option value="select" ${type === 'select' ? 'selected' : ''}>select</option>
@@ -611,17 +611,17 @@ function renderFieldRow(field, index) {
             </div>
             <div data-field-ref-opts class="grid grid-cols-1 md:grid-cols-2 gap-3 ${type === 'reference' ? '' : 'hidden'}">
                 <div>
-                    <label class="block text-xs text-gray-500 mb-0.5">minImages</label>
-                    <input data-field-min-images type="number" min="0" max="14" value="${minImg}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    <label class="block text-xs text-gray-500 dark:text-slate-400 mb-0.5">minImages</label>
+                    <input data-field-min-images type="number" min="0" max="14" value="${minImg}" class="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-500 mb-0.5">maxImages</label>
-                    <input data-field-max-images type="number" min="1" max="14" value="${maxImg}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    <label class="block text-xs text-gray-500 dark:text-slate-400 mb-0.5">maxImages</label>
+                    <input data-field-max-images type="number" min="1" max="14" value="${maxImg}" class="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg text-sm">
                 </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-1 gap-3">
-                <label class="flex items-center gap-2 text-sm text-gray-700">
-                    <input data-field-required type="checkbox" ${field.required ? 'checked' : ''} class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
+                    <input data-field-required type="checkbox" ${field.required ? 'checked' : ''} class="h-4 w-4 text-blue-600 border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded">
                     Обязательное
                 </label>
             </div>
@@ -690,10 +690,10 @@ function updateModeBadge() {
     badge.classList.remove('hidden');
 
     const labels = {
-        STYLE_WITH_PROMPT: { label: 'Свободный текст + суффикс стиля', cls: 'bg-blue-100 text-blue-700' },
-        STRUCTURED_FIELDS: { label: 'Шаблон с полями и текстом', cls: 'bg-green-100 text-green-700' },
-        LOCKED_TEMPLATE: { label: 'Фиксированный шаблон без ввода', cls: 'bg-yellow-100 text-yellow-700' },
-        CUSTOM_PROMPT: { label: 'Кастомный prompt', cls: 'bg-gray-100 text-gray-700' }
+        STYLE_WITH_PROMPT: { label: 'Свободный текст + суффикс стиля', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-200' },
+        STRUCTURED_FIELDS: { label: 'Шаблон с полями и текстом', cls: 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-200' },
+        LOCKED_TEMPLATE: { label: 'Фиксированный шаблон без ввода', cls: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/50 dark:text-yellow-200' },
+        CUSTOM_PROMPT: { label: 'Кастомный prompt', cls: 'bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-slate-200' }
     };
     const l = labels[mode] || labels.STYLE_WITH_PROMPT;
     text.textContent = 'Режим: ' + l.label;

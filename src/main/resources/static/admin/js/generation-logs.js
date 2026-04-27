@@ -41,7 +41,7 @@ const tableColumns = [
         label: 'Статус',
         render: (row) => {
             const s = row.finalStatus || '-';
-            const cls = s === 'COMPLETED' ? 'bg-green-100 text-green-800' : s === 'FAILED' || s === 'TIMEOUT' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800';
+            const cls = s === 'COMPLETED' ? 'bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-200' : s === 'FAILED' || s === 'TIMEOUT' ? 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-200' : 'bg-gray-100 text-gray-800 dark:bg-slate-700 dark:text-slate-200';
             return `<span class="inline-flex px-1.5 py-0.5 rounded text-xs font-medium ${cls}">${s}</span>`;
         }
     },
@@ -214,7 +214,7 @@ function openDetail(taskId) {
     if (!taskId) return;
     const content = document.getElementById('detail-content');
     const modal = document.getElementById('detail-modal');
-    content.innerHTML = '<p class="text-gray-500">Загрузка…</p>';
+    content.innerHTML = '<p class="text-gray-500 dark:text-slate-400">Загрузка…</p>';
     modal.classList.remove('hidden');
 
     (async function() {
@@ -234,13 +234,13 @@ function openDetail(taskId) {
             html += '<div><strong>Старт:</strong> ' + formatDate(session.startedAt) + '</div>';
             html += '<div><strong>Завершение:</strong> ' + formatDate(session.completedAt) + '</div>';
             if (session.errorCode) html += '<div><strong>Код ошибки:</strong> <span class="text-red-600">' + escapeHtml(session.errorCode) + '</span></div>';
-            if (session.errorMessage) html += '<div><strong>Ошибка:</strong> <pre class="text-xs bg-gray-100 p-2 rounded overflow-x-auto">' + escapeHtml(session.errorMessage) + '</pre></div>';
-            html += '<div><strong>Исходный промпт:</strong><pre class="text-xs bg-gray-100 p-2 rounded whitespace-pre-wrap">' + escapeHtml(session.rawPrompt || '') + '</pre></div>';
-            html += '<div><strong>Обработанный промпт:</strong><pre class="text-xs bg-gray-100 p-2 rounded whitespace-pre-wrap">' + escapeHtml(session.processedPrompt || '') + '</pre></div>';
-            if (session.requestParams) html += '<div><strong>Параметры запроса:</strong><pre class="text-xs bg-gray-100 p-2 rounded">' + escapeHtml(session.requestParams) + '</pre></div>';
+            if (session.errorMessage) html += '<div><strong>Ошибка:</strong> <pre class="text-xs bg-gray-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 p-2 rounded overflow-x-auto">' + escapeHtml(session.errorMessage) + '</pre></div>';
+            html += '<div><strong>Исходный промпт:</strong><pre class="text-xs bg-gray-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 p-2 rounded whitespace-pre-wrap">' + escapeHtml(session.rawPrompt || '') + '</pre></div>';
+            html += '<div><strong>Обработанный промпт:</strong><pre class="text-xs bg-gray-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 p-2 rounded whitespace-pre-wrap">' + escapeHtml(session.processedPrompt || '') + '</pre></div>';
+            if (session.requestParams) html += '<div><strong>Параметры запроса:</strong><pre class="text-xs bg-gray-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 p-2 rounded">' + escapeHtml(session.requestParams) + '</pre></div>';
             html += '<div class="pt-2"><strong>Таймлайн событий:</strong></div><ul class="list-disc pl-6 space-y-1">';
             (events || []).forEach(function(ev) {
-                html += '<li><span class="text-gray-600">' + formatDate(ev.createdAt) + '</span> ' + escapeHtml(ev.stage || '') + ' / ' + escapeHtml(ev.eventStatus || '') + (ev.errorMessage ? ' <span class="text-red-600">' + escapeHtml(ev.errorMessage.substring(0, 80)) + '</span>' : '') + '</li>';
+                html += '<li><span class="text-gray-600 dark:text-slate-400">' + formatDate(ev.createdAt) + '</span> ' + escapeHtml(ev.stage || '') + ' / ' + escapeHtml(ev.eventStatus || '') + (ev.errorMessage ? ' <span class="text-red-600 dark:text-red-400">' + escapeHtml(ev.errorMessage.substring(0, 80)) + '</span>' : '') + '</li>';
             });
             html += '</ul></div>';
             content.innerHTML = html;

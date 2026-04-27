@@ -6,6 +6,29 @@ checkAuth();
 
 let chartUsers, chartContent, chartArt, chartGeneration, chartReferrals;
 
+function getAdminChartScaleColors() {
+    const dark = typeof AdminTheme !== 'undefined' && AdminTheme.isDark();
+    return {
+        tick: dark ? '#94a3b8' : '#64748b',
+        grid: dark ? 'rgba(148, 163, 184, 0.15)' : 'rgba(100, 116, 139, 0.2)'
+    };
+}
+
+function adminChartScales() {
+    const c = getAdminChartScaleColors();
+    return {
+        x: {
+            ticks: { maxRotation: 45, font: { size: 10 }, color: c.tick },
+            grid: { color: c.grid }
+        },
+        y: {
+            beginAtZero: true,
+            ticks: { color: c.tick },
+            grid: { color: c.grid }
+        }
+    };
+}
+
 function getDefaultRange() {
     const to = new Date();
     const from = new Date(to);
@@ -68,9 +91,9 @@ function renderKpi(data) {
         { label: 'Реферальных событий', value: kpi.referralEventsTotal }
     ];
     const html = cards.map(c => `
-        <div class="bg-white rounded-lg shadow p-3 border border-gray-100">
-            <p class="text-xs text-gray-500 truncate">${escapeHtml(c.label)}</p>
-            <p class="text-lg font-semibold text-gray-800 mt-0.5">${formatNumber(c.value)}</p>
+        <div class="bg-white dark:bg-slate-900 rounded-lg shadow p-3 border border-slate-100 dark:border-slate-700">
+            <p class="text-xs text-slate-500 dark:text-slate-400 truncate">${escapeHtml(c.label)}</p>
+            <p class="text-lg font-semibold text-slate-800 dark:text-slate-100 mt-0.5">${formatNumber(c.value)}</p>
         </div>
     `).join('');
     document.getElementById('kpi-cards').innerHTML = html;
@@ -105,10 +128,7 @@ function createLineChart(canvasId, series, label, options = {}) {
             responsive: true,
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
-            scales: {
-                x: { ticks: { maxRotation: 45, font: { size: 10 } } },
-                y: { beginAtZero: true }
-            },
+            scales: adminChartScales(),
             ...options
         }
     };
@@ -161,10 +181,7 @@ function renderCharts(data) {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
-                scales: {
-                    x: { ticks: { maxRotation: 45, font: { size: 10 } } },
-                    y: { beginAtZero: true }
-                }
+                scales: adminChartScales()
             }
         });
     }
@@ -218,10 +235,7 @@ function renderCharts(data) {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
-                scales: {
-                    x: { ticks: { maxRotation: 45, font: { size: 10 } } },
-                    y: { beginAtZero: true }
-                }
+                scales: adminChartScales()
             }
         });
     }
@@ -264,10 +278,7 @@ function renderCharts(data) {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
-                scales: {
-                    x: { ticks: { maxRotation: 45, font: { size: 10 } } },
-                    y: { beginAtZero: true }
-                }
+                scales: adminChartScales()
             }
         });
     }
@@ -310,10 +321,7 @@ function renderCharts(data) {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
-                scales: {
-                    x: { ticks: { maxRotation: 45, font: { size: 10 } } },
-                    y: { beginAtZero: true }
-                }
+                scales: adminChartScales()
             }
         });
     }
@@ -329,13 +337,13 @@ function renderBreakdowns(data) {
         const refByType = b.referralByType || {};
         refEl.innerHTML = Object.keys(refByType).length
             ? Object.entries(refByType).map(([k, v]) => `<p class="py-0.5"><span class="font-medium">${escapeHtml(k)}</span>: ${formatNumber(v)}</p>`).join('')
-            : '<p class="text-gray-500">Нет данных за период</p>';
+            : '<p class="text-slate-500 dark:text-slate-400">Нет данных за период</p>';
     }
     if (genEl) {
         const genByStage = b.generationByStageStatus || {};
         genEl.innerHTML = Object.keys(genByStage).length
             ? Object.entries(genByStage).map(([k, v]) => `<p class="py-0.5"><span class="font-medium">${escapeHtml(k)}</span>: ${formatNumber(v)}</p>`).join('')
-            : '<p class="text-gray-500">Нет данных за период</p>';
+            : '<p class="text-slate-500 dark:text-slate-400">Нет данных за период</p>';
     }
 }
 
@@ -360,5 +368,11 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('btn-apply').addEventListener('click', loadDashboard);
     const retryBtn = document.getElementById('error-retry-btn');
     if (retryBtn) retryBtn.addEventListener('click', loadDashboard);
+    window.addEventListener('admin-theme-change', function() {
+        const dash = document.getElementById('dashboard-content');
+        if (dash && !dash.classList.contains('hidden')) {
+            loadDashboard();
+        }
+    });
     loadDashboard();
 });

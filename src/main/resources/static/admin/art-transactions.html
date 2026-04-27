@@ -5,26 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ART Транзакции - Админ панель</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' };
+    </script>
+    <script src="/admin/js/theme.js"></script>
     <link rel="stylesheet" href="/admin/css/admin.css">
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased">
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar будет вставлен динамически через sidebar.js -->
         
         <main class="flex-1 overflow-y-auto">
             <div class="p-4">
                 <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-2xl font-bold text-gray-800">Журнал ART транзакций</h2>
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-slate-100">Журнал ART транзакций</h2>
                     <button id="create-art-tx-btn" type="button" class="px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700">
                         + Создать ART-транзакцию
                     </button>
                 </div>
                 <div id="filters-container"></div>
                 <div id="transactions-table"></div>
-                <div id="empty-state" class="hidden text-center py-8 text-gray-500 text-sm">
+                <div id="empty-state" class="hidden text-center py-8 text-gray-500 dark:text-slate-400 text-sm">
                     Нет транзакций по заданным фильтрам.
                 </div>
-                <div id="error-state" class="hidden text-center py-8 text-red-600 text-sm">
+                <div id="error-state" class="hidden text-center py-8 text-red-600 dark:text-red-400 text-sm">
                     Ошибка загрузки. <button id="error-retry-btn" class="underline">Повторить</button>
                 </div>
             </div>
@@ -33,25 +37,25 @@
 
     <!-- Модальное окно создания ART-транзакции -->
     <div id="create-art-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+        <div class="bg-white dark:bg-slate-900 rounded-lg shadow-xl max-w-md w-full border border-slate-200 dark:border-slate-700">
             <div class="p-6">
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Создать ART-транзакцию</h3>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-slate-100 mb-4">Создать ART-транзакцию</h3>
                 <form id="create-art-form" class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">User ID (Telegram)</label>
-                        <input type="number" id="create-art-user-id" required class="mt-1 block w-full px-3 py-2 border rounded-md text-sm" placeholder="123456789">
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">User ID (Telegram)</label>
+                        <input type="number" id="create-art-user-id" required class="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100" placeholder="123456789">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Сумма (положительная — начисление, отрицательная — списание)</label>
-                        <input type="number" id="create-art-amount" required class="mt-1 block w-full px-3 py-2 border rounded-md text-sm" placeholder="50 или -20">
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Сумма (положительная — начисление, отрицательная — списание)</label>
+                        <input type="number" id="create-art-amount" required class="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100" placeholder="50 или -20">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Сообщение пользователю (опционально)</label>
-                        <textarea id="create-art-message" rows="3" class="mt-1 block w-full px-3 py-2 border rounded-md text-sm" placeholder="Текст, который бот отправит в личку"></textarea>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Сообщение пользователю (опционально)</label>
+                        <textarea id="create-art-message" rows="3" class="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100" placeholder="Текст, который бот отправит в личку"></textarea>
                     </div>
                     <div id="create-art-result" class="hidden text-sm"></div>
                     <div class="flex justify-end space-x-2 pt-2">
-                        <button type="button" id="create-art-cancel" class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 text-sm">Отмена</button>
+                        <button type="button" id="create-art-cancel" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-md hover:bg-slate-300 dark:hover:bg-slate-600 text-sm">Отмена</button>
                         <button type="submit" id="create-art-submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm">Создать</button>
                     </div>
                 </form>

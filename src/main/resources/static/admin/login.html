@@ -5,23 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Авторизация - Админ панель</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' };
+    </script>
+    <script src="/admin/js/theme.js"></script>
+    <link rel="stylesheet" href="/admin/css/admin.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased">
+    <button type="button" id="login-theme-toggle" class="fixed top-4 right-4 z-50 px-3 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm">
+        Тема
+    </button>
     <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div class="max-w-md w-full space-y-8">
             <div>
-                <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-slate-100">
                     Админ панель
                 </h2>
-                <p class="mt-2 text-center text-sm text-gray-600">
+                <p class="mt-2 text-center text-sm text-gray-600 dark:text-slate-400">
                     Sticker Art Gallery
                 </p>
             </div>
             
             <!-- Автоматическая авторизация из Telegram Mini App -->
-            <div id="auto-login-section" class="bg-white p-6 rounded-lg shadow-md">
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Авторизация через Telegram</h3>
+            <div id="auto-login-section" class="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-slate-100 mb-4">Авторизация через Telegram</h3>
                 <button
                     id="auto-login-btn"
                     type="button"
@@ -29,36 +37,36 @@
                 >
                     Войти автоматически
                 </button>
-                <p id="auto-login-status" class="mt-2 text-sm text-gray-500"></p>
+                <p id="auto-login-status" class="mt-2 text-sm text-gray-500 dark:text-slate-400"></p>
             </div>
             
             <!-- Разделитель -->
             <div class="relative">
                 <div class="absolute inset-0 flex items-center">
-                    <div class="w-full border-t border-gray-300"></div>
+                    <div class="w-full border-t border-gray-300 dark:border-slate-600"></div>
                 </div>
                 <div class="relative flex justify-center text-sm">
-                    <span class="px-2 bg-gray-100 text-gray-500">или</span>
+                    <span class="px-2 bg-gray-100 dark:bg-slate-950 text-gray-500 dark:text-slate-400">или</span>
                 </div>
             </div>
             
             <!-- Ручной ввод initData -->
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Ручной ввод initData</h3>
+            <div class="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-slate-100 mb-4">Ручной ввод initData</h3>
                 <form id="manual-login-form" class="space-y-4">
                     <div>
-                        <label for="initData" class="block text-sm font-medium text-gray-700">
+                        <label for="initData" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
                             Telegram initData
                         </label>
                         <textarea
                             id="initData"
                             name="initData"
                             rows="4"
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            class="mt-1 block w-full border border-slate-300 dark:border-slate-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                             placeholder="query_id=...&user=...&auth_date=...&hash=..."
                             required
                         ></textarea>
-                        <p class="mt-1 text-xs text-gray-500">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-slate-500">
                             Вставьте строку initData, полученную от Telegram Web App
                         </p>
                     </div>
@@ -75,6 +83,20 @@
     </div>
     
     <script src="/admin/js/utils.js"></script>
+    <script>
+        (function () {
+            var btn = document.getElementById('login-theme-toggle');
+            if (!btn || typeof AdminTheme === 'undefined') return;
+            function sync() {
+                btn.textContent = AdminTheme.isDark() ? 'Светлая тема' : 'Тёмная тема';
+            }
+            sync();
+            btn.addEventListener('click', function () {
+                AdminTheme.toggle();
+                sync();
+            });
+        })();
+    </script>
     <script src="/admin/js/api.js"></script>
     <script src="/admin/js/auth.js"></script>
     <script>
@@ -105,7 +127,7 @@
                 btnEl.disabled = false;
                 btnEl.textContent = 'Войти автоматически';
                 statusEl.textContent = 'Не удалось получить данные. Откройте страницу в Telegram Mini App или используйте ручной ввод.';
-                statusEl.classList.add('text-red-600');
+                statusEl.classList.add('text-red-600', 'dark:text-red-400');
             }
         });
         

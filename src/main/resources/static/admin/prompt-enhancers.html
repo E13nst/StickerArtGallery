@@ -5,9 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prompt Enhancers - Sticker Art Gallery Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' };
+    </script>
+    <script src="/admin/js/theme.js"></script>
     <link rel="stylesheet" href="/admin/css/admin.css">
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased">
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar будет вставлен динамически через sidebar.js -->
         
@@ -16,8 +20,8 @@
             <div class="p-4">
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <h2 class="text-2xl font-bold text-gray-800">Prompt Enhancers</h2>
-                        <p class="text-sm text-gray-600 mt-1">Управление шаблонами для улучшения промптов пользователей</p>
+                        <h2 class="text-2xl font-bold text-gray-800 dark:text-slate-100">Prompt Enhancers</h2>
+                        <p class="text-sm text-gray-600 dark:text-slate-400 mt-1">Управление шаблонами для улучшения промптов пользователей</p>
                     </div>
                     <button id="add-enhancer-btn" class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
                         + Добавить энхансер
@@ -25,26 +29,26 @@
                 </div>
 
                 <!-- Таблица энхансеров -->
-                <div class="bg-white rounded-lg shadow overflow-hidden admin-table-compact">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
+                <div class="bg-white dark:bg-slate-900 rounded-lg shadow overflow-hidden admin-table-compact border border-slate-200 dark:border-slate-700">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                        <thead class="bg-gray-50 dark:bg-slate-800/80">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Название</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">System prompt</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Порядок</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">ID</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Название</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">System prompt</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Порядок</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Статус</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Действия</th>
                             </tr>
                         </thead>
-                        <tbody id="enhancers-table-body" class="bg-white divide-y divide-gray-200">
+                        <tbody id="enhancers-table-body" class="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-slate-700">
                             <!-- Динамически заполняется через JS -->
                         </tbody>
                     </table>
-                    <div id="loading" class="text-center py-8 text-gray-500">
+                    <div id="loading" class="text-center py-8 text-gray-500 dark:text-slate-400">
                         Загрузка...
                     </div>
-                    <div id="no-data" class="hidden text-center py-8 text-gray-500">
+                    <div id="no-data" class="hidden text-center py-8 text-gray-500 dark:text-slate-400">
                         Энхансеры не найдены
                     </div>
                 </div>
@@ -54,50 +58,50 @@
 
     <!-- Модальное окно добавления/редактирования -->
     <div id="edit-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
-            <div class="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
-                <h3 id="modal-title" class="text-xl font-bold text-gray-800">Добавить энхансер</h3>
-                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+        <div class="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-700">
+            <div class="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-900 z-10">
+                <h3 id="modal-title" class="text-xl font-bold text-gray-800 dark:text-slate-100">Добавить энхансер</h3>
+                <button onclick="closeModal()" class="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 text-2xl leading-none">×</button>
             </div>
             <form id="enhancer-form" class="p-6 space-y-4">
                 <input type="hidden" id="enhancer-id">
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Код*</label>
-                    <input type="text" id="enhancer-code" required maxlength="50" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm" placeholder="translate_and_emotions">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Код*</label>
+                    <input type="text" id="enhancer-code" required maxlength="50" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm" placeholder="translate_and_emotions">
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Название*</label>
-                    <input type="text" id="enhancer-name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Например: Стандартный энхансер">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Название*</label>
+                    <input type="text" id="enhancer-name" required class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Например: Стандартный энхансер">
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Описание (опционально)</label>
-                    <textarea id="enhancer-description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Описание для чего используется этот энхансер"></textarea>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Описание (опционально)</label>
+                    <textarea id="enhancer-description" rows="2" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Описание для чего используется этот энхансер"></textarea>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">System prompt*</label>
-                    <textarea id="enhancer-system-prompt" rows="8" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm" placeholder="You are a prompt enhancement assistant..."></textarea>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">System prompt*</label>
+                    <textarea id="enhancer-system-prompt" rows="8" required class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm" placeholder="You are a prompt enhancement assistant..."></textarea>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Порядок применения*</label>
-                        <input type="number" id="enhancer-sort-order" required min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" value="0">
-                        <p class="text-xs text-gray-500 mt-1">Меньшее значение — раньше в списке</p>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Порядок применения*</label>
+                        <input type="number" id="enhancer-sort-order" required min="0" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500" value="0">
+                        <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">Меньшее значение — раньше в списке</p>
                     </div>
                     <div class="flex items-center">
                         <div>
-                            <input type="checkbox" id="enhancer-enabled" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                            <label for="enhancer-enabled" class="ml-2 text-sm text-gray-700">Активен</label>
+                            <input type="checkbox" id="enhancer-enabled" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded">
+                            <label for="enhancer-enabled" class="ml-2 text-sm text-slate-700 dark:text-slate-300">Активен</label>
                         </div>
                     </div>
                 </div>
 
-                <div class="flex space-x-3 pt-4 border-t">
-                    <button type="button" onclick="closeModal()" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
+                <div class="flex space-x-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <button type="button" onclick="closeModal()" class="flex-1 px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition">
                         Отмена
                     </button>
                     <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">

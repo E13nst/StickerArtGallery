@@ -5,9 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Пользователи - Админ панель</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' };
+    </script>
+    <script src="/admin/js/theme.js"></script>
     <link rel="stylesheet" href="/admin/css/admin.css">
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased">
     <!-- Layout with Sidebar -->
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar будет вставлен динамически через sidebar.js -->
@@ -16,13 +20,13 @@
         <main class="flex-1 overflow-y-auto">
             <div class="p-4">
                 <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-2xl font-bold text-gray-800">Пользователи</h2>
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-slate-100">Пользователи</h2>
                     <div class="flex items-center space-x-2">
                         <input 
                             type="text" 
                             id="search-input" 
                             placeholder="Поиск по User ID или username..." 
-                            class="px-2 py-1 text-xs border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            class="px-2 py-1 text-xs border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                     </div>
                 </div>
@@ -31,11 +35,11 @@
                 <div id="filters-container"></div>
                 
                 <!-- Bulk Actions -->
-                <div id="bulk-actions" class="hidden bg-blue-50 p-2 rounded-lg mb-2">
+                <div id="bulk-actions" class="hidden bg-blue-50 dark:bg-blue-950/40 p-2 rounded-lg mb-2 border border-blue-100 dark:border-blue-900/50">
                     <div class="flex items-center justify-between flex-wrap gap-2">
-                        <div class="text-xs text-gray-700">
+                        <div class="text-xs text-slate-700 dark:text-slate-200">
                             <span>Выбрано: <span id="selected-count">0</span></span>
-                            <span id="selected-ids" class="ml-2 font-mono text-gray-600"></span>
+                            <span id="selected-ids" class="ml-2 font-mono text-slate-600 dark:text-slate-400"></span>
                         </div>
                         <div class="space-x-1">
                             <button onclick="bulkBlock()" class="px-2 py-1 text-xs bg-red-600 text-white rounded-md hover:bg-red-700">
@@ -59,31 +63,31 @@
     
     <!-- Create ART Transaction Modal -->
     <div id="art-tx-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+        <div class="bg-white dark:bg-slate-900 rounded-lg shadow-xl max-w-md w-full border border-slate-200 dark:border-slate-700">
             <div class="p-6">
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Создать ART-транзакцию</h3>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-slate-100 mb-4">Создать ART-транзакцию</h3>
                 <form id="art-tx-form" class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">User ID (Telegram)</label>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">User ID (Telegram)</label>
                         <input type="number" id="art-tx-user-id" required
-                               class="mt-1 block w-full px-3 py-2 border rounded-md text-sm"
+                               class="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                                placeholder="123456789">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Сумма (положительная — начисление, отрицательная — списание)</label>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Сумма (положительная — начисление, отрицательная — списание)</label>
                         <input type="number" id="art-tx-amount" required
-                               class="mt-1 block w-full px-3 py-2 border rounded-md text-sm"
+                               class="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                                placeholder="50 или -20">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Сообщение пользователю (опционально)</label>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Сообщение пользователю (опционально)</label>
                         <textarea id="art-tx-message" rows="3"
-                                  class="mt-1 block w-full px-3 py-2 border rounded-md text-sm"
+                                  class="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                                   placeholder="Текст, который бот отправит в личку"></textarea>
                     </div>
                     <div id="art-tx-result" class="hidden text-sm"></div>
                     <div class="flex justify-end space-x-2 pt-2">
-                        <button type="button" id="art-tx-cancel" class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 text-sm">Отмена</button>
+                        <button type="button" id="art-tx-cancel" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-md hover:bg-slate-300 dark:hover:bg-slate-600 text-sm">Отмена</button>
                         <button type="submit" id="art-tx-submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm">Создать</button>
                     </div>
                 </form>
@@ -93,27 +97,27 @@
 
     <!-- Bulk ART Transaction Modal -->
     <div id="bulk-art-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+        <div class="bg-white dark:bg-slate-900 rounded-lg shadow-xl max-w-md w-full border border-slate-200 dark:border-slate-700">
             <div class="p-6">
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Массовое начисление/списание ART</h3>
-                <p class="text-xs text-gray-600 mb-1">Операция будет применена к выбранным пользователям: <span id="bulk-art-count">0</span>.</p>
-                <p id="bulk-art-ids" class="text-xs font-mono text-gray-500 mb-4 break-all"></p>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-slate-100 mb-4">Массовое начисление/списание ART</h3>
+                <p class="text-xs text-slate-600 dark:text-slate-400 mb-1">Операция будет применена к выбранным пользователям: <span id="bulk-art-count">0</span>.</p>
+                <p id="bulk-art-ids" class="text-xs font-mono text-slate-500 dark:text-slate-400 mb-4 break-all"></p>
                 <form id="bulk-art-form" class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Сумма (положительная — начисление, отрицательная — списание)</label>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Сумма (положительная — начисление, отрицательная — списание)</label>
                         <input type="number" id="bulk-art-amount" required
-                               class="mt-1 block w-full px-3 py-2 border rounded-md text-sm"
+                               class="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                                placeholder="50 или -20">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Сообщение пользователю (опционально)</label>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Сообщение пользователю (опционально)</label>
                         <textarea id="bulk-art-message" rows="3"
-                                  class="mt-1 block w-full px-3 py-2 border rounded-md text-sm"
+                                  class="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                                   placeholder="Текст, который бот отправит в личку"></textarea>
                     </div>
                     <div id="bulk-art-result" class="hidden text-sm"></div>
                     <div class="flex justify-end space-x-2 pt-2">
-                        <button type="button" id="bulk-art-cancel" class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 text-sm">Отмена</button>
+                        <button type="button" id="bulk-art-cancel" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-md hover:bg-slate-300 dark:hover:bg-slate-600 text-sm">Отмена</button>
                         <button type="submit" id="bulk-art-submit" class="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 text-sm">Выполнить</button>
                     </div>
                 </form>
@@ -124,23 +128,23 @@
     <!-- Edit User Modal -->
     <div id="edit-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal-backdrop z-50">
         <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg shadow-xl max-w-md w-full modal-content">
+            <div class="bg-white dark:bg-slate-900 rounded-lg shadow-xl max-w-md w-full modal-content border border-slate-200 dark:border-slate-700">
                 <div class="p-6">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Редактировать пользователя</h3>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-slate-100 mb-4">Редактировать пользователя</h3>
                     <form id="edit-form" class="space-y-4">
                         <input type="hidden" id="edit-user-id">
                         
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Роль</label>
-                            <select id="edit-role" class="mt-1 block w-full px-3 py-2 border rounded-md">
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Роль</label>
+                            <select id="edit-role" class="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
                                 <option value="USER">USER</option>
                                 <option value="ADMIN">ADMIN</option>
                             </select>
                         </div>
                         
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Статус подписки</label>
-                            <select id="edit-subscription" class="mt-1 block w-full px-3 py-2 border rounded-md">
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Статус подписки</label>
+                            <select id="edit-subscription" class="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
                                 <option value="NONE">NONE</option>
                                 <option value="ACTIVE">ACTIVE</option>
                                 <option value="EXPIRED">EXPIRED</option>
@@ -149,12 +153,12 @@
                         </div>
                         
                         <div class="flex items-center">
-                            <input type="checkbox" id="edit-blocked" class="rounded border-gray-300">
-                            <label for="edit-blocked" class="ml-2 text-sm text-gray-700">Заблокирован</label>
+                            <input type="checkbox" id="edit-blocked" class="rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+                            <label for="edit-blocked" class="ml-2 text-sm text-slate-700 dark:text-slate-300">Заблокирован</label>
                         </div>
                         
                         <div class="flex justify-end space-x-2 pt-4">
-                            <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">
+                            <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-md hover:bg-slate-300 dark:hover:bg-slate-600">
                                 Отмена
                             </button>
                             <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">

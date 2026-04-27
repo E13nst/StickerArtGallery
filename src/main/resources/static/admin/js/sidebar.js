@@ -55,8 +55,8 @@ const SidebarComponent = {
     renderMenuItem(item) {
         const isActive = this.isActive(item.path);
         const activeClass = isActive 
-            ? 'text-gray-700 bg-gray-100 border-l-4 border-blue-500' 
-            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-700';
+            ? 'text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-800 border-l-4 border-blue-500' 
+            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200';
         
         return `
             <a href="${item.path}" class="flex items-center px-4 py-2 ${activeClass}">
@@ -71,7 +71,7 @@ const SidebarComponent = {
         const itemsHTML = section.items.map(item => this.renderMenuItem(item)).join('');
         return `
             <div class="mb-3">
-                <p class="px-4 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">${section.title}</p>
+                <p class="px-4 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">${section.title}</p>
                 ${itemsHTML}
             </div>
         `;
@@ -82,20 +82,23 @@ const SidebarComponent = {
         const menuHTML = this.menuSections.map(section => this.renderMenuSection(section)).join('');
         
         return `
-            <aside class="sidebar flex flex-col w-64 h-screen bg-white shadow-md">
+            <aside class="sidebar flex flex-col w-64 h-screen bg-white dark:bg-slate-900 shadow-md border-r border-slate-200 dark:border-slate-800">
                 <div class="flex-shrink-0 p-4">
-                    <h1 class="text-xl font-bold text-gray-800">Admin Panel</h1>
-                    <p class="text-xs text-gray-600">Sticker Gallery</p>
+                    <h1 class="text-xl font-bold text-slate-800 dark:text-slate-100">Admin Panel</h1>
+                    <p class="text-xs text-slate-600 dark:text-slate-400">Sticker Gallery</p>
                 </div>
                 
                 <nav class="sidebar-nav flex-1 min-h-0 overflow-y-auto mt-2">
                     ${menuHTML}
                 </nav>
                 
-                <div class="sidebar-footer flex-shrink-0 p-4 border-t border-gray-200 bg-white">
+                <div class="sidebar-footer flex-shrink-0 p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                    <button type="button" id="admin-theme-toggle" class="mb-2 w-full px-3 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700">
+                        Тема
+                    </button>
                     <div>
-                        <p class="text-sm font-medium text-gray-700" id="current-user-name">Admin</p>
-                        <p class="text-xs text-gray-500" id="current-user-role">ADMIN</p>
+                        <p class="text-sm font-medium text-slate-700 dark:text-slate-200" id="current-user-name">Admin</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400" id="current-user-role">ADMIN</p>
                     </div>
                     <button onclick="logout()" class="mt-2 w-full px-3 py-1.5 text-xs text-white bg-red-600 rounded hover:bg-red-700">
                         Выйти
@@ -105,13 +108,27 @@ const SidebarComponent = {
         `;
     },
 
-    // Инициализировать sidebar
+    // Подпись кнопки темы в sidebar
+    syncThemeToggleLabel(btn) {
+        if (!btn || typeof AdminTheme === 'undefined') return;
+        btn.textContent = AdminTheme.isDark() ? 'Светлая тема' : 'Тёмная тема';
+    },
+
+    // Инициализировать sidebar: вставка в DOM и переключатель темы
     init() {
         // Найти контейнер для sidebar (первый элемент в flex-контейнере)
         const container = document.querySelector('.flex.h-screen.overflow-hidden');
         if (container) {
             // Вставить sidebar в начало контейнера
             container.insertAdjacentHTML('afterbegin', this.render());
+            const toggle = document.getElementById('admin-theme-toggle');
+            if (toggle && typeof AdminTheme !== 'undefined') {
+                this.syncThemeToggleLabel(toggle);
+                toggle.addEventListener('click', () => {
+                    AdminTheme.toggle();
+                    this.syncThemeToggleLabel(toggle);
+                });
+            }
         } else {
             console.error('Sidebar container not found');
         }

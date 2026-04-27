@@ -31,10 +31,10 @@ const tableColumns = [
         label: 'Status',
         render: (row) => {
             const s = row.status || '-';
-            let cls = 'bg-gray-100 text-gray-800';
-            if (s === 'CONFIRMED') cls = 'bg-green-100 text-green-800';
-            else if (s === 'FAILED') cls = 'bg-red-100 text-red-800';
-            else if (s === 'SENT') cls = 'bg-blue-100 text-blue-800';
+            let cls = 'bg-gray-100 text-gray-800 dark:bg-slate-700 dark:text-slate-200';
+            if (s === 'CONFIRMED') cls = 'bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-200';
+            else if (s === 'FAILED') cls = 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-200';
+            else if (s === 'SENT') cls = 'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-200';
             return `<span class="inline-flex px-1.5 py-0.5 rounded text-xs font-medium ${cls}">${s}</span>`;
         }
     },

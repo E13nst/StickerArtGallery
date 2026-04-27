@@ -31,10 +31,10 @@ const tableColumns = [
         render: (row) => {
             const s = row.status || '-';
             const cls = s === 'COMPLETED'
-                ? 'bg-green-100 text-green-800'
+                ? 'bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-200'
                 : (s === 'FAILED' || s === 'TIMEOUT')
-                    ? 'bg-red-100 text-red-800'
-                    : 'bg-gray-100 text-gray-800';
+                    ? 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-200'
+                    : 'bg-gray-100 text-gray-800 dark:bg-slate-700 dark:text-slate-200';
             return `<span class="inline-flex px-1.5 py-0.5 rounded text-xs font-medium ${cls}">${escapeHtml(s)}</span>`;
         }
     },
@@ -170,8 +170,8 @@ function openDetail(taskId) {
     details += `<div><strong>Завершена:</strong> ${formatDate(row.completedAt)}</div>`;
     if (row.imageUrl) details += `<div><strong>imageUrl:</strong> <a class="text-blue-600 underline" target="_blank" href="${escapeHtml(row.imageUrl)}">${escapeHtml(row.imageUrl)}</a></div>`;
     if (row.originalImageUrl) details += `<div><strong>originalImageUrl:</strong> <a class="text-blue-600 underline" target="_blank" href="${escapeHtml(row.originalImageUrl)}">${escapeHtml(row.originalImageUrl)}</a></div>`;
-    if (row.errorMessage) details += `<div><strong>Ошибка:</strong> <pre class="text-xs bg-gray-100 p-2 rounded whitespace-pre-wrap">${escapeHtml(row.errorMessage)}</pre></div>`;
-    details += `<div><strong>Метаданные:</strong><pre class="text-xs bg-gray-100 p-2 rounded whitespace-pre-wrap">${escapeHtml(row.metadata || '{}')}</pre></div>`;
+    if (row.errorMessage) details += `<div><strong>Ошибка:</strong> <pre class="text-xs bg-gray-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 p-2 rounded whitespace-pre-wrap">${escapeHtml(row.errorMessage)}</pre></div>`;
+    details += `<div><strong>Метаданные:</strong><pre class="text-xs bg-gray-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 p-2 rounded whitespace-pre-wrap">${escapeHtml(row.metadata || '{}')}</pre></div>`;
     details += '</div>';
     content.innerHTML = details;
     modal.classList.remove('hidden');
