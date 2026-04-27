@@ -30,8 +30,11 @@ public class CreateStylePresetRequest {
     @Schema(description = "Политика удаления фона: true/false или null для fallback по запросу", example = "true")
     private Boolean removeBackground;
 
-    @Schema(description = "Порядок сортировки", example = "1", required = false, defaultValue = "0")
+    @Schema(description = "Порядок сортировки внутри категории", example = "1", required = false, defaultValue = "0")
     private Integer sortOrder = 0;
+
+    @Schema(description = "ID категории; если не задан — используется категория general")
+    private Long categoryId;
 
     @Schema(description = "Режим UI (CUSTOM_PROMPT, STYLE_WITH_PROMPT, LOCKED_TEMPLATE, STRUCTURED_FIELDS)")
     private String uiMode;
@@ -95,6 +98,14 @@ public class CreateStylePresetRequest {
 
     public void setSortOrder(Integer sortOrder) {
         this.sortOrder = sortOrder != null ? sortOrder : 0;
+    }
+
+    public Long getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(Long categoryId) {
+        this.categoryId = categoryId;
     }
 
     public String getUiMode() {

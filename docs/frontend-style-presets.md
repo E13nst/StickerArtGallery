@@ -39,6 +39,7 @@ Pipeline такой:
 
 Основные эндпоинты:
 
+- `GET /api/generation/style-preset-categories` - список категорий (порядок: `sortOrder`, затем `name`)
 - `GET /api/generation/style-presets` - доступные пользователю пресеты
 - `GET /api/generation/style-presets/my` - персональные пресеты пользователя
 - `GET /api/generation/style-presets/global` - все глобальные пресеты, только admin
@@ -70,7 +71,8 @@ Pipeline такой:
 - `description` - короткое описание
 - `promptSuffix` - текст, который дописывается к prompt
 - `removeBackground` - политика удаления фона: `true`, `false` или `null` для fallback к значению запроса
-- `sortOrder` - порядок сортировки
+- `sortOrder` - порядок **внутри категории**
+- `categoryId` (в запросе создания/обновления) - ID категории; если не задан, подставляется категория `general`
 
 В ответе бэкенд отдаёт:
 
@@ -83,7 +85,8 @@ Pipeline такой:
 - `isGlobal`
 - `ownerId`
 - `isEnabled`
-- `sortOrder`
+- `sortOrder` (внутри категории)
+- `category` — `{ id, code, name, sortOrder }`
 - `createdAt`
 - `updatedAt`
 

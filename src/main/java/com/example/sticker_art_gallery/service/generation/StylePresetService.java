@@ -1,13 +1,16 @@
 package com.example.sticker_art_gallery.service.generation;
 
 import com.example.sticker_art_gallery.dto.generation.CreateStylePresetRequest;
+import com.example.sticker_art_gallery.dto.generation.StylePresetCategoryDto;
 import com.example.sticker_art_gallery.dto.generation.StylePresetDto;
 import com.example.sticker_art_gallery.dto.generation.StylePresetFieldDto;
+import com.example.sticker_art_gallery.model.generation.StylePresetCategoryEntity;
 import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
 import com.example.sticker_art_gallery.model.generation.StylePresetRemoveBackgroundMode;
 import com.example.sticker_art_gallery.model.generation.StylePresetUiMode;
 import com.example.sticker_art_gallery.model.storage.CachedImageEntity;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
+import com.example.sticker_art_gallery.repository.StylePresetCategoryRepository;
 import com.example.sticker_art_gallery.repository.StylePresetRepository;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
 import com.example.sticker_art_gallery.service.storage.ImageStorageService;
@@ -34,7 +37,10 @@ public class StylePresetService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StylePresetService.class);
 
+    private static final String GENERAL_CATEGORY_CODE = "general";
+
     private final StylePresetRepository presetRepository;
+    private final StylePresetCategoryRepository categoryRepository;
     private final UserProfileService userProfileService;
     private final ImageStorageService imageStorageService;
     private final ObjectMapper objectMapper;
@@ -43,11 +49,13 @@ public class StylePresetService {
     @Autowired
     public StylePresetService(
             StylePresetRepository presetRepository,
+            StylePresetCategoryRepository categoryRepository,
             UserProfileService userProfileService,
             ImageStorageService imageStorageService,
             ObjectMapper objectMapper,
             StylePresetPromptComposer presetPromptComposer) {
         this.presetRepository = presetRepository;
+        this.categoryRepository = categoryRepository;
         this.userProfileService = userProfileService;
         this.imageStorageService = imageStorageService;
         this.objectMapper = objectMapper;
@@ -96,6 +104,7 @@ public class StylePresetService {
         preset.setOwner(null);
         preset.setIsEnabled(true);
         preset.setSortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0);
+        preset.setCategory(resolveCategory(request.getCategoryId()));
         preset = presetRepository.save(preset);
         LOGGER.info("Created global preset: id={}, code={}", preset.getId(), preset.getCode());
         return toDto(preset, true);
@@ -119,13 +128,14 @@ public class StylePresetService {
         preset.setOwner(profile);
         preset.setIsEnabled(true);
         preset.setSortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0);
+        preset.setCategory(resolveCategory(request.getCategoryId()));
         preset = presetRepository.save(preset);
         return toDto(preset, true);
     }
 
     @Transactional
     public StylePresetDto updatePreset(Long presetId, Long userId, CreateStylePresetRequest request, boolean isAdmin) {
-        StylePresetEntity preset = presetRepository.findById(presetId)
+        StylePresetEntity preset = presetRepository.findByIdWithCategoryAndPreview(presetId)
                 .orElseThrow(() -> new IllegalArgumentException("Preset not found: " + presetId));
         if (!isAdmin && (Boolean.TRUE.equals(preset.getIsGlobal())
                 || preset.getOwner() == null
@@ -139,13 +149,16 @@ public class StylePresetService {
         if (request.getSortOrder() != null) {
             preset.setSortOrder(request.getSortOrder());
         }
+        if (request.getCategoryId() != null) {
+            preset.setCategory(resolveCategory(request.getCategoryId()));
+        }
         preset = presetRepository.save(preset);
         return toDto(preset, true);
     }
 
     @Transactional
     public void deletePreset(Long presetId, Long userId, boolean isAdmin) {
-        StylePresetEntity preset = presetRepository.findById(presetId)
+        StylePresetEntity preset = presetRepository.findByIdWithCategoryAndPreview(presetId)
                 .orElseThrow(() -> new IllegalArgumentException("Preset not found: " + presetId));
         if (!isAdmin && (Boolean.TRUE.equals(preset.getIsGlobal())
                 || preset.getOwner() == null
@@ -160,7 +173,7 @@ public class StylePresetService {
 
     @Transactional
     public StylePresetDto togglePresetEnabled(Long presetId, boolean enabled) {
-        StylePresetEntity preset = presetRepository.findById(presetId)
+        StylePresetEntity preset = presetRepository.findByIdWithCategoryAndPreview(presetId)
                 .orElseThrow(() -> new IllegalArgumentException("Preset not found: " + presetId));
         preset.setIsEnabled(enabled);
         preset = presetRepository.save(preset);
@@ -169,7 +182,7 @@ public class StylePresetService {
 
     @Transactional
     public StylePresetDto uploadPreviewForGlobal(Long presetId, MultipartFile file) {
-        StylePresetEntity preset = presetRepository.findById(presetId)
+        StylePresetEntity preset = presetRepository.findByIdWithCategoryAndPreview(presetId)
                 .orElseThrow(() -> new IllegalArgumentException("Preset not found: " + presetId));
         if (!Boolean.TRUE.equals(preset.getIsGlobal())) {
             throw new IllegalArgumentException("Only global presets use admin preview upload in this version");
@@ -214,6 +227,7 @@ public class StylePresetService {
         d.setOwnerId(entity.getOwner() != null ? entity.getOwner().getUserId() : null);
         d.setIsEnabled(entity.getIsEnabled());
         d.setSortOrder(entity.getSortOrder());
+        d.setCategory(categoryToDto(entity.getCategory()));
         d.setCreatedAt(entity.getCreatedAt());
         d.setUpdatedAt(entity.getUpdatedAt());
         d.setUiMode(entity.getUiMode() != null ? entity.getUiMode().name() : StylePresetUiMode.STYLE_WITH_PROMPT.name());
@@ -238,6 +252,28 @@ public class StylePresetService {
             }
         }
         return d;
+    }
+
+    private StylePresetCategoryDto categoryToDto(StylePresetCategoryEntity category) {
+        if (category == null) {
+            return null;
+        }
+        StylePresetCategoryDto dto = new StylePresetCategoryDto();
+        dto.setId(category.getId());
+        dto.setCode(category.getCode());
+        dto.setName(category.getName());
+        dto.setSortOrder(category.getSortOrder());
+        return dto;
+    }
+
+    private StylePresetCategoryEntity resolveCategory(Long categoryId) {
+        if (categoryId == null) {
+            return categoryRepository.findByCode(GENERAL_CATEGORY_CODE)
+                    .orElseThrow(() -> new IllegalStateException("Default category '" + GENERAL_CATEGORY_CODE
+                            + "' not found in database"));
+        }
+        return categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Category not found: " + categoryId));
     }
 
     private List<StylePresetFieldDto> parseFieldDtos(StylePresetEntity entity) {

@@ -42,8 +42,10 @@ public class StylePresetDto {
     private Long ownerId;
     @Schema(description = "Активен ли пресет")
     private Boolean isEnabled;
-    @Schema(description = "Порядок сортировки")
+    @Schema(description = "Порядок сортировки внутри категории")
     private Integer sortOrder;
+    @Schema(description = "Категория стиля")
+    private StylePresetCategoryDto category;
     @Schema(description = "Время создания")
     private OffsetDateTime createdAt;
     @Schema(description = "Время обновления")
@@ -85,6 +87,8 @@ public class StylePresetDto {
     public void setIsEnabled(Boolean isEnabled) { this.isEnabled = isEnabled; }
     public Integer getSortOrder() { return sortOrder; }
     public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+    public StylePresetCategoryDto getCategory() { return category; }
+    public void setCategory(StylePresetCategoryDto category) { this.category = category; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }

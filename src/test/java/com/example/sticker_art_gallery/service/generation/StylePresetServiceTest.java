@@ -4,8 +4,10 @@ import com.example.sticker_art_gallery.dto.generation.CreateStylePresetRequest;
 import com.example.sticker_art_gallery.dto.generation.StylePresetFieldDto;
 import com.example.sticker_art_gallery.dto.generation.StylePresetPromptInputDto;
 import com.example.sticker_art_gallery.dto.generation.StylePresetReferenceInputDto;
+import com.example.sticker_art_gallery.model.generation.StylePresetCategoryEntity;
 import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
+import com.example.sticker_art_gallery.repository.StylePresetCategoryRepository;
 import com.example.sticker_art_gallery.repository.StylePresetRepository;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
 import com.example.sticker_art_gallery.service.storage.ImageStorageService;
@@ -35,6 +37,9 @@ class StylePresetServiceTest {
     private StylePresetRepository presetRepository;
 
     @Mock
+    private StylePresetCategoryRepository categoryRepository;
+
+    @Mock
     private UserProfileService userProfileService;
 
     @Mock
@@ -53,7 +58,7 @@ class StylePresetServiceTest {
     @DisplayName("Запрещает не-админу обновлять глобальный пресет")
     void updatePreset_ShouldRejectGlobalPresetForNonAdmin() {
         StylePresetEntity preset = globalPreset(10L);
-        when(presetRepository.findById(10L)).thenReturn(Optional.of(preset));
+        when(presetRepository.findByIdWithCategoryAndPreview(10L)).thenReturn(Optional.of(preset));
 
         IllegalArgumentException error = assertThrows(
                 IllegalArgumentException.class,
@@ -68,7 +73,7 @@ class StylePresetServiceTest {
     @DisplayName("Запрещает не-админу удалять глобальный пресет")
     void deletePreset_ShouldRejectGlobalPresetForNonAdmin() {
         StylePresetEntity preset = globalPreset(11L);
-        when(presetRepository.findById(11L)).thenReturn(Optional.of(preset));
+        when(presetRepository.findByIdWithCategoryAndPreview(11L)).thenReturn(Optional.of(preset));
 
         IllegalArgumentException error = assertThrows(
                 IllegalArgumentException.class,
@@ -83,7 +88,7 @@ class StylePresetServiceTest {
     @DisplayName("Разрешает админу удалять глобальный пресет")
     void deletePreset_ShouldAllowGlobalPresetForAdmin() {
         StylePresetEntity preset = globalPreset(12L);
-        when(presetRepository.findById(12L)).thenReturn(Optional.of(preset));
+        when(presetRepository.findByIdWithCategoryAndPreview(12L)).thenReturn(Optional.of(preset));
 
         stylePresetService.deletePreset(12L, 42L, true);
 
@@ -99,6 +104,7 @@ class StylePresetServiceTest {
                 presetRepository, userProfileService, imageStorageService, realMapper, realComposer);
 
         when(presetRepository.findByCodeAndIsGlobalTrue("ref_cap")).thenReturn(Optional.empty());
+        when(categoryRepository.findByCode("general")).thenReturn(Optional.of(generalCategory()));
 
         CreateStylePresetRequest req = new CreateStylePresetRequest();
         req.setCode("ref_cap");
@@ -127,6 +133,7 @@ class StylePresetServiceTest {
 
         UserProfileEntity owner = new UserProfileEntity();
         owner.setUserId(42L);
+        when(categoryRepository.findByCode("general")).thenReturn(Optional.of(generalCategory()));
 
         when(userProfileService.getOrCreateDefaultForUpdate(42L)).thenReturn(owner);
         when(presetRepository.findByCodeAndOwner_UserId("anime", 42L)).thenReturn(Optional.empty());
@@ -158,10 +165,20 @@ class StylePresetServiceTest {
         preset.setIsGlobal(true);
         preset.setIsEnabled(true);
         preset.setSortOrder(1);
+        preset.setCategory(generalCategory());
 
         UserProfileEntity owner = new UserProfileEntity();
         owner.setUserId(999L);
         preset.setOwner(owner);
         return preset;
+    }
+
+    private static StylePresetCategoryEntity generalCategory() {
+        StylePresetCategoryEntity c = new StylePresetCategoryEntity();
+        c.setId(1L);
+        c.setCode("general");
+        c.setName("Общее");
+        c.setSortOrder(0);
+        return c;
     }
 }

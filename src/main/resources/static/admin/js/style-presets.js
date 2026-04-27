@@ -4,7 +4,9 @@
 checkAuth();
 
 let presets = [];
+let categories = [];
 let editingPresetId = null;
+let editingCategoryId = null;
 
 const DEFAULT_PROMPT_INPUT = {
     enabled: true,
@@ -28,12 +30,71 @@ const DEFAULT_FIELDS = [
     }
 ];
 
+async function loadCategories() {
+    try {
+        const list = await api.getStylePresetCategories();
+        categories = Array.isArray(list) ? list : [];
+        categories.sort((a, b) => (a.sortOrder - b.sortOrder) || (a.name || '').localeCompare(b.name || ''));
+    } catch (e) {
+        console.error('Failed to load categories', e);
+        categories = [];
+    }
+    renderCategoriesTable();
+    fillCategorySelect();
+}
+
+function fillCategorySelect() {
+    const sel = document.getElementById('preset-category-id');
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = categories.map(c => `<option value="${c.id}">${escapeHtml(c.name)} (${escapeHtml(c.code)})</option>`).join('');
+    if (current && categories.some(c => String(c.id) === String(current))) {
+        sel.value = current;
+    }
+}
+
+function renderCategoriesTable() {
+    const tbody = document.getElementById('categories-table-body');
+    if (!tbody) return;
+    if (categories.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-2 text-xs text-gray-400">Нет категорий</td></tr>';
+        return;
+    }
+    tbody.innerHTML = categories.map(c => `
+        <tr class="hover:bg-gray-50">
+            <td class="px-4 py-2 text-gray-700">${c.id}</td>
+            <td class="px-4 py-2 font-mono text-xs">${escapeHtml(c.code)}</td>
+            <td class="px-4 py-2">${escapeHtml(c.name)}</td>
+            <td class="px-4 py-2 text-gray-600">${c.sortOrder}</td>
+            <td class="px-4 py-2 whitespace-nowrap text-sm">
+                ${renderActionDropdown([
+                    { label: 'Изменить', onclick: `editCategoryModal(${c.id})`, className: 'text-blue-600' },
+                    { label: 'Удалить', onclick: `deleteCategory(${c.id})`, className: 'text-red-600' }
+                ])}
+            </td>
+        </tr>
+    `).join('');
+}
+
+function sortPresetsForDisplay(list) {
+    return [...list].sort((a, b) => {
+        const ca = a.category ? a.category.sortOrder : 9999;
+        const cb = b.category ? b.category.sortOrder : 9999;
+        if (ca !== cb) return ca - cb;
+        const so = (a.sortOrder || 0) - (b.sortOrder || 0);
+        if (so !== 0) return so;
+        return (a.name || '').localeCompare(b.name || '');
+    });
+}
+
 // Загрузка пресетов
 async function loadPresets() {
     try {
         document.getElementById('loading').classList.remove('hidden');
         document.getElementById('no-data').classList.add('hidden');
-        
+
+        await loadCategories();
+
         presets = await api.getGlobalStylePresets();
         
         // Валидация данных
@@ -64,13 +125,15 @@ function renderPresets() {
         return;
     }
     
-    tbody.innerHTML = presets
-        .sort((a, b) => a.sortOrder - b.sortOrder)
+    tbody.innerHTML = sortPresetsForDisplay(presets)
         .map(preset => `
             <tr class="hover:bg-gray-50">
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${preset.id}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     ${renderPreview(preset)}
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-800">
+                    ${preset.category ? `<span class="text-sm">${escapeHtml(preset.category.name)}</span><div class="text-xs text-gray-500 font-mono">${escapeHtml(preset.category.code)}</div>` : '—'}
                 </td>
                 <td class="px-6 py-4 text-sm">
                     <div class="font-medium text-gray-900">${escapeHtml(preset.name)}</div>
@@ -84,7 +147,7 @@ function renderPresets() {
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                     ${renderRemoveBackgroundPolicy(preset.removeBackground)}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${preset.sortOrder}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title="Порядок внутри категории">${preset.sortOrder}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     ${preset.isEnabled 
                         ? '<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Активен</span>'
@@ -108,6 +171,11 @@ function openAddModal() {
     document.getElementById('modal-title').textContent = 'Добавить пресет';
     document.getElementById('preset-form').reset();
     document.getElementById('preset-id').value = '';
+    fillCategorySelect();
+    const general = categories.find(c => c.code === 'general');
+    if (general) {
+        document.getElementById('preset-category-id').value = String(general.id);
+    }
     document.getElementById('preset-remove-background').value = '';
     document.getElementById('preset-enabled').checked = true;
     applyPromptInputToForm(DEFAULT_PROMPT_INPUT);
@@ -130,6 +198,10 @@ function editPreset(id) {
     document.getElementById('preset-style-prompt').value = preset.promptSuffix;
     document.getElementById('preset-remove-background').value = toRemoveBackgroundFormValue(preset.removeBackground);
     document.getElementById('preset-display-order').value = preset.sortOrder;
+    fillCategorySelect();
+    if (preset.category && preset.category.id) {
+        document.getElementById('preset-category-id').value = String(preset.category.id);
+    }
     document.getElementById('preset-enabled').checked = preset.isEnabled;
     applyPromptInputToForm(preset.promptInput || DEFAULT_PROMPT_INPUT);
     renderFieldEditor(Array.isArray(preset.fields) ? preset.fields : []);
@@ -169,6 +241,13 @@ async function savePreset(event) {
         return;
     }
     
+    const categoryIdRaw = document.getElementById('preset-category-id').value;
+    const categoryId = categoryIdRaw ? parseInt(categoryIdRaw, 10) : null;
+    if (!categoryId || Number.isNaN(categoryId)) {
+        showNotification('Выбери категорию', 'error');
+        return;
+    }
+
     const data = {
         code: editingPresetId ? presets.find(p => p.id === editingPresetId)?.code : 'preset_' + Date.now(),
         name: document.getElementById('preset-name').value.trim(),
@@ -176,6 +255,7 @@ async function savePreset(event) {
         promptSuffix,
         removeBackground: parseRemoveBackgroundValue(document.getElementById('preset-remove-background').value),
         sortOrder: parseInt(document.getElementById('preset-display-order').value),
+        categoryId,
         uiMode: document.getElementById('preset-ui-mode').value,
         promptInput,
         fields
@@ -267,6 +347,81 @@ document.getElementById('add-field-btn').addEventListener('click', () => {
         required: false
     });
     renderFieldEditor(fields);
+});
+
+function openCategoryModal() {
+    editingCategoryId = null;
+    document.getElementById('category-modal-title').textContent = 'Новая категория';
+    document.getElementById('category-form').reset();
+    document.getElementById('category-edit-id').value = '';
+    document.getElementById('category-code').removeAttribute('readonly');
+    document.getElementById('category-modal').classList.remove('hidden');
+}
+
+function closeCategoryModal() {
+    document.getElementById('category-modal').classList.add('hidden');
+    editingCategoryId = null;
+}
+
+function editCategoryModal(id) {
+    const c = categories.find(x => x.id === id);
+    if (!c) return;
+    editingCategoryId = id;
+    document.getElementById('category-modal-title').textContent = 'Редактировать категорию';
+    document.getElementById('category-edit-id').value = String(id);
+    document.getElementById('category-code').value = c.code;
+    document.getElementById('category-code').setAttribute('readonly', 'readonly');
+    document.getElementById('category-name').value = c.name;
+    document.getElementById('category-sort-order').value = c.sortOrder != null ? c.sortOrder : 0;
+    document.getElementById('category-modal').classList.remove('hidden');
+}
+
+async function deleteCategory(id) {
+    const c = categories.find(x => x.id === id);
+    if (!c) return;
+    if (c.code === 'general') {
+        showNotification('Категорию general удалить нельзя', 'error');
+        return;
+    }
+    if (!confirmAction(`Удалить категорию «${c.name}»? Пресеты будут перенесены в «Общее».`)) {
+        return;
+    }
+    try {
+        await api.deleteStylePresetCategory(id);
+        showNotification('Категория удалена', 'success');
+        await loadPresets();
+    } catch (e) {
+        console.error(e);
+        showNotification(e.message || 'Ошибка удаления категории', 'error');
+    }
+}
+
+document.getElementById('add-category-btn').addEventListener('click', openCategoryModal);
+
+document.getElementById('category-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const editId = document.getElementById('category-edit-id').value;
+    const name = document.getElementById('category-name').value.trim();
+    const sortOrder = parseInt(document.getElementById('category-sort-order').value, 10) || 0;
+    try {
+        if (editId) {
+            await api.updateStylePresetCategory(parseInt(editId, 10), { name, sortOrder });
+            showNotification('Категория обновлена', 'success');
+        } else {
+            const code = document.getElementById('category-code').value.trim();
+            if (!code) {
+                showNotification('Укажи код категории', 'error');
+                return;
+            }
+            await api.createStylePresetCategory({ code, name, sortOrder });
+            showNotification('Категория создана', 'success');
+        }
+        closeCategoryModal();
+        await loadPresets();
+    } catch (err) {
+        console.error(err);
+        showNotification(err.message || 'Ошибка сохранения категории', 'error');
+    }
 });
 
 // Загрузка при старте
@@ -398,7 +553,6 @@ function renderFieldRow(field, index) {
     const type = field.type || 'text';
     const minImg = field.minImages != null ? field.minImages : 0;
     const maxImg = field.maxImages != null ? field.maxImages : 1;
-    const ptmpl = field.promptTemplate != null ? field.promptTemplate : '';
     return `
         <div class="field-row border border-gray-200 rounded-lg p-3 bg-white space-y-3" data-field-row>
             <div class="flex items-center justify-between gap-3">
@@ -415,7 +569,7 @@ function renderFieldRow(field, index) {
                     <option value="reference" ${type === 'reference' ? 'selected' : ''}>reference</option>
                 </select>
             </div>
-            <div data-field-ref-opts class="grid grid-cols-1 md:grid-cols-3 gap-3 ${type === 'reference' ? '' : 'hidden'}">
+            <div data-field-ref-opts class="grid grid-cols-1 md:grid-cols-2 gap-3 ${type === 'reference' ? '' : 'hidden'}">
                 <div>
                     <label class="block text-xs text-gray-500 mb-0.5">minImages</label>
                     <input data-field-min-images type="number" min="0" max="14" value="${minImg}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
@@ -423,10 +577,6 @@ function renderFieldRow(field, index) {
                 <div>
                     <label class="block text-xs text-gray-500 mb-0.5">maxImages</label>
                     <input data-field-max-images type="number" min="1" max="14" value="${maxImg}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs text-gray-500 mb-0.5">promptTemplate</label>
-                    <input data-field-prompt-template type="text" value="${escapeHtml(ptmpl)}" placeholder="Image {index}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono">
                 </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-1 gap-3">
@@ -453,15 +603,10 @@ function readFieldsFromForm() {
             if (type === 'reference') {
                 const minEl = row.querySelector('[data-field-min-images]');
                 const maxEl = row.querySelector('[data-field-max-images]');
-                const tplEl = row.querySelector('[data-field-prompt-template]');
                 const minV = minEl ? parseInt(minEl.value, 10) : 0;
                 const maxV = maxEl ? parseInt(maxEl.value, 10) : 1;
                 base.minImages = Number.isFinite(minV) ? minV : 0;
                 base.maxImages = Number.isFinite(maxV) ? maxV : 1;
-                const tpl = tplEl && tplEl.value.trim() ? tplEl.value.trim() : null;
-                if (tpl) {
-                    base.promptTemplate = tpl;
-                }
             }
             return base;
         })

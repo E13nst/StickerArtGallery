@@ -68,6 +68,10 @@ public class StylePresetEntity {
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder = 0;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id", nullable = false)
+    private StylePresetCategoryEntity category;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
@@ -205,6 +209,14 @@ public class StylePresetEntity {
 
     public void setSortOrder(Integer sortOrder) {
         this.sortOrder = sortOrder;
+    }
+
+    public StylePresetCategoryEntity getCategory() {
+        return category;
+    }
+
+    public void setCategory(StylePresetCategoryEntity category) {
+        this.category = category;
     }
 
     public OffsetDateTime getCreatedAt() {

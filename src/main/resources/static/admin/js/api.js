@@ -316,6 +316,32 @@ class AdminApiClient {
         });
     }
 
+    // ============ Style preset categories (admin + miniapp) ============
+
+    async getStylePresetCategories() {
+        return this.request('/generation/style-preset-categories');
+    }
+
+    async createStylePresetCategory(data) {
+        return this.request('/generation/style-preset-categories', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    async updateStylePresetCategory(id, data) {
+        return this.request(`/generation/style-preset-categories/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+
+    async deleteStylePresetCategory(id) {
+        return this.request(`/generation/style-preset-categories/${id}`, {
+            method: 'DELETE'
+        });
+    }
+
     // ============ Global Style Presets API ============
     
     async getGlobalStylePresets() {
