@@ -963,15 +963,17 @@ public class StickerGenerationService {
             return null;
         }
         List<String> urls = new ArrayList<>(imageIds.size());
-        boolean any = false;
+        boolean hasSyntheticIds = false;
+        List<String> missingSyntheticIds = new ArrayList<>();
         for (String imageId : imageIds) {
             Optional<UUID> cached = StylePresetReferenceImageId.parseCachedImageId(imageId);
             if (cached.isPresent()) {
+                hasSyntheticIds = true;
                 Optional<String> url = imageStorageService.getPublicUrlIfPresent(cached.get());
                 if (url.isPresent()) {
                     urls.add(url.get());
-                    any = true;
                 } else {
+                    missingSyntheticIds.add(imageId);
                     urls.add("");
                 }
             } else {
@@ -979,7 +981,11 @@ public class StickerGenerationService {
                 urls.add("");
             }
         }
-        return any ? urls : null;
+        if (!missingSyntheticIds.isEmpty()) {
+            throw new IllegalStateException("Missing source image URL(s) for synthetic id(s): "
+                    + String.join(", ", missingSyntheticIds));
+        }
+        return hasSyntheticIds ? urls : null;
     }
 
     private List<String> asStringList(Object value) {

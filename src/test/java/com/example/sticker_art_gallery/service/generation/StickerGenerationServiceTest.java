@@ -35,6 +35,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -359,6 +360,26 @@ class StickerGenerationServiceTest {
                 "STICKER_PROCESSOR: Content flagged as potentially sensitive. Please try different prompts or images.",
                 task.getErrorMessage()
         );
+        verify(artRewardService, never()).award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("runGenerationV2: synthetic img_sagref_* без URL не отправляется в sticker-processor")
+    void runGenerationV2_shouldFailBeforeSubmitWhenSyntheticImageUrlMissing() throws Exception {
+        String taskId = "task-v2-sagref-missing";
+        UUID missingId = UUID.fromString("f47ac10b-58cc-4372-a567-0e02b2c3d479");
+        String syntheticImageId = StylePresetReferenceImageId.fromCachedImageId(missingId);
+        GenerationTaskEntity task = createV2Task(taskId, 333L, syntheticImageId);
+
+        when(taskRepository.findByTaskId(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(imageStorageService.getPublicUrlIfPresent(missingId)).thenReturn(Optional.empty());
+
+        stickerGenerationService.runGenerationV2(taskId);
+
+        assertEquals(GenerationTaskStatus.FAILED, task.getStatus());
+        assertTrue(task.getErrorMessage().contains("Missing source image URL(s) for synthetic id(s): " + syntheticImageId));
+        verify(stickerProcessorGenerationClient, never()).submitGenerate(any(), any());
         verify(artRewardService, never()).award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong());
     }
 
