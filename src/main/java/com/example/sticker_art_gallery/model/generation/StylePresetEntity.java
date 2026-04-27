@@ -3,7 +3,6 @@ package com.example.sticker_art_gallery.model.generation;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.model.storage.CachedImageEntity;
 import jakarta.persistence.*;
-
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -75,6 +74,10 @@ public class StylePresetEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
     private StylePresetCategoryEntity category;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "moderation_status", nullable = false, length = 50)
+    private PresetModerationStatus moderationStatus = PresetModerationStatus.DRAFT;
 
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
@@ -245,5 +248,13 @@ public class StylePresetEntity {
 
     public void setUpdatedAt(OffsetDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public PresetModerationStatus getModerationStatus() {
+        return moderationStatus;
+    }
+
+    public void setModerationStatus(PresetModerationStatus moderationStatus) {
+        this.moderationStatus = moderationStatus;
     }
 }

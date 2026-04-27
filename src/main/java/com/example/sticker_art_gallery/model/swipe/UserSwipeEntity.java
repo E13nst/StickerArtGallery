@@ -2,6 +2,8 @@ package com.example.sticker_art_gallery.model.swipe;
 
 import com.example.sticker_art_gallery.model.Dislike;
 import com.example.sticker_art_gallery.model.Like;
+import com.example.sticker_art_gallery.model.meme.MemeCandidateDislikeEntity;
+import com.example.sticker_art_gallery.model.meme.MemeCandidateLikeEntity;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 
@@ -35,6 +37,14 @@ public class UserSwipeEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dislike_id")
     private Dislike dislike;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "meme_candidate_like_id")
+    private MemeCandidateLikeEntity memeCandidateLike;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "meme_candidate_dislike_id")
+    private MemeCandidateDislikeEntity memeCandidateDislike;
 
     @Column(name = "swipe_date", nullable = false)
     private LocalDate swipeDate;
@@ -100,6 +110,16 @@ public class UserSwipeEntity {
 
     public void setDislike(Dislike dislike) {
         this.dislike = dislike;
+    }
+
+    public MemeCandidateLikeEntity getMemeCandidateLike() { return memeCandidateLike; }
+    public void setMemeCandidateLike(MemeCandidateLikeEntity memeCandidateLike) {
+        this.memeCandidateLike = memeCandidateLike;
+    }
+
+    public MemeCandidateDislikeEntity getMemeCandidateDislike() { return memeCandidateDislike; }
+    public void setMemeCandidateDislike(MemeCandidateDislikeEntity memeCandidateDislike) {
+        this.memeCandidateDislike = memeCandidateDislike;
     }
 
     public LocalDate getSwipeDate() {

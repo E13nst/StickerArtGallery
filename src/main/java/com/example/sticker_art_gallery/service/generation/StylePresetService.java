@@ -264,6 +264,56 @@ public class StylePresetService {
         return toDto(preset, true);
     }
 
+    /**
+     * Получить пресет по ID.
+     * userId может быть null (для admin-вызовов).
+     */
+    @Transactional(readOnly = true)
+    public StylePresetDto getPresetById(Long presetId, Long userId) {
+        StylePresetEntity preset = presetRepository.findByIdWithCategoryAndPreview(presetId)
+                .orElseThrow(() -> new IllegalArgumentException("Preset not found: " + presetId));
+        return toDto(preset, true);
+    }
+
+    /**
+     * Загрузить/заменить reference-изображение для пользовательского пресета.
+     * Доступно только владельцу (preset.ownerId == userId).
+     * Аналог uploadReferenceForGlobal для глобальных пресетов.
+     */
+    @Transactional
+    public StylePresetDto uploadReferenceForOwner(Long presetId, Long userId,
+                                                   org.springframework.web.multipart.MultipartFile file) {
+        StylePresetEntity preset = presetRepository.findByIdWithCategoryAndPreview(presetId)
+                .orElseThrow(() -> new IllegalArgumentException("Preset not found: " + presetId));
+
+        if (preset.getOwner() == null || !userId.equals(preset.getOwner().getUserId())) {
+            throw new IllegalArgumentException("Пресет не принадлежит пользователю");
+        }
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Файл не может быть пустым");
+        }
+        String ct = file.getContentType() != null ? file.getContentType() : "";
+        if (!ct.equals("image/png") && !ct.equals("image/webp") && !ct.equals("image/jpeg")) {
+            throw new IllegalArgumentException("Поддерживаемые форматы: image/png, image/webp, image/jpeg");
+        }
+        if (file.getSize() > 3 * 1024 * 1024) {
+            throw new IllegalArgumentException("Файл слишком большой (максимум 3MB)");
+        }
+        try {
+            byte[] bytes = file.getBytes();
+            if (preset.getReferenceImage() != null) {
+                imageStorageService.deleteById(preset.getReferenceImage().getId());
+                preset.setReferenceImage(null);
+            }
+            var stored = imageStorageService.storeStylePresetReference(presetId, bytes, ct);
+            preset.setReferenceImage(stored);
+            preset = presetRepository.save(preset);
+            return toDto(preset, true);
+        } catch (java.io.IOException e) {
+            throw new IllegalArgumentException("Не удалось сохранить reference-изображение: " + e.getMessage());
+        }
+    }
+
     public StylePresetDto toDto(StylePresetEntity entity, boolean includeUi) {
         if (entity == null) {
             return null;

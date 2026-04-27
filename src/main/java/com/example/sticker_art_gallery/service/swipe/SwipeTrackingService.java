@@ -3,6 +3,8 @@ package com.example.sticker_art_gallery.service.swipe;
 import com.example.sticker_art_gallery.exception.SwipeLimitExceededException;
 import com.example.sticker_art_gallery.model.Dislike;
 import com.example.sticker_art_gallery.model.Like;
+import com.example.sticker_art_gallery.model.meme.MemeCandidateDislikeEntity;
+import com.example.sticker_art_gallery.model.meme.MemeCandidateLikeEntity;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.model.swipe.SwipeConfigEntity;
 import com.example.sticker_art_gallery.model.swipe.UserSwipeEntity;
@@ -86,6 +88,45 @@ public class SwipeTrackingService {
         LOGGER.debug("✅ Свайп записан: userId={}, swipeDate={}", userId, today);
 
         // Обрабатываем награды
+        processRewards(userId, config, today);
+    }
+
+    /**
+     * Записать свайп мем-кандидата.
+     * Использует ту же таблицу user_swipes и тот же счётчик дневного лимита.
+     * Ровно одна из пары (memeLike, memeDislike) должна быть не null.
+     */
+    public void recordMemeSwipe(Long userId, UserSwipeEntity.ActionType actionType,
+                                MemeCandidateLikeEntity memeLike,
+                                MemeCandidateDislikeEntity memeDislike) {
+        LOGGER.debug("Запись мем-свайпа: userId={}, actionType={}", userId, actionType);
+
+        SwipeConfigEntity config = swipeConfigService.getActiveConfig();
+        LocalDate today = LocalDate.now(ZoneId.systemDefault());
+
+        int currentDailySwipes = (int) userSwipeRepository.countByUserIdAndSwipeDate(userId, today);
+        int dailyLimit = getDailyLimitForUser(userId, config);
+
+        if (dailyLimit > 0 && currentDailySwipes >= dailyLimit) {
+            LOGGER.warn("Достигнут дневной лимит мем-свайпов: userId={}, current={}, limit={}",
+                    userId, currentDailySwipes, dailyLimit);
+            throw new SwipeLimitExceededException(
+                    dailyLimit,
+                    currentDailySwipes,
+                    config.getResetType(),
+                    "Достигнут дневной лимит свайпов");
+        }
+
+        UserSwipeEntity swipe = new UserSwipeEntity();
+        swipe.setUserId(userId);
+        swipe.setActionType(actionType);
+        swipe.setMemeCandidateLike(memeLike);
+        swipe.setMemeCandidateDislike(memeDislike);
+        swipe.setSwipeDate(today);
+        userSwipeRepository.save(swipe);
+
+        LOGGER.debug("Мем-свайп записан: userId={}, swipeDate={}", userId, today);
+
         processRewards(userId, config, today);
     }
 
