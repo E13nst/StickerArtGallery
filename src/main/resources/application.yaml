@@ -170,6 +170,8 @@ sticker:
       read: 10000
     generation:
       poll-interval-ms: ${STICKER_PROCESSOR_GENERATION_POLL_INTERVAL_MS:1500}
+      # Подряд 424 с ошибкой удаления фона: столько раз продолжаем poll, прежде чем retry без фона / финальный fail
+      bg-removal-424-patience: ${STICKER_PROCESSOR_BG_REMOVAL_424_PATIENCE:5}
       save-to-set-timeout-sec: ${STICKER_PROCESSOR_SAVE_TO_SET_TIMEOUT_SEC:60}
 
 # Конфигурация WaveSpeed API

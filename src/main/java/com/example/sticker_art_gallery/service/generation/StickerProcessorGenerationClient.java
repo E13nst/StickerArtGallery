@@ -105,11 +105,15 @@ public class StickerProcessorGenerationClient {
             MediaType contentType = response.getHeaders().getContentType();
             byte[] body = response.getBody();
 
+            boolean webpByContentType = contentType != null
+                    && MediaType.valueOf("image/webp").isCompatibleWith(contentType);
+            boolean webpByPreamble = body != null && body.length >= 12
+                    && body[0] == 'R' && body[1] == 'I' && body[2] == 'F' && body[3] == 'F'
+                    && body[8] == 'W' && body[9] == 'E' && body[10] == 'B' && body[11] == 'P';
             if (response.getStatusCode().is2xxSuccessful()
-                    && contentType != null
-                    && MediaType.valueOf("image/webp").isCompatibleWith(contentType)
                     && body != null
-                    && body.length > 0) {
+                    && body.length > 0
+                    && (webpByContentType || webpByPreamble)) {
                 return PollResult.imageReady(body);
             }
 

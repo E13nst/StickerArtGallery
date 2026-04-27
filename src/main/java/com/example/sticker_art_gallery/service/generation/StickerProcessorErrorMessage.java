@@ -75,8 +75,9 @@ public final class StickerProcessorErrorMessage {
     public static boolean isBackgroundRemovalFailure(Map<String, Object> payload) {
         String code = extractDetailCode(payload);
         if (code != null) {
-            String normalized = code.trim().toLowerCase();
+            String normalized = code.trim().toLowerCase().replace('-', '_');
             if ("background_removal_failed".equals(normalized)
+                    || "background_remover_failed".equals(normalized)
                     || "stickerprocessorbackgroundremoverfailed".equals(normalized)) {
                 return true;
             }
@@ -88,8 +89,11 @@ public final class StickerProcessorErrorMessage {
         }
 
         String normalizedMessage = message.trim().toLowerCase();
+        // sticker-processor / WaveSpeed иногда пишут "remover", иногда "removal"
         return normalizedMessage.contains("background removal failed")
+                || normalizedMessage.contains("background remover failed")
                 || normalizedMessage.contains("backgroundremoverfailed")
-                || normalizedMessage.contains("stickerprocessorbackgroundremoverfailed");
+                || normalizedMessage.contains("stickerprocessorbackgroundremoverfailed")
+                || (normalizedMessage.contains("background remover") && normalizedMessage.contains("fail"));
     }
 }

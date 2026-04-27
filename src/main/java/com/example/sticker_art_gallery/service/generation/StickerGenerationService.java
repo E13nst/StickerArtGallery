@@ -64,6 +64,16 @@ public class StickerGenerationService {
     @Value("${wavespeed.max-poll-seconds:300}")
     private int maxPollSeconds;
 
+    @Value("${sticker.processor.generation.poll-interval-ms:1500}")
+    private int stickerProcessorPollIntervalMs;
+
+    /**
+     * Сколько подряд ответов {@code 424} с ошибкой удаления фона терпим, продолжая poll, прежде чем
+     * считать шаг окончательно проваленным и уйти в retry без фона. Смягчает гонки, когда job ещё дорабатывается.
+     */
+    @Value("${sticker.processor.generation.bg-removal-424-patience:5}")
+    private int stickerProcessorBgRemoval424Patience;
+
     @Value("${wavespeed.bg-remove-enabled:true}")
     private boolean bgRemoveEnabled;
 
@@ -717,9 +727,12 @@ public class StickerGenerationService {
                 Map<String, Object> terminalPayload = null;
 
                 long deadlineMs = System.currentTimeMillis() + (maxPollSeconds * 1000L);
+                int consecutiveBgRemoval424 = 0;
+                int pollIntervalMs = Math.max(200, stickerProcessorPollIntervalMs);
+                int bg424Patience = Math.max(1, stickerProcessorBgRemoval424Patience);
                 while (System.currentTimeMillis() < deadlineMs) {
                     try {
-                        Thread.sleep(1500);
+                        Thread.sleep(pollIntervalMs);
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         break;
@@ -761,9 +774,30 @@ public class StickerGenerationService {
 
                     int statusCode = poll.getHttpStatus();
                     if (statusCode == 202 || statusCode == 0) {
+                        consecutiveBgRemoval424 = 0;
+                        continue;
+                    }
+                    if (statusCode >= 500) {
+                        consecutiveBgRemoval424 = 0;
                         continue;
                     }
                     if (statusCode >= 400 && statusCode < 500) {
+                        if (allowRetryWithoutBackground
+                                && statusCode == 424
+                                && StickerProcessorErrorMessage.isBackgroundRemovalFailure(poll.getPayload())) {
+                            consecutiveBgRemoval424++;
+                            if (consecutiveBgRemoval424 < bg424Patience) {
+                                LOGGER.warn(
+                                        "STICKER_PROCESSOR poll: 424 background-removal noise ({}/{}), keep polling file_id={}: {}",
+                                        consecutiveBgRemoval424,
+                                        bg424Patience,
+                                        submit.fileId(),
+                                        StickerProcessorErrorMessage.humanMessageOrFallback(poll.getPayload(), statusCode));
+                                continue;
+                            }
+                        }
+                        consecutiveBgRemoval424 = 0;
+
                         terminalReason = StickerProcessorErrorMessage.humanMessageOrFallback(poll.getPayload(), statusCode);
                         terminalPayload = poll.getPayload();
                         generationAuditService.addStageEvent(taskId, GenerationAuditStage.STICKER_PROCESSOR_RESULT,

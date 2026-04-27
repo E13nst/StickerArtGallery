@@ -511,6 +511,8 @@ class StickerGenerationServiceTest {
     @DisplayName("runGenerationV2: background remover failure retries once without background removal")
     void runGenerationV2_shouldRetryWithoutBackgroundWhenBackgroundRemovalFails() throws Exception {
         String taskId = "task-v2-bg-fallback";
+        ReflectionTestUtils.setField(stickerGenerationService, "stickerProcessorBgRemoval424Patience", 2);
+        ReflectionTestUtils.setField(stickerGenerationService, "stickerProcessorPollIntervalMs", 10);
         GenerationTaskEntity task = createV2Task(taskId, 444L, "img_bg");
         when(taskRepository.findByTaskId(taskId)).thenReturn(Optional.of(task));
         when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
