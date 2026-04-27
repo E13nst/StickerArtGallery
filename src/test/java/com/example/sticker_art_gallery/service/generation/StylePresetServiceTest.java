@@ -101,7 +101,12 @@ class StylePresetServiceTest {
         ObjectMapper realMapper = new ObjectMapper();
         StylePresetPromptComposer realComposer = new StylePresetPromptComposer(realMapper);
         StylePresetService svc = new StylePresetService(
-                presetRepository, userProfileService, imageStorageService, realMapper, realComposer);
+                presetRepository,
+                categoryRepository,
+                userProfileService,
+                imageStorageService,
+                realMapper,
+                realComposer);
 
         when(presetRepository.findByCodeAndIsGlobalTrue("ref_cap")).thenReturn(Optional.empty());
         when(categoryRepository.findByCode("general")).thenReturn(Optional.of(generalCategory()));
