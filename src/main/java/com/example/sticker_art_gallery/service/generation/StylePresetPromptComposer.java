@@ -349,12 +349,34 @@ public class StylePresetPromptComposer {
             return validateAndCopyImageIds(dedupeIds(flattenLegacyIds(flatImageIds, singleImageId)));
         }
         Map<String, Object> fields = normalizeFields(presetFields);
+        fields = applyPresetDefaultReference(preset, refDefs, fields);
         boolean anySlot = refDefs.stream()
                 .anyMatch(d -> !parseReferenceIds(fields.get(d.getKey())).isEmpty());
         List<String> canonical = anySlot
                 ? buildCanonicalUniqueOrder(refDefs, fields)
                 : dedupeIds(flattenLegacyIds(flatImageIds, singleImageId));
         return validateAndCopyImageIds(canonical);
+    }
+
+    /**
+     * Подставляет id вида {@code img_sagref_*} в первый пустой reference-слот, если у пресета задано референсное изображение.
+     */
+    private Map<String, Object> applyPresetDefaultReference(
+            StylePresetEntity preset,
+            List<StylePresetFieldDto> refDefs,
+            Map<String, Object> fields) {
+        if (preset.getReferenceImage() == null) {
+            return fields;
+        }
+        String synthetic = StylePresetReferenceImageId.fromCachedImageId(preset.getReferenceImage().getId());
+        Map<String, Object> merged = new HashMap<>(fields);
+        for (StylePresetFieldDto def : refDefs) {
+            if (parseReferenceIds(merged.get(def.getKey())).isEmpty()) {
+                merged.put(def.getKey(), synthetic);
+                break;
+            }
+        }
+        return merged;
     }
 
     private List<String> validateAndCopyImageIds(List<String> canonical) {

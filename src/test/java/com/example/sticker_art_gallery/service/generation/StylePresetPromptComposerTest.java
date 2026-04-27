@@ -2,6 +2,7 @@ package com.example.sticker_art_gallery.service.generation;
 
 import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
 import com.example.sticker_art_gallery.model.generation.StylePresetUiMode;
+import com.example.sticker_art_gallery.model.storage.CachedImageEntity;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
@@ -140,5 +142,24 @@ class StylePresetPromptComposerTest {
                 "minImages", 0,
                 "maxImages", 2
         );
+    }
+
+    @Test
+    @DisplayName("resolveV2SourceImageIds: подставляет референс пресета в первый пустой слот")
+    void resolveV2_shouldApplyPresetDefaultReference() {
+        UUID refUuid = UUID.fromString("a1b2c3d4-e5f6-4789-a012-3456789abcde");
+        CachedImageEntity refImg = new CachedImageEntity();
+        refImg.setId(refUuid);
+
+        StylePresetEntity preset = new StylePresetEntity();
+        preset.setUiMode(StylePresetUiMode.STRUCTURED_FIELDS);
+        preset.setPromptSuffix("{{r}}");
+        preset.setReferenceImage(refImg);
+        preset.setStructuredFieldsJson(objectMapper.convertValue(List.of(fieldRef("r")), new TypeReference<>() { }));
+
+        String expected = StylePresetReferenceImageId.fromCachedImageId(refUuid);
+        assertEquals(
+                List.of(expected),
+                composer.resolveV2SourceImageIds(preset, Map.of(), null, null));
     }
 }

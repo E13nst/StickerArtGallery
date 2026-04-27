@@ -182,6 +182,22 @@ public class ImageStorageService {
         return storeBytes(originalUrl, imageBytes, contentType, 4000);
     }
 
+    /**
+     * Референсное изображение пресета: то же долговременное хранение, отдельный ключ в cached_images.
+     */
+    @Transactional
+    public CachedImageEntity storeStylePresetReference(long presetId, byte[] imageBytes, String contentType) {
+        String originalUrl = "style-preset-reference:" + presetId + ":" + System.currentTimeMillis();
+        return storeBytes(originalUrl, imageBytes, contentType, 4000);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<String> getPublicUrlIfPresent(UUID id) {
+        return cachedImageRepository.findById(id)
+                .filter(e -> !e.isExpired())
+                .map(this::getPublicUrl);
+    }
+
     private CachedImageEntity storeBytes(String originalUrl, byte[] imageBytes, String contentType, long retentionDaysForImage) {
         if (imageBytes == null || imageBytes.length == 0) {
             throw new IllegalArgumentException("imageBytes is empty");

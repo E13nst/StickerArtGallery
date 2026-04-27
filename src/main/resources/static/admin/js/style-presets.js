@@ -182,6 +182,10 @@ function openAddModal() {
     renderFieldEditor(DEFAULT_FIELDS);
     document.getElementById('current-preview-wrap').classList.add('hidden');
     document.getElementById('current-preview-img').src = '';
+    document.getElementById('preset-reference').value = '';
+    document.getElementById('current-reference-wrap').classList.add('hidden');
+    document.getElementById('current-reference-img').src = '';
+    document.getElementById('clear-reference-btn').classList.add('hidden');
     document.getElementById('edit-modal').classList.remove('hidden');
 }
 
@@ -213,7 +217,18 @@ function editPreset(id) {
         document.getElementById('current-preview-wrap').classList.add('hidden');
         document.getElementById('current-preview-img').src = '';
     }
+    const refUrl = preset.presetReferenceImageUrl || null;
+    if (refUrl) {
+        document.getElementById('current-reference-img').src = refUrl;
+        document.getElementById('current-reference-wrap').classList.remove('hidden');
+        document.getElementById('clear-reference-btn').classList.remove('hidden');
+    } else {
+        document.getElementById('current-reference-wrap').classList.add('hidden');
+        document.getElementById('current-reference-img').src = '';
+        document.getElementById('clear-reference-btn').classList.add('hidden');
+    }
     document.getElementById('preset-preview').value = '';
+    document.getElementById('preset-reference').value = '';
     document.getElementById('edit-modal').classList.remove('hidden');
 }
 
@@ -262,6 +277,7 @@ async function savePreset(event) {
     };
     const enabled = document.getElementById('preset-enabled').checked;
     const previewFile = document.getElementById('preset-preview').files[0] || null;
+    const referenceFile = document.getElementById('preset-reference').files[0] || null;
     
     try {
         let savedPresetId = editingPresetId;
@@ -283,6 +299,10 @@ async function savePreset(event) {
         if (previewFile && savedPresetId) {
             await api.uploadGlobalStylePresetPreview(savedPresetId, previewFile);
             showNotification('Превью пресета загружено', 'success');
+        }
+        if (referenceFile && savedPresetId) {
+            await api.uploadGlobalStylePresetReference(savedPresetId, referenceFile);
+            showNotification('Референс пресета загружен', 'success');
         }
         
         closeModal();
@@ -721,4 +741,25 @@ function findDuplicateFieldKey(fields) {
         seen.add(field.key);
     }
     return null;
+}
+
+async function clearPresetReferenceInForm() {
+    if (!editingPresetId) {
+        return;
+    }
+    if (!confirmAction('Удалить референсное фото с сервера?')) {
+        return;
+    }
+    try {
+        await api.clearGlobalStylePresetReference(editingPresetId);
+        document.getElementById('current-reference-wrap').classList.add('hidden');
+        document.getElementById('current-reference-img').src = '';
+        document.getElementById('preset-reference').value = '';
+        document.getElementById('clear-reference-btn').classList.add('hidden');
+        showNotification('Референс удалён', 'success');
+        await loadPresets();
+    } catch (e) {
+        console.error(e);
+        showNotification(e.message || 'Не удалось удалить референс', 'error');
+    }
 }

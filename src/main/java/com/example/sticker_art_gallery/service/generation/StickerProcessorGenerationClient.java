@@ -20,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Component
 public class StickerProcessorGenerationClient {
@@ -39,6 +40,15 @@ public class StickerProcessorGenerationClient {
     }
 
     public SubmitResult submitGenerate(GenerateStickerV2Request request) {
+        return submitGenerate(request, null);
+    }
+
+    /**
+     * @param sourceImageUrls параллельно {@code source_image_ids}: публичные URL для id вида {@code img_sagref_*}
+     *                      (кэш StickerArtGallery); в остальных позициях {@code null}. Необязательно для sticker-processor,
+     *                      пока поддерживает поле {@code source_image_urls}.
+     */
+    public SubmitResult submitGenerate(GenerateStickerV2Request request, List<String> sourceImageUrls) {
         String url = stickerProcessorUrl + "/stickers/wavespeed/generate";
         Map<String, Object> payload = new HashMap<>();
         payload.put("prompt", request.getPrompt());
@@ -50,6 +60,12 @@ public class StickerProcessorGenerationClient {
         payload.put("remove_background", request.getRemoveBackground());
         List<String> sourceImageIds = request.getImageIds();
         payload.put("source_image_ids", (sourceImageIds != null && !sourceImageIds.isEmpty()) ? sourceImageIds : null);
+        if (sourceImageUrls != null
+                && sourceImageIds != null
+                && sourceImageIds.size() == sourceImageUrls.size()
+                && sourceImageUrls.stream().anyMatch(Objects::nonNull)) {
+            payload.put("source_image_urls", sourceImageUrls);
+        }
 
         try {
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, jsonHeaders());

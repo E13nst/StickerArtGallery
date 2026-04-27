@@ -427,6 +427,43 @@ class AdminApiClient {
         return data;
     }
 
+    async uploadGlobalStylePresetReference(id, file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await fetch(`${this.baseUrl}/generation/style-presets/${id}/reference`, {
+            method: 'POST',
+            headers: { 'X-Telegram-Init-Data': this.initData },
+            body: formData
+        });
+        if (response.status === 401) {
+            localStorage.removeItem('telegram_init_data');
+            showNotification('Сессия истекла. Пожалуйста, авторизуйтесь снова.', 'error');
+            setTimeout(() => { window.location.href = '/admin/login.html'; }, 1000);
+            throw new Error('Unauthorized');
+        }
+        if (response.status === 403) {
+            localStorage.removeItem('telegram_init_data');
+            showNotification('Доступ запрещен. Требуются права администратора.', 'error');
+            setTimeout(() => { window.location.href = '/admin/login.html'; }, 2000);
+            throw new Error('Forbidden');
+        }
+        const responseText = await response.text();
+        let data = null;
+        if (responseText && responseText.trim()) {
+            try { data = JSON.parse(responseText); } catch (e) { data = responseText; }
+        }
+        if (!response.ok) {
+            const message = (data && typeof data === 'object' && (data.message || data.error))
+                || `HTTP error! status: ${response.status}`;
+            throw new Error(message);
+        }
+        return data;
+    }
+
+    async clearGlobalStylePresetReference(id) {
+        return this.request(`/generation/style-presets/${id}/reference`, { method: 'DELETE' });
+    }
+
     // ============ Generation logs (Admin audit) ============
 
     async getGenerationLogs(filters = {}, page = 0, size = 20) {

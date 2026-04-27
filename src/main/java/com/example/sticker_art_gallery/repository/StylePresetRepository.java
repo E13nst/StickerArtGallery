@@ -25,6 +25,7 @@ public interface StylePresetRepository extends JpaRepository<StylePresetEntity, 
 
     @Query("SELECT sp FROM StylePresetEntity sp JOIN FETCH sp.category c " +
             "LEFT JOIN FETCH sp.previewImage " +
+            "LEFT JOIN FETCH sp.referenceImage " +
             "WHERE (sp.isGlobal = true OR sp.owner.userId = :userId) AND sp.isEnabled = true " +
             "ORDER BY c.sortOrder ASC, sp.sortOrder ASC, sp.name ASC")
     List<StylePresetEntity> findAvailableForUserWithPreview(@Param("userId") Long userId);
@@ -33,7 +34,8 @@ public interface StylePresetRepository extends JpaRepository<StylePresetEntity, 
      * Находит все глобальные пресеты (для админа)
      */
     @Query("SELECT sp FROM StylePresetEntity sp JOIN FETCH sp.category c " +
-            "LEFT JOIN FETCH sp.previewImage WHERE sp.isGlobal = true " +
+            "LEFT JOIN FETCH sp.previewImage " +
+            "LEFT JOIN FETCH sp.referenceImage WHERE sp.isGlobal = true " +
             "ORDER BY c.sortOrder ASC, sp.sortOrder ASC, sp.name ASC")
     List<StylePresetEntity> findAllGlobal();
 
@@ -41,7 +43,8 @@ public interface StylePresetRepository extends JpaRepository<StylePresetEntity, 
      * Находит все персональные пресеты пользователя
      */
     @Query("SELECT sp FROM StylePresetEntity sp JOIN FETCH sp.category c " +
-            "LEFT JOIN FETCH sp.previewImage WHERE sp.owner.userId = :userId " +
+            "LEFT JOIN FETCH sp.previewImage " +
+            "LEFT JOIN FETCH sp.referenceImage WHERE sp.owner.userId = :userId " +
             "ORDER BY c.sortOrder ASC, sp.sortOrder ASC, sp.name ASC")
     List<StylePresetEntity> findByOwnerUserId(Long userId);
 
@@ -63,8 +66,13 @@ public interface StylePresetRepository extends JpaRepository<StylePresetEntity, 
     boolean existsByIdAndAccessibleByUser(Long id, Long userId);
 
     @Query("SELECT sp FROM StylePresetEntity sp JOIN FETCH sp.category " +
-            "LEFT JOIN FETCH sp.previewImage WHERE sp.id = :id")
+            "LEFT JOIN FETCH sp.previewImage " +
+            "LEFT JOIN FETCH sp.referenceImage WHERE sp.id = :id")
     Optional<StylePresetEntity> findByIdWithCategoryAndPreview(@Param("id") Long id);
+
+    @Query("SELECT sp FROM StylePresetEntity sp " +
+            "LEFT JOIN FETCH sp.referenceImage WHERE sp.id = :id")
+    Optional<StylePresetEntity> findByIdWithReference(@Param("id") Long id);
 
     List<StylePresetEntity> findByCategory_Id(Long categoryId);
 }

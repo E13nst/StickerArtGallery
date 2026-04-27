@@ -55,6 +55,10 @@ public class StylePresetEntity {
     @JoinColumn(name = "preview_cached_image_id")
     private CachedImageEntity previewImage;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reference_cached_image_id")
+    private CachedImageEntity referenceImage;
+
     @Column(name = "is_global", nullable = false)
     private Boolean isGlobal = false;
 
@@ -177,6 +181,14 @@ public class StylePresetEntity {
 
     public void setPreviewImage(CachedImageEntity previewImage) {
         this.previewImage = previewImage;
+    }
+
+    public CachedImageEntity getReferenceImage() {
+        return referenceImage;
+    }
+
+    public void setReferenceImage(CachedImageEntity referenceImage) {
+        this.referenceImage = referenceImage;
     }
 
     public Boolean getIsGlobal() {

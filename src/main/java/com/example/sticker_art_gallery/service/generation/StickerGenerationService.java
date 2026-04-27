@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -250,7 +251,7 @@ public class StickerGenerationService {
         metadata.put("remove_background", request.getRemoveBackground());
         StylePresetEntity presetForImages = null;
         if (request.getStylePresetId() != null) {
-            presetForImages = stylePresetRepository.findById(request.getStylePresetId()).orElse(null);
+            presetForImages = stylePresetRepository.findByIdWithReference(request.getStylePresetId()).orElse(null);
         }
         List<String> resolvedImageIds = stylePresetPromptComposer.resolveV2SourceImageIds(
                 presetForImages,
@@ -655,7 +656,9 @@ public class StickerGenerationService {
             request.setNumImages(metadata.get("num_images") instanceof Number ? ((Number) metadata.get("num_images")).intValue() : 1);
             request.setStrength(metadata.get("strength") instanceof Number ? ((Number) metadata.get("strength")).doubleValue() : 0.8);
             request.setRemoveBackground(Boolean.TRUE.equals(metadata.get("remove_background")));
-            request.setImageIds(resolveSourceImageIds(metadata));
+            List<String> resolvedSourceIds = resolveSourceImageIds(metadata);
+            request.setImageIds(resolvedSourceIds);
+            List<String> stickerProcessorSourceUrls = resolveStickerProcessorSourceImageUrls(resolvedSourceIds);
             if (Boolean.TRUE.equals(metadata.get("sticker_processor_prompt_truncated"))) {
                 task.setMetadata(objectMapper.writeValueAsString(metadata));
                 taskRepository.save(task);
@@ -663,7 +666,8 @@ public class StickerGenerationService {
             boolean allowRetryWithoutBackground = Boolean.TRUE.equals(request.getRemoveBackground());
 
             while (true) {
-                StickerProcessorGenerationClient.SubmitResult submit = stickerProcessorGenerationClient.submitGenerate(request);
+                StickerProcessorGenerationClient.SubmitResult submit =
+                        stickerProcessorGenerationClient.submitGenerate(request, stickerProcessorSourceUrls);
                 if (submit.fileId() == null || submit.fileId().isBlank()) {
                     throw new IllegalStateException("STICKER_PROCESSOR did not return file_id");
                 }
@@ -949,6 +953,30 @@ public class StickerGenerationService {
         }
 
         return null;
+    }
+
+    /**
+     * Параллельные публичные URL для synthetic id {@code img_sagref_*} (кэш галереи), чтобы sticker-processor мог скачать байты.
+     */
+    private List<String> resolveStickerProcessorSourceImageUrls(List<String> imageIds) {
+        if (imageIds == null || imageIds.isEmpty()) {
+            return null;
+        }
+        List<String> urls = new ArrayList<>(imageIds.size());
+        boolean any = false;
+        for (String imageId : imageIds) {
+            Optional<UUID> cached = StylePresetReferenceImageId.parseCachedImageId(imageId);
+            if (cached.isPresent()) {
+                Optional<String> url = imageStorageService.getPublicUrlIfPresent(cached.get());
+                urls.add(url.orElse(null));
+                if (url.isPresent()) {
+                    any = true;
+                }
+            } else {
+                urls.add(null);
+            }
+        }
+        return any ? urls : null;
     }
 
     private List<String> asStringList(Object value) {

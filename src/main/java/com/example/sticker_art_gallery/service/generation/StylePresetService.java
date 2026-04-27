@@ -168,6 +168,9 @@ public class StylePresetService {
         if (preset.getPreviewImage() != null) {
             imageStorageService.deleteById(preset.getPreviewImage().getId());
         }
+        if (preset.getReferenceImage() != null) {
+            imageStorageService.deleteById(preset.getReferenceImage().getId());
+        }
         presetRepository.delete(preset);
     }
 
@@ -212,6 +215,53 @@ public class StylePresetService {
         }
     }
 
+    @Transactional
+    public StylePresetDto uploadReferenceForGlobal(Long presetId, MultipartFile file) {
+        StylePresetEntity preset = presetRepository.findByIdWithCategoryAndPreview(presetId)
+                .orElseThrow(() -> new IllegalArgumentException("Preset not found: " + presetId));
+        if (!Boolean.TRUE.equals(preset.getIsGlobal())) {
+            throw new IllegalArgumentException("Only global presets use admin reference upload in this version");
+        }
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Empty file");
+        }
+        String ct = file.getContentType() != null ? file.getContentType() : "";
+        if (!ct.equals("image/png") && !ct.equals("image/webp") && !ct.equals("image/jpeg")) {
+            throw new IllegalArgumentException("Supported types: image/png, image/webp, image/jpeg");
+        }
+        if (file.getSize() > 3 * 1024 * 1024) {
+            throw new IllegalArgumentException("File too large (max 3MB)");
+        }
+        try {
+            byte[] bytes = file.getBytes();
+            if (preset.getReferenceImage() != null) {
+                imageStorageService.deleteById(preset.getReferenceImage().getId());
+                preset.setReferenceImage(null);
+            }
+            CachedImageEntity stored = imageStorageService.storeStylePresetReference(presetId, bytes, ct);
+            preset.setReferenceImage(stored);
+            preset = presetRepository.save(preset);
+            return toDto(preset, true);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to store preset reference: " + e.getMessage());
+        }
+    }
+
+    @Transactional
+    public StylePresetDto clearReferenceForGlobal(Long presetId) {
+        StylePresetEntity preset = presetRepository.findByIdWithCategoryAndPreview(presetId)
+                .orElseThrow(() -> new IllegalArgumentException("Preset not found: " + presetId));
+        if (!Boolean.TRUE.equals(preset.getIsGlobal())) {
+            throw new IllegalArgumentException("Only global presets use admin reference in this version");
+        }
+        if (preset.getReferenceImage() != null) {
+            imageStorageService.deleteById(preset.getReferenceImage().getId());
+            preset.setReferenceImage(null);
+            preset = presetRepository.save(preset);
+        }
+        return toDto(preset, true);
+    }
+
     public StylePresetDto toDto(StylePresetEntity entity, boolean includeUi) {
         if (entity == null) {
             return null;
@@ -249,6 +299,13 @@ public class StylePresetService {
                 } else {
                     d.setPreviewWebpUrl(null);
                 }
+            }
+            if (entity.getReferenceImage() != null) {
+                String refUrl = imageStorageService.getPublicUrl(entity.getReferenceImage());
+                d.setPresetReferenceImageUrl(refUrl);
+                d.setPresetReferenceMimeType(entity.getReferenceImage().getContentType());
+                d.setPresetReferenceSourceImageId(
+                        StylePresetReferenceImageId.fromCachedImageId(entity.getReferenceImage().getId()));
             }
         }
         return d;

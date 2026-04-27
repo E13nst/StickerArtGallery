@@ -226,7 +226,7 @@ class StickerGenerationServiceTest {
 
         when(taskRepository.findByTaskId(taskId)).thenReturn(Optional.of(task));
         when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(stickerProcessorGenerationClient.submitGenerate(any())).thenReturn(
+        when(stickerProcessorGenerationClient.submitGenerate(any(), any())).thenReturn(
                 new StickerProcessorGenerationClient.SubmitResult("ws_123", "pending", "req_1")
         );
         when(stickerProcessorGenerationClient.pollResult("ws_123")).thenReturn(
@@ -246,7 +246,7 @@ class StickerGenerationServiceTest {
         stickerGenerationService.runGenerationV2(taskId);
 
         ArgumentCaptor<GenerateStickerV2Request> submitCaptor = ArgumentCaptor.forClass(GenerateStickerV2Request.class);
-        verify(stickerProcessorGenerationClient).submitGenerate(submitCaptor.capture());
+        verify(stickerProcessorGenerationClient).submitGenerate(submitCaptor.capture(), any());
         assertEquals(java.util.List.of("img_123"), submitCaptor.getValue().getImageIds());
         verify(artRewardService).award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong());
     }
@@ -266,7 +266,7 @@ class StickerGenerationServiceTest {
             GenerateStickerV2Request submitted = inv.getArgument(0);
             submittedPrompts.add(submitted.getPrompt());
             return new StickerProcessorGenerationClient.SubmitResult("ws_123", "pending", "req_1");
-        }).when(stickerProcessorGenerationClient).submitGenerate(any());
+        }).when(stickerProcessorGenerationClient).submitGenerate(any(), any());
         when(stickerProcessorGenerationClient.pollResult("ws_123")).thenReturn(
                 StickerProcessorGenerationClient.PollResult.imageReady("img".getBytes())
         );
@@ -297,7 +297,7 @@ class StickerGenerationServiceTest {
         GenerationTaskEntity task = createV2Task(taskId, 888L, "img_400");
         when(taskRepository.findByTaskId(taskId)).thenReturn(Optional.of(task));
         when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(stickerProcessorGenerationClient.submitGenerate(any())).thenReturn(
+        when(stickerProcessorGenerationClient.submitGenerate(any(), any())).thenReturn(
                 new StickerProcessorGenerationClient.SubmitResult("ws_400", "pending", "req_400")
         );
         when(stickerProcessorGenerationClient.pollResult("ws_400")).thenReturn(
@@ -318,7 +318,7 @@ class StickerGenerationServiceTest {
         GenerationTaskEntity task = createV2Task(taskId, 999L, "img_404");
         when(taskRepository.findByTaskId(taskId)).thenReturn(Optional.of(task));
         when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(stickerProcessorGenerationClient.submitGenerate(any())).thenReturn(
+        when(stickerProcessorGenerationClient.submitGenerate(any(), any())).thenReturn(
                 new StickerProcessorGenerationClient.SubmitResult("ws_404", "pending", "req_404")
         );
         when(stickerProcessorGenerationClient.pollResult("ws_404")).thenReturn(
@@ -339,7 +339,7 @@ class StickerGenerationServiceTest {
         GenerationTaskEntity task = createV2Task(taskId, 111L, "img_424");
         when(taskRepository.findByTaskId(taskId)).thenReturn(Optional.of(task));
         when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(stickerProcessorGenerationClient.submitGenerate(any())).thenReturn(
+        when(stickerProcessorGenerationClient.submitGenerate(any(), any())).thenReturn(
                 new StickerProcessorGenerationClient.SubmitResult("ws_424", "pending", "req_424")
         );
         when(stickerProcessorGenerationClient.pollResult("ws_424")).thenReturn(
@@ -376,7 +376,7 @@ class StickerGenerationServiceTest {
             return submittedRemoveBackground.size() == 1
                     ? new StickerProcessorGenerationClient.SubmitResult("ws_bg_fail", "pending", "req_bg_fail")
                     : new StickerProcessorGenerationClient.SubmitResult("ws_bg_ok", "pending", "req_bg_ok");
-        }).when(stickerProcessorGenerationClient).submitGenerate(any());
+        }).when(stickerProcessorGenerationClient).submitGenerate(any(), any());
         when(stickerProcessorGenerationClient.pollResult("ws_bg_fail")).thenReturn(
                 StickerProcessorGenerationClient.PollResult.jsonStatus(
                         424,
@@ -402,7 +402,7 @@ class StickerGenerationServiceTest {
 
         stickerGenerationService.runGenerationV2(taskId);
 
-        verify(stickerProcessorGenerationClient, times(2)).submitGenerate(any());
+        verify(stickerProcessorGenerationClient, times(2)).submitGenerate(any(), any());
         assertEquals(List.of(true, false), submittedRemoveBackground);
         assertEquals(GenerationTaskStatus.COMPLETED, task.getStatus());
         assertEquals(null, task.getErrorMessage());

@@ -81,6 +81,30 @@ public class StylePresetController {
         }
     }
 
+    @PostMapping(value = "/{id}/reference", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Загрузить референс (PNG/JPEG/WebP) для глобального пресета", description = "Подстановка в слот reference и в img_sagref_*; прежний файл заменяется")
+    public ResponseEntity<StylePresetDto> uploadReference(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) {
+        try {
+            return ResponseEntity.ok(presetService.uploadReferenceForGlobal(id, file));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @DeleteMapping("/{id}/reference")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Удалить референсное изображение пресета", description = "Только глобальные пресеты")
+    public ResponseEntity<StylePresetDto> clearReference(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(presetService.clearReferenceForGlobal(id));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
     @GetMapping("/my")
     @Operation(
         summary = "Получить персональные пресеты",

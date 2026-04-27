@@ -124,9 +124,7 @@ public class StickerGalleryFlowService {
             telegramBotApiService.answerCallbackQuery(callbackId, null, false);
             telegramBotApiService.sendMessage(
                     chatId,
-                    "🎨 Отправьте идею для стикера в формате:\n"
-                            + "<code>gen: кот в очках, мем-стиль</code>\n\n"
-                            + "Или откройте inline в любом чате: <code>@stixlybot gen: ваш запрос</code>",
+                    "🎨 Создание стикера — в мини-приложении: нажмите <b>Создать стикер</b> в главном меню.",
                     "HTML",
                     null,
                     null,
@@ -244,11 +242,9 @@ public class StickerGalleryFlowService {
 
     private String startText(String name) {
         return "Йо, " + name + "!\n"
-                + "Я помогу быстро сделать стикер.\n\n"
-                + "<b>Главный сценарий:</b>\n"
-                + "• Нажмите <b>Создать стикер</b>\n"
-                + "• Отправьте идею в формате <code>gen: ...</code>\n\n"
-                + "Готовые стикеры можно отдельно добавить в галерею.";
+                + "Добро пожаловать в Stixly.\n\n"
+                + "Вы можете <b>добавить стикеры в галерею</b> — за одобренный набор начисляется <b>+10 ART</b>.\n\n"
+                + "Новый стикер создаётся в мини-приложении: кнопка <b>Создать стикер</b>.";
     }
 
     private String subscriptionRequiredText() {
@@ -267,8 +263,8 @@ public class StickerGalleryFlowService {
                 + "/help - справка\n"
                 + "/support - связь с поддержкой\n"
                 + "/cancel - отмена\n\n"
-                + "Для генерации: <code>gen: ваш запрос</code>\n"
-                + "Для добавления набора: пришлите любой стикер из набора в ЛС.";
+                + "Создать стикер — кнопка <b>Создать стикер</b> (мини-приложение).\n"
+                + "Добавить набор в галерею: <b>Добавить стикеры</b> или пришлите любой стикер из набора в ЛС.";
     }
 
     private Object mainMenuKeyboard() {
@@ -276,8 +272,7 @@ public class StickerGalleryFlowService {
                 "inline_keyboard",
                 List.of(
                         List.of(Map.of("text", "🎨 Создать стикер", "web_app", Map.of("url", MINI_APP_BASE_URL))),
-                        List.of(Map.of("text", "📥 Добавить свои стикеры", "callback_data", "upload_stickers_entry")),
-                        List.of(Map.of("text", "🔍 Найти стикеры в галерее", "url", MINI_APP_BASE_URL)),
+                        List.of(Map.of("text", "📥 Добавить стикеры", "callback_data", "upload_stickers_entry")),
                         List.of(Map.of("text", "📞 Поддержка", "callback_data", "enter_support")),
                         List.of(Map.of("text", "📢 Telegram-канал", "url", "https://t.me/stixlyofficial"))
                 )
