@@ -4,6 +4,7 @@ import com.example.sticker_art_gallery.dto.generation.CreateStylePresetRequest;
 import com.example.sticker_art_gallery.dto.generation.StylePresetCategoryDto;
 import com.example.sticker_art_gallery.dto.generation.StylePresetDto;
 import com.example.sticker_art_gallery.dto.generation.StylePresetFieldDto;
+import com.example.sticker_art_gallery.dto.generation.StylePresetSystemFields;
 import com.example.sticker_art_gallery.model.generation.StylePresetCategoryEntity;
 import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
 import com.example.sticker_art_gallery.model.generation.StylePresetRemoveBackgroundMode;
@@ -26,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.sticker_art_gallery.dto.generation.StylePresetPromptInputDto;
 import com.example.sticker_art_gallery.dto.generation.StylePresetReferenceInputDto;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.HashSet;
@@ -288,7 +290,7 @@ public class StylePresetService {
         );
         if (includeUi) {
             d.setPromptInput(presetPromptComposer.parsePromptInput(entity));
-            d.setFields(parseFieldDtos(entity));
+            d.setFields(buildFieldsForDto(entity));
             if (entity.getPreviewImage() != null) {
                 String url = imageStorageService.getPublicUrl(entity.getPreviewImage());
                 d.setPreviewUrl(url);
@@ -342,6 +344,27 @@ public class StylePresetService {
                 .toList();
     }
 
+    /**
+     * Поля из БД + виртуальное поле {@code preset_ref} (№1), если загружен референс пресета.
+     */
+    private List<StylePresetFieldDto> buildFieldsForDto(StylePresetEntity entity) {
+        List<StylePresetFieldDto> fromDb = parseFieldDtos(entity);
+        if (entity.getReferenceImage() == null) {
+            return fromDb;
+        }
+        List<StylePresetFieldDto> out = new ArrayList<>();
+        out.add(StylePresetSystemFields.presetReferenceFieldDefinition());
+        if (fromDb != null) {
+            for (StylePresetFieldDto f : fromDb) {
+                if (f.getKey() != null && StylePresetSystemFields.isReservedFieldKey(f.getKey())) {
+                    continue;
+                }
+                out.add(f);
+            }
+        }
+        return out;
+    }
+
     private void applyUiFields(StylePresetEntity preset, CreateStylePresetRequest request) {
         validateUiContract(request);
         preset.setRemoveBackground(request.getRemoveBackground());
@@ -364,9 +387,10 @@ public class StylePresetService {
         }
         if (request.getFields() != null && !request.getFields().isEmpty()) {
             List<Map<String, Object>> list = request.getFields().stream()
+                    .filter(f -> f.getKey() != null && !StylePresetSystemFields.isReservedFieldKey(f.getKey()))
                     .map(f -> objectMapper.convertValue(f, new TypeReference<Map<String, Object>>() { }))
                     .toList();
-            preset.setStructuredFieldsJson(list);
+            preset.setStructuredFieldsJson(list.isEmpty() ? null : list);
         } else {
             preset.setStructuredFieldsJson(null);
         }
@@ -380,6 +404,9 @@ public class StylePresetService {
                 throw new IllegalArgumentException("Style preset field key is required");
             }
             String key = field.getKey().trim();
+            if (StylePresetSystemFields.isReservedFieldKey(key)) {
+                throw new IllegalArgumentException("Reserved field key, use preset reference upload: " + key);
+            }
             if (!keys.add(key)) {
                 throw new IllegalArgumentException("Duplicate style preset field key: " + key);
             }
@@ -391,6 +418,9 @@ public class StylePresetService {
                 if (request.getPromptInput() != null && Boolean.FALSE.equals(request.getPromptInput().getEnabled())) {
                     throw new IllegalArgumentException("Template uses {{prompt}}, but prompt input is disabled");
                 }
+                continue;
+            }
+            if (StylePresetSystemFields.PRESET_REFERENCE_KEY.equals(placeholder)) {
                 continue;
             }
             if (!keys.contains(placeholder)) {

@@ -3,6 +3,7 @@ package com.example.sticker_art_gallery.service.generation;
 import com.example.sticker_art_gallery.dto.generation.StylePresetFieldDto;
 import com.example.sticker_art_gallery.dto.generation.StylePresetPromptInputDto;
 import com.example.sticker_art_gallery.dto.generation.StylePresetReferenceInputDto;
+import com.example.sticker_art_gallery.dto.generation.StylePresetSystemFields;
 import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
 import com.example.sticker_art_gallery.model.generation.StylePresetUiMode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -66,7 +67,12 @@ public class StylePresetPromptComposer {
         }
         if (!template.isEmpty()) {
             if (containsPlaceholders(template)) {
-                return applyTemplate(template, prepareTemplateFieldMap(preset, prompt, fields));
+                return applyTemplate(
+                        template,
+                        prepareTemplateFieldMap(
+                                preset,
+                                prompt,
+                                applyPresetReferenceSyntheticId(preset, fields)));
             }
             if (!prompt.isEmpty()) {
                 return prompt;
@@ -110,8 +116,9 @@ public class StylePresetPromptComposer {
         if (ph.isEmpty()) {
             throw new IllegalArgumentException("LOCKED template must contain {{placeholders}} or use a different mode");
         }
-        validatePlaceholderInputs(preset, fields, ph, "");
-        return applyTemplate(template, prepareTemplateFieldMap(preset, "", fields));
+        Map<String, Object> withPresetRef = applyPresetReferenceSyntheticId(preset, fields);
+        validatePlaceholderInputs(preset, withPresetRef, ph, "");
+        return applyTemplate(template, prepareTemplateFieldMap(preset, "", withPresetRef));
     }
 
     private String buildStructured(StylePresetEntity preset, String prompt, Map<String, Object> fields, String template) {
@@ -127,17 +134,18 @@ public class StylePresetPromptComposer {
         if (input.getMaxLength() != null && !prompt.isEmpty() && prompt.length() > input.getMaxLength()) {
             throw new IllegalArgumentException("Prompt is too long for this preset (max " + input.getMaxLength() + ")");
         }
-        List<StylePresetFieldDto> defs = parseStructuredFields(preset);
+        Map<String, Object> effective = applyPresetReferenceSyntheticId(preset, fields);
+        List<StylePresetFieldDto> defs = listStructuredFieldDefinitions(preset);
         if (defs.isEmpty()) {
             if (template.isEmpty()) {
                 throw new IllegalArgumentException("No structured fields defined for preset");
             }
             Set<String> ph = extractPlaceholders(template);
-            validateNoExtraKeys(fields, ph.stream().filter(k -> !"prompt".equals(k)).collect(Collectors.toSet()));
-            return applyTemplate(template, templateValues(fields, prompt));
+            validateNoExtraKeys(effective, ph.stream().filter(k -> !"prompt".equals(k)).collect(Collectors.toSet()));
+            return applyTemplate(template, templateValues(effective, prompt));
         }
-        validateStructured(defs, fields, template);
-        return composeStructuredString(preset, defs, fields, template, prompt);
+        validateStructured(defs, effective, template);
+        return composeStructuredString(preset, defs, effective, template, prompt);
     }
 
     private void validateStructured(
@@ -275,7 +283,7 @@ public class StylePresetPromptComposer {
             String promptText
     ) {
         validateNoExtraKeys(fields, placeholders);
-        List<StylePresetFieldDto> defs = parseStructuredFields(preset);
+        List<StylePresetFieldDto> defs = listStructuredFieldDefinitions(preset);
         Map<String, StylePresetFieldDto> defByKey = defs.stream()
                 .filter(d -> d.getKey() != null && !d.getKey().isBlank())
                 .collect(Collectors.toMap(StylePresetFieldDto::getKey, d -> d, (a, b) -> a));
@@ -309,13 +317,14 @@ public class StylePresetPromptComposer {
     }
 
     public Map<String, Object> prepareTemplateFieldMap(StylePresetEntity preset, String prompt, Map<String, Object> fields) {
-        List<StylePresetFieldDto> defs = parseStructuredFields(preset);
-        Map<String, Object> base = templateValues(normalizeFields(fields), prompt, defs);
+        Map<String, Object> merged = applyPresetReferenceSyntheticId(preset, normalizeFields(fields));
+        List<StylePresetFieldDto> defs = listStructuredFieldDefinitions(preset);
+        Map<String, Object> base = templateValues(merged, prompt, defs);
         List<StylePresetFieldDto> refDefs = defs.stream().filter(this::isReferenceField).toList();
         if (refDefs.isEmpty()) {
             return base;
         }
-        List<String> canonical = buildCanonicalUniqueOrder(refDefs, normalizeFields(fields));
+        List<String> canonical = buildCanonicalUniqueOrder(refDefs, merged);
         if (canonical.size() > GenerationV2Constants.MAX_SOURCE_IMAGE_IDS) {
             throw new IllegalArgumentException("Too many unique reference images (max "
                     + GenerationV2Constants.MAX_SOURCE_IMAGE_IDS + ")");
@@ -323,7 +332,7 @@ public class StylePresetPromptComposer {
         Map<String, Object> out = new HashMap<>(base);
         for (StylePresetFieldDto def : refDefs) {
             String key = def.getKey().trim();
-            List<String> slotIds = parseReferenceIds(fields.get(key));
+            List<String> slotIds = parseReferenceIds(merged.get(key));
             String sub = formatReferenceSubstitution(def, slotIds, canonical);
             out.put(key, sub);
         }
@@ -342,14 +351,14 @@ public class StylePresetPromptComposer {
         if (preset == null) {
             return validateAndCopyImageIds(dedupeIds(flattenLegacyIds(flatImageIds, singleImageId)));
         }
-        List<StylePresetFieldDto> refDefs = parseStructuredFields(preset).stream()
+        List<StylePresetFieldDto> refDefs = listStructuredFieldDefinitions(preset).stream()
                 .filter(this::isReferenceField)
                 .toList();
         if (refDefs.isEmpty()) {
             return validateAndCopyImageIds(dedupeIds(flattenLegacyIds(flatImageIds, singleImageId)));
         }
-        final Map<String, Object> fields = applyPresetDefaultReference(
-                preset, refDefs, normalizeFields(presetFields));
+        final Map<String, Object> fields = applyPresetReferenceSyntheticId(
+                preset, normalizeFields(presetFields));
         boolean anySlot = refDefs.stream()
                 .anyMatch(d -> !parseReferenceIds(fields.get(d.getKey())).isEmpty());
         List<String> canonical = anySlot
@@ -359,22 +368,16 @@ public class StylePresetPromptComposer {
     }
 
     /**
-     * Подставляет id вида {@code img_sagref_*} в первый пустой reference-слот, если у пресета задано референсное изображение.
+     * Подставляет {@link StylePresetSystemFields#PRESET_REFERENCE_KEY} = {@code img_sagref_*}, если у пресета задано референсное фото.
      */
-    private Map<String, Object> applyPresetDefaultReference(
-            StylePresetEntity preset,
-            List<StylePresetFieldDto> refDefs,
-            Map<String, Object> fields) {
+    private Map<String, Object> applyPresetReferenceSyntheticId(StylePresetEntity preset, Map<String, Object> fields) {
         if (preset.getReferenceImage() == null) {
             return fields;
         }
         String synthetic = StylePresetReferenceImageId.fromCachedImageId(preset.getReferenceImage().getId());
         Map<String, Object> merged = new HashMap<>(fields);
-        for (StylePresetFieldDto def : refDefs) {
-            if (parseReferenceIds(merged.get(def.getKey())).isEmpty()) {
-                merged.put(def.getKey(), synthetic);
-                break;
-            }
+        if (parseReferenceIds(merged.get(StylePresetSystemFields.PRESET_REFERENCE_KEY)).isEmpty()) {
+            merged.put(StylePresetSystemFields.PRESET_REFERENCE_KEY, synthetic);
         }
         return merged;
     }
@@ -543,6 +546,25 @@ public class StylePresetPromptComposer {
         List<StylePresetFieldDto> out = new ArrayList<>();
         for (Map<String, Object> row : preset.getStructuredFieldsJson()) {
             out.add(objectMapper.convertValue(row, StylePresetFieldDto.class));
+        }
+        return out;
+    }
+
+    /**
+     * JSON полей из БД + при наличии референсного фото — системное поле {@code preset_ref} первым (для порядка Image 1, …).
+     */
+    public List<StylePresetFieldDto> listStructuredFieldDefinitions(StylePresetEntity preset) {
+        List<StylePresetFieldDto> fromJson = parseStructuredFields(preset);
+        if (preset.getReferenceImage() == null) {
+            return fromJson;
+        }
+        List<StylePresetFieldDto> out = new ArrayList<>();
+        out.add(StylePresetSystemFields.presetReferenceFieldDefinition());
+        for (StylePresetFieldDto f : fromJson) {
+            if (f.getKey() != null && StylePresetSystemFields.isReservedFieldKey(f.getKey())) {
+                continue;
+            }
+            out.add(f);
         }
         return out;
     }

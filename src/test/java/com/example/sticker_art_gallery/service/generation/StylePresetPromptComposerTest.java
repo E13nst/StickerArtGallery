@@ -145,17 +145,17 @@ class StylePresetPromptComposerTest {
     }
 
     @Test
-    @DisplayName("resolveV2SourceImageIds: подставляет референс пресета в первый пустой слот")
-    void resolveV2_shouldApplyPresetDefaultReference() {
+    @DisplayName("resolveV2SourceImageIds: референс пресета всегда в слоте preset_ref")
+    void resolveV2_shouldPutPresetReferenceInPresetRefSlot() {
         UUID refUuid = UUID.fromString("a1b2c3d4-e5f6-4789-a012-3456789abcde");
         CachedImageEntity refImg = new CachedImageEntity();
         refImg.setId(refUuid);
 
         StylePresetEntity preset = new StylePresetEntity();
         preset.setUiMode(StylePresetUiMode.STRUCTURED_FIELDS);
-        preset.setPromptSuffix("{{r}}");
+        preset.setPromptSuffix("{{preset_ref}}");
         preset.setReferenceImage(refImg);
-        preset.setStructuredFieldsJson(objectMapper.convertValue(List.of(fieldRef("r")), new TypeReference<>() { }));
+        preset.setStructuredFieldsJson(null);
 
         String expected = StylePresetReferenceImageId.fromCachedImageId(refUuid);
         assertEquals(

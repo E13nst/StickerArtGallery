@@ -7,6 +7,8 @@ let presets = [];
 let categories = [];
 let editingPresetId = null;
 let editingCategoryId = null;
+/** В модалке: загружено ли референсное фото пресета (для валидации {{preset_ref}}) */
+let editingHasPresetReference = false;
 
 const DEFAULT_PROMPT_INPUT = {
     enabled: true,
@@ -186,6 +188,7 @@ function openAddModal() {
     document.getElementById('current-reference-wrap').classList.add('hidden');
     document.getElementById('current-reference-img').src = '';
     document.getElementById('clear-reference-btn').classList.add('hidden');
+    editingHasPresetReference = false;
     document.getElementById('edit-modal').classList.remove('hidden');
 }
 
@@ -218,6 +221,7 @@ function editPreset(id) {
         document.getElementById('current-preview-img').src = '';
     }
     const refUrl = preset.presetReferenceImageUrl || null;
+    editingHasPresetReference = Boolean(preset.presetReferenceSourceImageId || preset.presetReferenceImageUrl);
     if (refUrl) {
         document.getElementById('current-reference-img').src = refUrl;
         document.getElementById('current-reference-wrap').classList.remove('hidden');
@@ -302,6 +306,7 @@ async function savePreset(event) {
         }
         if (referenceFile && savedPresetId) {
             await api.uploadGlobalStylePresetReference(savedPresetId, referenceFile);
+            editingHasPresetReference = true;
             showNotification('Референс пресета загружен', 'success');
         }
         
@@ -547,12 +552,14 @@ function readPromptInputFromForm() {
 function renderFieldEditor(fields) {
     const list = document.getElementById('preset-fields-list');
     if (!fields || fields.length === 0) {
-        list.innerHTML = '<div class="text-xs text-gray-400 py-2">Поля не заданы. Добавь поле, если в шаблоне есть плейсхолдеры вроде <code>{{emotion}}</code>.</div>';
+        list.innerHTML = '<div class="text-xs text-gray-400 py-2">Поля не заданы. Добавь поле, если в шаблоне есть плейсхолдеры вроде <code>{{emotion}}</code>. Плейсхолдер <code>{{preset_ref}}</code> — только при загруженном референсе выше (поле создаётся автоматически).</div>';
         updateModeBadge();
         return;
     }
 
-    list.innerHTML = fields.map((field, index) => renderFieldRow(field, index)).join('');
+    list.innerHTML = fields.map((field, index) => (field.system || field.key === 'preset_ref')
+        ? renderSystemPresetRefRow(field, index)
+        : renderFieldRow(field, index)).join('');
     list.querySelectorAll('[data-field-type]').forEach((sel) => {
         sel.addEventListener('change', () => syncRefFieldOptionsVisibility(sel.closest('[data-field-row]')));
     });
@@ -567,6 +574,19 @@ function syncRefFieldOptionsVisibility(row) {
     if (!typeEl || !opts) return;
     const isRef = typeEl.value === 'reference';
     opts.classList.toggle('hidden', !isRef);
+}
+
+function renderSystemPresetRefRow(field, index) {
+    return `
+        <div class="field-row border border-indigo-100 rounded-lg p-3 bg-indigo-50/60 space-y-2" data-field-row data-field-system="true">
+            <div class="text-xs font-semibold text-indigo-800">Поле #${index + 1} — референс пресета (системное)</div>
+            <p class="text-xs text-indigo-900">
+                Ключ <code class="bg-white/80 px-1 rounded">preset_ref</code> — в шаблоне: <code class="bg-white/80 px-1 rounded">{{preset_ref}}</code>.
+                Настраивается только загрузкой «Референсного фото пресета» выше; в JSON пресета не сохраняется.
+            </p>
+            <div class="text-xs text-gray-600">Подпись: ${escapeHtml(field.label || 'Референс пресета')}</div>
+        </div>
+    `;
 }
 
 function renderFieldRow(field, index) {
@@ -586,7 +606,7 @@ function renderFieldRow(field, index) {
                     <option value="text" ${type === 'text' ? 'selected' : ''}>text</option>
                     <option value="emoji" ${type === 'emoji' ? 'selected' : ''}>emoji</option>
                     <option value="select" ${type === 'select' ? 'selected' : ''}>select</option>
-                    <option value="reference" ${type === 'reference' ? 'selected' : ''}>reference</option>
+                    <option value="reference" ${type === 'reference' ? 'selected' : ''}>reference (фото пользователя)</option>
                 </select>
             </div>
             <div data-field-ref-opts class="grid grid-cols-1 md:grid-cols-2 gap-3 ${type === 'reference' ? '' : 'hidden'}">
@@ -611,6 +631,7 @@ function renderFieldRow(field, index) {
 
 function readFieldsFromForm() {
     return Array.from(document.querySelectorAll('[data-field-row]'))
+        .filter(row => row.getAttribute('data-field-system') !== 'true')
         .map(row => {
             const key = row.querySelector('[data-field-key]').value.trim();
             const type = row.querySelector('[data-field-type]').value;
@@ -691,6 +712,12 @@ function validatePresetUiContract(promptSuffix, promptInput, fields) {
         if (key === 'prompt') {
             continue;
         }
+        if (key === 'preset_ref') {
+            if (!editingHasPresetReference) {
+                return 'В шаблоне используется {{preset_ref}} — загрузите «Референсное фото пресета» выше или уберите плейсхолдер из шаблона.';
+            }
+            continue;
+        }
         if (!fieldKeys.has(key)) {
             return `В шаблоне есть {{${key}}}, но поле "${key}" не описано ниже`;
         }
@@ -756,6 +783,7 @@ async function clearPresetReferenceInForm() {
         document.getElementById('current-reference-img').src = '';
         document.getElementById('preset-reference').value = '';
         document.getElementById('clear-reference-btn').classList.add('hidden');
+        editingHasPresetReference = false;
         showNotification('Референс удалён', 'success');
         await loadPresets();
     } catch (e) {

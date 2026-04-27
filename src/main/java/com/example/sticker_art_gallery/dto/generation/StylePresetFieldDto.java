@@ -42,6 +42,9 @@ public class StylePresetFieldDto {
     @Schema(description = "Варианты для type=select (legacy, не используется в MVP)", example = "[\"angry\", \"happy\"]", deprecated = true)
     private List<String> options;
 
+    @Schema(description = "Системное поле (например preset_ref), не редактируется в списке «доп. полей»")
+    private Boolean system;
+
     public String getKey() {
         return key;
     }
@@ -128,5 +131,13 @@ public class StylePresetFieldDto {
 
     public void setOptions(List<String> options) {
         this.options = options;
+    }
+
+    public Boolean getSystem() {
+        return system;
+    }
+
+    public void setSystem(Boolean system) {
+        this.system = system;
     }
 }
