@@ -8,6 +8,7 @@ import com.example.sticker_art_gallery.repository.ArtTransactionRepository;
 import com.example.sticker_art_gallery.repository.GenerationTaskRepository;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
