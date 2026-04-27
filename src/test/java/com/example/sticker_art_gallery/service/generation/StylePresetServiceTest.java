@@ -109,8 +109,6 @@ class StylePresetServiceTest {
                 realComposer);
 
         when(presetRepository.findByCodeAndIsGlobalTrue("ref_cap")).thenReturn(Optional.empty());
-        when(categoryRepository.findByCode("general")).thenReturn(Optional.of(generalCategory()));
-
         CreateStylePresetRequest req = new CreateStylePresetRequest();
         req.setCode("ref_cap");
         req.setName("Ref cap");

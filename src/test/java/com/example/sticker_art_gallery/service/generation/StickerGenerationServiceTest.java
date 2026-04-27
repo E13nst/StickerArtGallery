@@ -184,7 +184,7 @@ class StickerGenerationServiceTest {
                         "maxImages", 1
                 )
         ), new TypeReference<>() { }));
-        when(stylePresetRepository.findById(42L)).thenReturn(Optional.of(preset));
+        when(stylePresetRepository.findByIdWithReference(42L)).thenReturn(Optional.of(preset));
 
         GenerateStickerV2Request request = new GenerateStickerV2Request();
         request.setPrompt("p");
