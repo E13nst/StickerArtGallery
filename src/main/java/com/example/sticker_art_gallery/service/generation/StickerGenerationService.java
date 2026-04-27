@@ -968,12 +968,15 @@ public class StickerGenerationService {
             Optional<UUID> cached = StylePresetReferenceImageId.parseCachedImageId(imageId);
             if (cached.isPresent()) {
                 Optional<String> url = imageStorageService.getPublicUrlIfPresent(cached.get());
-                urls.add(url.orElse(null));
                 if (url.isPresent()) {
+                    urls.add(url.get());
                     any = true;
+                } else {
+                    urls.add("");
                 }
             } else {
-                urls.add(null);
+                // Sticker-processor (Pydantic) не принимает null в source_image_urls — только строки
+                urls.add("");
             }
         }
         return any ? urls : null;

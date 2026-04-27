@@ -20,7 +20,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 @Component
 public class StickerProcessorGenerationClient {
@@ -63,7 +62,7 @@ public class StickerProcessorGenerationClient {
         if (sourceImageUrls != null
                 && sourceImageIds != null
                 && sourceImageIds.size() == sourceImageUrls.size()
-                && sourceImageUrls.stream().anyMatch(Objects::nonNull)) {
+                && sourceImageUrls.stream().anyMatch(s -> s != null && !s.isBlank())) {
             payload.put("source_image_urls", sourceImageUrls);
         }
 
