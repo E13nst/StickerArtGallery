@@ -205,7 +205,8 @@ class StickerGenerationServiceTest {
         stickerGenerationService.startGenerationV2(userId, request);
 
         ArgumentCaptor<GenerationTaskEntity> taskCaptor = ArgumentCaptor.forClass(GenerationTaskEntity.class);
-        verify(taskRepository).save(taskCaptor.capture());
+        // startGenerationV2: save после создания задачи, затем save после привязки artTransaction
+        verify(taskRepository, times(2)).save(taskCaptor.capture());
         Map<?, ?> metadata = om.readValue(taskCaptor.getValue().getMetadata(), Map.class);
         assertEquals(List.of("img_from_slot"), metadata.get("image_ids"));
     }
