@@ -9,7 +9,8 @@ const NAVIGATION_ITEMS = [
     { href: '/admin/stars-packages.html', label: 'Stars Packages', icon: '⭐', id: 'stars-packages' },
     { href: '/admin/art-rules.html', label: 'ART Rules', icon: '🎭', id: 'art-rules' },
     { href: '/admin/prompt-enhancers.html', label: 'Prompt Enhancers', icon: '✨', id: 'prompt-enhancers' },
-    { href: '/admin/style-presets.html', label: 'Style Presets', icon: '🎨', id: 'style-presets' }
+    { href: '/admin/style-presets.html', label: 'Style Presets', icon: '🎨', id: 'style-presets' },
+    { href: '/admin/preset-moderation.html', label: 'Модерация пресетов', icon: '✅', id: 'preset-moderation' }
 ];
 
 /**

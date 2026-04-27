@@ -168,10 +168,10 @@ function openDetail(taskId) {
     details += `<div><strong>Статус:</strong> ${escapeHtml(row.status || '-')}</div>`;
     details += `<div><strong>Создана:</strong> ${formatDate(row.createdAt)}</div>`;
     details += `<div><strong>Завершена:</strong> ${formatDate(row.completedAt)}</div>`;
-    if (row.imageUrl) details += `<div><strong>imageUrl:</strong> <a class="text-blue-600 underline" target="_blank" href="${escapeHtml(row.imageUrl)}">${escapeHtml(row.imageUrl)}</a></div>`;
-    if (row.originalImageUrl) details += `<div><strong>originalImageUrl:</strong> <a class="text-blue-600 underline" target="_blank" href="${escapeHtml(row.originalImageUrl)}">${escapeHtml(row.originalImageUrl)}</a></div>`;
-    if (row.errorMessage) details += `<div><strong>Ошибка:</strong> <pre class="text-xs bg-gray-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 p-2 rounded whitespace-pre-wrap">${escapeHtml(row.errorMessage)}</pre></div>`;
-    details += `<div><strong>Метаданные:</strong><pre class="text-xs bg-gray-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 p-2 rounded whitespace-pre-wrap">${escapeHtml(row.metadata || '{}')}</pre></div>`;
+    if (row.imageUrl) details += `<div><strong>imageUrl:</strong> <a target="_blank" rel="noopener" href="${escapeHtml(row.imageUrl)}">${escapeHtml(row.imageUrl)}</a></div>`;
+    if (row.originalImageUrl) details += `<div><strong>originalImageUrl:</strong> <a target="_blank" rel="noopener" href="${escapeHtml(row.originalImageUrl)}">${escapeHtml(row.originalImageUrl)}</a></div>`;
+    if (row.errorMessage) details += `<div><strong>Ошибка:</strong> <pre class="text-xs p-2 rounded whitespace-pre-wrap overflow-x-auto">${escapeHtml(row.errorMessage)}</pre></div>`;
+    details += `<div><strong>Метаданные:</strong><pre class="text-xs p-2 rounded whitespace-pre-wrap overflow-x-auto">${escapeHtml(row.metadata || '{}')}</pre></div>`;
     details += '</div>';
     content.innerHTML = details;
     modal.classList.remove('hidden');

@@ -1,6 +1,6 @@
 package com.example.sticker_art_gallery.service.generation;
 
-import com.example.sticker_art_gallery.dto.generation.CreateStylePresetRequest;
+import com.example.sticker_art_gallery.dto.generation.StylePresetModerationStatsDto;
 import com.example.sticker_art_gallery.dto.generation.StylePresetCategoryDto;
 import com.example.sticker_art_gallery.dto.generation.StylePresetDto;
 import com.example.sticker_art_gallery.dto.generation.StylePresetFieldDto;
@@ -26,6 +26,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.sticker_art_gallery.dto.generation.StylePresetPromptInputDto;
 import com.example.sticker_art_gallery.dto.generation.StylePresetReferenceInputDto;
+import com.example.sticker_art_gallery.model.generation.PresetModerationStatus;
+import com.example.sticker_art_gallery.repository.generation.UserPresetLikeRepository;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,6 +49,7 @@ public class StylePresetService {
     private final ImageStorageService imageStorageService;
     private final ObjectMapper objectMapper;
     private final StylePresetPromptComposer presetPromptComposer;
+    private final UserPresetLikeRepository userPresetLikeRepository;
 
     @Autowired
     public StylePresetService(
@@ -55,13 +58,15 @@ public class StylePresetService {
             UserProfileService userProfileService,
             ImageStorageService imageStorageService,
             ObjectMapper objectMapper,
-            StylePresetPromptComposer presetPromptComposer) {
+            StylePresetPromptComposer presetPromptComposer,
+            UserPresetLikeRepository userPresetLikeRepository) {
         this.presetRepository = presetRepository;
         this.categoryRepository = categoryRepository;
         this.userProfileService = userProfileService;
         this.imageStorageService = imageStorageService;
         this.objectMapper = objectMapper;
         this.presetPromptComposer = presetPromptComposer;
+        this.userPresetLikeRepository = userPresetLikeRepository;
     }
 
     @Transactional(readOnly = true)
@@ -80,6 +85,49 @@ public class StylePresetService {
         return presetRepository.findAllGlobal().stream()
                 .map(p -> toDto(p, true))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Список пользовательских (не глобальных) пресетов для админ-модерации.
+     *
+     * @param status фильтр по статусу модерации; {@code null} — все
+     */
+    @Transactional(readOnly = true)
+    public List<StylePresetDto> listUserPresetsForAdmin(PresetModerationStatus status) {
+        return presetRepository.findUserPresetsForAdmin(status).stream()
+                .map(p -> toDto(p, true))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Агрегированная статистика по пользовательским пресетам и сохранениям.
+     */
+    @Transactional(readOnly = true)
+    public StylePresetModerationStatsDto getModerationStats() {
+        StylePresetModerationStatsDto dto = new StylePresetModerationStatsDto();
+        dto.setTotalUserPresets(presetRepository.countByIsGlobalFalse());
+        dto.setUserPresetsWithReference(presetRepository.countUserPresetsWithReferenceImage());
+        dto.setTotalUserPresetLikes(userPresetLikeRepository.count());
+
+        dto.setDraftCount(0L);
+        dto.setPendingModerationCount(0L);
+        dto.setApprovedCount(0L);
+        dto.setRejectedCount(0L);
+
+        for (Object[] row : presetRepository.countUserPresetsGroupedByModerationStatus()) {
+            PresetModerationStatus st = (PresetModerationStatus) row[0];
+            long cnt = (Long) row[1];
+            if (st == null) {
+                continue;
+            }
+            switch (st) {
+                case DRAFT -> dto.setDraftCount(cnt);
+                case PENDING_MODERATION -> dto.setPendingModerationCount(cnt);
+                case APPROVED -> dto.setApprovedCount(cnt);
+                case REJECTED -> dto.setRejectedCount(cnt);
+            }
+        }
+        return dto;
     }
 
     @Transactional(readOnly = true)
@@ -332,6 +380,8 @@ public class StylePresetService {
         d.setCategory(categoryToDto(entity.getCategory()));
         d.setCreatedAt(entity.getCreatedAt());
         d.setUpdatedAt(entity.getUpdatedAt());
+        d.setModerationStatus(entity.getModerationStatus() != null
+                ? entity.getModerationStatus().name() : null);
         d.setUiMode(entity.getUiMode() != null ? entity.getUiMode().name() : StylePresetUiMode.STYLE_WITH_PROMPT.name());
         d.setRemoveBackgroundMode(
                 entity.getRemoveBackgroundMode() != null

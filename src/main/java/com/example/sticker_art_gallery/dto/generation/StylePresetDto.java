@@ -56,6 +56,8 @@ public class StylePresetDto {
     private OffsetDateTime createdAt;
     @Schema(description = "Время обновления")
     private OffsetDateTime updatedAt;
+    @Schema(description = "Статус модерации (только персональные пресеты): DRAFT, PENDING_MODERATION, APPROVED, REJECTED")
+    private String moderationStatus;
 
     // getters / setters
 
@@ -105,4 +107,6 @@ public class StylePresetDto {
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public String getModerationStatus() { return moderationStatus; }
+    public void setModerationStatus(String moderationStatus) { this.moderationStatus = moderationStatus; }
 }

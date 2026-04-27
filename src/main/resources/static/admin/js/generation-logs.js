@@ -213,7 +213,7 @@ function openDetail(taskId) {
                 api.getGenerationLogEvents(taskId)
             ]);
             if (!session) {
-                content.innerHTML = '<p class="text-red-600">Сессия не найдена.</p>';
+                content.innerHTML = '<p class="text-red-600 dark:text-red-400">Сессия не найдена.</p>';
                 return;
             }
             let html = '<div class="space-y-4">';
@@ -222,11 +222,11 @@ function openDetail(taskId) {
             html += '<div><strong>Статус:</strong> ' + escapeHtml(session.finalStatus || '-') + '</div>';
             html += '<div><strong>Старт:</strong> ' + formatDate(session.startedAt) + '</div>';
             html += '<div><strong>Завершение:</strong> ' + formatDate(session.completedAt) + '</div>';
-            if (session.errorCode) html += '<div><strong>Код ошибки:</strong> <span class="text-red-600">' + escapeHtml(session.errorCode) + '</span></div>';
-            if (session.errorMessage) html += '<div><strong>Ошибка:</strong> <pre class="text-xs bg-gray-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 p-2 rounded overflow-x-auto">' + escapeHtml(session.errorMessage) + '</pre></div>';
-            html += '<div><strong>Исходный промпт:</strong><pre class="text-xs bg-gray-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 p-2 rounded whitespace-pre-wrap">' + escapeHtml(session.rawPrompt || '') + '</pre></div>';
-            html += '<div><strong>Обработанный промпт:</strong><pre class="text-xs bg-gray-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 p-2 rounded whitespace-pre-wrap">' + escapeHtml(session.processedPrompt || '') + '</pre></div>';
-            if (session.requestParams) html += '<div><strong>Параметры запроса:</strong><pre class="text-xs bg-gray-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 p-2 rounded">' + escapeHtml(session.requestParams) + '</pre></div>';
+            if (session.errorCode) html += '<div><strong>Код ошибки:</strong> <span class="text-red-600 dark:text-red-400">' + escapeHtml(session.errorCode) + '</span></div>';
+            if (session.errorMessage) html += '<div><strong>Ошибка:</strong> <pre class="text-xs p-2 rounded overflow-x-auto">' + escapeHtml(session.errorMessage) + '</pre></div>';
+            html += '<div><strong>Исходный промпт:</strong><pre class="text-xs p-2 rounded whitespace-pre-wrap overflow-x-auto">' + escapeHtml(session.rawPrompt || '') + '</pre></div>';
+            html += '<div><strong>Обработанный промпт:</strong><pre class="text-xs p-2 rounded whitespace-pre-wrap overflow-x-auto">' + escapeHtml(session.processedPrompt || '') + '</pre></div>';
+            if (session.requestParams) html += '<div><strong>Параметры запроса:</strong><pre class="text-xs p-2 rounded overflow-x-auto">' + escapeHtml(session.requestParams) + '</pre></div>';
             html += '<div class="pt-2"><strong>Таймлайн событий:</strong></div><ul class="list-disc pl-6 space-y-1">';
             (events || []).forEach(function(ev) {
                 html += '<li><span class="text-gray-600 dark:text-slate-400">' + formatDate(ev.createdAt) + '</span> ' + escapeHtml(ev.stage || '') + ' / ' + escapeHtml(ev.eventStatus || '') + (ev.errorMessage ? ' <span class="text-red-600 dark:text-red-400">' + escapeHtml(ev.errorMessage.substring(0, 80)) + '</span>' : '') + '</li>';
@@ -235,7 +235,7 @@ function openDetail(taskId) {
             content.innerHTML = html;
         } catch (e) {
             console.error(e);
-            content.innerHTML = '<p class="text-red-600">Ошибка загрузки деталей.</p>';
+            content.innerHTML = '<p class="text-red-600 dark:text-red-400">Ошибка загрузки деталей.</p>';
         }
     })();
 }

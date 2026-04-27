@@ -538,6 +538,34 @@ class AdminApiClient {
         return this.request(`/admin/ton-transactions${queryString}`);
     }
 
+    // ============ User preset moderation (Admin) ============
+
+    async getPresetModerationStats() {
+        return this.request('/admin/style-presets/moderation/stats');
+    }
+
+    async getUserPresetForModeration(presetId) {
+        return this.request(`/admin/style-presets/moderation/${encodeURIComponent(presetId)}`);
+    }
+
+    /**
+     * @param {string|undefined} status — PENDING_MODERATION | APPROVED | REJECTED | DRAFT или undefined = все
+     */
+    async getUserPresetsForModeration(status) {
+        const q = status ? `?status=${encodeURIComponent(status)}` : '';
+        return this.request(`/admin/style-presets/moderation${q}`);
+    }
+
+    /**
+     * @param {'APPROVED'|'REJECTED'} decision
+     */
+    async decidePresetModeration(presetId, decision) {
+        return this.request(`/admin/style-presets/moderation/${presetId}/decide`, {
+            method: 'POST',
+            body: JSON.stringify({ status: decision })
+        });
+    }
+
     // ============ Analytics Dashboard (Admin) ============
 
     async getAnalyticsDashboard(from, to, granularity = 'day', tz = 'UTC') {

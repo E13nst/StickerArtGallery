@@ -8,7 +8,7 @@ import com.example.sticker_art_gallery.model.generation.StylePresetCategoryEntit
 import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.repository.StylePresetCategoryRepository;
-import com.example.sticker_art_gallery.repository.StylePresetRepository;
+import com.example.sticker_art_gallery.repository.generation.UserPresetLikeRepository;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
 import com.example.sticker_art_gallery.service.storage.ImageStorageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -50,6 +51,9 @@ class StylePresetServiceTest {
 
     @Mock
     private StylePresetPromptComposer presetPromptComposer;
+
+    @Mock
+    private UserPresetLikeRepository userPresetLikeRepository;
 
     @InjectMocks
     private StylePresetService stylePresetService;
@@ -106,7 +110,8 @@ class StylePresetServiceTest {
                 userProfileService,
                 imageStorageService,
                 realMapper,
-                realComposer);
+                realComposer,
+                mock(UserPresetLikeRepository.class));
 
         when(presetRepository.findByCodeAndIsGlobalTrue("ref_cap")).thenReturn(Optional.empty());
         CreateStylePresetRequest req = new CreateStylePresetRequest();

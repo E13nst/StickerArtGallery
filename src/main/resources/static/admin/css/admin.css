@@ -433,3 +433,109 @@ html.dark .action-dropdown[open] summary {
     border-color: #3b82f6;
     background-color: rgba(30, 58, 138, 0.35);
 }
+
+/* =============================================================================
+   Модалки «детали» (#detail-content, #modal-body) — динамический HTML из JS
+   Текст, метки, code/pre и ссылки читаемы в светлой и тёмной теме (CSS-переменные)
+   ============================================================================= */
+#detail-content,
+#modal-body {
+    color: var(--admin-text);
+}
+
+#detail-content strong,
+#modal-body strong {
+    color: var(--admin-text-muted);
+    font-weight: 600;
+}
+
+#detail-content code,
+#modal-body code {
+    background-color: var(--admin-surface-muted);
+    /* цвет — по наследованию с контейнера или Tailwind-классам (без #code color — иначе бьют text-orange, text-green, …) */
+    border: 1px solid var(--admin-border);
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    word-break: break-all;
+}
+
+#detail-content pre,
+#modal-body pre {
+    background-color: var(--admin-surface-muted) !important;
+    color: var(--admin-text) !important;
+    border: 1px solid var(--admin-border) !important;
+}
+
+#detail-content a,
+#modal-body a {
+    color: #2563eb;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+html.dark #detail-content a,
+html.dark #modal-body a {
+    color: #58a6ff;
+}
+
+#detail-content ul,
+#modal-body ul {
+    color: var(--admin-text);
+}
+
+#detail-content .text-red-600:not(.no-admin-theme),
+#modal-body .text-red-600:not(.no-admin-theme) {
+    color: #dc2626;
+}
+html.dark #detail-content .text-red-600:not(.no-admin-theme),
+html.dark #modal-body .text-red-600:not(.no-admin-theme) {
+    color: var(--admin-danger) !important;
+}
+
+/* Акцент «внимание» (retry id и т.п.) */
+#detail-content .text-orange-600:not(.no-admin-theme),
+#modal-body .text-orange-600:not(.no-admin-theme) {
+    color: #ea580c;
+}
+html.dark #detail-content .text-orange-600:not(.no-admin-theme),
+html.dark #modal-body .text-orange-600:not(.no-admin-theme) {
+    color: #fb923c !important;
+}
+
+/* Метка поля (подпись к превью / reference) */
+.admin-dm-caption {
+    color: var(--admin-text-muted);
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+
+/* Блоки описания / текста в карточке */
+.admin-dm-surface {
+    background-color: var(--admin-surface-muted);
+    border: 1px solid var(--admin-border);
+    color: var(--admin-text);
+    border-radius: 0.375rem;
+}
+
+/* Заглушка «Нет» */
+.admin-dm-empty {
+    color: var(--admin-text-muted);
+    font-size: 0.875rem;
+}
+
+/* Грид с картинками в деталях */
+.admin-dm-img {
+    max-height: 12rem;
+    border-radius: 0.375rem;
+    border: 1px solid var(--admin-border);
+}
+
+.admin-dm-sep {
+    border-color: var(--admin-border) !important;
+}
+
+.admin-dm-value {
+    color: var(--admin-text);
+    font-weight: 600;
+}

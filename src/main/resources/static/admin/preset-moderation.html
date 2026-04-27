@@ -3,133 +3,279 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Модерация пресетов - Админ панель</title>
+    <title>Модерация пресетов — Админ</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = { darkMode: 'class' };
-    </script>
+    <script>tailwind.config = { darkMode: 'class' };</script>
     <script src="/admin/js/theme.js"></script>
     <link rel="stylesheet" href="/admin/css/admin.css">
 </head>
 <body class="admin-page antialiased">
     <div class="flex h-screen overflow-hidden">
+        <div id="sidebar-container"></div>
         <main class="flex-1 overflow-y-auto">
-            <div class="p-4">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-2xl font-bold text-gray-800 dark:text-slate-100">Модерация пресетов</h2>
-                    <div class="flex gap-2">
+            <div class="p-4 max-w-[1600px] mx-auto">
+                <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+                    <div>
+                        <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-100">Модерация пользовательских пресетов</h1>
+                        <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">Одобрение, отклонение, просмотр превью и reference-файлов, статистика</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2 items-center">
+                        <label class="text-sm text-slate-600 dark:text-slate-400">Статус</label>
                         <select id="filter-status"
-                            class="px-2 py-1 text-xs border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
-                            <option value="PENDING_MODERATION">PENDING_MODERATION</option>
+                            class="px-2 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 min-w-[200px]">
+                            <option value="">Все</option>
+                            <option value="PENDING_MODERATION" selected>Ожидают (PENDING)</option>
+                            <option value="DRAFT">DRAFT</option>
                             <option value="APPROVED">APPROVED</option>
                             <option value="REJECTED">REJECTED</option>
-                            <option value="DRAFT">DRAFT</option>
                         </select>
-                        <button onclick="loadPresets()"
-                            class="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md">
+                        <button type="button" id="btn-refresh" class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700">
                             Обновить
                         </button>
                     </div>
                 </div>
 
-                <div id="status-message" class="hidden mb-3 p-2 rounded text-sm"></div>
+                <div id="error-banner" class="hidden mb-4 p-3 rounded-lg bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200 text-sm"></div>
 
-                <div class="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
-                    <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700 text-sm">
-                        <thead class="bg-slate-50 dark:bg-slate-800">
-                            <tr>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase">ID</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase">Название</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase">Код</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase">Статус</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase">Владелец</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase">Создан</th>
-                                <th class="px-3 py-2 text-center text-xs font-medium text-slate-500 uppercase">Действия</th>
-                            </tr>
-                        </thead>
-                        <tbody id="presets-table-body" class="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-700">
-                            <tr>
-                                <td colspan="7" class="px-3 py-4 text-center text-slate-500 dark:text-slate-400">
-                                    Нажмите «Обновить» для загрузки данных
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <!-- Статистика -->
+                <div id="stats-row" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+                    <!-- заполняется JS -->
+                </div>
+
+                <!-- Таблица -->
+                <div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700 text-sm">
+                            <thead class="bg-slate-50 dark:bg-slate-800/80">
+                                <tr>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">ID</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-slate-500">Превью</th>
+                                    <th class="px-3 py-2 text-left text-xs">Reference</th>
+                                    <th class="px-3 py-2 text-left text-xs">Название / код</th>
+                                    <th class="px-3 py-2 text-left text-xs">Владелец</th>
+                                    <th class="px-3 py-2 text-left text-xs">Статус</th>
+                                    <th class="px-3 py-2 text-left text-xs">Категория</th>
+                                    <th class="px-3 py-2 text-left text-xs">Обновлён</th>
+                                    <th class="px-3 py-2 text-center text-xs">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody" class="divide-y divide-slate-100 dark:divide-slate-800">
+                            </tbody>
+                        </table>
+                    </div>
+                    <p id="empty-msg" class="hidden py-8 text-center text-slate-500">Нет пресетов по фильтру</p>
                 </div>
             </div>
         </main>
     </div>
 
-    <script src="/admin/js/auth.js"></script>
-    <script src="/admin/js/api.js"></script>
+    <!-- Модалка деталей -->
+    <div id="modal-detail" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" aria-hidden="true">
+        <div class="bg-white dark:bg-slate-900 rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-700 shadow-xl p-4">
+            <div class="flex justify-between items-start mb-3">
+                <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100" id="modal-title">Пресет</h3>
+                <button type="button" id="modal-close" class="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 text-xl leading-none">&times;</button>
+            </div>
+            <div id="modal-body" class="text-sm space-y-3 p-1"></div>
+        </div>
+    </div>
+
     <script src="/admin/js/sidebar.js"></script>
+    <script src="/admin/js/api.js"></script>
+    <script src="/admin/js/auth.js"></script>
     <script>
+    (function() {
         const STATUS_BADGE = {
-            DRAFT:               'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
-            PENDING_MODERATION:  'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-            APPROVED:            'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-            REJECTED:            'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+            DRAFT: 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200',
+            PENDING_MODERATION: 'bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-200',
+            APPROVED: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200',
+            REJECTED: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-200'
         };
 
-        function showStatus(msg, isError) {
-            const el = document.getElementById('status-message');
-            el.textContent = msg;
-            el.className = 'mb-3 p-2 rounded text-sm ' + (isError
-                ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200'
-                : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200');
-            el.classList.remove('hidden');
-            setTimeout(() => el.classList.add('hidden'), 4000);
+        function esc(s) {
+            if (s == null) return '';
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         }
 
-        async function loadPresets() {
-            const status = document.getElementById('filter-status').value;
+        function showError(msg) {
+            const el = document.getElementById('error-banner');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
+        function clearError() {
+            const el = document.getElementById('error-banner');
+            el.classList.add('hidden');
+        }
+
+        async function loadStats() {
             try {
-                // Используем admin endpoint списка всех пресетов с фильтром по статусу
-                const data = await apiGet(`/admin/style-presets?moderationStatus=${status}`);
-                renderTable(Array.isArray(data) ? data : (data.content || []));
+                const s = await api.getPresetModerationStats();
+                const row = document.getElementById('stats-row');
+                const cards = [
+                    { l: 'Всего (польз.)', v: s.totalUserPresets },
+                    { l: 'Ожидают (PENDING)', v: s.pendingModerationCount, h: 'text-amber-600 dark:text-amber-400' },
+                    { l: 'DRAFT', v: s.draftCount },
+                    { l: 'APPROVED', v: s.approvedCount, h: 'text-emerald-600' },
+                    { l: 'REJECTED', v: s.rejectedCount, h: 'text-rose-600' },
+                    { l: 'С reference-файлом', v: s.userPresetsWithReference },
+                    { l: 'Сохранений (likes)', v: s.totalUserPresetLikes }
+                ];
+                row.className = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 mb-6';
+                row.innerHTML = cards.map(c => `
+                    <div class="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50 p-3">
+                        <div class="text-xs text-slate-500 dark:text-slate-400 mb-0.5">${esc(c.l)}</div>
+                        <div class="text-xl font-bold ${c.h || 'text-slate-900 dark:text-slate-100'}">${esc(c.v)}</div>
+                    </div>
+                `).join('');
             } catch (e) {
-                showStatus('Ошибка загрузки: ' + e.message, true);
+                console.error(e);
+                showError('Статистика: ' + (e.message || e));
             }
+        }
+
+        function thumb(url, alt) {
+            if (!url) return '<span class="text-slate-400 text-xs">—</span>';
+            return `<img src="${esc(url)}" alt="${esc(alt)}" class="h-16 w-16 object-cover rounded border border-slate-200 dark:border-slate-600" loading="lazy" />`;
         }
 
         function renderTable(items) {
-            const tbody = document.getElementById('presets-table-body');
-            if (!items.length) {
-                tbody.innerHTML = `<tr><td colspan="7" class="px-3 py-4 text-center text-slate-500 dark:text-slate-400">Нет данных</td></tr>`;
+            const tb = document.getElementById('tbody');
+            const empty = document.getElementById('empty-msg');
+            if (!items || !items.length) {
+                tb.innerHTML = '';
+                empty.classList.remove('hidden');
                 return;
             }
-            tbody.innerHTML = items.map(p => `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <td class="px-3 py-2 text-slate-700 dark:text-slate-300">${p.id}</td>
-                    <td class="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">${p.name || '—'}</td>
-                    <td class="px-3 py-2 font-mono text-xs text-slate-500">${p.code || '—'}</td>
+            empty.classList.add('hidden');
+            tb.innerHTML = items.map(p => {
+                const st = p.moderationStatus || '—';
+                const badge = STATUS_BADGE[st] || 'bg-slate-100 text-slate-700';
+                const canDecide = st === 'PENDING_MODERATION';
+                return `<tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 align-top">
+                    <td class="px-3 py-2 font-mono text-xs">${p.id}</td>
+                    <td class="px-3 py-2">${thumb(p.previewUrl, 'preview')}</td>
+                    <td class="px-3 py-2">${thumb(p.presetReferenceImageUrl, 'ref')}</td>
                     <td class="px-3 py-2">
-                        <span class="px-2 py-0.5 rounded text-xs font-medium ${STATUS_BADGE[p.moderationStatus] || ''}">${p.moderationStatus || '—'}</span>
+                        <div class="font-medium text-slate-800 dark:text-slate-200">${esc(p.name)}</div>
+                        <div class="text-xs font-mono text-slate-500">${esc(p.code)}</div>
                     </td>
-                    <td class="px-3 py-2 text-xs text-slate-500">${p.ownerId || '—'}</td>
-                    <td class="px-3 py-2 text-xs text-slate-400">${p.createdAt ? p.createdAt.slice(0, 10) : '—'}</td>
+                    <td class="px-3 py-2 font-mono text-xs">${p.ownerId != null ? p.ownerId : '—'}</td>
+                    <td class="px-3 py-2"><span class="inline-block px-2 py-0.5 rounded text-xs font-medium ${badge}">${esc(st)}</span></td>
+                    <td class="px-3 py-2 text-xs">${p.category ? esc(p.category.name) : '—'}</td>
+                    <td class="px-3 py-2 text-xs text-slate-500 whitespace-nowrap">${p.updatedAt ? p.updatedAt.slice(0, 16).replace('T', ' ') : '—'}</td>
                     <td class="px-3 py-2 text-center">
-                        ${p.moderationStatus === 'PENDING_MODERATION' ? `
-                        <div class="flex gap-1 justify-center">
-                            <button onclick="moderate(${p.id}, 'APPROVED')"
-                                class="px-2 py-0.5 text-xs bg-green-600 hover:bg-green-700 text-white rounded">Одобрить</button>
-                            <button onclick="moderate(${p.id}, 'REJECTED')"
-                                class="px-2 py-0.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded">Отклонить</button>
-                        </div>` : '<span class="text-xs text-slate-400">—</span>'}
+                        <div class="flex flex-col gap-1 items-stretch min-w-[100px]">
+                            <button type="button" class="px-2 py-1 text-xs bg-slate-200 dark:bg-slate-700 rounded hover:opacity-90 btn-detail" data-id="${p.id}">Детали</button>
+                            ${canDecide ? `
+                                <button type="button" class="px-2 py-1 text-xs bg-emerald-600 text-white rounded btn-ok" data-id="${p.id}">Одобрить</button>
+                                <button type="button" class="px-2 py-1 text-xs bg-rose-600 text-white rounded btn-rej" data-id="${p.id}">Отклонить</button>
+                            ` : ''}
+                        </div>
                     </td>
-                </tr>
-            `).join('');
+                </tr>`;
+            }).join('');
         }
 
-        async function moderate(presetId, status) {
+        function openDetail(p) {
+            const modal = document.getElementById('modal-detail');
+            document.getElementById('modal-title').textContent = `Пресет #${p.id} — ${p.name || ''}`;
+            const refMime = p.presetReferenceMimeType || '';
+            const body = document.getElementById('modal-body');
+            body.innerHTML = `
+                <div class="space-y-4">
+                <div class="grid sm:grid-cols-2 gap-4">
+                    <div>
+                        <div class="admin-dm-caption">Превью</div>
+                        ${p.previewUrl ? `<img src="${esc(p.previewUrl)}" class="admin-dm-img w-full object-contain max-w-full" alt="preview" />` : '<span class="admin-dm-empty">Нет</span>'}
+                    </div>
+                    <div>
+                        <div class="admin-dm-caption">Reference (прикреплённый файл)</div>
+                        ${p.presetReferenceImageUrl
+                            ? `<img src="${esc(p.presetReferenceImageUrl)}" class="admin-dm-img w-full object-contain max-w-full" alt="ref" />
+                               <div class="text-xs mt-2 admin-dm-caption">${esc(refMime)}${p.presetReferenceSourceImageId ? ' · ' + esc(p.presetReferenceSourceImageId) : ''}</div>`
+                            : '<span class="admin-dm-empty">Нет</span>'}
+                    </div>
+                </div>
+                <div class="space-y-2 pt-1 border-t border-solid admin-dm-sep">
+                    <div class="text-sm flex flex-wrap gap-x-2 gap-y-1 items-baseline"><strong>Статус модерации</strong> <span class="admin-dm-value">${esc(p.moderationStatus)}</span></div>
+                    <div class="text-sm flex flex-wrap gap-x-2 gap-y-1 items-baseline"><strong>Владелец (userId)</strong> <span class="admin-dm-value">${p.ownerId != null ? p.ownerId : '—'}</span></div>
+                    <div class="text-sm flex flex-wrap gap-x-2 gap-y-1 items-baseline"><strong>Категория</strong> <span class="admin-dm-value">${p.category ? esc(p.category.name) + ' (' + esc(p.category.code) + ')' : '—'}</span></div>
+                </div>
+                <div>
+                    <div class="admin-dm-caption">Описание</div>
+                    ${p.description
+                        ? '<div class="admin-dm-surface p-2 text-sm whitespace-pre-wrap max-h-48 overflow-y-auto">' + esc(p.description) + '</div>'
+                        : '<span class="admin-dm-empty">—</span>'}
+                </div>
+                <div>
+                    <div class="admin-dm-caption">Шаблон (prompt suffix, внутр.)</div>
+                    <pre class="mt-1 p-2 rounded text-xs overflow-x-auto max-h-40 block">${esc(p.promptSuffix || '')}</pre>
+                </div>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+        }
+
+        document.getElementById('modal-close').addEventListener('click', () => {
+            document.getElementById('modal-detail').classList.add('hidden');
+        });
+        document.getElementById('modal-detail').addEventListener('click', (e) => {
+            if (e.target.id === 'modal-detail') document.getElementById('modal-detail').classList.add('hidden');
+        });
+
+        let cacheList = [];
+
+        document.getElementById('tbody').addEventListener('click', async (e) => {
+            const id = e.target.getAttribute('data-id');
+            if (!id) return;
+            if (e.target.classList.contains('btn-detail')) {
+                let p = cacheList.find(x => String(x.id) === id);
+                if (!p) {
+                    try {
+                        p = await api.getUserPresetForModeration(id);
+                    } catch (err) {
+                        showError('Не удалось загрузить пресет: ' + (err.message || err));
+                    }
+                }
+                if (p) openDetail(p);
+                return;
+            }
+            if (e.target.classList.contains('btn-ok') || e.target.classList.contains('btn-rej')) {
+                const decision = e.target.classList.contains('btn-ok') ? 'APPROVED' : 'REJECTED';
+                if (!confirm(decision === 'APPROVED' ? 'Одобрить пресет?' : 'Отклонить пресет?')) return;
+                try {
+                    clearError();
+                    await api.decidePresetModeration(id, decision);
+                    await Promise.all([loadList(), loadStats()]);
+                } catch (err) {
+                    showError(err.message || String(err));
+                }
+            }
+        });
+
+        async function loadList() {
+            clearError();
+            const st = document.getElementById('filter-status').value;
             try {
-                await apiPost(`/api/style-presets/admin/${presetId}/moderate`, { status });
-                showStatus(`Пресет ${presetId}: статус → ${status}`, false);
-                loadPresets();
+                const list = await api.getUserPresetsForModeration(st || undefined);
+                cacheList = list || [];
+                renderTable(cacheList);
             } catch (e) {
-                showStatus(`Ошибка: ${e.message}`, true);
+                showError('Список: ' + (e.message || e));
             }
         }
+
+        document.getElementById('btn-refresh').addEventListener('click', () => { loadStats(); loadList(); });
+        document.getElementById('filter-status').addEventListener('change', loadList);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof SidebarComponent !== 'undefined' && document.getElementById('sidebar-container')) {
+                SidebarComponent.mount('sidebar-container');
+            }
+            loadStats();
+            loadList();
+        });
+    })();
     </script>
 </body>
 </html>

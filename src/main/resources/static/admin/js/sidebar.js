@@ -31,7 +31,8 @@ const SidebarComponent = {
             title: 'AI и стили',
             items: [
                 { path: '/admin/prompt-enhancers.html', icon: '✨', label: 'Prompt Enhancers' },
-                { path: '/admin/style-presets.html', icon: '🖌️', label: 'Style Presets' }
+                { path: '/admin/style-presets.html', icon: '🖌️', label: 'Style Presets' },
+                { path: '/admin/preset-moderation.html', icon: '✅', label: 'Модерация пресетов' }
             ]
         }
     ],

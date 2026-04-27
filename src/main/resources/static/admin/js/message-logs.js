@@ -220,11 +220,11 @@ function openDetail(messageId) {
             html += '<div><strong>Завершение:</strong> ' + formatDate(session.completedAt) + '</div>';
             html += '<div><strong>Telegram chat_id:</strong> ' + escapeHtml(String(session.telegramChatId || '-')) + '</div>';
             html += '<div><strong>Telegram message_id:</strong> ' + escapeHtml(String(session.telegramMessageId || '-')) + '</div>';
-            if (session.retryOfMessageId) html += '<div><strong>Retry исходной сессии:</strong> <code class="text-xs text-orange-600">' + escapeHtml(session.retryOfMessageId) + '</code></div>';
+            if (session.retryOfMessageId) html += '<div><strong>Retry исходной сессии:</strong> <code class="text-xs text-orange-600 dark:text-orange-400">' + escapeHtml(session.retryOfMessageId) + '</code></div>';
             if (session.errorCode) html += '<div><strong>Код ошибки:</strong> <span class="text-red-600 dark:text-red-400">' + escapeHtml(session.errorCode) + '</span></div>';
-            if (session.errorMessage) html += '<div><strong>Причина ошибки:</strong> <pre class="text-xs bg-gray-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 p-2 rounded overflow-x-auto">' + escapeHtml(session.errorMessage) + '</pre></div>';
-            html += '<div><strong>Текст сообщения:</strong><pre class="text-xs bg-gray-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 p-2 rounded whitespace-pre-wrap">' + escapeHtml(session.messageText || '') + '</pre></div>';
-            if (session.requestPayload) html += '<div><strong>Payload запроса:</strong><pre class="text-xs bg-gray-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 p-2 rounded whitespace-pre-wrap">' + escapeHtml(session.requestPayload) + '</pre></div>';
+            if (session.errorMessage) html += '<div><strong>Причина ошибки:</strong> <pre class="text-xs p-2 rounded overflow-x-auto">' + escapeHtml(session.errorMessage) + '</pre></div>';
+            html += '<div><strong>Текст сообщения:</strong><pre class="text-xs p-2 rounded whitespace-pre-wrap overflow-x-auto">' + escapeHtml(session.messageText || '') + '</pre></div>';
+            if (session.requestPayload) html += '<div><strong>Payload запроса:</strong><pre class="text-xs p-2 rounded whitespace-pre-wrap overflow-x-auto">' + escapeHtml(session.requestPayload) + '</pre></div>';
             html += '<div class="pt-2"><strong>Таймлайн событий:</strong></div><ul class="list-disc pl-6 space-y-1">';
             (events || []).forEach(function(ev) {
                 html += '<li><span class="text-gray-600 dark:text-slate-400">' + formatDate(ev.createdAt) + '</span> ' +
@@ -236,7 +236,7 @@ function openDetail(messageId) {
 
             if (session.finalStatus === 'FAILED') {
                 const safeId = (session.messageId || '').replace(/'/g, "\\'");
-                html += '<div class="pt-4 border-t border-gray-200 dark:border-slate-700 mt-4">';
+                html += '<div class="pt-4 border-t border-solid admin-dm-sep mt-4">';
                 html += '<button id="detail-retry-btn" onclick="retryMessage(\'' + safeId + '\')" ' +
                     'class="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed ' +
                     'text-white text-sm font-medium px-4 py-2 rounded transition-colors">' +
@@ -249,7 +249,7 @@ function openDetail(messageId) {
             content.innerHTML = html;
         } catch (error) {
             console.error(error);
-            content.innerHTML = '<p class="text-red-600">Ошибка загрузки деталей.</p>';
+            content.innerHTML = '<p class="text-red-600 dark:text-red-400">Ошибка загрузки деталей.</p>';
         }
     })();
 }
