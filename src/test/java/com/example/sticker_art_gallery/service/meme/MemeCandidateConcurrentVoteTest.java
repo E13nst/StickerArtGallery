@@ -7,6 +7,8 @@ import com.example.sticker_art_gallery.repository.meme.MemeCandidateLikeReposito
 import com.example.sticker_art_gallery.repository.meme.MemeCandidateRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
+
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -58,8 +60,9 @@ class MemeCandidateConcurrentVoteTest {
         // Создаём минимальный CachedImageEntity-заглушку через транзакцию
         candidateId = txTemplate.execute(status -> {
             // Ищем любое уже существующее cached_image для теста
-            Long imageId = (Long) entityManager.createNativeQuery(
+            Object rawId = entityManager.createNativeQuery(
                     "SELECT id FROM cached_images LIMIT 1").getSingleResult();
+            UUID imageId = rawId instanceof UUID u ? u : UUID.fromString(rawId.toString());
 
             CachedImageEntity img = entityManager.find(CachedImageEntity.class, imageId);
             MemeCandidateEntity candidate = new MemeCandidateEntity();

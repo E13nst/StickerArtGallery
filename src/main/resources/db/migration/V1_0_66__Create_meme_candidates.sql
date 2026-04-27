@@ -14,7 +14,7 @@
 CREATE TABLE meme_candidates (
     id                          BIGSERIAL PRIMARY KEY,
     task_id                     VARCHAR(64)  NOT NULL,
-    cached_image_id             BIGINT       NOT NULL REFERENCES cached_images(id) ON DELETE CASCADE,
+    cached_image_id             UUID         NOT NULL REFERENCES cached_images(id) ON DELETE CASCADE,
     style_preset_id             BIGINT       REFERENCES style_presets(id) ON DELETE SET NULL,
     preset_owner_user_id        BIGINT,
     likes_count                 INTEGER      NOT NULL DEFAULT 0,

@@ -4,6 +4,7 @@ import com.example.sticker_art_gallery.model.meme.CandidateFeedVisibility;
 import com.example.sticker_art_gallery.model.meme.MemeCandidateEntity;
 
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 /**
  * DTO для мем-кандидата в ленте оценки.
@@ -12,7 +13,7 @@ public class MemeCandidateDto {
 
     private Long id;
     private String taskId;
-    private Long cachedImageId;
+    private UUID cachedImageId;
     private String imageUrl;
     private Long stylePresetId;
     private String stylePresetName;
@@ -47,8 +48,8 @@ public class MemeCandidateDto {
     public String getTaskId() { return taskId; }
     public void setTaskId(String taskId) { this.taskId = taskId; }
 
-    public Long getCachedImageId() { return cachedImageId; }
-    public void setCachedImageId(Long cachedImageId) { this.cachedImageId = cachedImageId; }
+    public UUID getCachedImageId() { return cachedImageId; }
+    public void setCachedImageId(UUID cachedImageId) { this.cachedImageId = cachedImageId; }
 
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
