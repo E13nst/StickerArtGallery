@@ -78,8 +78,18 @@ public class StickerProcessorGenerationClient {
             );
         } catch (HttpStatusCodeException e) {
             int statusCode = e.getStatusCode().value();
-            Map<String, Object> body = toMap(e.getResponseBodyAsString());
-            String reason = StickerProcessorErrorMessage.humanMessageOrFallback(body, statusCode);
+            String raw = e.getResponseBodyAsString();
+            Map<String, Object> body = toMap(raw);
+            String extracted = StickerProcessorErrorMessage.extractHumanMessage(body);
+            String reason;
+            if (extracted != null && !extracted.isBlank()) {
+                reason = extracted;
+            } else if (raw != null && !raw.isBlank()) {
+                int cap = 800;
+                reason = "HTTP " + statusCode + ": " + (raw.length() > cap ? raw.substring(0, cap) + "…" : raw);
+            } else {
+                reason = StickerProcessorErrorMessage.fallbackForStatus(statusCode);
+            }
             throw new RuntimeException("STICKER_PROCESSOR submit failed: " + reason, e);
         } catch (ResourceAccessException e) {
             throw new RuntimeException("STICKER_PROCESSOR submit timeout/network error: " + e.getMessage(), e);
