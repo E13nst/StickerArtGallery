@@ -77,6 +77,9 @@ class StickerGenerationServiceTest {
     @Mock
     private StylePresetRepository stylePresetRepository;
 
+    @Mock
+    private GenerationArtBillingService generationArtBillingService;
+
     private StickerGenerationService stickerGenerationService;
 
     @BeforeEach
@@ -94,7 +97,8 @@ class StickerGenerationServiceTest {
                 generationAuditService,
                 stickerProcessorGenerationClient,
                 stylePresetRepository,
-                stylePresetPromptComposer
+                stylePresetPromptComposer,
+                generationArtBillingService
         ));
 
         // Избегаем запуска полного async pipeline в unit-тесте startGeneration

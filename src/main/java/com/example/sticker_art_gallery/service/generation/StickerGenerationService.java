@@ -59,6 +59,7 @@ public class StickerGenerationService {
     private final StickerProcessorGenerationClient stickerProcessorGenerationClient;
     private final StylePresetRepository stylePresetRepository;
     private final StylePresetPromptComposer stylePresetPromptComposer;
+    private final GenerationArtBillingService generationArtBillingService;
     private final ObjectMapper objectMapper;
 
     @Value("${wavespeed.max-poll-seconds:300}")
@@ -94,7 +95,8 @@ public class StickerGenerationService {
             GenerationAuditService generationAuditService,
             StickerProcessorGenerationClient stickerProcessorGenerationClient,
             StylePresetRepository stylePresetRepository,
-            StylePresetPromptComposer stylePresetPromptComposer) {
+            StylePresetPromptComposer stylePresetPromptComposer,
+            GenerationArtBillingService generationArtBillingService) {
         this.taskRepository = taskRepository;
         this.waveSpeedClient = waveSpeedClient;
         this.artRewardService = artRewardService;
@@ -106,6 +108,7 @@ public class StickerGenerationService {
         this.stickerProcessorGenerationClient = stickerProcessorGenerationClient;
         this.stylePresetRepository = stylePresetRepository;
         this.stylePresetPromptComposer = stylePresetPromptComposer;
+        this.generationArtBillingService = generationArtBillingService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -365,6 +368,7 @@ public class StickerGenerationService {
                 task.setErrorMessage("Prompt processing failed: " + e.getMessage());
                 taskRepository.save(task);
             }
+            generationArtBillingService.refundIfEligibleAfterFailure(taskId, ERROR_PROMPT_PROCESSING, e.getMessage());
         }
         return CompletableFuture.completedFuture(null);
     }
@@ -408,6 +412,7 @@ public class StickerGenerationService {
                 task.setErrorMessage("Prompt processing failed: " + e.getMessage());
                 taskRepository.save(task);
             }
+            generationArtBillingService.refundIfEligibleAfterFailure(taskId, ERROR_PROMPT_PROCESSING, e.getMessage());
         }
         return CompletableFuture.completedFuture(null);
     }
@@ -531,6 +536,7 @@ public class StickerGenerationService {
                     task.setStatus(GenerationTaskStatus.FAILED);
                     task.setErrorMessage("Generation failed: " + errorMsg);
                     taskRepository.save(task);
+                    generationArtBillingService.refundIfEligibleAfterFailure(taskId, ERROR_WAVESPEED_FAILED, errorMsg);
                     return;
                 }
             }
@@ -543,6 +549,7 @@ public class StickerGenerationService {
                 task.setStatus(GenerationTaskStatus.TIMEOUT);
                 task.setErrorMessage("Timed out");
                 taskRepository.save(task);
+                generationArtBillingService.refundIfEligibleAfterFailure(taskId, ERROR_WAVESPEED_TIMEOUT, "Timed out");
                 return;
             }
 
@@ -664,6 +671,7 @@ public class StickerGenerationService {
             task.setStatus(GenerationTaskStatus.FAILED);
             task.setErrorMessage("Error occurred: " + e.getMessage());
             taskRepository.save(task);
+            generationArtBillingService.refundIfEligibleAfterFailure(taskId, ERROR_GENERIC, e.getMessage());
         }
     }
 
@@ -812,6 +820,7 @@ public class StickerGenerationService {
                         task.setErrorMessage("STICKER_PROCESSOR: " + terminalReason);
                         taskRepository.save(task);
                         generationAuditService.finishFailure(taskId, ERROR_STICKER_PROCESSOR_FAILED, terminalReason, terminalPayload);
+                        generationArtBillingService.refundIfEligibleAfterFailure(taskId, ERROR_STICKER_PROCESSOR_FAILED, terminalReason);
                         return;
                     }
                 }
@@ -848,6 +857,7 @@ public class StickerGenerationService {
                 task.setErrorMessage("Timed out while waiting STICKER_PROCESSOR result");
                 taskRepository.save(task);
                 generationAuditService.finishFailure(taskId, ERROR_STICKER_PROCESSOR_TIMEOUT, "Timed out", null);
+                generationArtBillingService.refundIfEligibleAfterFailure(taskId, ERROR_STICKER_PROCESSOR_TIMEOUT, "Timed out");
                 return;
             }
         } catch (Exception e) {
@@ -855,6 +865,7 @@ public class StickerGenerationService {
             task.setErrorMessage("Error occurred: " + e.getMessage());
             taskRepository.save(task);
             generationAuditService.finishFailure(taskId, ERROR_STICKER_PROCESSOR_FAILED, e.getMessage(), null);
+            generationArtBillingService.refundIfEligibleAfterFailure(taskId, ERROR_STICKER_PROCESSOR_FAILED, e.getMessage());
         }
     }
 

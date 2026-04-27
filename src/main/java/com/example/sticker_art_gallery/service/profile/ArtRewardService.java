@@ -20,6 +20,8 @@ public class ArtRewardService {
     public static final String RULE_UPLOAD_STICKERSET = "UPLOAD_STICKERSET";
     public static final String RULE_PUBLISH_STICKERSET = "PUBLISH_STICKERSET";
     public static final String RULE_GENERATE_STICKER = "GENERATE_STICKER";
+    /** Возврат ART при неуспешной генерации (связан с дебетом {@link #RULE_GENERATE_STICKER}). */
+    public static final String RULE_GENERATE_STICKER_REFUND = "GENERATE_STICKER_REFUND";
 
     private final UserProfileService userProfileService;
     private final ArtRuleService artRuleService;
