@@ -8,16 +8,193 @@ html:not(.dark) {
     color-scheme: light;
 }
 
+/* Светлая тема: нейтральные поверхности */
 :root {
+    --admin-bg-page: #f3f4f6;
+    --admin-surface: #ffffff;
+    --admin-surface-muted: #f8fafc;
+    --admin-surface-input: #ffffff;
+    --admin-border: #e2e8f0;
+    --admin-text: #0f172a;
+    --admin-text-muted: #64748b;
+    --admin-danger: #dc2626;
+    --admin-danger-muted: #b91c1c;
     --admin-scrollbar-track: #f1f5f9;
     --admin-scrollbar-thumb: #cbd5e1;
     --admin-scrollbar-thumb-hover: #94a3b8;
 }
 
+/* Тёмная тема: графитово-синий (ближе к GitHub dark, не холодный slate-950) */
 html.dark {
-    --admin-scrollbar-track: #1e293b;
-    --admin-scrollbar-thumb: #475569;
-    --admin-scrollbar-thumb-hover: #64748b;
+    --admin-bg-page: #0d1117;
+    --admin-surface: #161b22;
+    --admin-surface-muted: #21262d;
+    --admin-surface-input: #0d1117;
+    --admin-border: #30363d;
+    --admin-text: #e6edf3;
+    --admin-text-muted: #8b949e;
+    --admin-danger: #f85149;
+    --admin-danger-muted: #ff7b72;
+    --admin-scrollbar-track: #0d1117;
+    --admin-scrollbar-thumb: #30363d;
+    --admin-scrollbar-thumb-hover: #484f58;
+}
+
+/* Единый фон и цвет текста страницы (вместо длинного хвоста Tailwind на body) */
+body.admin-page {
+    background-color: var(--admin-bg-page);
+    color: var(--admin-text);
+}
+
+.admin-bg-page {
+    background-color: var(--admin-bg-page);
+}
+
+.admin-input-base {
+    background-color: var(--admin-surface-input);
+    color: var(--admin-text);
+    border: 1px solid var(--admin-border);
+}
+
+input[type="checkbox"].admin-filter-checkbox {
+    width: 1rem;
+    height: 1rem;
+    background-color: var(--admin-surface-input);
+    border: 1px solid var(--admin-border);
+    color: #2563eb;
+}
+
+.admin-filter-label {
+    color: var(--admin-text-muted);
+}
+
+/* Приподнятые панели: фильтры, KPI, карточки */
+.admin-elevated {
+    background-color: var(--admin-surface);
+    border: 1px solid var(--admin-border);
+}
+
+/* Текст ошибок в таблицах: читаемее на тёмном фоне */
+.admin-text-danger {
+    color: var(--admin-danger-muted);
+}
+html:not(.dark) .admin-text-danger {
+    color: var(--admin-danger);
+}
+
+/* Таблица DataTable: границы и заливки из токенов */
+.admin-datatable-scroll {
+    overflow-x: auto;
+    border-radius: 0.5rem;
+    border: 1px solid var(--admin-border);
+}
+.admin-datatable-table {
+    min-width: 100%;
+    border-collapse: collapse;
+    width: 100%;
+}
+.admin-datatable-table thead th {
+    padding: 0.375rem 0.5rem;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--admin-text-muted);
+    background-color: var(--admin-surface-muted);
+    border-bottom: 1px solid var(--admin-border);
+}
+.admin-datatable-table tbody td {
+    padding: 0.375rem 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--admin-text);
+    background-color: var(--admin-surface);
+    border-top: 1px solid var(--admin-border);
+}
+.admin-datatable-table tbody tr:first-child td {
+    border-top: none;
+}
+.admin-datatable-table tbody tr:hover td {
+    background-color: var(--admin-surface-muted);
+}
+html.dark .admin-datatable-table tbody tr:hover td {
+    background-color: rgba(33, 38, 45, 0.7);
+}
+.admin-datatable-th-muted {
+    color: var(--admin-text-muted);
+}
+
+.admin-pager-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--admin-border);
+    background: var(--admin-surface-input);
+    color: var(--admin-text);
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+.admin-pager-btn:hover:not(:disabled) {
+    background: var(--admin-surface-muted);
+}
+.admin-pager-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.admin-datatable-pagination {
+    background-color: var(--admin-surface);
+    border-top: 1px solid var(--admin-border);
+    padding: 0.375rem 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--admin-text);
+}
+@media (min-width: 640px) {
+    .admin-datatable-pagination {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+}
+
+/* Кнопка «Выйти»: не primary-красный на весь сайдбар */
+.admin-btn-logout {
+    width: 100%;
+    margin-top: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    line-height: 1.25;
+    border-radius: 0.375rem;
+    border: 1px solid rgba(248, 81, 73, 0.45);
+    background: transparent;
+    color: #f85149;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+html:not(.dark) .admin-btn-logout {
+    color: #b91c1c;
+    border-color: rgba(220, 38, 38, 0.45);
+}
+.admin-btn-logout:hover {
+    background: rgba(248, 81, 73, 0.12);
+    border-color: rgba(248, 81, 73, 0.65);
+}
+html:not(.dark) .admin-btn-logout:hover {
+    background: rgba(220, 38, 38, 0.08);
+}
+
+/* Сайдбар: поверхность из токенов */
+.admin-sidebar {
+    background-color: var(--admin-surface);
+    border-right: 1px solid var(--admin-border);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.03);
+}
+html.dark .admin-sidebar {
+    box-shadow: none;
+}
+
+.admin-sidebar-footer {
+    border-top: 1px solid var(--admin-border);
+    background-color: var(--admin-surface);
 }
 
 /* Контейнеры графиков на странице аналитики: фиксированная высота */
@@ -138,8 +315,8 @@ html.dark {
 }
 
 html.dark .spinner {
-    border-color: #334155;
-    border-top-color: #60a5fa;
+    border-color: var(--admin-border);
+    border-top-color: #58a6ff;
 }
 
 @keyframes spin {
@@ -152,7 +329,7 @@ html.dark .spinner {
 #users-table table,
 #stickers-table table,
 #logs-table table {
-    font-size: 0.75rem; /* text-xs */
+    font-size: 0.8125rem; /* 13px — читаемее text-xs */
 }
 
 .admin-table-container th,
@@ -160,7 +337,7 @@ html.dark .spinner {
 #stickers-table th,
 #logs-table th {
     padding: 0.375rem 0.5rem; /* py-1.5 px-2 */
-    font-size: 0.7rem;
+    font-size: 0.75rem;
 }
 
 .admin-table-container td,
@@ -174,7 +351,7 @@ html.dark .spinner {
 #users-table button,
 #stickers-table button,
 #logs-table button {
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     padding: 0.25rem 0.5rem;
 }
 
@@ -184,7 +361,7 @@ html.dark .spinner {
 #stickers-table .inline-flex,
 #logs-table .inline-flex {
     padding: 0.125rem 0.375rem;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
 }
 
 /* Компактная пагинация (DataTable) */
@@ -195,9 +372,12 @@ html.dark .spinner {
 #stickers-table .bg-white.px-2,
 #stickers-table .bg-white.px-4,
 #logs-table .bg-white.px-2,
-#logs-table .bg-white.px-4 {
+#logs-table .bg-white.px-4,
+#users-table .admin-datatable-pagination,
+#stickers-table .admin-datatable-pagination,
+#logs-table .admin-datatable-pagination {
     padding: 0.5rem 0.75rem;
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
 }
 
 .admin-table-container .bg-white.px-2 button,
@@ -207,28 +387,31 @@ html.dark .spinner {
 #stickers-table .bg-white.px-2 button,
 #stickers-table .bg-white.px-4 button,
 #logs-table .bg-white.px-2 button,
-#logs-table .bg-white.px-4 button {
+#logs-table .bg-white.px-4 button,
+#users-table .admin-datatable-pagination button,
+#stickers-table .admin-datatable-pagination button,
+#logs-table .admin-datatable-pagination button {
     padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
 }
 
 /* Компактные таблицы для страниц управления (Stars, ART Rules, etc.) */
 .admin-table-compact table {
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
 }
 
 .admin-table-compact th {
     padding: 0.5rem 0.75rem;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
 }
 
 .admin-table-compact td {
     padding: 0.5rem 0.75rem;
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
 }
 
 .admin-table-compact button {
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     padding: 0.25rem 0.5rem;
 }
 

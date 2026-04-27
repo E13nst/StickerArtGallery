@@ -55,8 +55,8 @@ const SidebarComponent = {
     renderMenuItem(item) {
         const isActive = this.isActive(item.path);
         const activeClass = isActive 
-            ? 'text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-800 border-l-4 border-blue-500' 
-            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200';
+            ? 'text-slate-900 dark:text-[color:var(--admin-text)] bg-slate-100 dark:bg-[color:var(--admin-surface-muted)] border-l-4 border-blue-500' 
+            : 'text-slate-600 dark:text-[color:var(--admin-text-muted)] hover:bg-slate-100 dark:hover:bg-[color:var(--admin-surface-muted)] hover:text-slate-900 dark:hover:text-[color:var(--admin-text)]';
         
         return `
             <a href="${item.path}" class="flex items-center px-4 py-2 ${activeClass}">
@@ -71,7 +71,7 @@ const SidebarComponent = {
         const itemsHTML = section.items.map(item => this.renderMenuItem(item)).join('');
         return `
             <div class="mb-3">
-                <p class="px-4 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">${section.title}</p>
+                <p class="px-4 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-[color:var(--admin-text-muted)]">${section.title}</p>
                 ${itemsHTML}
             </div>
         `;
@@ -82,25 +82,25 @@ const SidebarComponent = {
         const menuHTML = this.menuSections.map(section => this.renderMenuSection(section)).join('');
         
         return `
-            <aside class="sidebar flex flex-col w-64 h-screen bg-white dark:bg-slate-900 shadow-md border-r border-slate-200 dark:border-slate-800">
+            <aside class="sidebar admin-sidebar flex flex-col w-64 h-screen shadow-md">
                 <div class="flex-shrink-0 p-4">
-                    <h1 class="text-xl font-bold text-slate-800 dark:text-slate-100">Admin Panel</h1>
-                    <p class="text-xs text-slate-600 dark:text-slate-400">Sticker Gallery</p>
+                    <h1 class="text-xl font-bold text-slate-800 dark:text-[color:var(--admin-text)]">Admin Panel</h1>
+                    <p class="text-xs text-slate-600 dark:text-[color:var(--admin-text-muted)]">Sticker Gallery</p>
                 </div>
                 
                 <nav class="sidebar-nav flex-1 min-h-0 overflow-y-auto mt-2">
                     ${menuHTML}
                 </nav>
                 
-                <div class="sidebar-footer flex-shrink-0 p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-                    <button type="button" id="admin-theme-toggle" class="mb-2 w-full px-3 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700">
+                <div class="sidebar-footer flex-shrink-0 p-4 admin-sidebar-footer">
+                    <button type="button" id="admin-theme-toggle" class="mb-2 w-full px-3 py-1.5 text-xs rounded border admin-input-base hover:opacity-90">
                         Тема
                     </button>
                     <div>
-                        <p class="text-sm font-medium text-slate-700 dark:text-slate-200" id="current-user-name">Admin</p>
-                        <p class="text-xs text-slate-500 dark:text-slate-400" id="current-user-role">ADMIN</p>
+                        <p class="text-sm font-medium text-slate-700 dark:text-[color:var(--admin-text)]" id="current-user-name">Admin</p>
+                        <p class="text-xs text-slate-500 dark:text-[color:var(--admin-text-muted)]" id="current-user-role">ADMIN</p>
                     </div>
-                    <button onclick="logout()" class="mt-2 w-full px-3 py-1.5 text-xs text-white bg-red-600 rounded hover:bg-red-700">
+                    <button type="button" onclick="logout()" class="admin-btn-logout">
                         Выйти
                     </button>
                 </div>

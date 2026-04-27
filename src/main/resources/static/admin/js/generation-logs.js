@@ -24,16 +24,22 @@ const tableColumns = [
     {
         field: 'startedAt',
         label: 'Дата',
+        className: 'font-medium',
         render: (row) => formatDate(row.startedAt)
     },
     {
         field: 'taskId',
         label: 'Task ID',
-        render: (row) => `<span class="font-mono text-xs truncate max-w-[120px] block" title="${escapeHtml(row.taskId || '')}">${escapeHtml((row.taskId || '').substring(0, 12))}…</span>`
+        render: (row) => {
+            const id = row.taskId || '';
+            const display = id.length > 12 ? escapeHtml(id.substring(0, 12)) + '…' : escapeHtml(id);
+            return `<span class="font-mono text-xs truncate max-w-[120px] block" title="${escapeHtml(id)}">${display || '—'}</span>`;
+        }
     },
     {
         field: 'userId',
         label: 'User ID',
+        className: 'font-medium',
         render: (row) => `<span class="font-mono text-xs">${row.userId}</span>` || '-'
     },
     {
@@ -57,7 +63,7 @@ const tableColumns = [
             if (!row.errorCode && !row.errorMessage) return '-';
             const msg = (row.errorMessage || '').substring(0, 40);
             const code = row.errorCode || '';
-            return `<span class="text-red-600 text-xs" title="${escapeHtml(row.errorMessage || '')}">${escapeHtml(code)} ${escapeHtml(msg)}${msg.length >= 40 ? '…' : ''}</span>`;
+            return `<span class="admin-text-danger text-xs" title="${escapeHtml(row.errorMessage || '')}">${escapeHtml(code)} ${escapeHtml(msg)}${msg.length >= 40 ? '…' : ''}</span>`;
         }
     },
     {
@@ -70,6 +76,7 @@ const tableColumns = [
 ];
 
 const filterConfig = [
+    { name: 'taskId', label: 'Task ID', type: 'text', placeholder: 'UUID или фрагмент' },
     { name: 'userId', label: 'User ID', type: 'text' },
     {
         name: 'finalStatus',
@@ -115,19 +122,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     });
 
-    const taskIdInput = document.getElementById('taskId-input');
-    if (taskIdInput) {
-        taskIdInput.addEventListener('input', debounce(function() {
-            const v = taskIdInput.value.trim();
-            currentFilters.taskId = v || undefined;
-            currentPage = 0;
-            loadLogs();
-        }, 400));
-    }
-
-    const applyBtn = document.getElementById('apply-filters-btn');
-    if (applyBtn) applyBtn.addEventListener('click', () => { currentPage = 0; loadLogs(); });
-
     const retryBtn = document.getElementById('retry-btn');
     if (retryBtn) retryBtn.addEventListener('click', loadLogs);
 
@@ -146,10 +140,7 @@ function buildLogsQueryParams() {
     if (currentFilters.dateFrom) p.dateFrom = currentFilters.dateFrom;
     if (currentFilters.dateTo) p.dateTo = currentFilters.dateTo;
     if (currentFilters.errorOnly === 'true') p.errorOnly = true;
-    var taskIdVal = currentFilters.taskId;
-    var taskIdInput = document.getElementById('taskId-input');
-    if (taskIdInput && taskIdInput.value.trim()) taskIdVal = taskIdInput.value.trim();
-    if (taskIdVal) p.taskId = taskIdVal;
+    if (currentFilters.taskId) p.taskId = currentFilters.taskId;
     return p;
 }
 
@@ -162,8 +153,6 @@ function syncFiltersFromUrl() {
     if (params.has('errorOnly')) currentFilters.errorOnly = params.get('errorOnly');
     if (params.has('taskId')) {
         currentFilters.taskId = params.get('taskId');
-        const inp = document.getElementById('taskId-input');
-        if (inp) inp.value = currentFilters.taskId;
     }
     if (params.has('page')) currentPage = parseInt(params.get('page'), 10) || 0;
 }

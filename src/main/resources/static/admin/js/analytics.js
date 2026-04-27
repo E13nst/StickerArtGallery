@@ -7,10 +7,13 @@ checkAuth();
 let chartUsers, chartContent, chartArt, chartGeneration, chartReferrals;
 
 function getAdminChartScaleColors() {
+    const root = document.documentElement;
+    const muted = getComputedStyle(root).getPropertyValue('--admin-text-muted').trim();
+    const tick = muted || (typeof AdminTheme !== 'undefined' && AdminTheme.isDark() ? '#8b949e' : '#64748b');
     const dark = typeof AdminTheme !== 'undefined' && AdminTheme.isDark();
     return {
-        tick: dark ? '#94a3b8' : '#64748b',
-        grid: dark ? 'rgba(148, 163, 184, 0.15)' : 'rgba(100, 116, 139, 0.2)'
+        tick: tick,
+        grid: dark ? 'rgba(139, 148, 158, 0.15)' : 'rgba(100, 116, 139, 0.2)'
     };
 }
 
@@ -18,7 +21,7 @@ function adminChartScales() {
     const c = getAdminChartScaleColors();
     return {
         x: {
-            ticks: { maxRotation: 45, font: { size: 10 }, color: c.tick },
+            ticks: { maxRotation: 45, font: { size: 11 }, color: c.tick },
             grid: { color: c.grid }
         },
         y: {
@@ -91,9 +94,9 @@ function renderKpi(data) {
         { label: 'Реферальных событий', value: kpi.referralEventsTotal }
     ];
     const html = cards.map(c => `
-        <div class="bg-white dark:bg-slate-900 rounded-lg shadow p-3 border border-slate-100 dark:border-slate-700">
-            <p class="text-xs text-slate-500 dark:text-slate-400 truncate">${escapeHtml(c.label)}</p>
-            <p class="text-lg font-semibold text-slate-800 dark:text-slate-100 mt-0.5">${formatNumber(c.value)}</p>
+        <div class="admin-elevated rounded-lg shadow p-3">
+            <p class="text-xs truncate" style="color: var(--admin-text-muted)">${escapeHtml(c.label)}</p>
+            <p class="text-lg font-semibold mt-0.5" style="color: var(--admin-text)">${formatNumber(c.value)}</p>
         </div>
     `).join('');
     document.getElementById('kpi-cards').innerHTML = html;

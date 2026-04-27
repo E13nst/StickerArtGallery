@@ -14,6 +14,7 @@ const tableColumns = [
     {
         field: 'startedAt',
         label: 'Дата',
+        className: 'font-medium',
         render: (row) => formatDate(row.startedAt)
     },
     {
@@ -21,12 +22,14 @@ const tableColumns = [
         label: 'Message ID',
         render: (row) => {
             const id = row.messageId || '';
-            return `<span class="font-mono text-xs truncate max-w-[120px] block" title="${escapeHtml(id)}">${escapeHtml(id.substring(0, 12))}…</span>`;
+            const display = id.length > 12 ? escapeHtml(id.substring(0, 12)) + '…' : escapeHtml(id);
+            return `<span class="font-mono text-xs truncate max-w-[120px] block" title="${escapeHtml(id)}">${display || '—'}</span>`;
         }
     },
     {
         field: 'userId',
         label: 'User ID',
+        className: 'font-medium',
         render: (row) => `<span class="font-mono text-xs">${row.userId}</span>` || '-'
     },
     {
@@ -50,7 +53,7 @@ const tableColumns = [
             const msg = (row.errorMessage || '').substring(0, 60);
             const code = row.errorCode || '';
             const suffix = msg.length >= 60 ? '…' : '';
-            return `<span class="text-red-600 dark:text-red-400 text-xs" title="${escapeHtml(row.errorMessage || '')}">${escapeHtml(code)} ${escapeHtml(msg)}${suffix}</span>`;
+            return `<span class="admin-text-danger text-xs" title="${escapeHtml(row.errorMessage || '')}">${escapeHtml(code)} ${escapeHtml(msg)}${suffix}</span>`;
         }
     },
     {
@@ -63,6 +66,7 @@ const tableColumns = [
 ];
 
 const filterConfig = [
+    { name: 'messageId', label: 'Message ID', type: 'text', placeholder: 'UUID или фрагмент' },
     { name: 'userId', label: 'User ID', type: 'text' },
     {
         name: 'finalStatus',
@@ -107,19 +111,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     });
 
-    const messageIdInput = document.getElementById('message-id-input');
-    if (messageIdInput) {
-        messageIdInput.addEventListener('input', debounce(function() {
-            const value = messageIdInput.value.trim();
-            currentFilters.messageId = value || undefined;
-            currentPage = 0;
-            loadLogs();
-        }, 400));
-    }
-
-    const applyBtn = document.getElementById('apply-filters-btn');
-    if (applyBtn) applyBtn.addEventListener('click', () => { currentPage = 0; loadLogs(); });
-
     const retryBtn = document.getElementById('retry-btn');
     if (retryBtn) retryBtn.addEventListener('click', loadLogs);
 
@@ -138,10 +129,7 @@ function buildLogsQueryParams() {
     if (currentFilters.dateFrom) params.dateFrom = currentFilters.dateFrom;
     if (currentFilters.dateTo) params.dateTo = currentFilters.dateTo;
     if (currentFilters.errorOnly === 'true') params.errorOnly = true;
-    let messageIdVal = currentFilters.messageId;
-    const messageIdInput = document.getElementById('message-id-input');
-    if (messageIdInput && messageIdInput.value.trim()) messageIdVal = messageIdInput.value.trim();
-    if (messageIdVal) params.messageId = messageIdVal;
+    if (currentFilters.messageId) params.messageId = currentFilters.messageId;
     return params;
 }
 
@@ -154,8 +142,6 @@ function syncFiltersFromUrl() {
     if (params.has('errorOnly')) currentFilters.errorOnly = params.get('errorOnly');
     if (params.has('messageId')) {
         currentFilters.messageId = params.get('messageId');
-        const input = document.getElementById('message-id-input');
-        if (input) input.value = currentFilters.messageId;
     }
     if (params.has('page')) currentPage = parseInt(params.get('page'), 10) || 0;
 }
