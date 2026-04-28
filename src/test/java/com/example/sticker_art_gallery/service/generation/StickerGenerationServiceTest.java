@@ -14,6 +14,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
+import com.example.sticker_art_gallery.service.meme.MemeCandidatePromotionService;
 import com.example.sticker_art_gallery.service.referral.ReferralService;
 import com.example.sticker_art_gallery.service.storage.ImageStorageService;
 import org.junit.jupiter.api.BeforeEach;
@@ -79,6 +80,8 @@ class StickerGenerationServiceTest {
 
     @Mock
     private GenerationArtBillingService generationArtBillingService;
+    @Mock
+    private MemeCandidatePromotionService memeCandidatePromotionService;
 
     private StickerGenerationService stickerGenerationService;
 
@@ -98,7 +101,8 @@ class StickerGenerationServiceTest {
                 stickerProcessorGenerationClient,
                 stylePresetRepository,
                 stylePresetPromptComposer,
-                generationArtBillingService
+                generationArtBillingService,
+                memeCandidatePromotionService
         ));
 
         // Избегаем запуска полного async pipeline в unit-тесте startGeneration

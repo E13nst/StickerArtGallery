@@ -84,7 +84,7 @@ class MemeCandidatePromotionServiceTest {
 
     @Test
     @DisplayName("promoteOnGenerationCompleted создаёт карточку для owner-поколения")
-    void shouldInsertCandidateOnGenerationCompleted() throws Exception {
+    void shouldInsertCandidateOnGenerationCompleted() {
         StylePresetEntity preset = approvedPublishedPreset(12L, 120L);
         GenerationTaskEntity task = completedTask("task-12", 12L, 120L);
         when(generationTaskRepository.findByTaskId("task-12")).thenReturn(Optional.of(task));
@@ -109,7 +109,7 @@ class MemeCandidatePromotionServiceTest {
         return preset;
     }
 
-    private GenerationTaskEntity completedTask(String taskId, Long presetId, Long userId) throws Exception {
+    private GenerationTaskEntity completedTask(String taskId, Long presetId, Long userId) {
         GenerationTaskEntity task = new GenerationTaskEntity();
         UserProfileEntity profile = new UserProfileEntity();
         profile.setUserId(userId);
@@ -117,7 +117,11 @@ class MemeCandidatePromotionServiceTest {
         task.setUserProfile(profile);
         task.setStatus(GenerationTaskStatus.COMPLETED);
         task.setCachedImageId(UUID.randomUUID());
-        task.setMetadata(new ObjectMapper().writeValueAsString(java.util.Map.of("stylePresetId", presetId)));
+        try {
+            task.setMetadata(new ObjectMapper().writeValueAsString(java.util.Map.of("stylePresetId", presetId)));
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException(e);
+        }
         return task;
     }
 }
