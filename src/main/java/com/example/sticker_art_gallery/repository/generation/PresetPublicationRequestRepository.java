@@ -12,4 +12,6 @@ public interface PresetPublicationRequestRepository extends JpaRepository<Preset
     Optional<PresetPublicationRequestEntity> findByIdempotencyKey(String idempotencyKey);
 
     boolean existsByIdempotencyKey(String idempotencyKey);
+
+    Optional<PresetPublicationRequestEntity> findTopByPreset_IdOrderByCreatedAtDesc(Long presetId);
 }

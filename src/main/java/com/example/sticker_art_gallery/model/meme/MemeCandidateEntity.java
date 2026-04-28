@@ -49,6 +49,12 @@ public class MemeCandidateEntity {
     @Column(name = "admin_visibility_override")
     private Boolean adminVisibilityOverride;
 
+    @Column(name = "preview_overridden_by_admin", nullable = false)
+    private Boolean previewOverriddenByAdmin = false;
+
+    @Column(name = "preview_overridden_at")
+    private OffsetDateTime previewOverriddenAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
@@ -84,6 +90,22 @@ public class MemeCandidateEntity {
     public Boolean getAdminVisibilityOverride() { return adminVisibilityOverride; }
     public void setAdminVisibilityOverride(Boolean adminVisibilityOverride) {
         this.adminVisibilityOverride = adminVisibilityOverride;
+    }
+
+    public Boolean getPreviewOverriddenByAdmin() {
+        return previewOverriddenByAdmin;
+    }
+
+    public void setPreviewOverriddenByAdmin(Boolean previewOverriddenByAdmin) {
+        this.previewOverriddenByAdmin = previewOverriddenByAdmin;
+    }
+
+    public OffsetDateTime getPreviewOverriddenAt() {
+        return previewOverriddenAt;
+    }
+
+    public void setPreviewOverriddenAt(OffsetDateTime previewOverriddenAt) {
+        this.previewOverriddenAt = previewOverriddenAt;
     }
 
     public OffsetDateTime getCreatedAt() { return createdAt; }

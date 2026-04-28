@@ -10,6 +10,7 @@ import com.example.sticker_art_gallery.model.generation.GenerationTaskStatus;
 import com.example.sticker_art_gallery.model.generation.GenerationAuditEventStatus;
 import com.example.sticker_art_gallery.model.generation.GenerationAuditStage;
 import com.example.sticker_art_gallery.model.generation.GenerationTaskEntity;
+import com.example.sticker_art_gallery.model.generation.PresetModerationStatus;
 import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
 import com.example.sticker_art_gallery.repository.GenerationTaskRepository;
 import com.example.sticker_art_gallery.repository.StylePresetRepository;
@@ -18,6 +19,7 @@ import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
 import com.example.sticker_art_gallery.service.referral.ReferralService;
+import com.example.sticker_art_gallery.service.meme.MemeCandidatePromotionService;
 import com.example.sticker_art_gallery.service.storage.ImageStorageService;
 import com.example.sticker_art_gallery.model.storage.CachedImageEntity;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -60,6 +62,7 @@ public class StickerGenerationService {
     private final StylePresetRepository stylePresetRepository;
     private final StylePresetPromptComposer stylePresetPromptComposer;
     private final GenerationArtBillingService generationArtBillingService;
+    private final MemeCandidatePromotionService memeCandidatePromotionService;
     private final ObjectMapper objectMapper;
 
     @Value("${wavespeed.max-poll-seconds:300}")
@@ -96,7 +99,8 @@ public class StickerGenerationService {
             StickerProcessorGenerationClient stickerProcessorGenerationClient,
             StylePresetRepository stylePresetRepository,
             StylePresetPromptComposer stylePresetPromptComposer,
-            GenerationArtBillingService generationArtBillingService) {
+            GenerationArtBillingService generationArtBillingService,
+            MemeCandidatePromotionService memeCandidatePromotionService) {
         this.taskRepository = taskRepository;
         this.waveSpeedClient = waveSpeedClient;
         this.artRewardService = artRewardService;
@@ -109,6 +113,7 @@ public class StickerGenerationService {
         this.stylePresetRepository = stylePresetRepository;
         this.stylePresetPromptComposer = stylePresetPromptComposer;
         this.generationArtBillingService = generationArtBillingService;
+        this.memeCandidatePromotionService = memeCandidatePromotionService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -663,6 +668,7 @@ public class StickerGenerationService {
             task.setCompletedAt(OffsetDateTime.now());
             task = taskRepository.save(task);
             generationAuditService.finishSuccess(taskId, Map.of("imageUrl", localImageUrl != null ? localImageUrl : ""));
+            handlePostCompletionHooks(task);
             LOGGER.info("Generation: Task {} completed successfully", taskId);
 
         } catch (Exception e) {
@@ -777,6 +783,7 @@ public class StickerGenerationService {
                         task.setErrorMessage(null);
                         taskRepository.save(task);
                         generationAuditService.finishSuccess(taskId, Map.of("imageUrl", localImageUrl, "providerFileId", submit.fileId()));
+                        handlePostCompletionHooks(task);
                         return;
                     }
 
@@ -1102,5 +1109,72 @@ public class StickerGenerationService {
                 prompt.length()
         );
         return prompt.substring(0, STICKER_PROCESSOR_PROMPT_MAX_LENGTH);
+    }
+
+    private void handlePostCompletionHooks(GenerationTaskEntity task) {
+        try {
+            memeCandidatePromotionService.promoteOnGenerationCompleted(task.getTaskId());
+        } catch (Exception e) {
+            LOGGER.warn("Post-completion promotion hook failed for task {}: {}", task.getTaskId(), e.getMessage());
+        }
+        try {
+            awardPresetAuthorRoyalty(task);
+        } catch (Exception e) {
+            LOGGER.warn("Post-completion royalty hook failed for task {}: {}", task.getTaskId(), e.getMessage());
+        }
+    }
+
+    private void awardPresetAuthorRoyalty(GenerationTaskEntity task) throws Exception {
+        Long presetId = extractStylePresetIdFromMetadata(task.getMetadata());
+        if (presetId == null || task.getUserProfile() == null || task.getStatus() != GenerationTaskStatus.COMPLETED) {
+            return;
+        }
+
+        StylePresetEntity preset = stylePresetRepository.findById(presetId).orElse(null);
+        if (preset == null
+                || preset.getOwner() == null
+                || !Boolean.TRUE.equals(preset.getPublishedToCatalog())
+                || preset.getPublicShowConsentAt() == null
+                || preset.getModerationStatus() != PresetModerationStatus.APPROVED) {
+            return;
+        }
+
+        Long payerUserId = task.getUserProfile().getUserId();
+        Long ownerUserId = preset.getOwner().getUserId();
+        if (ownerUserId == null || ownerUserId.equals(payerUserId)) {
+            return;
+        }
+
+        String metadata = objectMapper.writeValueAsString(Map.of(
+                "taskId", task.getTaskId(),
+                "presetId", presetId,
+                "payerUserId", payerUserId
+        ));
+        artRewardService.award(
+                ownerUserId,
+                ArtRewardService.RULE_PRESET_AUTHOR_ROYALTY,
+                null,
+                metadata,
+                "preset-royalty:" + presetId + ":" + task.getTaskId(),
+                payerUserId
+        );
+        LOGGER.info("Preset author royalty granted: taskId={}, presetId={}, ownerId={}, payerId={}",
+                task.getTaskId(), presetId, ownerUserId, payerUserId);
+    }
+
+    private Long extractStylePresetIdFromMetadata(String metadataJson) {
+        Map<String, Object> metadata = parseMetadata(metadataJson);
+        Object raw = metadata.get("stylePresetId");
+        if (raw instanceof Number number) {
+            return number.longValue();
+        }
+        if (raw instanceof String str && !str.isBlank()) {
+            try {
+                return Long.parseLong(str);
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
     }
 }

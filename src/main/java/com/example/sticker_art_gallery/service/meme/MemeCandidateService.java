@@ -9,12 +9,15 @@ import com.example.sticker_art_gallery.model.swipe.UserSwipeEntity;
 import com.example.sticker_art_gallery.repository.meme.MemeCandidateDislikeRepository;
 import com.example.sticker_art_gallery.repository.meme.MemeCandidateLikeRepository;
 import com.example.sticker_art_gallery.repository.meme.MemeCandidateRepository;
+import com.example.sticker_art_gallery.service.storage.ImageStorageService;
 import com.example.sticker_art_gallery.service.swipe.SwipeTrackingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.time.OffsetDateTime;
 import java.util.Optional;
 
 /**
@@ -31,15 +34,18 @@ public class MemeCandidateService {
     private final MemeCandidateLikeRepository likeRepository;
     private final MemeCandidateDislikeRepository dislikeRepository;
     private final SwipeTrackingService swipeTrackingService;
+    private final ImageStorageService imageStorageService;
 
     public MemeCandidateService(MemeCandidateRepository candidateRepository,
                                 MemeCandidateLikeRepository likeRepository,
                                 MemeCandidateDislikeRepository dislikeRepository,
-                                SwipeTrackingService swipeTrackingService) {
+                                SwipeTrackingService swipeTrackingService,
+                                ImageStorageService imageStorageService) {
         this.candidateRepository = candidateRepository;
         this.likeRepository = likeRepository;
         this.dislikeRepository = dislikeRepository;
         this.swipeTrackingService = swipeTrackingService;
+        this.imageStorageService = imageStorageService;
     }
 
     // =========================================================================
@@ -218,6 +224,42 @@ public class MemeCandidateService {
         return candidateRepository.findById(candidateId)
                 .map(MemeCandidateDto::fromEntity)
                 .orElseThrow(() -> new IllegalArgumentException("Мем-кандидат не найден после обновления: " + candidateId));
+    }
+
+    public int hideByStylePresetId(Long stylePresetId) {
+        return candidateRepository.hideByStylePresetId(stylePresetId);
+    }
+
+    public int republishByStylePresetId(Long stylePresetId) {
+        return candidateRepository.republishByStylePresetId(stylePresetId);
+    }
+
+    public MemeCandidateDto replacePreview(Long candidateId, MultipartFile file) {
+        MemeCandidateEntity candidate = candidateRepository.findById(candidateId)
+                .orElseThrow(() -> new IllegalArgumentException("Мем-кандидат не найден: " + candidateId));
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Файл не может быть пустым");
+        }
+        String contentType = file.getContentType() != null ? file.getContentType() : "";
+        if (!contentType.equals("image/png") && !contentType.equals("image/webp") && !contentType.equals("image/jpeg")) {
+            throw new IllegalArgumentException("Поддерживаемые форматы: image/png, image/webp, image/jpeg");
+        }
+        if (file.getSize() > 3 * 1024 * 1024) {
+            throw new IllegalArgumentException("Файл слишком большой (максимум 3MB)");
+        }
+
+        try {
+            byte[] bytes = file.getBytes();
+            Long sourceId = candidate.getStylePreset() != null ? candidate.getStylePreset().getId() : candidateId;
+            var stored = imageStorageService.storeStylePresetPreview(sourceId, bytes, contentType);
+            candidate.setCachedImage(stored);
+            candidate.setPreviewOverriddenByAdmin(true);
+            candidate.setPreviewOverriddenAt(OffsetDateTime.now());
+            MemeCandidateEntity saved = candidateRepository.save(candidate);
+            return MemeCandidateDto.fromEntity(saved);
+        } catch (Exception e) {
+            throw new IllegalStateException("Не удалось заменить preview: " + e.getMessage(), e);
+        }
     }
 
     // =========================================================================

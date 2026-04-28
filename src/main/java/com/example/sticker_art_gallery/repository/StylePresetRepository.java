@@ -20,14 +20,14 @@ public interface StylePresetRepository extends JpaRepository<StylePresetEntity, 
      * Только активные (is_enabled = true)
      */
     @Query("SELECT sp FROM StylePresetEntity sp JOIN FETCH sp.category c WHERE " +
-           "(sp.isGlobal = true OR sp.owner.userId = :userId) AND sp.isEnabled = true " +
+           "(sp.isGlobal = true OR sp.owner.userId = :userId OR sp.publishedToCatalog = true) AND sp.isEnabled = true " +
            "ORDER BY c.sortOrder ASC, sp.sortOrder ASC, sp.name ASC")
     List<StylePresetEntity> findAvailableForUser(Long userId);
 
     @Query("SELECT sp FROM StylePresetEntity sp JOIN FETCH sp.category c " +
             "LEFT JOIN FETCH sp.previewImage " +
             "LEFT JOIN FETCH sp.referenceImage " +
-            "WHERE (sp.isGlobal = true OR sp.owner.userId = :userId) AND sp.isEnabled = true " +
+            "WHERE (sp.isGlobal = true OR sp.owner.userId = :userId OR sp.publishedToCatalog = true) AND sp.isEnabled = true " +
             "ORDER BY c.sortOrder ASC, sp.sortOrder ASC, sp.name ASC")
     List<StylePresetEntity> findAvailableForUserWithPreview(@Param("userId") Long userId);
 
@@ -63,7 +63,7 @@ public interface StylePresetRepository extends JpaRepository<StylePresetEntity, 
      * Проверяет существование пресета по ID и владельцу
      */
     @Query("SELECT COUNT(sp) > 0 FROM StylePresetEntity sp WHERE sp.id = :id AND " +
-           "(sp.isGlobal = true OR sp.owner.userId = :userId)")
+           "(sp.isGlobal = true OR sp.owner.userId = :userId OR sp.publishedToCatalog = true)")
     boolean existsByIdAndAccessibleByUser(Long id, Long userId);
 
     @Query("SELECT sp FROM StylePresetEntity sp JOIN FETCH sp.category " +

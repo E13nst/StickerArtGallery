@@ -81,4 +81,26 @@ public class StylePresetModerationAdminController {
         StylePresetDto result = publicationService.moderatePreset(presetId, newStatus);
         return ResponseEntity.ok(result);
     }
+
+    @PostMapping("/{presetId}/takedown")
+    @Operation(summary = "Снять APPROVED пресет с публичной витрины")
+    public ResponseEntity<StylePresetDto> takedown(@PathVariable Long presetId) {
+        try {
+            return ResponseEntity.ok(publicationService.takedownPreset(presetId));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            LOGGER.warn("Ошибка takedown для пресета {}: {}", presetId, e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PostMapping("/{presetId}/republish")
+    @Operation(summary = "Вернуть APPROVED пресет на публичную витрину")
+    public ResponseEntity<StylePresetDto> republish(@PathVariable Long presetId) {
+        try {
+            return ResponseEntity.ok(publicationService.republishPreset(presetId));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            LOGGER.warn("Ошибка republish для пресета {}: {}", presetId, e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
 }

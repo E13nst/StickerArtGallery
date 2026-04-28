@@ -58,6 +58,8 @@ public class StylePresetDto {
     private OffsetDateTime updatedAt;
     @Schema(description = "Статус модерации (только персональные пресеты): DRAFT, PENDING_MODERATION, APPROVED, REJECTED")
     private String moderationStatus;
+    @Schema(description = "Показывается ли пресет в публичном каталоге")
+    private Boolean publishedToCatalog;
 
     // getters / setters
 
@@ -109,4 +111,6 @@ public class StylePresetDto {
     public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
     public String getModerationStatus() { return moderationStatus; }
     public void setModerationStatus(String moderationStatus) { this.moderationStatus = moderationStatus; }
+    public Boolean getPublishedToCatalog() { return publishedToCatalog; }
+    public void setPublishedToCatalog(Boolean publishedToCatalog) { this.publishedToCatalog = publishedToCatalog; }
 }

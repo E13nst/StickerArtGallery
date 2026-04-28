@@ -79,6 +79,12 @@ public class StylePresetEntity {
     @Column(name = "moderation_status", nullable = false, length = 50)
     private PresetModerationStatus moderationStatus = PresetModerationStatus.DRAFT;
 
+    @Column(name = "published_to_catalog", nullable = false)
+    private Boolean publishedToCatalog = false;
+
+    @Column(name = "public_show_consent_at")
+    private OffsetDateTime publicShowConsentAt;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
@@ -256,5 +262,21 @@ public class StylePresetEntity {
 
     public void setModerationStatus(PresetModerationStatus moderationStatus) {
         this.moderationStatus = moderationStatus;
+    }
+
+    public Boolean getPublishedToCatalog() {
+        return publishedToCatalog;
+    }
+
+    public void setPublishedToCatalog(Boolean publishedToCatalog) {
+        this.publishedToCatalog = publishedToCatalog;
+    }
+
+    public OffsetDateTime getPublicShowConsentAt() {
+        return publicShowConsentAt;
+    }
+
+    public void setPublicShowConsentAt(OffsetDateTime publicShowConsentAt) {
+        this.publicShowConsentAt = publicShowConsentAt;
     }
 }

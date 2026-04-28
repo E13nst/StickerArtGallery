@@ -168,7 +168,11 @@ public class PromptProcessingService {
         StylePresetEntity preset = presetRepository.findById(stylePresetId)
                 .orElseThrow(() -> new IllegalArgumentException("Style preset not found: " + stylePresetId));
 
-        if (!preset.getIsGlobal() && (preset.getOwner() == null || !preset.getOwner().getUserId().equals(userId))) {
+        boolean isOwner = preset.getOwner() != null && preset.getOwner().getUserId().equals(userId);
+        boolean isAccessible = Boolean.TRUE.equals(preset.getIsGlobal())
+                || isOwner
+                || Boolean.TRUE.equals(preset.getPublishedToCatalog());
+        if (!isAccessible) {
             throw new IllegalArgumentException("Style preset is not accessible for user: " + userId);
         }
 

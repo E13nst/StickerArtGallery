@@ -29,6 +29,12 @@ public class PresetPublicationRequestEntity {
     @Column(name = "charged_at")
     private OffsetDateTime chargedAt;
 
+    @Column(name = "consent_at")
+    private OffsetDateTime consentAt;
+
+    @Column(name = "display_name", length = 100)
+    private String displayName;
+
     @Column(name = "status", nullable = false, length = 32)
     private String status = "PENDING";
 
@@ -47,6 +53,12 @@ public class PresetPublicationRequestEntity {
 
     public OffsetDateTime getChargedAt() { return chargedAt; }
     public void setChargedAt(OffsetDateTime chargedAt) { this.chargedAt = chargedAt; }
+
+    public OffsetDateTime getConsentAt() { return consentAt; }
+    public void setConsentAt(OffsetDateTime consentAt) { this.consentAt = consentAt; }
+
+    public String getDisplayName() { return displayName; }
+    public void setDisplayName(String displayName) { this.displayName = displayName; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }

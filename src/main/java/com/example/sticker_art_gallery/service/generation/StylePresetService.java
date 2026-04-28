@@ -383,6 +383,7 @@ public class StylePresetService {
         d.setUpdatedAt(entity.getUpdatedAt());
         d.setModerationStatus(entity.getModerationStatus() != null
                 ? entity.getModerationStatus().name() : null);
+        d.setPublishedToCatalog(Boolean.TRUE.equals(entity.getPublishedToCatalog()));
         d.setUiMode(entity.getUiMode() != null ? entity.getUiMode().name() : StylePresetUiMode.STYLE_WITH_PROMPT.name());
         d.setRemoveBackgroundMode(
                 entity.getRemoveBackgroundMode() != null

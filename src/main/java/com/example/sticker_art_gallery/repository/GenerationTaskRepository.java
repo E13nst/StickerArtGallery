@@ -68,4 +68,23 @@ public interface GenerationTaskRepository extends JpaRepository<GenerationTaskEn
 
     @Query("SELECT g FROM GenerationTaskEntity g WHERE g.status IN ('PENDING', 'GENERATING', 'REMOVING_BACKGROUND') AND g.expiresAt > :now")
     java.util.List<GenerationTaskEntity> findActiveTasks(OffsetDateTime now);
+
+    @Query(
+            value = """
+                    SELECT *
+                    FROM generation_tasks g
+                    WHERE g.user_id = :userId
+                      AND g.status = 'COMPLETED'
+                      AND g.cached_image_id IS NOT NULL
+                      AND (g.metadata::jsonb ->> 'stylePresetId') ~ '^[0-9]+$'
+                      AND ((g.metadata::jsonb ->> 'stylePresetId')::bigint = :stylePresetId)
+                    ORDER BY g.completed_at DESC NULLS LAST, g.created_at DESC
+                    LIMIT 1
+                    """,
+            nativeQuery = true
+    )
+    Optional<GenerationTaskEntity> findLatestCompletedForUserAndPreset(
+            @Param("userId") Long userId,
+            @Param("stylePresetId") Long stylePresetId
+    );
 }

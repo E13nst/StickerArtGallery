@@ -151,6 +151,7 @@
                 const st = p.moderationStatus || '—';
                 const badge = STATUS_BADGE[st] || 'bg-slate-100 text-slate-700';
                 const canDecide = st === 'PENDING_MODERATION';
+                const canToggleCatalog = st === 'APPROVED';
                 return `<tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 align-top">
                     <td class="px-3 py-2 font-mono text-xs">${p.id}</td>
                     <td class="px-3 py-2">${thumb(p.previewUrl, 'preview')}</td>
@@ -169,6 +170,11 @@
                             ${canDecide ? `
                                 <button type="button" class="px-2 py-1 text-xs bg-emerald-600 text-white rounded btn-ok" data-id="${p.id}">Одобрить</button>
                                 <button type="button" class="px-2 py-1 text-xs bg-rose-600 text-white rounded btn-rej" data-id="${p.id}">Отклонить</button>
+                            ` : ''}
+                            ${canToggleCatalog ? `
+                                ${p.publishedToCatalog
+                                    ? `<button type="button" class="px-2 py-1 text-xs bg-orange-600 text-white rounded btn-takedown" data-id="${p.id}">Снять с витрины</button>`
+                                    : `<button type="button" class="px-2 py-1 text-xs bg-blue-600 text-white rounded btn-republish" data-id="${p.id}">Вернуть на витрину</button>`}
                             ` : ''}
                         </div>
                     </td>
@@ -198,6 +204,7 @@
                 </div>
                 <div class="space-y-2 pt-1 border-t border-solid admin-dm-sep">
                     <div class="text-sm flex flex-wrap gap-x-2 gap-y-1 items-baseline"><strong>Статус модерации</strong> <span class="admin-dm-value">${esc(p.moderationStatus)}</span></div>
+                    <div class="text-sm flex flex-wrap gap-x-2 gap-y-1 items-baseline"><strong>На витрине</strong> <span class="admin-dm-value">${p.publishedToCatalog ? 'Да' : 'Нет'}</span></div>
                     <div class="text-sm flex flex-wrap gap-x-2 gap-y-1 items-baseline"><strong>Владелец (userId)</strong> <span class="admin-dm-value">${p.ownerId != null ? p.ownerId : '—'}</span></div>
                     <div class="text-sm flex flex-wrap gap-x-2 gap-y-1 items-baseline"><strong>Категория</strong> <span class="admin-dm-value">${p.category ? esc(p.category.name) + ' (' + esc(p.category.code) + ')' : '—'}</span></div>
                 </div>
@@ -246,6 +253,26 @@
                 try {
                     clearError();
                     await api.decidePresetModeration(id, decision);
+                    await Promise.all([loadList(), loadStats()]);
+                } catch (err) {
+                    showError(err.message || String(err));
+                }
+            }
+            if (e.target.classList.contains('btn-takedown')) {
+                if (!confirm('Снять пресет с публичной витрины?')) return;
+                try {
+                    clearError();
+                    await api.takedownPresetModeration(id);
+                    await Promise.all([loadList(), loadStats()]);
+                } catch (err) {
+                    showError(err.message || String(err));
+                }
+            }
+            if (e.target.classList.contains('btn-republish')) {
+                if (!confirm('Вернуть пресет на публичную витрину?')) return;
+                try {
+                    clearError();
+                    await api.republishPresetModeration(id);
                     await Promise.all([loadList(), loadStats()]);
                 } catch (err) {
                     showError(err.message || String(err));

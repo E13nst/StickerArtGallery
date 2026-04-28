@@ -566,6 +566,18 @@ class AdminApiClient {
         });
     }
 
+    async takedownPresetModeration(presetId) {
+        return this.request(`/admin/style-presets/moderation/${presetId}/takedown`, {
+            method: 'POST'
+        });
+    }
+
+    async republishPresetModeration(presetId) {
+        return this.request(`/admin/style-presets/moderation/${presetId}/republish`, {
+            method: 'POST'
+        });
+    }
+
     // ============ Analytics Dashboard (Admin) ============
 
     async getAnalyticsDashboard(from, to, granularity = 'day', tz = 'UTC') {

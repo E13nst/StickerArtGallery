@@ -62,7 +62,13 @@ public class StylePresetExtController {
             @RequestBody PresetPublicationRequestDto request) {
         try {
             Long userId = getCurrentUserId();
-            StylePresetDto result = publicationService.publishPreset(userId, presetId, request.getIdempotencyKey());
+            StylePresetDto result = publicationService.publishPreset(
+                    userId,
+                    presetId,
+                    request.getIdempotencyKey(),
+                    request.getDisplayName(),
+                    request.getConsentResultPublicShow()
+            );
             return ResponseEntity.ok(result);
         } catch (IllegalStateException e) {
             if (e.getMessage() != null && e.getMessage().contains("не авторизован")) {

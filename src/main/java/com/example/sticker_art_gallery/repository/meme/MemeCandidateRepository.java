@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface MemeCandidateRepository extends JpaRepository<MemeCandidateEntity, Long> {
@@ -40,6 +41,10 @@ public interface MemeCandidateRepository extends JpaRepository<MemeCandidateEnti
             LIMIT 1
             """, nativeQuery = true)
     Optional<MemeCandidateEntity> findRandomNotRatedByUser(@Param("userId") Long userId);
+
+    Optional<MemeCandidateEntity> findByStylePreset_Id(Long stylePresetId);
+
+    boolean existsByStylePreset_Id(Long stylePresetId);
 
     /**
      * Pessimistic write lock для атомарного взаимоисключения лайк/дизлайк.
@@ -136,4 +141,56 @@ public interface MemeCandidateRepository extends JpaRepository<MemeCandidateEnti
             WHERE id = :id
             """, nativeQuery = true)
     void setAdminVisibilityOverride(@Param("id") Long id, @Param("override") Boolean override);
+
+    @Modifying(clearAutomatically = true)
+    @Query(value = """
+            INSERT INTO meme_candidates (
+                task_id,
+                cached_image_id,
+                style_preset_id,
+                preset_owner_user_id,
+                likes_count,
+                dislikes_count,
+                visibility,
+                admin_visibility_override,
+                created_at,
+                updated_at
+            ) VALUES (
+                :taskId,
+                :cachedImageId,
+                :stylePresetId,
+                :presetOwnerUserId,
+                0,
+                0,
+                'VISIBLE',
+                NULL,
+                NOW(),
+                NOW()
+            )
+            ON CONFLICT (style_preset_id) WHERE style_preset_id IS NOT NULL DO NOTHING
+            """, nativeQuery = true)
+    int insertForStylePresetIfAbsent(@Param("taskId") String taskId,
+                                     @Param("cachedImageId") UUID cachedImageId,
+                                     @Param("stylePresetId") Long stylePresetId,
+                                     @Param("presetOwnerUserId") Long presetOwnerUserId);
+
+    @Modifying(clearAutomatically = true)
+    @Query(value = """
+            UPDATE meme_candidates
+            SET admin_visibility_override = FALSE,
+                visibility = 'ADMIN_HIDDEN',
+                updated_at = NOW()
+            WHERE style_preset_id = :stylePresetId
+            """, nativeQuery = true)
+    int hideByStylePresetId(@Param("stylePresetId") Long stylePresetId);
+
+    @Modifying(clearAutomatically = true)
+    @Query(value = """
+            UPDATE meme_candidates
+            SET admin_visibility_override = NULL,
+                visibility = 'VISIBLE',
+                updated_at = NOW()
+            WHERE style_preset_id = :stylePresetId
+            """, nativeQuery = true)
+    int republishByStylePresetId(@Param("stylePresetId") Long stylePresetId);
 }
