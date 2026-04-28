@@ -21,6 +21,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.RestClientException;
 
 import java.io.File;
+import java.util.Map;
 
 /**
  * Сервис для работы с Telegram Bot API
@@ -327,10 +328,25 @@ public class TelegramBotApiService {
         }
         
         try {
-            // Преобразуем в JsonNode для удобного доступа к полям
-            JsonNode jsonNode = objectMapper.valueToTree(stickerSetInfo);
+            if (stickerSetInfo instanceof Map<?, ?> map) {
+                Object rawTitle = map.get("title");
+                if (rawTitle instanceof String s) {
+                    LOGGER.debug("📝 Извлечен title из Telegram API: '{}'", s);
+                    return s;
+                }
+                if (rawTitle != null) {
+                    String s = rawTitle.toString();
+                    LOGGER.debug("📝 Извлечен title из Telegram API: '{}'", s);
+                    return s;
+                }
+            }
+
+            // Сериализация → JSON → JsonNode: стабильнее, чем valueToTree для Map.of /
+            // внутренних представлений Map после treeToValue(..., Object.class).
+            String json = objectMapper.writeValueAsString(stickerSetInfo);
+            JsonNode jsonNode = objectMapper.readTree(json);
             
-            if (jsonNode.has("title")) {
+            if (jsonNode.has("title") && !jsonNode.get("title").isNull()) {
                 String title = jsonNode.get("title").asText();
                 LOGGER.debug("📝 Извлечен title из Telegram API: '{}'", title);
                 return title;

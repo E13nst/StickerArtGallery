@@ -111,7 +111,7 @@ class TelegramBotApiServiceTest {
         ObjectMapper failingObjectMapper = mock(ObjectMapper.class);
         TelegramBotApiService failingService = new TelegramBotApiService(appConfig, failingObjectMapper, restTemplate);
         Object stickerSetInfo = new Object();
-        when(failingObjectMapper.valueToTree(stickerSetInfo)).thenThrow(new RuntimeException("Parsing error"));
+        when(failingObjectMapper.writeValueAsString(stickerSetInfo)).thenThrow(new RuntimeException("Parsing error"));
 
         // When
         String result = failingService.extractTitleFromStickerSetInfo(stickerSetInfo);
