@@ -106,7 +106,7 @@ class TelegramBotApiServiceTest {
 
     @Test
     @DisplayName("extractTitleFromStickerSetInfo с ошибкой парсинга должен возвращать null")
-    void extractTitleFromStickerSetInfo_WithParsingError_ShouldReturnNull() {
+    void extractTitleFromStickerSetInfo_WithParsingError_ShouldReturnNull() throws Exception {
         // Given
         ObjectMapper failingObjectMapper = mock(ObjectMapper.class);
         TelegramBotApiService failingService = new TelegramBotApiService(appConfig, failingObjectMapper, restTemplate);
