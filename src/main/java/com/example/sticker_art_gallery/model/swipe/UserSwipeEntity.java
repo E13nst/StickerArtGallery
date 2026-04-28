@@ -2,8 +2,8 @@ package com.example.sticker_art_gallery.model.swipe;
 
 import com.example.sticker_art_gallery.model.Dislike;
 import com.example.sticker_art_gallery.model.Like;
-import com.example.sticker_art_gallery.model.meme.MemeCandidateDislikeEntity;
-import com.example.sticker_art_gallery.model.meme.MemeCandidateLikeEntity;
+import com.example.sticker_art_gallery.model.stylefeed.StyleFeedItemDislikeEntity;
+import com.example.sticker_art_gallery.model.stylefeed.StyleFeedItemLikeEntity;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 
@@ -39,12 +39,12 @@ public class UserSwipeEntity {
     private Dislike dislike;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "meme_candidate_like_id")
-    private MemeCandidateLikeEntity memeCandidateLike;
+    @JoinColumn(name = "style_feed_item_like_id")
+    private StyleFeedItemLikeEntity styleFeedItemLike;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "meme_candidate_dislike_id")
-    private MemeCandidateDislikeEntity memeCandidateDislike;
+    @JoinColumn(name = "style_feed_item_dislike_id")
+    private StyleFeedItemDislikeEntity styleFeedItemDislike;
 
     @Column(name = "swipe_date", nullable = false)
     private LocalDate swipeDate;
@@ -112,14 +112,14 @@ public class UserSwipeEntity {
         this.dislike = dislike;
     }
 
-    public MemeCandidateLikeEntity getMemeCandidateLike() { return memeCandidateLike; }
-    public void setMemeCandidateLike(MemeCandidateLikeEntity memeCandidateLike) {
-        this.memeCandidateLike = memeCandidateLike;
+    public StyleFeedItemLikeEntity getStyleFeedItemLike() { return styleFeedItemLike; }
+    public void setStyleFeedItemLike(StyleFeedItemLikeEntity styleFeedItemLike) {
+        this.styleFeedItemLike = styleFeedItemLike;
     }
 
-    public MemeCandidateDislikeEntity getMemeCandidateDislike() { return memeCandidateDislike; }
-    public void setMemeCandidateDislike(MemeCandidateDislikeEntity memeCandidateDislike) {
-        this.memeCandidateDislike = memeCandidateDislike;
+    public StyleFeedItemDislikeEntity getStyleFeedItemDislike() { return styleFeedItemDislike; }
+    public void setStyleFeedItemDislike(StyleFeedItemDislikeEntity styleFeedItemDislike) {
+        this.styleFeedItemDislike = styleFeedItemDislike;
     }
 
     public LocalDate getSwipeDate() {

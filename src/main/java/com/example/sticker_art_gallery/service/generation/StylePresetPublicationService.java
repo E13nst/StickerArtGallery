@@ -8,8 +8,8 @@ import com.example.sticker_art_gallery.repository.StylePresetRepository;
 import com.example.sticker_art_gallery.repository.generation.PresetPublicationRequestRepository;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.profile.ArtRuleService;
-import com.example.sticker_art_gallery.service.meme.MemeCandidatePromotionService;
-import com.example.sticker_art_gallery.service.meme.MemeCandidateService;
+import com.example.sticker_art_gallery.service.stylefeed.StyleFeedItemPromotionService;
+import com.example.sticker_art_gallery.service.stylefeed.StyleFeedItemService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -42,23 +42,23 @@ public class StylePresetPublicationService {
     private final ArtRewardService artRewardService;
     private final ArtRuleService artRuleService;
     private final StylePresetService stylePresetService;
-    private final MemeCandidatePromotionService memeCandidatePromotionService;
-    private final MemeCandidateService memeCandidateService;
+    private final StyleFeedItemPromotionService styleFeedItemPromotionService;
+    private final StyleFeedItemService styleFeedItemService;
 
     public StylePresetPublicationService(StylePresetRepository presetRepository,
                                          PresetPublicationRequestRepository publicationRequestRepository,
                                          ArtRewardService artRewardService,
                                          ArtRuleService artRuleService,
                                          StylePresetService stylePresetService,
-                                         MemeCandidatePromotionService memeCandidatePromotionService,
-                                         MemeCandidateService memeCandidateService) {
+                                         StyleFeedItemPromotionService styleFeedItemPromotionService,
+                                         StyleFeedItemService styleFeedItemService) {
         this.presetRepository = presetRepository;
         this.publicationRequestRepository = publicationRequestRepository;
         this.artRewardService = artRewardService;
         this.artRuleService = artRuleService;
         this.stylePresetService = stylePresetService;
-        this.memeCandidatePromotionService = memeCandidatePromotionService;
-        this.memeCandidateService = memeCandidateService;
+        this.styleFeedItemPromotionService = styleFeedItemPromotionService;
+        this.styleFeedItemService = styleFeedItemService;
     }
 
     /**
@@ -180,7 +180,7 @@ public class StylePresetPublicationService {
         presetRepository.save(preset);
         LOGGER.info("Пресет {} переведён в статус {} (модерация)", presetId, newStatus);
         if (newStatus == PresetModerationStatus.APPROVED) {
-            memeCandidatePromotionService.promoteOnApproval(presetId);
+            styleFeedItemPromotionService.promoteOnApproval(presetId);
         }
 
         return stylePresetService.getPresetById(presetId, null);
@@ -194,8 +194,8 @@ public class StylePresetPublicationService {
         }
         preset.setPublishedToCatalog(false);
         presetRepository.save(preset);
-        int affected = memeCandidateService.hideByStylePresetId(presetId);
-        LOGGER.info("Preset takedown: presetId={}, affectedCandidates={}", presetId, affected);
+        int affected = styleFeedItemService.hideByStylePresetId(presetId);
+        LOGGER.info("Preset takedown: presetId={}, affectedStyleFeedItems={}", presetId, affected);
         return stylePresetService.getPresetById(presetId, null);
     }
 
@@ -210,9 +210,9 @@ public class StylePresetPublicationService {
         }
         preset.setPublishedToCatalog(true);
         presetRepository.save(preset);
-        int affected = memeCandidateService.republishByStylePresetId(presetId);
-        LOGGER.info("Preset republish: presetId={}, affectedCandidates={}", presetId, affected);
-        memeCandidatePromotionService.promoteOnApproval(presetId);
+        int affected = styleFeedItemService.republishByStylePresetId(presetId);
+        LOGGER.info("Preset republish: presetId={}, affectedStyleFeedItems={}", presetId, affected);
+        styleFeedItemPromotionService.promoteOnApproval(presetId);
         return stylePresetService.getPresetById(presetId, null);
     }
 }

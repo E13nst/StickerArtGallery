@@ -1,4 +1,4 @@
-package com.example.sticker_art_gallery.model.meme;
+package com.example.sticker_art_gallery.model.stylefeed;
 
 import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
 import com.example.sticker_art_gallery.model.storage.CachedImageEntity;
@@ -10,13 +10,13 @@ import java.time.OffsetDateTime;
 import java.util.Objects;
 
 /**
- * Кандидат мем-генерации для пользовательской ленты оценки.
- * Автоскрытие происходит атомарным CAS-апдейтом на уровне БД
- * (см. MemeCandidateRepository.applyDislikeAndAutoHide).
+ * Карточка ленты style feed для оценки пользователями.
+ * Автоскрытие выполняется атомарным CAS-апдейтом на уровне БД
+ * (см. StyleFeedItemRepository.applyDislikeAndAutoHide).
  */
 @Entity
-@Table(name = "meme_candidates")
-public class MemeCandidateEntity {
+@Table(name = "style_feed_items")
+public class StyleFeedItemEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -118,7 +118,7 @@ public class MemeCandidateEntity {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        MemeCandidateEntity that = (MemeCandidateEntity) o;
+        StyleFeedItemEntity that = (StyleFeedItemEntity) o;
         return Objects.equals(id, that.id);
     }
 
@@ -127,6 +127,6 @@ public class MemeCandidateEntity {
 
     @Override
     public String toString() {
-        return "MemeCandidateEntity{id=" + id + ", taskId='" + taskId + "', visibility=" + visibility + '}';
+        return "StyleFeedItemEntity{id=" + id + ", taskId='" + taskId + "', visibility=" + visibility + '}';
     }
 }

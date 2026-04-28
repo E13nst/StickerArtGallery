@@ -1,13 +1,13 @@
-package com.example.sticker_art_gallery.dto.meme;
+package com.example.sticker_art_gallery.dto.stylefeed;
 
 /**
- * Ответ на лайк/дизлайк мем-кандидата.
+ * Ответ на лайк/дизлайк записи style feed.
  */
-public class MemeCandidateVoteResponseDto {
+public class StyleFeedItemVoteResponseDto {
 
     private Long id;
     private Long userId;
-    private Long memeCandidateId;
+    private Long styleFeedItemId;
     private boolean liked;
     private boolean disliked;
     private int totalLikes;
@@ -20,8 +20,8 @@ public class MemeCandidateVoteResponseDto {
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
 
-    public Long getMemeCandidateId() { return memeCandidateId; }
-    public void setMemeCandidateId(Long memeCandidateId) { this.memeCandidateId = memeCandidateId; }
+    public Long getStyleFeedItemId() { return styleFeedItemId; }
+    public void setStyleFeedItemId(Long styleFeedItemId) { this.styleFeedItemId = styleFeedItemId; }
 
     public boolean isLiked() { return liked; }
     public void setLiked(boolean liked) { this.liked = liked; }

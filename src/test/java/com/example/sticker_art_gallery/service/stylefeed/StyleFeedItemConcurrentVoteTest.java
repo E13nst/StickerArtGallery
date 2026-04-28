@@ -1,10 +1,10 @@
-package com.example.sticker_art_gallery.service.meme;
+package com.example.sticker_art_gallery.service.stylefeed;
 
-import com.example.sticker_art_gallery.model.meme.MemeCandidateEntity;
+import com.example.sticker_art_gallery.model.stylefeed.StyleFeedItemEntity;
 import com.example.sticker_art_gallery.model.storage.CachedImageEntity;
-import com.example.sticker_art_gallery.repository.meme.MemeCandidateDislikeRepository;
-import com.example.sticker_art_gallery.repository.meme.MemeCandidateLikeRepository;
-import com.example.sticker_art_gallery.repository.meme.MemeCandidateRepository;
+import com.example.sticker_art_gallery.repository.stylefeed.StyleFeedItemDislikeRepository;
+import com.example.sticker_art_gallery.repository.stylefeed.StyleFeedItemLikeRepository;
+import com.example.sticker_art_gallery.repository.stylefeed.StyleFeedItemRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 
@@ -26,25 +26,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Интеграционный тест: конкурентный like+dislike от одного пользователя.
- * Два потока одновременно — должна остаться ровно одна запись (взаимоисключение).
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@DisplayName("Конкурентный like+dislike мем-кандидата")
+@DisplayName("Конкурентное голосование style feed item")
 @Tag("integration")
-class MemeCandidateConcurrentVoteTest {
+class StyleFeedItemConcurrentVoteTest {
 
     @Autowired
-    private MemeCandidateService memeCandidateService;
+    private StyleFeedItemService styleFeedItemService;
 
     @Autowired
-    private MemeCandidateLikeRepository likeRepository;
+    private StyleFeedItemLikeRepository likeRepository;
 
     @Autowired
-    private MemeCandidateDislikeRepository dislikeRepository;
+    private StyleFeedItemDislikeRepository dislikeRepository;
 
     @Autowired
-    private MemeCandidateRepository candidateRepository;
+    private StyleFeedItemRepository styleFeedItemRepository;
 
     @Autowired
     private TransactionTemplate txTemplate;
@@ -52,23 +51,21 @@ class MemeCandidateConcurrentVoteTest {
     @Autowired
     private EntityManager entityManager;
 
-    private Long candidateId;
+    private Long itemId;
     private static final Long USER_ID = 999_000_001L;
 
     @BeforeEach
     void setUp() {
-        // Создаём минимальный CachedImageEntity-заглушку через транзакцию
-        candidateId = txTemplate.execute(status -> {
-            // Ищем любое уже существующее cached_image для теста
+        itemId = txTemplate.execute(status -> {
             Object rawId = entityManager.createNativeQuery(
                     "SELECT id FROM cached_images LIMIT 1").getSingleResult();
             UUID imageId = rawId instanceof UUID u ? u : UUID.fromString(rawId.toString());
 
             CachedImageEntity img = entityManager.find(CachedImageEntity.class, imageId);
-            MemeCandidateEntity candidate = new MemeCandidateEntity();
-            candidate.setTaskId("test-concurrent-task");
-            candidate.setCachedImage(img);
-            return candidateRepository.save(candidate).getId();
+            StyleFeedItemEntity item = new StyleFeedItemEntity();
+            item.setTaskId("test-concurrent-task-sf");
+            item.setCachedImage(img);
+            return styleFeedItemRepository.save(item).getId();
         });
     }
 
@@ -82,11 +79,10 @@ class MemeCandidateConcurrentVoteTest {
 
         ExecutorService pool = Executors.newFixedThreadPool(threads);
 
-        // Поток 1: лайк
         pool.submit(() -> {
             try {
                 startLatch.await();
-                memeCandidateService.likeCandidate(USER_ID, candidateId, false);
+                styleFeedItemService.likeFeedItem(USER_ID, itemId, false);
             } catch (Exception e) {
                 errors.incrementAndGet();
             } finally {
@@ -94,11 +90,10 @@ class MemeCandidateConcurrentVoteTest {
             }
         });
 
-        // Поток 2: дизлайк
         pool.submit(() -> {
             try {
                 startLatch.await();
-                memeCandidateService.dislikeCandidate(USER_ID, candidateId, false);
+                styleFeedItemService.dislikeFeedItem(USER_ID, itemId, false);
             } catch (Exception e) {
                 errors.incrementAndGet();
             } finally {
@@ -106,20 +101,19 @@ class MemeCandidateConcurrentVoteTest {
             }
         });
 
-        startLatch.countDown(); // Стартуем оба потока одновременно
+        startLatch.countDown();
         doneLatch.await();
         pool.shutdown();
 
-        // После конкурентного выполнения у пользователя должна остаться ровно одна запись
         long likesCount = likeRepository.findAll().stream()
-                .filter(l -> USER_ID.equals(l.getUserId()) && candidateId.equals(l.getMemeCandidate().getId()))
+                .filter(l -> USER_ID.equals(l.getUserId()) && itemId.equals(l.getStyleFeedItem().getId()))
                 .count();
         long dislikesCount = dislikeRepository.findAll().stream()
-                .filter(d -> USER_ID.equals(d.getUserId()) && candidateId.equals(d.getMemeCandidate().getId()))
+                .filter(d -> USER_ID.equals(d.getUserId()) && itemId.equals(d.getStyleFeedItem().getId()))
                 .count();
 
         assertThat(likesCount + dislikesCount)
-                .as("Должна остаться ровно одна оценка (лайк или дизлайк)")
+                .as("Ровно одна оценка (лайк или дизлайк)")
                 .isEqualTo(1);
     }
 }

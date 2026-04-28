@@ -8,8 +8,8 @@ import com.example.sticker_art_gallery.model.profile.ArtRuleEntity;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.repository.StylePresetRepository;
 import com.example.sticker_art_gallery.repository.generation.PresetPublicationRequestRepository;
-import com.example.sticker_art_gallery.service.meme.MemeCandidatePromotionService;
-import com.example.sticker_art_gallery.service.meme.MemeCandidateService;
+import com.example.sticker_art_gallery.service.stylefeed.StyleFeedItemPromotionService;
+import com.example.sticker_art_gallery.service.stylefeed.StyleFeedItemService;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.profile.ArtRuleService;
 import org.junit.jupiter.api.DisplayName;
@@ -45,9 +45,9 @@ class StylePresetPublicationServiceTest {
     @Mock
     private StylePresetService stylePresetService;
     @Mock
-    private MemeCandidatePromotionService memeCandidatePromotionService;
+    private StyleFeedItemPromotionService styleFeedItemPromotionService;
     @Mock
-    private MemeCandidateService memeCandidateService;
+    private StyleFeedItemService styleFeedItemService;
 
     @InjectMocks
     private StylePresetPublicationService service;
@@ -82,7 +82,7 @@ class StylePresetPublicationServiceTest {
         service.moderatePreset(10L, PresetModerationStatus.APPROVED);
 
         verify(presetRepository).save(preset);
-        verify(memeCandidatePromotionService).promoteOnApproval(10L);
+        verify(styleFeedItemPromotionService).promoteOnApproval(10L);
     }
 
     @Test
@@ -96,7 +96,7 @@ class StylePresetPublicationServiceTest {
         service.takedownPreset(20L);
 
         verify(presetRepository).save(preset);
-        verify(memeCandidateService).hideByStylePresetId(20L);
+        verify(styleFeedItemService).hideByStylePresetId(20L);
     }
 
     @Test
@@ -111,8 +111,8 @@ class StylePresetPublicationServiceTest {
         service.republishPreset(30L);
 
         verify(presetRepository).save(preset);
-        verify(memeCandidateService).republishByStylePresetId(30L);
-        verify(memeCandidatePromotionService).promoteOnApproval(30L);
+        verify(styleFeedItemService).republishByStylePresetId(30L);
+        verify(styleFeedItemPromotionService).promoteOnApproval(30L);
     }
 
     @Test

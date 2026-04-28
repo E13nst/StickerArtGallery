@@ -32,6 +32,7 @@ const SidebarComponent = {
             items: [
                 { path: '/admin/prompt-enhancers.html', icon: '✨', label: 'Prompt Enhancers' },
                 { path: '/admin/style-presets.html', icon: '🖌️', label: 'Style Presets' },
+                { path: '/admin/user-preset-blueprints.html', icon: '🧩', label: 'Шаблоны «свой пресет»' },
                 { path: '/admin/preset-moderation.html', icon: '✅', label: 'Модерация пресетов' }
             ]
         }

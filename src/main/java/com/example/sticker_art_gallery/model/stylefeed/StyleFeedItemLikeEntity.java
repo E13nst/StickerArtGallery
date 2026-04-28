@@ -1,4 +1,4 @@
-package com.example.sticker_art_gallery.model.meme;
+package com.example.sticker_art_gallery.model.stylefeed;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -7,16 +7,14 @@ import java.time.OffsetDateTime;
 import java.util.Objects;
 
 /**
- * Лайк мем-кандидата.
- * Аналог {@link com.example.sticker_art_gallery.model.Like} для стикерсетов.
- * unique constraint: (user_id, meme_candidate_id).
+ * Лайк записи ленты style feed.
  */
 @Entity
-@Table(name = "meme_candidate_likes",
+@Table(name = "style_feed_item_likes",
         uniqueConstraints = @UniqueConstraint(
-                name = "unique_user_meme_candidate_like",
-                columnNames = {"user_id", "meme_candidate_id"}))
-public class MemeCandidateLikeEntity {
+                name = "unique_user_style_feed_item_like",
+                columnNames = {"user_id", "style_feed_item_id"}))
+public class StyleFeedItemLikeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,8 +24,8 @@ public class MemeCandidateLikeEntity {
     private Long userId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "meme_candidate_id", nullable = false)
-    private MemeCandidateEntity memeCandidate;
+    @JoinColumn(name = "style_feed_item_id", nullable = false)
+    private StyleFeedItemEntity styleFeedItem;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false)
@@ -39,8 +37,8 @@ public class MemeCandidateLikeEntity {
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
 
-    public MemeCandidateEntity getMemeCandidate() { return memeCandidate; }
-    public void setMemeCandidate(MemeCandidateEntity memeCandidate) { this.memeCandidate = memeCandidate; }
+    public StyleFeedItemEntity getStyleFeedItem() { return styleFeedItem; }
+    public void setStyleFeedItem(StyleFeedItemEntity styleFeedItem) { this.styleFeedItem = styleFeedItem; }
 
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
@@ -49,7 +47,7 @@ public class MemeCandidateLikeEntity {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        MemeCandidateLikeEntity that = (MemeCandidateLikeEntity) o;
+        StyleFeedItemLikeEntity that = (StyleFeedItemLikeEntity) o;
         return Objects.equals(id, that.id);
     }
 
@@ -58,6 +56,6 @@ public class MemeCandidateLikeEntity {
 
     @Override
     public String toString() {
-        return "MemeCandidateLikeEntity{id=" + id + ", userId=" + userId + '}';
+        return "StyleFeedItemLikeEntity{id=" + id + ", userId=" + userId + '}';
     }
 }

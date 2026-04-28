@@ -578,6 +578,32 @@ class AdminApiClient {
         });
     }
 
+    // ============ User preset creation blueprints (форма «свой пресет») ============
+
+    async getUserPresetCreationBlueprintsAdmin() {
+        return this.request('/admin/user-preset-creation-blueprints');
+    }
+
+    async createUserPresetCreationBlueprint(data) {
+        return this.request('/admin/user-preset-creation-blueprints', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    async updateUserPresetCreationBlueprint(id, data) {
+        return this.request(`/admin/user-preset-creation-blueprints/${encodeURIComponent(id)}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+
+    async deleteUserPresetCreationBlueprint(id) {
+        return this.request(`/admin/user-preset-creation-blueprints/${encodeURIComponent(id)}`, {
+            method: 'DELETE'
+        });
+    }
+
     // ============ Analytics Dashboard (Admin) ============
 
     async getAnalyticsDashboard(from, to, granularity = 'day', tz = 'UTC') {

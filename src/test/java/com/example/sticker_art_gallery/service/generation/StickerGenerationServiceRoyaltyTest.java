@@ -7,7 +7,7 @@ import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.repository.GenerationTaskRepository;
 import com.example.sticker_art_gallery.repository.StylePresetRepository;
-import com.example.sticker_art_gallery.service.meme.MemeCandidatePromotionService;
+import com.example.sticker_art_gallery.service.stylefeed.StyleFeedItemPromotionService;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
 import com.example.sticker_art_gallery.service.referral.ReferralService;
@@ -44,7 +44,7 @@ class StickerGenerationServiceRoyaltyTest {
     @Mock private StylePresetRepository stylePresetRepository;
     @Mock private StylePresetPromptComposer stylePresetPromptComposer;
     @Mock private GenerationArtBillingService generationArtBillingService;
-    @Mock private MemeCandidatePromotionService memeCandidatePromotionService;
+    @Mock private StyleFeedItemPromotionService styleFeedItemPromotionService;
 
     private StickerGenerationService service;
 
@@ -63,7 +63,7 @@ class StickerGenerationServiceRoyaltyTest {
                 stylePresetRepository,
                 stylePresetPromptComposer,
                 generationArtBillingService,
-                memeCandidatePromotionService
+                styleFeedItemPromotionService
         );
     }
 

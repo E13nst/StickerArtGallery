@@ -19,7 +19,7 @@ import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
 import com.example.sticker_art_gallery.service.referral.ReferralService;
-import com.example.sticker_art_gallery.service.meme.MemeCandidatePromotionService;
+import com.example.sticker_art_gallery.service.stylefeed.StyleFeedItemPromotionService;
 import com.example.sticker_art_gallery.service.storage.ImageStorageService;
 import com.example.sticker_art_gallery.model.storage.CachedImageEntity;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -62,7 +62,7 @@ public class StickerGenerationService {
     private final StylePresetRepository stylePresetRepository;
     private final StylePresetPromptComposer stylePresetPromptComposer;
     private final GenerationArtBillingService generationArtBillingService;
-    private final MemeCandidatePromotionService memeCandidatePromotionService;
+    private final StyleFeedItemPromotionService styleFeedItemPromotionService;
     private final ObjectMapper objectMapper;
 
     @Value("${wavespeed.max-poll-seconds:300}")
@@ -100,7 +100,7 @@ public class StickerGenerationService {
             StylePresetRepository stylePresetRepository,
             StylePresetPromptComposer stylePresetPromptComposer,
             GenerationArtBillingService generationArtBillingService,
-            MemeCandidatePromotionService memeCandidatePromotionService) {
+            StyleFeedItemPromotionService styleFeedItemPromotionService) {
         this.taskRepository = taskRepository;
         this.waveSpeedClient = waveSpeedClient;
         this.artRewardService = artRewardService;
@@ -113,7 +113,7 @@ public class StickerGenerationService {
         this.stylePresetRepository = stylePresetRepository;
         this.stylePresetPromptComposer = stylePresetPromptComposer;
         this.generationArtBillingService = generationArtBillingService;
-        this.memeCandidatePromotionService = memeCandidatePromotionService;
+        this.styleFeedItemPromotionService = styleFeedItemPromotionService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -1113,7 +1113,7 @@ public class StickerGenerationService {
 
     private void handlePostCompletionHooks(GenerationTaskEntity task) {
         try {
-            memeCandidatePromotionService.promoteOnGenerationCompleted(task.getTaskId());
+            styleFeedItemPromotionService.promoteOnGenerationCompleted(task.getTaskId());
         } catch (Exception e) {
             LOGGER.warn("Post-completion promotion hook failed for task {}: {}", task.getTaskId(), e.getMessage());
         }

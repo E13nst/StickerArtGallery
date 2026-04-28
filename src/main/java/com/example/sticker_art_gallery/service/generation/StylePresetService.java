@@ -498,6 +498,13 @@ public class StylePresetService {
         }
     }
 
+    /**
+     * Проверка согласованности suffix/полей без сохранения (шаблоны создания пользовательских пресетов).
+     */
+    public void validatePresetUiContract(CreateStylePresetRequest request) {
+        validateUiContract(request);
+    }
+
     private void validateUiContract(CreateStylePresetRequest request) {
         List<StylePresetFieldDto> fields = request.getFields() == null ? List.of() : request.getFields();
         Set<String> keys = new HashSet<>();

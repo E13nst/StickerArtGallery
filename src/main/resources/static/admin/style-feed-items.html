@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мем-кандидаты - Админ панель</title>
+    <title>Style feed — админ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { darkMode: 'class' };
@@ -16,7 +16,7 @@
         <main class="flex-1 overflow-y-auto">
             <div class="p-4">
                 <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-2xl font-bold text-gray-800 dark:text-slate-100">Мем-кандидаты</h2>
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-slate-100">Лента style feed</h2>
                     <div class="flex gap-2">
                         <select id="filter-visibility"
                             class="px-2 py-1 text-xs border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
@@ -26,17 +26,15 @@
                             <option value="ADMIN_HIDDEN">ADMIN_HIDDEN</option>
                             <option value="ADMIN_FORCED_VISIBLE">ADMIN_FORCED_VISIBLE</option>
                         </select>
-                        <button onclick="loadCandidates()"
+                        <button onclick="loadItems()"
                             class="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md">
                             Обновить
                         </button>
                     </div>
                 </div>
 
-                <!-- Статус операции -->
                 <div id="status-message" class="hidden mb-3 p-2 rounded text-sm"></div>
 
-                <!-- Таблица -->
                 <div class="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
                     <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700 text-sm">
                         <thead class="bg-slate-50 dark:bg-slate-800">
@@ -85,11 +83,11 @@
             setTimeout(() => el.classList.add('hidden'), 4000);
         }
 
-        async function loadCandidates() {
+        async function loadItems() {
             const visibility = document.getElementById('filter-visibility').value;
             const query = visibility ? `?visibility=${visibility}` : '';
             try {
-                const data = await apiGet(`/api/meme-candidates${query}`);
+                const data = await apiGet(`/api/admin/style-feed/items${query}`);
                 renderTable(Array.isArray(data) ? data : (data.content || []));
             } catch (e) {
                 showStatus('Ошибка загрузки: ' + e.message, true);
@@ -129,9 +127,9 @@
 
         async function setVisibility(id, action) {
             try {
-                await apiPost(`/admin/meme-candidates/${id}/visibility`, { override: action });
-                showStatus(`Кандидат ${id}: override = ${action}`, false);
-                loadCandidates();
+                await apiPost(`/admin/style-feed/items/${id}/visibility`, { override: action });
+                showStatus(`Запись ${id}: override = ${action}`, false);
+                loadItems();
             } catch (e) {
                 showStatus(`Ошибка: ${e.message}`, true);
             }

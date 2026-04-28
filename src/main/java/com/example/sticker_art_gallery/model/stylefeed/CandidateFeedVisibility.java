@@ -1,7 +1,7 @@
-package com.example.sticker_art_gallery.model.meme;
+package com.example.sticker_art_gallery.model.stylefeed;
 
 /**
- * Видимость мем-кандидата в пользовательской ленте оценки.
+ * Видимость записи ленты style feed в пользовательской оценке.
  * Логика приоритета:
  *   если admin_visibility_override IS NOT NULL → он главный;
  *   иначе → автоправило (AUTO_HIDDEN при >= 7 дизлайков из > 10 голосов).

@@ -1,4 +1,4 @@
-package com.example.sticker_art_gallery.service.meme;
+package com.example.sticker_art_gallery.service.stylefeed;
 
 import com.example.sticker_art_gallery.model.generation.GenerationTaskEntity;
 import com.example.sticker_art_gallery.model.generation.GenerationTaskStatus;
@@ -6,7 +6,7 @@ import com.example.sticker_art_gallery.model.generation.PresetModerationStatus;
 import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
 import com.example.sticker_art_gallery.repository.GenerationTaskRepository;
 import com.example.sticker_art_gallery.repository.StylePresetRepository;
-import com.example.sticker_art_gallery.repository.meme.MemeCandidateRepository;
+import com.example.sticker_art_gallery.repository.stylefeed.StyleFeedItemRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,22 +18,22 @@ import java.util.Optional;
 
 @Service
 @Transactional
-public class MemeCandidatePromotionService {
+public class StyleFeedItemPromotionService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MemeCandidatePromotionService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(StyleFeedItemPromotionService.class);
 
     private final StylePresetRepository stylePresetRepository;
     private final GenerationTaskRepository generationTaskRepository;
-    private final MemeCandidateRepository memeCandidateRepository;
+    private final StyleFeedItemRepository styleFeedItemRepository;
     private final ObjectMapper objectMapper;
 
-    public MemeCandidatePromotionService(StylePresetRepository stylePresetRepository,
-                                         GenerationTaskRepository generationTaskRepository,
-                                         MemeCandidateRepository memeCandidateRepository,
-                                         ObjectMapper objectMapper) {
+    public StyleFeedItemPromotionService(StylePresetRepository stylePresetRepository,
+                                        GenerationTaskRepository generationTaskRepository,
+                                        StyleFeedItemRepository styleFeedItemRepository,
+                                        ObjectMapper objectMapper) {
         this.stylePresetRepository = stylePresetRepository;
         this.generationTaskRepository = generationTaskRepository;
-        this.memeCandidateRepository = memeCandidateRepository;
+        this.styleFeedItemRepository = styleFeedItemRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -92,14 +92,14 @@ public class MemeCandidatePromotionService {
     }
 
     private void promoteFromTaskIfEligible(StylePresetEntity preset, GenerationTaskEntity task, String source) {
-        int inserted = memeCandidateRepository.insertForStylePresetIfAbsent(
+        int inserted = styleFeedItemRepository.insertForStylePresetIfAbsent(
                 task.getTaskId(),
                 task.getCachedImageId(),
                 preset.getId(),
                 preset.getOwner() != null ? preset.getOwner().getUserId() : null
         );
         if (inserted == 1) {
-            LOGGER.info("Promoted preset to meme_candidates: presetId={}, taskId={}, source={}",
+            LOGGER.info("Promoted preset to style_feed_items: presetId={}, taskId={}, source={}",
                     preset.getId(), task.getTaskId(), source);
         } else {
             LOGGER.info("Skip promotion insert: presetId={}, taskId={}, source={}, reason=already_exists",

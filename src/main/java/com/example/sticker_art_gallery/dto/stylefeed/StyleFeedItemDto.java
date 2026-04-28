@@ -1,15 +1,15 @@
-package com.example.sticker_art_gallery.dto.meme;
+package com.example.sticker_art_gallery.dto.stylefeed;
 
-import com.example.sticker_art_gallery.model.meme.CandidateFeedVisibility;
-import com.example.sticker_art_gallery.model.meme.MemeCandidateEntity;
+import com.example.sticker_art_gallery.model.stylefeed.CandidateFeedVisibility;
+import com.example.sticker_art_gallery.model.stylefeed.StyleFeedItemEntity;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
 /**
- * DTO для мем-кандидата в ленте оценки.
+ * DTO записи ленты style feed.
  */
-public class MemeCandidateDto {
+public class StyleFeedItemDto {
 
     private Long id;
     private String taskId;
@@ -23,8 +23,8 @@ public class MemeCandidateDto {
     private CandidateFeedVisibility visibility;
     private OffsetDateTime createdAt;
 
-    public static MemeCandidateDto fromEntity(MemeCandidateEntity entity) {
-        MemeCandidateDto dto = new MemeCandidateDto();
+    public static StyleFeedItemDto fromEntity(StyleFeedItemEntity entity) {
+        StyleFeedItemDto dto = new StyleFeedItemDto();
         dto.setId(entity.getId());
         dto.setTaskId(entity.getTaskId());
         if (entity.getCachedImage() != null) {

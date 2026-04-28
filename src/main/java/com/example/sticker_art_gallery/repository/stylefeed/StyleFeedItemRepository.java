@@ -1,6 +1,7 @@
-package com.example.sticker_art_gallery.repository.meme;
+package com.example.sticker_art_gallery.repository.stylefeed;
 
-import com.example.sticker_art_gallery.model.meme.MemeCandidateEntity;
+import com.example.sticker_art_gallery.model.stylefeed.CandidateFeedVisibility;
+import com.example.sticker_art_gallery.model.stylefeed.StyleFeedItemEntity;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -9,72 +10,61 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface MemeCandidateRepository extends JpaRepository<MemeCandidateEntity, Long> {
+public interface StyleFeedItemRepository extends JpaRepository<StyleFeedItemEntity, Long> {
 
     /**
-     * Получить случайный VISIBLE мем-кандидат, который пользователь ещё не оценил.
-     * Исключает кандидаты, по которым у пользователя уже есть строка в
-     * meme_candidate_likes или meme_candidate_dislikes.
-     * ADMIN_FORCED_VISIBLE тоже попадает в выдачу (admin_visibility_override = TRUE).
+     * Случайная видимая запись style feed, которую пользователь ещё не оценил.
      */
     @Query(value = """
-            SELECT mc.* FROM meme_candidates mc
+            SELECT sf.* FROM style_feed_items sf
             WHERE (
-                mc.admin_visibility_override = TRUE
-                OR (mc.admin_visibility_override IS NULL AND mc.visibility = 'VISIBLE')
+                sf.admin_visibility_override = TRUE
+                OR (sf.admin_visibility_override IS NULL AND sf.visibility = 'VISIBLE')
             )
-            AND mc.id NOT IN (
-                SELECT mcl.meme_candidate_id
-                FROM meme_candidate_likes mcl
-                WHERE mcl.user_id = :userId
+            AND sf.id NOT IN (
+                SELECT sfl.style_feed_item_id
+                FROM style_feed_item_likes sfl
+                WHERE sfl.user_id = :userId
             )
-            AND mc.id NOT IN (
-                SELECT mcd.meme_candidate_id
-                FROM meme_candidate_dislikes mcd
-                WHERE mcd.user_id = :userId
+            AND sf.id NOT IN (
+                SELECT sfd.style_feed_item_id
+                FROM style_feed_item_dislikes sfd
+                WHERE sfd.user_id = :userId
             )
             ORDER BY RANDOM()
             LIMIT 1
             """, nativeQuery = true)
-    Optional<MemeCandidateEntity> findRandomNotRatedByUser(@Param("userId") Long userId);
+    Optional<StyleFeedItemEntity> findRandomNotRatedByUser(@Param("userId") Long userId);
 
-    Optional<MemeCandidateEntity> findByStylePreset_Id(Long stylePresetId);
+    Optional<StyleFeedItemEntity> findByStylePreset_Id(Long stylePresetId);
 
     boolean existsByStylePreset_Id(Long stylePresetId);
 
-    /**
-     * Pessimistic write lock для атомарного взаимоисключения лайк/дизлайк.
-     */
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT mc FROM MemeCandidateEntity mc WHERE mc.id = :id")
-    Optional<MemeCandidateEntity> findByIdForUpdate(@Param("id") Long id);
+    List<StyleFeedItemEntity> findAllByOrderByCreatedAtDesc();
 
-    /**
-     * Атомарный CAS-апдейт: инкрементирует likes_count и не меняет visibility.
-     * Автоскрытие не применяется к лайкам.
-     */
+    List<StyleFeedItemEntity> findByVisibilityOrderByCreatedAtDesc(CandidateFeedVisibility visibility);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT sf FROM StyleFeedItemEntity sf WHERE sf.id = :id")
+    Optional<StyleFeedItemEntity> findByIdForUpdate(@Param("id") Long id);
+
     @Modifying(clearAutomatically = true)
     @Query(value = """
-            UPDATE meme_candidates
+            UPDATE style_feed_items
             SET likes_count = likes_count + 1,
                 updated_at  = NOW()
             WHERE id = :id
             """, nativeQuery = true)
     void applyLike(@Param("id") Long id);
 
-    /**
-     * Атомарный CAS-апдейт: инкрементирует dislikes_count и применяет автоскрытие
-     * если dislikes_count + 1 >= 7 AND likes_count + dislikes_count + 1 > 10
-     * AND admin_visibility_override IS NULL.
-     * Логика исполняется целиком на уровне БД — нет read-then-write из Java.
-     */
     @Modifying(clearAutomatically = true)
     @Query(value = """
-            UPDATE meme_candidates
+            UPDATE style_feed_items
             SET dislikes_count = dislikes_count + 1,
                 visibility = CASE
                     WHEN dislikes_count + 1 >= 7
@@ -88,24 +78,18 @@ public interface MemeCandidateRepository extends JpaRepository<MemeCandidateEnti
             """, nativeQuery = true)
     void applyDislikeAndAutoHide(@Param("id") Long id);
 
-    /**
-     * Декремент likes_count при отмене лайка.
-     */
     @Modifying(clearAutomatically = true)
     @Query(value = """
-            UPDATE meme_candidates
+            UPDATE style_feed_items
             SET likes_count = GREATEST(likes_count - 1, 0),
                 updated_at  = NOW()
             WHERE id = :id
             """, nativeQuery = true)
     void decrementLikesCount(@Param("id") Long id);
 
-    /**
-     * Декремент dislikes_count при отмене дизлайка (и снятие AUTO_HIDDEN если нужно).
-     */
     @Modifying(clearAutomatically = true)
     @Query(value = """
-            UPDATE meme_candidates
+            UPDATE style_feed_items
             SET dislikes_count = GREATEST(dislikes_count - 1, 0),
                 visibility = CASE
                     WHEN visibility = 'AUTO_HIDDEN'
@@ -120,13 +104,9 @@ public interface MemeCandidateRepository extends JpaRepository<MemeCandidateEnti
             """, nativeQuery = true)
     void decrementDislikesCount(@Param("id") Long id);
 
-    /**
-     * Установить admin_visibility_override и пересчитать visibility.
-     * override = TRUE → ADMIN_FORCED_VISIBLE; FALSE → ADMIN_HIDDEN; NULL → вернуть к автоправилу.
-     */
     @Modifying(clearAutomatically = true)
     @Query(value = """
-            UPDATE meme_candidates
+            UPDATE style_feed_items
             SET admin_visibility_override = :override,
                 visibility = CASE
                     WHEN :override = TRUE  THEN 'ADMIN_FORCED_VISIBLE'
@@ -144,7 +124,7 @@ public interface MemeCandidateRepository extends JpaRepository<MemeCandidateEnti
 
     @Modifying(clearAutomatically = true)
     @Query(value = """
-            INSERT INTO meme_candidates (
+            INSERT INTO style_feed_items (
                 task_id,
                 cached_image_id,
                 style_preset_id,
@@ -176,7 +156,7 @@ public interface MemeCandidateRepository extends JpaRepository<MemeCandidateEnti
 
     @Modifying(clearAutomatically = true)
     @Query(value = """
-            UPDATE meme_candidates
+            UPDATE style_feed_items
             SET admin_visibility_override = FALSE,
                 visibility = 'ADMIN_HIDDEN',
                 updated_at = NOW()
@@ -186,7 +166,7 @@ public interface MemeCandidateRepository extends JpaRepository<MemeCandidateEnti
 
     @Modifying(clearAutomatically = true)
     @Query(value = """
-            UPDATE meme_candidates
+            UPDATE style_feed_items
             SET admin_visibility_override = NULL,
                 visibility = 'VISIBLE',
                 updated_at = NOW()

@@ -1,4 +1,4 @@
-package com.example.sticker_art_gallery.service.meme;
+package com.example.sticker_art_gallery.service.stylefeed;
 
 import com.example.sticker_art_gallery.model.generation.GenerationTaskEntity;
 import com.example.sticker_art_gallery.model.generation.GenerationTaskStatus;
@@ -7,7 +7,7 @@ import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.repository.GenerationTaskRepository;
 import com.example.sticker_art_gallery.repository.StylePresetRepository;
-import com.example.sticker_art_gallery.repository.meme.MemeCandidateRepository;
+import com.example.sticker_art_gallery.repository.stylefeed.StyleFeedItemRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,24 +25,24 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("MemeCandidatePromotionService")
-class MemeCandidatePromotionServiceTest {
+@DisplayName("StyleFeedItemPromotionService")
+class StyleFeedItemPromotionServiceTest {
 
     @Mock
     private StylePresetRepository stylePresetRepository;
     @Mock
     private GenerationTaskRepository generationTaskRepository;
     @Mock
-    private MemeCandidateRepository memeCandidateRepository;
+    private StyleFeedItemRepository styleFeedItemRepository;
 
-    private MemeCandidatePromotionService service;
+    private StyleFeedItemPromotionService service;
 
     @BeforeEach
     void setUp() {
-        service = new MemeCandidatePromotionService(
+        service = new StyleFeedItemPromotionService(
                 stylePresetRepository,
                 generationTaskRepository,
-                memeCandidateRepository,
+                styleFeedItemRepository,
                 new ObjectMapper()
         );
     }
@@ -54,12 +54,12 @@ class MemeCandidatePromotionServiceTest {
         GenerationTaskEntity task = completedTask("task-10", 10L, 100L);
         when(stylePresetRepository.findById(10L)).thenReturn(Optional.of(preset));
         when(generationTaskRepository.findLatestCompletedForUserAndPreset(100L, 10L)).thenReturn(Optional.of(task));
-        when(memeCandidateRepository.insertForStylePresetIfAbsent("task-10", task.getCachedImageId(), 10L, 100L))
+        when(styleFeedItemRepository.insertForStylePresetIfAbsent("task-10", task.getCachedImageId(), 10L, 100L))
                 .thenReturn(1);
 
         service.promoteOnApproval(10L);
 
-        verify(memeCandidateRepository).insertForStylePresetIfAbsent("task-10", task.getCachedImageId(), 10L, 100L);
+        verify(styleFeedItemRepository).insertForStylePresetIfAbsent("task-10", task.getCachedImageId(), 10L, 100L);
     }
 
     @Test
@@ -74,7 +74,7 @@ class MemeCandidatePromotionServiceTest {
         service.promoteOnApproval(11L);
 
         verify(generationTaskRepository, never()).findLatestCompletedForUserAndPreset(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong());
-        verify(memeCandidateRepository, never()).insertForStylePresetIfAbsent(
+        verify(styleFeedItemRepository, never()).insertForStylePresetIfAbsent(
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.anyLong(),
@@ -89,12 +89,12 @@ class MemeCandidatePromotionServiceTest {
         GenerationTaskEntity task = completedTask("task-12", 12L, 120L);
         when(generationTaskRepository.findByTaskId("task-12")).thenReturn(Optional.of(task));
         when(stylePresetRepository.findById(12L)).thenReturn(Optional.of(preset));
-        when(memeCandidateRepository.insertForStylePresetIfAbsent("task-12", task.getCachedImageId(), 12L, 120L))
+        when(styleFeedItemRepository.insertForStylePresetIfAbsent("task-12", task.getCachedImageId(), 12L, 120L))
                 .thenReturn(1);
 
         service.promoteOnGenerationCompleted("task-12");
 
-        verify(memeCandidateRepository).insertForStylePresetIfAbsent("task-12", task.getCachedImageId(), 12L, 120L);
+        verify(styleFeedItemRepository).insertForStylePresetIfAbsent("task-12", task.getCachedImageId(), 12L, 120L);
     }
 
     private StylePresetEntity approvedPublishedPreset(Long presetId, Long ownerId) {
