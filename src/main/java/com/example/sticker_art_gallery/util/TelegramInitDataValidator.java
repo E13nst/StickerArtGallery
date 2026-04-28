@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.example.sticker_art_gallery.config.AppConfig;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -26,10 +28,12 @@ public class TelegramInitDataValidator {
     private static final long MAX_AUTH_AGE_SECONDS = 86400; // 24 часа как в JavaScript коде
 
     private final AppConfig appConfig;
+    private final ObjectMapper objectMapper;
 
     @Autowired
-    public TelegramInitDataValidator(AppConfig appConfig) {
+    public TelegramInitDataValidator(AppConfig appConfig, ObjectMapper objectMapper) {
         this.appConfig = appConfig;
+        this.objectMapper = objectMapper;
     }
 
     public boolean validateInitData(String initData) {
@@ -289,22 +293,26 @@ public class TelegramInitDataValidator {
         try {
             Map<String, String> params = parseInitData(initData);
             String userStr = params.get("user");
-
-            if (userStr != null) {
-                // Для надежности лучше использовать JSON парсер
-                int idIndex = userStr.indexOf("\"id\":");
-                if (idIndex != -1) {
-                    int start = userStr.indexOf(":", idIndex) + 1;
-                    int end = userStr.indexOf(",", start);
-                    if (end == -1) end = userStr.indexOf("}", start);
-                    if (end != -1) {
-                        String idStr = userStr.substring(start, end).trim();
-                        return Long.parseLong(idStr.replaceAll("\"", ""));
-                    }
-                }
+            if (userStr == null || userStr.isBlank()) {
+                return null;
             }
 
-            return null;
+            JsonNode userNode = objectMapper.readTree(userStr);
+            JsonNode idNode = userNode.get("id");
+            if (idNode == null || idNode.isNull()) {
+                return null;
+            }
+            if (idNode.isNumber()) {
+                return idNode.longValue();
+            }
+            if (idNode.isTextual()) {
+                String text = idNode.asText().trim();
+                if (text.isEmpty()) {
+                    return null;
+                }
+                return Long.parseLong(text);
+            }
+            return Long.parseLong(idNode.asText().trim());
 
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка извлечения telegram_id: {}", e.getMessage(), e);

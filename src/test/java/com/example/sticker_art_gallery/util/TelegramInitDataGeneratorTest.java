@@ -1,6 +1,7 @@
 package com.example.sticker_art_gallery.util;
 
 import com.example.sticker_art_gallery.config.AppConfig;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,7 +41,7 @@ class TelegramInitDataGeneratorTest {
         when(appConfig.getTelegram()).thenReturn(telegramConfig);
         when(telegramConfig.getBotToken()).thenReturn(TEST_BOT_TOKEN);
         
-        validator = new TelegramInitDataValidator(appConfig);
+        validator = new TelegramInitDataValidator(appConfig, new ObjectMapper());
     }
     
     /**
