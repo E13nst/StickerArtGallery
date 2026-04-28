@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -131,7 +132,7 @@ class StylePresetPublicationServiceTest {
 
         verify(artRewardService).award(104L, "PUBLISH_PRESET", 10L, "{\"presetId\":40,\"idempotencyKey\":\"idem-40\"}",
                 "publish-preset:40:idem-40", 104L);
-        verify(presetRepository).save(preset);
+        verify(presetRepository, times(2)).save(preset);
     }
 
     private StylePresetEntity userPreset(Long id, Long ownerUserId, PresetModerationStatus status) {
