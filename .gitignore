@@ -35,6 +35,9 @@ bin/
 target/
 *.class
 
+# Portable JDK (локальная копия для запуска Gradle без системного Java)
+.jdk17/
+
 # Gradle
 .gradle/
 gradle-app.setting
