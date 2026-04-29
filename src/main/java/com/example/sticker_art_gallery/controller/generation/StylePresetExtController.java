@@ -168,6 +168,28 @@ public class StylePresetExtController {
         }
     }
 
+    @PutMapping(value = "/admin/{presetId}/reference", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Admin: заменить опорное фото пользовательского пресета",
+            description = "Персональные пресеты (автор «свой стиль»). Глобальные стили — "
+                    + "POST /api/generation/style-presets/{id}/reference.")
+    public ResponseEntity<StylePresetDto> uploadUserPresetReferenceAsAdmin(
+            @PathVariable Long presetId,
+            @Parameter(description = "Файл референс-изображения")
+            @RequestParam("file") MultipartFile file) {
+        try {
+            StylePresetDto result = stylePresetService.uploadReferenceForUserPresetAsAdmin(presetId, file);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Admin: ошибка загрузки reference для пресета {}: {}", presetId, e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            LOGGER.error("Admin: ошибка загрузки reference: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     // =========================================================================
     // Admin: модерация
     // =========================================================================

@@ -16,13 +16,14 @@ public final class StylePresetSystemFields {
     }
 
     /**
-     * Виртуальное поле: предзагруженный референс с бэка (см. upload reference в админке).
-     * В шаблоне: {@code {{preset_ref}}}.
+     * Виртуальное поле: опорное фото стиля на сервере (плейсхолдер в шаблоне {@code {{preset_ref}}}).
+     * Загружает автор персонального пресета ({@code PUT /api/style-presets/{id}/reference}) или админ
+     * ({@code PUT /api/style-presets/admin/{id}/reference}); в JSON {@code fields} не хранится.
      */
     public static StylePresetFieldDto presetReferenceFieldDefinition() {
         StylePresetFieldDto d = new StylePresetFieldDto();
         d.setKey(PRESET_REFERENCE_KEY);
-        d.setLabel("Референс пресета");
+        d.setLabel("Опорное фото стиля (сохраняется на сервере)");
         d.setType("reference");
         d.setMinImages(1);
         d.setMaxImages(1);

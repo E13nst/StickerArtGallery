@@ -551,11 +551,12 @@ public class StylePresetPromptComposer {
     }
 
     /**
-     * JSON полей из БД + при наличии референсного фото — системное поле {@code preset_ref} первым (для порядка Image 1, …).
+     * JSON полей из БД + системное поле {@code preset_ref} первым (порядок Image 1, …), если в шаблоне есть
+     * {@code {{preset_ref}}} либо референс уже сохранён на сервере — чтобы владелец видел слот загрузки до первого файла.
      */
     public List<StylePresetFieldDto> listStructuredFieldDefinitions(StylePresetEntity preset) {
         List<StylePresetFieldDto> fromJson = parseStructuredFields(preset);
-        if (preset.getReferenceImage() == null) {
+        if (!shouldExposePresetReferenceField(preset)) {
             return fromJson;
         }
         List<StylePresetFieldDto> out = new ArrayList<>();
@@ -567,6 +568,24 @@ public class StylePresetPromptComposer {
             out.add(f);
         }
         return out;
+    }
+
+    /**
+     * Показывать виртуальное поле {@code preset_ref} в API/UI и учитывать его в валидации шаблона, если в
+     * {@code prompt_suffix} есть плейсхолдер или уже загружен серверный референс (автор стиля или админ).
+     */
+    public static boolean shouldExposePresetReferenceField(StylePresetEntity preset) {
+        if (preset == null) {
+            return false;
+        }
+        if (preset.getReferenceImage() != null) {
+            return true;
+        }
+        String suffix = preset.getPromptSuffix();
+        if (suffix == null || suffix.isBlank()) {
+            return false;
+        }
+        return extractPlaceholders(suffix).contains(StylePresetSystemFields.PRESET_REFERENCE_KEY);
     }
 
     private static StylePresetUiMode defaultMode(StylePresetEntity preset) {

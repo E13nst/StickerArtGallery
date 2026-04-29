@@ -338,6 +338,28 @@ public class StylePresetService {
         if (preset.getOwner() == null || !userId.equals(preset.getOwner().getUserId())) {
             throw new IllegalArgumentException("Пресет не принадлежит пользователю");
         }
+        return persistPresetReferenceUpload(preset, file);
+    }
+
+    /**
+     * Admin: заменить референсное изображение у любого неглобального пользовательского пресета
+     * (модерация / правка автора). Глобальные пресеты — по-прежнему через
+     * {@link #uploadReferenceForGlobal(long, MultipartFile)}.
+     */
+    @Transactional
+    public StylePresetDto uploadReferenceForUserPresetAsAdmin(Long presetId, MultipartFile file) {
+        StylePresetEntity preset = presetRepository.findByIdWithCategoryAndPreview(presetId)
+                .orElseThrow(() -> new IllegalArgumentException("Preset not found: " + presetId));
+        if (Boolean.TRUE.equals(preset.getIsGlobal())) {
+            throw new IllegalArgumentException("Для глобального пресета используйте POST /api/generation/style-presets/{id}/reference");
+        }
+        if (preset.getOwner() == null) {
+            throw new IllegalArgumentException("Пресет без владель не поддерживает пользовательский референс");
+        }
+        return persistPresetReferenceUpload(preset, file);
+    }
+
+    private StylePresetDto persistPresetReferenceUpload(StylePresetEntity preset, MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Файл не может быть пустым");
         }
@@ -354,7 +376,7 @@ public class StylePresetService {
                 imageStorageService.deleteById(preset.getReferenceImage().getId());
                 preset.setReferenceImage(null);
             }
-            var stored = imageStorageService.storeStylePresetReference(presetId, bytes, ct);
+            var stored = imageStorageService.storeStylePresetReference(preset.getId(), bytes, ct);
             preset.setReferenceImage(stored);
             preset = presetRepository.save(preset);
             return toDto(preset, true);
@@ -447,11 +469,12 @@ public class StylePresetService {
     }
 
     /**
-     * Поля из БД + виртуальное поле {@code preset_ref} (№1), если загружен референс пресета.
+     * Поля из БД + виртуальное поле {@code preset_ref} (№1), если в шаблоне есть {@code {{preset_ref}}}
+     * или уже сохранён файл референса — чтобы автор «своего стиля» сразу видел слот загрузки в miniapp.
      */
     private List<StylePresetFieldDto> buildFieldsForDto(StylePresetEntity entity) {
         List<StylePresetFieldDto> fromDb = parseFieldDtos(entity);
-        if (entity.getReferenceImage() == null) {
+        if (!StylePresetPromptComposer.shouldExposePresetReferenceField(entity)) {
             return fromDb;
         }
         List<StylePresetFieldDto> out = new ArrayList<>();

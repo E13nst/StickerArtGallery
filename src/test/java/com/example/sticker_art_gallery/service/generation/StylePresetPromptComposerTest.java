@@ -162,4 +162,33 @@ class StylePresetPromptComposerTest {
                 List.of(expected),
                 composer.resolveV2SourceImageIds(preset, Map.of(), null, null));
     }
+
+    @Test
+    @DisplayName("listStructuredFieldDefinitions: {{preset_ref}} в шаблоне даёт слот preset_ref даже без файла на сервере")
+    void listStructuredDefinitions_shouldIncludePresetRefWhenPlaceholderPresentWithoutImage() {
+        StylePresetEntity preset = new StylePresetEntity();
+        preset.setUiMode(StylePresetUiMode.STRUCTURED_FIELDS);
+        preset.setPromptSuffix("Idea {{prompt}}. Ref {{preset_ref}}. Face {{user_face}}.");
+        preset.setPromptInputJson(Map.of(
+                "enabled", true,
+                "required", true,
+                "maxLength", 800
+        ));
+        preset.setStructuredFieldsJson(objectMapper.convertValue(List.of(
+                Map.of(
+                        "key", "user_face",
+                        "label", "Фото на генерацию",
+                        "type", "reference",
+                        "minImages", 0,
+                        "maxImages", 1,
+                        "required", false
+                )
+        ), new TypeReference<>() { }));
+
+        assertEquals(true, StylePresetPromptComposer.shouldExposePresetReferenceField(preset));
+        var defs = composer.listStructuredFieldDefinitions(preset);
+        assertEquals(2, defs.size());
+        assertEquals("preset_ref", defs.get(0).getKey());
+        assertEquals("user_face", defs.get(1).getKey());
+    }
 }
