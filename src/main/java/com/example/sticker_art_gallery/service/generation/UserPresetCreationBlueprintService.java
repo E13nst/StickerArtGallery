@@ -87,6 +87,43 @@ public class UserPresetCreationBlueprintService {
     }
 
     /**
+     * Объединяет defaults шаблона с данными модалки публикации (без записи пресета).
+     */
+    @Transactional(readOnly = true)
+    public CreateStylePresetRequest mergeDefaultsWithPublicationOverlay(
+            String blueprintCode,
+            String presetCode,
+            String displayName,
+            String description,
+            Long categoryId,
+            Integer sortOrder) {
+        if (blueprintCode == null || blueprintCode.isBlank()) {
+            throw new IllegalArgumentException("Код шаблона не может быть пустым");
+        }
+        UserPresetCreationBlueprintEntity entity = repository.findByCode(blueprintCode.trim())
+                .filter(e -> Boolean.TRUE.equals(e.getEnabled()))
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Шаблон создания пресета не найден или отключён: " + blueprintCode));
+        CreateStylePresetRequest req = objectMapper.convertValue(
+                copyForValidation(entity.getPresetDefaultsJson()), CreateStylePresetRequest.class);
+        req.setCode(presetCode.trim());
+        req.setName(displayName.trim());
+        if (description != null && !description.isBlank()) {
+            req.setDescription(description.trim());
+        } else if (description != null) {
+            req.setDescription(null);
+        }
+        if (categoryId != null) {
+            req.setCategoryId(categoryId);
+        }
+        if (sortOrder != null) {
+            req.setSortOrder(sortOrder);
+        }
+        stylePresetService.validatePresetUiContract(req);
+        return req;
+    }
+
+    /**
      * In-memory пресет по активному шаблону: генерация v2 без записи в {@code style_presets}.
      * Клиент передаёт {@code user_style_blueprint_code} и {@code preset_fields} (включая {@code preset_ref} с img_*).
      */

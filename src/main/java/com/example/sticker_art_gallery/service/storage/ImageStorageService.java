@@ -191,6 +191,33 @@ public class ImageStorageService {
         return storeBytes(originalUrl, imageBytes, contentType, 4000);
     }
 
+    /**
+     * Читает байты сохранённого кэша (для копирования в долговременный reference/preview пресета).
+     */
+    @Transactional(readOnly = true)
+    public CachedImageBlob readCachedImageBlob(UUID id) {
+        CachedImageEntity entity = cachedImageRepository.findById(id).orElseThrow(
+                () -> new IllegalArgumentException("Image not found: " + id));
+        if (entity.isExpired()) {
+            LOGGER.info("Изображение просрочено: {}", entity.getFileName());
+            throw new IllegalArgumentException("Image expired: " + id);
+        }
+        Path filePath = Paths.get(storagePath, entity.getFilePath());
+        if (!Files.exists(filePath)) {
+            throw new IllegalArgumentException("Image file not found on disk: " + id);
+        }
+        try {
+            byte[] data = Files.readAllBytes(filePath);
+            String ct = entity.getContentType();
+            String effectiveCt = (ct != null && !ct.isBlank()) ? ct : "image/webp";
+            return new CachedImageBlob(data, effectiveCt);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to read cached image: " + id, e);
+        }
+    }
+
+    public record CachedImageBlob(byte[] data, String contentType) {}
+
     @Transactional(readOnly = true)
     public Optional<String> getPublicUrlIfPresent(UUID id) {
         return cachedImageRepository.findById(id)

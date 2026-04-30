@@ -85,6 +85,27 @@ public class StylePresetExtController {
         }
     }
 
+    @PostMapping("/{presetId}/unpublish-catalog")
+    @Operation(
+            summary = "Снять одобренный стиль с публичной витрины (владелец)",
+            description = "Только для APPROVED и publishedToCatalog=true; скрывает карточки в style feed.")
+    public ResponseEntity<StylePresetDto> unpublishFromCatalogAsOwner(@PathVariable Long presetId) {
+        try {
+            Long userId = getCurrentUserId();
+            StylePresetDto result = publicationService.ownerUnpublishPresetFromCatalog(userId, presetId);
+            return ResponseEntity.ok(result);
+        } catch (IllegalStateException e) {
+            LOGGER.warn("Owner unpublish preset {}: {}", presetId, e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Owner unpublish preset {}: {}", presetId, e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            LOGGER.error("Owner unpublish: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     // =========================================================================
     // Сохранённые пресеты
     // =========================================================================

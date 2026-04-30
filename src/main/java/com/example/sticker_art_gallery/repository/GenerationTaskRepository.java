@@ -3,7 +3,9 @@ package com.example.sticker_art_gallery.repository;
 import com.example.sticker_art_gallery.model.generation.GenerationTaskEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -15,6 +17,10 @@ import java.util.Optional;
 public interface GenerationTaskRepository extends JpaRepository<GenerationTaskEntity, String> {
 
     Optional<GenerationTaskEntity> findByTaskId(String taskId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT g FROM GenerationTaskEntity g JOIN FETCH g.userProfile WHERE g.taskId = :taskId")
+    Optional<GenerationTaskEntity> findByTaskIdForUpdate(@Param("taskId") String taskId);
 
     Page<GenerationTaskEntity> findByUserProfile_UserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 

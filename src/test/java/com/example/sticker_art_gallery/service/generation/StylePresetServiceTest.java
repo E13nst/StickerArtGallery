@@ -4,6 +4,7 @@ import com.example.sticker_art_gallery.dto.generation.CreateStylePresetRequest;
 import com.example.sticker_art_gallery.dto.generation.StylePresetFieldDto;
 import com.example.sticker_art_gallery.dto.generation.StylePresetPromptInputDto;
 import com.example.sticker_art_gallery.dto.generation.StylePresetReferenceInputDto;
+import com.example.sticker_art_gallery.model.generation.PresetModerationStatus;
 import com.example.sticker_art_gallery.model.generation.StylePresetCategoryEntity;
 import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
@@ -87,6 +88,40 @@ class StylePresetServiceTest {
 
         assertEquals("Access denied: preset is not accessible for user", error.getMessage());
         verify(presetRepository, never()).delete(preset);
+    }
+
+    @Test
+    @DisplayName("Запрещает не-админу удалять одобренный пользовательский пресет")
+    void deletePreset_ShouldRejectApprovedUserPresetForOwner() {
+        UserProfileEntity owner = new UserProfileEntity();
+        owner.setUserId(42L);
+        StylePresetEntity preset = new StylePresetEntity();
+        preset.setId(50L);
+        preset.setIsGlobal(false);
+        preset.setOwner(owner);
+        preset.setModerationStatus(PresetModerationStatus.APPROVED);
+        when(presetRepository.findByIdWithCategoryAndPreview(50L)).thenReturn(Optional.of(preset));
+
+        assertThrows(IllegalArgumentException.class, () -> stylePresetService.deletePreset(50L, 42L, false));
+        verify(presetRepository, never()).delete(preset);
+    }
+
+    @Test
+    @DisplayName("Разрешает админу удалять пользовательский одобренный пресет")
+    void deletePreset_ShouldAllowAdminToDeleteApprovedUserPreset() {
+        UserProfileEntity owner = new UserProfileEntity();
+        owner.setUserId(42L);
+        StylePresetEntity preset = new StylePresetEntity();
+        preset.setId(51L);
+        preset.setIsGlobal(false);
+        preset.setOwner(owner);
+        preset.setModerationStatus(PresetModerationStatus.APPROVED);
+        preset.setPromptSuffix(", ok");
+        when(presetRepository.findByIdWithCategoryAndPreview(51L)).thenReturn(Optional.of(preset));
+
+        stylePresetService.deletePreset(51L, 99L, true);
+
+        verify(presetRepository).delete(preset);
     }
 
     @Test

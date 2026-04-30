@@ -4,10 +4,13 @@ import com.example.sticker_art_gallery.dto.generation.GenerateStickerResponse;
 import com.example.sticker_art_gallery.dto.generation.GenerateStickerV2Request;
 import com.example.sticker_art_gallery.dto.generation.GenerationHistoryResponse;
 import com.example.sticker_art_gallery.dto.generation.GenerationStatusResponse;
+import com.example.sticker_art_gallery.dto.generation.PublishUserStyleFromTaskRequest;
 import com.example.sticker_art_gallery.dto.generation.SaveToSetV2Request;
 import com.example.sticker_art_gallery.dto.generation.SaveToSetV2Response;
+import com.example.sticker_art_gallery.dto.generation.StylePresetDto;
 import com.example.sticker_art_gallery.service.generation.StickerGenerationAsyncDispatcher;
 import com.example.sticker_art_gallery.service.generation.StickerGenerationService;
+import com.example.sticker_art_gallery.service.generation.StylePresetPublicationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -36,11 +39,14 @@ public class StickerGenerationV2Controller {
 
     private final StickerGenerationService generationService;
     private final StickerGenerationAsyncDispatcher generationAsyncDispatcher;
+    private final StylePresetPublicationService stylePresetPublicationService;
 
     public StickerGenerationV2Controller(StickerGenerationService generationService,
-                                         StickerGenerationAsyncDispatcher generationAsyncDispatcher) {
+                                         StickerGenerationAsyncDispatcher generationAsyncDispatcher,
+                                         StylePresetPublicationService stylePresetPublicationService) {
         this.generationService = generationService;
         this.generationAsyncDispatcher = generationAsyncDispatcher;
+        this.stylePresetPublicationService = stylePresetPublicationService;
     }
 
     @PostMapping("/generate")
@@ -81,6 +87,45 @@ public class StickerGenerationV2Controller {
                 return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).build();
             }
             throw e;
+        }
+    }
+
+    @PostMapping("/tasks/{taskId}/publish-user-style")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    @Operation(
+            summary = "Опубликовать пользовательский стиль из завершённой задачи v2",
+            description = """
+                    После успешной генерации (COMPLETED) с user_style_blueprint_code и без stylePresetId.
+                    Списывает ART по правилу PUBLISH_PRESET, создаёт пресет из шаблона + полей запроса,
+                    копирует опорное фото как reference и результат генерации как preview, статус — PENDING_MODERATION.
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Пресет отправлен на модерацию"),
+            @ApiResponse(responseCode = "400", description = "Неверные входные данные или состояние задачи"),
+            @ApiResponse(responseCode = "401", description = "Не авторизован"),
+            @ApiResponse(responseCode = "402", description = "Недостаточно ART-баллов")
+    })
+    public ResponseEntity<StylePresetDto> publishUserStyleFromTask(
+            @Parameter(description = "ID задачи генерации") @PathVariable String taskId,
+            @Valid @RequestBody PublishUserStyleFromTaskRequest request) {
+        Long userId = extractUserIdFromAuthentication();
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        try {
+            StylePresetDto dto = stylePresetPublicationService.publishUserStyleFromCompletedGenerationTask(
+                    userId, taskId, request);
+            return ResponseEntity.ok(dto);
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("publish-user-style: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (IllegalStateException e) {
+            if (e.getMessage() != null && e.getMessage().contains("Недостаточно ART")) {
+                return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).build();
+            }
+            LOGGER.warn("publish-user-style state: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
         }
     }
 
