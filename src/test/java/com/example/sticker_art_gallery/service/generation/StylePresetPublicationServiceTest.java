@@ -249,7 +249,6 @@ class StylePresetPublicationServiceTest {
         task.getUserProfile().setUserId(104L);
 
         UUID refCachedId = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
-        String sagref = StylePresetReferenceImageId.fromCachedImageId(refCachedId);
         when(imageStorageService.readCachedImageBlob(refCachedId)).thenReturn(
                 new ImageStorageService.CachedImageBlob(new byte[] { 1, 2, 3 }, "image/png"));
 
@@ -257,8 +256,6 @@ class StylePresetPublicationServiceTest {
         task.setCachedImageId(resultId);
         when(imageStorageService.readCachedImageBlob(resultId)).thenReturn(
                 new ImageStorageService.CachedImageBlob(new byte[] { 4, 5 }, "image/webp"));
-
-        stubMetadataPresetRef(task.getMetadata(), sagref);
 
         when(generationTaskRepository.findByTaskIdForUpdate(taskId)).thenReturn(Optional.of(task));
         when(publicationFromTaskRepository.findByIdempotencyKey("idem-ok")).thenReturn(Optional.empty());
