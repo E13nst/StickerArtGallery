@@ -286,8 +286,6 @@ class StylePresetPublicationServiceTest {
         rule.setAmount(10L);
         when(artRuleService.getEnabledRuleOrThrow("PUBLISH_PRESET")).thenReturn(rule);
 
-        when(objectMapper.writeValueAsString(any())).thenReturn("{\"presetId\":777}");
-
         when(publicationFromTaskRepository.save(any(PresetPublicationFromGenerationTaskEntity.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
@@ -303,7 +301,7 @@ class StylePresetPublicationServiceTest {
                 anyString(),
                 eq("publish-from-task:" + taskId + ":idem-ok"),
                 eq(104L));
-        verify(presetRepository).save(preset777);
+        verify(presetRepository, times(3)).save(preset777);
         assertSame(out, result);
     }
 
