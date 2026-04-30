@@ -5,9 +5,7 @@ meta:
     version: "17"
 build:
   image: null
-  # Amvera выполняет: gradle build ${args}. Без -x test поднимается весь граф check→test (десятки @SpringBootTest),
-  # что на билдере занимает очень долго и тянет Redis по умолчанию к amvera-e13nst-run-redis.
-  args: -x test bootJar --info
+  args: bootJar --info
   artifacts:
     build/libs/*.jar: /
 run:

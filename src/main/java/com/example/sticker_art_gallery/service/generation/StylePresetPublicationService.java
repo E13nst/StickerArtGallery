@@ -3,6 +3,7 @@ package com.example.sticker_art_gallery.service.generation;
 import com.example.sticker_art_gallery.dto.generation.CreateStylePresetRequest;
 import com.example.sticker_art_gallery.dto.generation.PublishUserStyleFromTaskRequest;
 import com.example.sticker_art_gallery.dto.generation.StylePresetDto;
+import com.example.sticker_art_gallery.dto.generation.StylePresetSystemFields;
 import com.example.sticker_art_gallery.model.generation.GenerationTaskEntity;
 import com.example.sticker_art_gallery.model.generation.GenerationTaskStatus;
 import com.example.sticker_art_gallery.model.generation.PresetModerationStatus;
