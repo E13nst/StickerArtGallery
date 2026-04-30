@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -67,8 +68,9 @@ class StylePresetPublicationServiceTest {
     private UserPresetCreationBlueprintService userPresetCreationBlueprintService;
     @Mock
     private ImageStorageService imageStorageService;
-    @Mock
-    private ObjectMapper objectMapper;
+    /** Spy: сервис парсит {@code task.metadata} через {@link ObjectMapper#readValue}; mock даёт пустую карту. */
+    @Spy
+    private ObjectMapper objectMapper = new ObjectMapper();
     @Mock
     private StyleFeedItemPromotionService styleFeedItemPromotionService;
     @Mock
