@@ -138,6 +138,28 @@ public class StylePresetService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Несохранённый пресет для pipeline генерации по шаблону «свой стиль» (без строки в {@code style_presets}).
+     * Предварительно проверьте контракт через {@link #validatePresetUiContract(CreateStylePresetRequest)}.
+     */
+    @Transactional(readOnly = true)
+    public StylePresetEntity materializeTransientPresetForGeneration(CreateStylePresetRequest request) {
+        StylePresetEntity preset = new StylePresetEntity();
+        applyUiFields(preset, request);
+        preset.setPromptSuffix(request.getPromptSuffix());
+        preset.setCode(request.getCode());
+        preset.setName(request.getName());
+        preset.setDescription(request.getDescription());
+        preset.setIsEnabled(true);
+        preset.setIsGlobal(false);
+        preset.setOwner(null);
+        preset.setReferenceImage(null);
+        preset.setPreviewImage(null);
+        preset.setSortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0);
+        preset.setCategory(resolveCategory(request.getCategoryId()));
+        return preset;
+    }
+
     @Transactional
     public StylePresetDto createGlobalPreset(CreateStylePresetRequest request) {
         LOGGER.info("Creating global preset: code={}", request.getCode());

@@ -64,6 +64,7 @@ public class StickerGenerationService {
     private final GenerationArtBillingService generationArtBillingService;
     private final StyleFeedItemPromotionService styleFeedItemPromotionService;
     private final ObjectMapper objectMapper;
+    private final UserPresetCreationBlueprintService userPresetCreationBlueprintService;
 
     @Value("${wavespeed.max-poll-seconds:300}")
     private int maxPollSeconds;
@@ -100,7 +101,8 @@ public class StickerGenerationService {
             StylePresetRepository stylePresetRepository,
             StylePresetPromptComposer stylePresetPromptComposer,
             GenerationArtBillingService generationArtBillingService,
-            StyleFeedItemPromotionService styleFeedItemPromotionService) {
+            StyleFeedItemPromotionService styleFeedItemPromotionService,
+            UserPresetCreationBlueprintService userPresetCreationBlueprintService) {
         this.taskRepository = taskRepository;
         this.waveSpeedClient = waveSpeedClient;
         this.artRewardService = artRewardService;
@@ -114,6 +116,7 @@ public class StickerGenerationService {
         this.stylePresetPromptComposer = stylePresetPromptComposer;
         this.generationArtBillingService = generationArtBillingService;
         this.styleFeedItemPromotionService = styleFeedItemPromotionService;
+        this.userPresetCreationBlueprintService = userPresetCreationBlueprintService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -267,9 +270,21 @@ public class StickerGenerationService {
         metadata.put("num_images", request.getNumImages());
         metadata.put("strength", request.getStrength());
         metadata.put("remove_background", request.getRemoveBackground());
+        String blueprintCodeTrimmed = request.getUserStyleBlueprintCode() != null
+                ? request.getUserStyleBlueprintCode().trim()
+                : null;
+        if (blueprintCodeTrimmed != null && !blueprintCodeTrimmed.isEmpty() && request.getStylePresetId() != null) {
+            throw new IllegalArgumentException("Укажите либо stylePresetId, либо userStyleBlueprintCode");
+        }
         StylePresetEntity presetForImages = null;
-        if (request.getStylePresetId() != null) {
-            presetForImages = stylePresetRepository.findByIdWithReference(request.getStylePresetId()).orElse(null);
+        if (blueprintCodeTrimmed != null && !blueprintCodeTrimmed.isEmpty()) {
+            presetForImages = userPresetCreationBlueprintService.buildTransientStylePresetForGeneration(blueprintCodeTrimmed);
+            metadata.put("userStyleBlueprintCode", blueprintCodeTrimmed);
+        } else {
+            metadata.put("userStyleBlueprintCode", null);
+            if (request.getStylePresetId() != null) {
+                presetForImages = stylePresetRepository.findByIdWithReference(request.getStylePresetId()).orElse(null);
+            }
         }
         List<String> resolvedImageIds = stylePresetPromptComposer.resolveV2SourceImageIds(
                 presetForImages,
@@ -394,8 +409,19 @@ public class StickerGenerationService {
             if (stylePresetIdResolved == null && metadata.get("stylePresetId") instanceof Number) {
                 stylePresetIdResolved = ((Number) metadata.get("stylePresetId")).longValue();
             }
-            PromptProcessingService.PromptProcessingResult promptResult =
-                    promptProcessingService.processPrompt(originalPrompt, presetFields, userId, stylePresetIdResolved);
+            String blueprintCode = null;
+            Object bpc = metadata.get("userStyleBlueprintCode");
+            if (bpc instanceof String s && !s.isBlank()) {
+                blueprintCode = s.trim();
+            }
+            StylePresetEntity transientPreset = null;
+            if (blueprintCode != null) {
+                transientPreset = userPresetCreationBlueprintService.buildTransientStylePresetForGeneration(blueprintCode);
+            }
+            PromptProcessingService.PromptProcessingResult promptResult = transientPreset != null
+                    ? promptProcessingService.processPromptForTransientStylePreset(
+                            originalPrompt, presetFields, userId, transientPreset)
+                    : promptProcessingService.processPrompt(originalPrompt, presetFields, userId, stylePresetIdResolved);
             String processedPrompt = promptResult.prompt();
             task.setPrompt(processedPrompt);
             task.setStatus(GenerationTaskStatus.PENDING);

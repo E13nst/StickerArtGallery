@@ -5,6 +5,7 @@ import com.example.sticker_art_gallery.dto.generation.GenerateStickerV2Request;
 import com.example.sticker_art_gallery.model.generation.GenerationTaskEntity;
 import com.example.sticker_art_gallery.model.generation.GenerationTaskStatus;
 import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
+import com.example.sticker_art_gallery.model.generation.StylePresetUiMode;
 import com.example.sticker_art_gallery.model.profile.ArtTransactionEntity;
 import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.model.storage.CachedImageEntity;
@@ -36,6 +37,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -83,6 +85,9 @@ class StickerGenerationServiceTest {
     @Mock
     private StyleFeedItemPromotionService styleFeedItemPromotionService;
 
+    @Mock
+    private UserPresetCreationBlueprintService userPresetCreationBlueprintService;
+
     private StickerGenerationService stickerGenerationService;
 
     @BeforeEach
@@ -102,7 +107,8 @@ class StickerGenerationServiceTest {
                 stylePresetRepository,
                 stylePresetPromptComposer,
                 generationArtBillingService,
-                styleFeedItemPromotionService
+                styleFeedItemPromotionService,
+                userPresetCreationBlueprintService
         ));
 
         // Избегаем запуска полного async pipeline в unit-тесте startGeneration
@@ -217,6 +223,54 @@ class StickerGenerationServiceTest {
         verify(taskRepository, times(2)).save(taskCaptor.capture());
         Map<?, ?> metadata = om.readValue(taskCaptor.getValue().getMetadata(), Map.class);
         assertEquals(List.of("img_from_slot"), metadata.get("image_ids"));
+    }
+
+    @Test
+    @DisplayName("startGenerationV2: нельзя одновременно stylePresetId и userStyleBlueprintCode")
+    void startGenerationV2_shouldRejectBothPresetIdAndBlueprintCode() {
+        GenerateStickerV2Request request = new GenerateStickerV2Request();
+        request.setPrompt("p");
+        request.setModel("flux-schnell");
+        request.setStylePresetId(1L);
+        request.setUserStyleBlueprintCode("style_anchor_standard");
+        assertThrows(IllegalArgumentException.class, () -> stickerGenerationService.startGenerationV2(1L, request));
+    }
+
+    @Test
+    @DisplayName("startGenerationV2: blueprint-код кладётся в metadata и использует transient пресет для слотов")
+    void startGenerationV2_shouldStoreBlueprintCodeInMetadata() throws Exception {
+        long userId = 557L;
+        UserProfileEntity profile = new UserProfileEntity();
+        profile.setUserId(userId);
+        when(userProfileService.getOrCreateDefaultForUpdate(userId)).thenReturn(profile);
+        when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(artRewardService.award(anyLong(), anyString(), any(), anyString(), anyString(), anyLong()))
+                .thenReturn(new ArtTransactionEntity());
+
+        StylePresetEntity transientPreset = new StylePresetEntity();
+        transientPreset.setId(999L);
+        transientPreset.setUiMode(StylePresetUiMode.STRUCTURED_FIELDS);
+        transientPreset.setPromptSuffix("x {{preset_ref}} {{user_face}}");
+        transientPreset.setStructuredFieldsJson(new ObjectMapper().convertValue(List.of(
+                Map.of("key", "user_face", "type", "reference", "minImages", 0, "maxImages", 1)
+        ), new TypeReference<>() { }));
+        when(userPresetCreationBlueprintService.buildTransientStylePresetForGeneration("my_bp"))
+                .thenReturn(transientPreset);
+
+        GenerateStickerV2Request request = new GenerateStickerV2Request();
+        request.setPrompt("p");
+        request.setModel("flux-schnell");
+        request.setUserStyleBlueprintCode("my_bp");
+        request.setPresetFields(Map.of("preset_ref", "img_a", "user_face", "img_b"));
+
+        stickerGenerationService.startGenerationV2(userId, request);
+
+        ArgumentCaptor<GenerationTaskEntity> taskCaptor = ArgumentCaptor.forClass(GenerationTaskEntity.class);
+        verify(taskRepository, times(2)).save(taskCaptor.capture());
+        ObjectMapper om = new ObjectMapper();
+        Map<?, ?> metadata = om.readValue(taskCaptor.getValue().getMetadata(), Map.class);
+        assertEquals("my_bp", metadata.get("userStyleBlueprintCode"));
+        assertEquals(List.of("img_a", "img_b"), metadata.get("image_ids"));
     }
 
     @Test

@@ -45,6 +45,7 @@ class StickerGenerationServiceRoyaltyTest {
     @Mock private StylePresetPromptComposer stylePresetPromptComposer;
     @Mock private GenerationArtBillingService generationArtBillingService;
     @Mock private StyleFeedItemPromotionService styleFeedItemPromotionService;
+    @Mock private UserPresetCreationBlueprintService userPresetCreationBlueprintService;
 
     private StickerGenerationService service;
 
@@ -63,7 +64,8 @@ class StickerGenerationServiceRoyaltyTest {
                 stylePresetRepository,
                 stylePresetPromptComposer,
                 generationArtBillingService,
-                styleFeedItemPromotionService
+                styleFeedItemPromotionService,
+                userPresetCreationBlueprintService
         );
     }
 

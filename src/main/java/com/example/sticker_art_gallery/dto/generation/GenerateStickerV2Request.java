@@ -60,8 +60,15 @@ public class GenerateStickerV2Request {
             @Pattern(regexp = "^img_[A-Za-z0-9_-]+$", message = "Каждый image_id должен иметь формат img_...")
             String> imageIds;
 
-    @Schema(description = "ID legacy style preset. Пресет будет применен на этапе prompt processing перед вызовом sticker-processor", example = "1")
+    @Schema(description = "ID style preset в БД. Нельзя передавать вместе с userStyleBlueprintCode (для «свой стиль» без черновика пресета).", example = "1")
     private Long stylePresetId;
+
+    @JsonProperty("user_style_blueprint_code")
+    @Schema(description = "Код шаблона из GET /api/generation/user-preset-creation-blueprints: генерация без записи в style_presets. "
+            + "В preset_fields передавайте те же ключи (в т.ч. preset_ref и user_*), что и у пресета из шаблона. "
+            + "Публикация стиля — отдельным API после оплаты (создание пресета в БД).")
+    @Size(max = 64, message = "Код шаблона не длиннее 64 символов")
+    private String userStyleBlueprintCode;
 
     @JsonProperty("preset_fields")
     @Schema(description = "Значения структурированных полей пресета (если UI это предполагает)")
@@ -145,6 +152,14 @@ public class GenerateStickerV2Request {
 
     public void setStylePresetId(Long stylePresetId) {
         this.stylePresetId = stylePresetId;
+    }
+
+    public String getUserStyleBlueprintCode() {
+        return userStyleBlueprintCode;
+    }
+
+    public void setUserStyleBlueprintCode(String userStyleBlueprintCode) {
+        this.userStyleBlueprintCode = userStyleBlueprintCode;
     }
 
     public Map<String, Object> getPresetFields() {

@@ -89,6 +89,32 @@ public class PromptProcessingService {
         return new PromptProcessingResult(afterEnhance, resolveRemoveBackground(preset));
     }
 
+    /**
+     * Pipeline пресета по несохранённой сущности (шаблон «свой стиль» без {@code style_presets}).
+     */
+    @Transactional(readOnly = true)
+    public PromptProcessingResult processPromptForTransientStylePreset(
+            String userPrompt,
+            Map<String, Object> presetFields,
+            Long userId,
+            StylePresetEntity transientPreset) {
+        if (transientPreset == null) {
+            throw new IllegalArgumentException("transientPreset is required");
+        }
+        LOGGER.info("Processing prompt (transient preset) for user {}: styleCode~={}, length={}",
+                userId, transientPreset.getCode(), userPrompt != null ? userPrompt.length() : 0);
+        if (!Boolean.TRUE.equals(transientPreset.getIsEnabled())) {
+            LOGGER.warn("Transient preset marked disabled, skipping template");
+            String toEnhance = userPrompt != null ? userPrompt : "";
+            String afterEnhance = applyEnhancers(toEnhance, userId);
+            return new PromptProcessingResult(afterEnhance, null);
+        }
+        String toEnhance = presetPromptComposer.buildRawPrompt(transientPreset, userPrompt, presetFields);
+        String afterEnhance = applyEnhancers(toEnhance, userId);
+        afterEnhance = appendStyleTail(afterEnhance, transientPreset);
+        return new PromptProcessingResult(afterEnhance, resolveRemoveBackground(transientPreset));
+    }
+
     private static Boolean resolveRemoveBackground(StylePresetEntity preset) {
         if (preset == null) {
             return null;

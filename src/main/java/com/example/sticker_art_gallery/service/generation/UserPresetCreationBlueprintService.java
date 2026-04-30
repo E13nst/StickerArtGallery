@@ -3,6 +3,7 @@ package com.example.sticker_art_gallery.service.generation;
 import com.example.sticker_art_gallery.dto.generation.CreateStylePresetRequest;
 import com.example.sticker_art_gallery.dto.generation.UpsertUserPresetCreationBlueprintRequest;
 import com.example.sticker_art_gallery.dto.generation.UserPresetCreationBlueprintDto;
+import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
 import com.example.sticker_art_gallery.model.generation.UserPresetCreationBlueprintEntity;
 import com.example.sticker_art_gallery.repository.UserPresetCreationBlueprintRepository;
 import com.example.sticker_art_gallery.service.profile.ArtRuleService;
@@ -83,6 +84,33 @@ public class UserPresetCreationBlueprintService {
                 .filter(entity -> Boolean.TRUE.equals(entity.getEnabled()))
                 .map(this::mapBase)
                 .orElse(null);
+    }
+
+    /**
+     * In-memory пресет по активному шаблону: генерация v2 без записи в {@code style_presets}.
+     * Клиент передаёт {@code user_style_blueprint_code} и {@code preset_fields} (включая {@code preset_ref} с img_*).
+     */
+    @Transactional(readOnly = true)
+    public StylePresetEntity buildTransientStylePresetForGeneration(String blueprintCode) {
+        if (blueprintCode == null || blueprintCode.isBlank()) {
+            throw new IllegalArgumentException("Код шаблона не может быть пустым");
+        }
+        UserPresetCreationBlueprintEntity entity = repository.findByCode(blueprintCode.trim())
+                .filter(e -> Boolean.TRUE.equals(e.getEnabled()))
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Шаблон создания пресета не найден или отключён: " + blueprintCode));
+        try {
+            CreateStylePresetRequest req = objectMapper.convertValue(
+                    copyForValidation(entity.getPresetDefaultsJson()), CreateStylePresetRequest.class);
+            req.setCode("_transient_blueprint_generation_");
+            req.setName("_transient_blueprint_generation_");
+            stylePresetService.validatePresetUiContract(req);
+            return stylePresetService.materializeTransientPresetForGeneration(req);
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Не удалось разобрать шаблон для генерации: " + e.getMessage(), e);
+        }
     }
 
     @Transactional

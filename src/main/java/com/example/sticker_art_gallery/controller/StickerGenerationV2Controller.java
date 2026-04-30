@@ -51,7 +51,10 @@ public class StickerGenerationV2Controller {
                     Запускает генерацию через STICKER_PROCESSOR.
                     Перед отправкой в провайдер применяется текущий pipeline обработки промпта:
                     1) активные Prompt Enhancers пользователя;
-                    2) Style Preset по полю stylePresetId (legacy-совместимость со старыми пресетами).
+                    2) Style Preset по полю stylePresetId (существующий пресет в БД), **или**
+                    3) шаблон «свой стиль» по полю user_style_blueprint_code (без записи черновика в style_presets):
+                       в preset_fields передайте те же ключи, что в шаблоне (в т.ч. preset_ref с img_*).
+                       Публикация стиля и запись пресета в БД — отдельным API после оплаты.
                     """
     )
     @ApiResponses(value = {
@@ -70,6 +73,9 @@ public class StickerGenerationV2Controller {
             generationAsyncDispatcher.processPromptAsyncV2(taskId, userId, request.getStylePresetId());
             LOGGER.info("Generation v2 started: taskId={}, userId={}", taskId, userId);
             return ResponseEntity.ok(new GenerateStickerResponse(taskId));
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Generation v2 validation: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
         } catch (IllegalStateException e) {
             if (e.getMessage() != null && e.getMessage().contains("Недостаточно ART")) {
                 return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).build();
