@@ -70,7 +70,7 @@ public class StylePresetModerationAdminController {
     @PostMapping("/{presetId}/decide")
     @Operation(summary = "Принять решение по модерации",
             description = "Только из статуса PENDING_MODERATION. Body: { \"status\": \"APPROVED\" | \"REJECTED\" }")
-    public ResponseEntity<StylePresetDto> decide(
+    public ResponseEntity<?> decide(
             @PathVariable Long presetId,
             @RequestBody Map<String, String> body) {
         try {
