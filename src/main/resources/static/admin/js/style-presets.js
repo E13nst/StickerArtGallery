@@ -4,6 +4,8 @@
 checkAuth();
 
 let presets = [];
+let globalPresets = [];
+let approvedUserPresets = [];
 let categories = [];
 let editingPresetId = null;
 let editingCategoryId = null;
@@ -49,7 +51,7 @@ function fillCategorySelect() {
     const sel = document.getElementById('preset-category-id');
     if (!sel) return;
     const current = sel.value;
-    sel.innerHTML = categories.map(c => `<option value="${c.id}">${escapeHtml(c.name)} (${escapeHtml(c.code)})</option>`).join('');
+    sel.innerHTML = categories.map(c => `<option value="${c.id}">#${c.id} · ${escapeHtml(c.code)} · ${escapeHtml(c.name)}</option>`).join('');
     if (current && categories.some(c => String(c.id) === String(current))) {
         sel.value = current;
     }
@@ -97,18 +99,23 @@ async function loadPresets() {
 
         await loadCategories();
 
-        presets = await api.getGlobalStylePresets();
-        
-        // Валидация данных
-        if (!Array.isArray(presets)) {
-            console.warn('Expected array, got:', presets);
-            presets = [];
-        }
-        
+        const [globalsRaw, approvedRaw] = await Promise.all([
+            api.getGlobalStylePresets(),
+            api.getUserPresetsForModeration('APPROVED')
+        ]);
+
+        globalPresets = Array.isArray(globalsRaw) ? globalsRaw : [];
+        approvedUserPresets = Array.isArray(approvedRaw) ? approvedRaw : [];
+
+        presets = [
+            ...globalPresets.map(p => ({ ...p, _sourceType: 'GLOBAL' })),
+            ...approvedUserPresets.map(p => ({ ...p, _sourceType: 'USER_APPROVED' }))
+        ];
+
         renderPresets();
         
         document.getElementById('loading').classList.add('hidden');
-        if (presets.length === 0) {
+        if (applyPresetFilters(presets).length === 0) {
             document.getElementById('no-data').classList.remove('hidden');
         }
     } catch (error) {
@@ -118,16 +125,31 @@ async function loadPresets() {
     }
 }
 
+function applyPresetFilters(items) {
+    const source = document.getElementById('filter-source')?.value || 'ALL';
+    const catalog = document.getElementById('filter-catalog')?.value || 'ALL';
+    return (items || []).filter(p => {
+        if (source === 'GLOBAL' && p._sourceType !== 'GLOBAL') return false;
+        if (source === 'USER_APPROVED' && p._sourceType !== 'USER_APPROVED') return false;
+        if (catalog === 'ON' && p.publishedToCatalog !== true) return false;
+        if (catalog === 'OFF' && p.publishedToCatalog !== false) return false;
+        return true;
+    });
+}
+
 // Отрисовка таблицы
 function renderPresets() {
     const tbody = document.getElementById('presets-table-body');
-    
-    if (presets.length === 0) {
+    const filtered = applyPresetFilters(presets);
+
+    if (filtered.length === 0) {
         tbody.innerHTML = '';
+        document.getElementById('no-data').classList.remove('hidden');
         return;
     }
-    
-    tbody.innerHTML = sortPresetsForDisplay(presets)
+    document.getElementById('no-data').classList.add('hidden');
+
+    tbody.innerHTML = sortPresetsForDisplay(filtered)
         .map(preset => `
             <tr class="hover:bg-gray-50 dark:hover:bg-slate-800/50">
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-slate-100">${preset.id}</td>
@@ -145,26 +167,86 @@ function renderPresets() {
                     <div class="font-mono text-xs bg-gray-50 dark:bg-slate-800 p-2 rounded max-w-xs overflow-x-auto text-slate-800 dark:text-slate-200">
                         ${preset.promptSuffix ? escapeHtml(preset.promptSuffix.substring(0, 80)) + (preset.promptSuffix.length > 80 ? '...' : '') : '<span class="text-gray-400 dark:text-slate-500">—</span>'}
                     </div>
+                    <div class="mt-1 text-[11px]">
+                        ${preset._sourceType === 'GLOBAL'
+                            ? '<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200">GLOBAL</span>'
+                            : '<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">USER APPROVED</span>'}
+                    </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                     ${renderRemoveBackgroundPolicy(preset.removeBackground)}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-slate-100" title="Порядок внутри категории">${preset.sortOrder}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                    ${preset.isEnabled 
-                        ? '<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 dark:text-green-200 dark:bg-green-950/50 rounded-full">Активен</span>'
-                        : '<span class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:text-slate-200 dark:bg-slate-700 rounded-full">Неактивен</span>'
-                    }
+                    <div class="flex flex-col gap-1">
+                        ${preset.isEnabled
+                            ? '<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 dark:text-green-200 dark:bg-green-950/50 rounded-full">Активен</span>'
+                            : '<span class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:text-slate-200 dark:bg-slate-700 rounded-full">Неактивен</span>'}
+                        ${preset._sourceType === 'USER_APPROVED'
+                            ? `<span class="px-2 py-1 text-xs font-semibold ${preset.publishedToCatalog ? 'text-blue-800 bg-blue-100 dark:text-blue-200 dark:bg-blue-950/50' : 'text-orange-800 bg-orange-100 dark:text-orange-200 dark:bg-orange-950/50'} rounded-full">${preset.publishedToCatalog ? 'На витрине' : 'Скрыт с витрины'}</span>`
+                            : ''}
+                    </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
-                    ${renderActionDropdown([
-                        { label: 'Изменить', onclick: `editPreset(${preset.id})`, className: 'text-blue-600' },
-                        { label: preset.isEnabled ? 'Выкл' : 'Вкл', onclick: `togglePreset(${preset.id}, ${!preset.isEnabled})`, className: preset.isEnabled ? 'text-yellow-600' : 'text-green-600' },
-                        { label: 'Удалить', onclick: `deletePreset(${preset.id})`, className: 'text-red-600' }
-                    ])}
+                    ${renderActionDropdown(getPresetActions(preset))}
                 </td>
             </tr>
         `).join('');
+}
+
+function getPresetActions(preset) {
+    if (preset._sourceType === 'USER_APPROVED') {
+        const actions = [
+            { label: 'Открыть модерацию', onclick: `openModerationPageForPreset(${preset.id})`, className: 'text-blue-600' }
+        ];
+        if (preset.publishedToCatalog) {
+            actions.push({ label: 'Скрыть с витрины', onclick: `takedownUserApprovedPreset(${preset.id})`, className: 'text-orange-600' });
+        } else {
+            actions.push({ label: 'Вернуть на витрину', onclick: `republishUserApprovedPreset(${preset.id})`, className: 'text-emerald-600' });
+        }
+        return actions;
+    }
+    return [
+        { label: 'Изменить', onclick: `editPreset(${preset.id})`, className: 'text-blue-600' },
+        { label: preset.isEnabled ? 'Выкл' : 'Вкл', onclick: `togglePreset(${preset.id}, ${!preset.isEnabled})`, className: preset.isEnabled ? 'text-yellow-600' : 'text-green-600' },
+        { label: 'Удалить', onclick: `deletePreset(${preset.id})`, className: 'text-red-600' }
+    ];
+}
+
+function openModerationPageForPreset(presetId) {
+    const statusSel = document.getElementById('filter-source')?.value === 'USER_APPROVED' ? 'APPROVED' : '';
+    const url = statusSel
+        ? `/admin/preset-moderation.html?status=${encodeURIComponent(statusSel)}&presetId=${encodeURIComponent(presetId)}`
+        : `/admin/preset-moderation.html?presetId=${encodeURIComponent(presetId)}`;
+    window.location.href = url;
+}
+
+async function takedownUserApprovedPreset(presetId) {
+    if (!confirmAction('Снять пользовательский пресет с публичной витрины?')) {
+        return;
+    }
+    try {
+        await api.takedownPresetModeration(presetId);
+        showNotification('Пресет снят с витрины', 'success');
+        await loadPresets();
+    } catch (e) {
+        console.error(e);
+        showNotification(e.message || 'Ошибка снятия с витрины', 'error');
+    }
+}
+
+async function republishUserApprovedPreset(presetId) {
+    if (!confirmAction('Вернуть пользовательский пресет на публичную витрину?')) {
+        return;
+    }
+    try {
+        await api.republishPresetModeration(presetId);
+        showNotification('Пресет возвращён на витрину', 'success');
+        await loadPresets();
+    } catch (e) {
+        console.error(e);
+        showNotification(e.message || 'Ошибка возврата на витрину', 'error');
+    }
 }
 
 // Открыть форму добавления
@@ -349,6 +431,9 @@ async function deletePreset(id) {
 // Event listeners
 document.getElementById('add-preset-btn').addEventListener('click', openAddModal);
 document.getElementById('preset-form').addEventListener('submit', savePreset);
+document.getElementById('refresh-presets-btn').addEventListener('click', loadPresets);
+document.getElementById('filter-source').addEventListener('change', renderPresets);
+document.getElementById('filter-catalog').addEventListener('change', renderPresets);
 
 document.getElementById('preset-prompt-enabled').addEventListener('change', function () {
     const opts = document.getElementById('prompt-options');

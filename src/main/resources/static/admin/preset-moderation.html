@@ -91,9 +91,15 @@
                             <select id="mod-preset-category"
                                 class="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"></select>
                         </div>
+                        <div class="sm:col-span-2">
+                            <label for="mod-submitted-user-prompt" class="block text-xs text-slate-500 mb-1">Промпт пользователя (submittedUserPrompt, редактируемый)</label>
+                            <textarea id="mod-submitted-user-prompt" rows="5" maxlength="8192"
+                                class="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono"></textarea>
+                            <p class="text-[11px] text-slate-500 mt-1">Редактируется отдельно от внутреннего шаблона promptSuffix ниже.</p>
+                        </div>
                     </div>
                     <button type="button" id="mod-save-meta"
-                        class="px-3 py-1.5 text-sm bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 rounded-md hover:opacity-90">Сохранить название и категорию</button>
+                        class="px-3 py-1.5 text-sm bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 rounded-md hover:opacity-90">Сохранить название, категорию и промпт</button>
                     <div class="grid sm:grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs text-slate-500 mb-1">Превью (заменить)</label>
@@ -225,7 +231,7 @@
             }
             return moderationCategories.map(c => {
                 const sel = selectedId != null && String(selectedId) === String(c.id) ? ' selected' : '';
-                return `<option value="${c.id}"${sel}>${esc(c.name)} (${esc(c.code)})</option>`;
+                return `<option value="${c.id}"${sel}>#${esc(c.id)} · ${esc(c.code)} · ${esc(c.name)}</option>`;
             }).join('');
         }
 
@@ -258,6 +264,7 @@
             const ro = document.getElementById('modal-readonly');
             document.getElementById('mod-action-msg').classList.add('hidden');
             document.getElementById('mod-preset-name').value = p.name || '';
+            document.getElementById('mod-submitted-user-prompt').value = p.submittedUserPrompt || '';
             const catSel = document.getElementById('mod-preset-category');
             catSel.innerHTML = categoryOptionsHtml(p.category && p.category.id);
             ro.innerHTML = `
@@ -279,7 +286,7 @@
                     <div class="text-sm flex flex-wrap gap-x-2 gap-y-1 items-baseline"><strong>Статус модерации</strong> <span class="admin-dm-value">${esc(p.moderationStatus)}</span></div>
                     <div class="text-sm flex flex-wrap gap-x-2 gap-y-1 items-baseline"><strong>На витрине</strong> <span class="admin-dm-value">${p.publishedToCatalog ? 'Да' : 'Нет'}</span></div>
                     <div class="text-sm flex flex-wrap gap-x-2 gap-y-1 items-baseline"><strong>Владелец (userId)</strong> <span class="admin-dm-value">${p.ownerId != null ? p.ownerId : '—'}</span></div>
-                    <div class="text-sm flex flex-wrap gap-x-2 gap-y-1 items-baseline"><strong>Категория (текущая)</strong> <span class="admin-dm-value">${p.category ? esc(p.category.name) + ' (' + esc(p.category.code) + ')' : '—'}</span></div>
+                    <div class="text-sm flex flex-wrap gap-x-2 gap-y-1 items-baseline"><strong>Категория (текущая)</strong> <span class="admin-dm-value">${p.category ? '#' + esc(p.category.id) + ' · ' + esc(p.category.code) + ' · ' + esc(p.category.name) : '—'}</span></div>
                 </div>
                 <div>
                     <div class="admin-dm-caption">Промпт из миниаппа (как при отправке на генерацию)</div>
@@ -371,11 +378,24 @@
 
         async function loadList() {
             clearError();
+            const urlParams = new URLSearchParams(window.location.search);
+            const preselectedStatus = urlParams.get('status');
+            if (preselectedStatus && !document.getElementById('filter-status').dataset.preselectedApplied) {
+                document.getElementById('filter-status').value = preselectedStatus;
+                document.getElementById('filter-status').dataset.preselectedApplied = '1';
+            }
             const st = document.getElementById('filter-status').value;
             try {
                 const list = await api.getUserPresetsForModeration(st || undefined);
                 cacheList = list || [];
                 renderTable(cacheList);
+                const presetId = urlParams.get('presetId');
+                if (presetId) {
+                    const one = cacheList.find(x => String(x.id) === String(presetId));
+                    if (one) {
+                        openDetail(one);
+                    }
+                }
             } catch (e) {
                 showError('Список: ' + (e.message || e));
             }
@@ -400,11 +420,16 @@
             if (!p || !p.id) return;
             const nameRaw = document.getElementById('mod-preset-name').value.trim();
             const catVal = document.getElementById('mod-preset-category').value;
+            const submittedPromptRaw = document.getElementById('mod-submitted-user-prompt').value;
             const patch = {};
             if (nameRaw) patch.name = nameRaw;
             if (catVal !== '') patch.categoryId = Number(catVal);
-            if (patch.name === undefined && patch.categoryId === undefined) {
-                showModMsg('Укажите непустое название или выберите категорию.', true);
+            const submittedChanged = (submittedPromptRaw || '') !== (p.submittedUserPrompt || '');
+            if (submittedChanged) {
+                patch.submittedUserPrompt = submittedPromptRaw;
+            }
+            if (patch.name === undefined && patch.categoryId === undefined && patch.submittedUserPrompt === undefined) {
+                showModMsg('Укажите непустое название, категорию или текст промпта.', true);
                 return;
             }
             try {

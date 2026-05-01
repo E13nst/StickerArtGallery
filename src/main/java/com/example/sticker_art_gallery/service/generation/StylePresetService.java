@@ -346,6 +346,9 @@ public class StylePresetService {
         if (body.hasCategoryPatch()) {
             preset.setCategory(resolveCategory(body.getCategoryId()));
         }
+        if (body.hasSubmittedUserPromptPatch()) {
+            preset.setSubmittedUserPrompt(body.normalizedSubmittedUserPromptOrNull());
+        }
         preset = presetRepository.save(preset);
         return toDto(preset, true, null);
     }

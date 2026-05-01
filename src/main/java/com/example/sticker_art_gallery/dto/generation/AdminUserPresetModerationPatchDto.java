@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
 
 /**
- * Частичное обновление пользовательского пресета модератором (имя, категория).
+ * Частичное обновление пользовательского пресета модератором (имя, категория, сохранённый финальный промпт).
  */
 @Schema(description = "Обновление отображаемого имени и/или категории пользовательского пресета (админ). "
         + "Поле со значением null или отсутствующее ключом в JSON не меняет текущее значение.")
@@ -16,6 +16,10 @@ public class AdminUserPresetModerationPatchDto {
 
     @Schema(description = "ID категории пресета; null — не менять категорию")
     private Long categoryId;
+
+    @Schema(description = "Сохранённый финальный пользовательский промпт из miniapp (submittedUserPrompt)")
+    @Size(max = 8192, message = "submittedUserPrompt не длиннее 8192 символов")
+    private String submittedUserPrompt;
 
     public String getName() {
         return name;
@@ -41,9 +45,21 @@ public class AdminUserPresetModerationPatchDto {
         return categoryId != null;
     }
 
+    public String getSubmittedUserPrompt() {
+        return submittedUserPrompt;
+    }
+
+    public void setSubmittedUserPrompt(String submittedUserPrompt) {
+        this.submittedUserPrompt = submittedUserPrompt;
+    }
+
+    public boolean hasSubmittedUserPromptPatch() {
+        return submittedUserPrompt != null;
+    }
+
     public void validatePresent() {
-        if (!hasNamePatch() && !hasCategoryPatch()) {
-            throw new IllegalArgumentException("Укажите name и/или categoryId для изменения");
+        if (!hasNamePatch() && !hasCategoryPatch() && !hasSubmittedUserPromptPatch()) {
+            throw new IllegalArgumentException("Укажите name и/или categoryId и/или submittedUserPrompt для изменения");
         }
         if (hasNamePatch()) {
             if (name.trim().isEmpty()) {
@@ -60,5 +76,19 @@ public class AdminUserPresetModerationPatchDto {
             return null;
         }
         return name.trim();
+    }
+
+    public String normalizedSubmittedUserPromptOrNull() {
+        if (!hasSubmittedUserPromptPatch()) {
+            return null;
+        }
+        String trimmed = submittedUserPrompt.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        if (trimmed.length() > 8192) {
+            throw new IllegalArgumentException("submittedUserPrompt не может быть длиннее 8192 символов");
+        }
+        return trimmed;
     }
 }
