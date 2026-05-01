@@ -73,13 +73,18 @@ public class StylePresetModerationAdminController {
     public ResponseEntity<StylePresetDto> decide(
             @PathVariable Long presetId,
             @RequestBody Map<String, String> body) {
-        String statusStr = body != null ? body.get("status") : null;
-        if (statusStr == null) {
-            return ResponseEntity.badRequest().build();
+        try {
+            String statusStr = body != null ? body.get("status") : null;
+            if (statusStr == null || statusStr.isBlank()) {
+                return badRequest("status обязателен");
+            }
+            PresetModerationStatus newStatus = PresetModerationStatus.valueOf(statusStr.toUpperCase());
+            StylePresetDto result = publicationService.moderatePreset(presetId, newStatus);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            LOGGER.warn("Ошибка decide для пресета {}: {}", presetId, e.getMessage());
+            return badRequest(e.getMessage());
         }
-        PresetModerationStatus newStatus = PresetModerationStatus.valueOf(statusStr.toUpperCase());
-        StylePresetDto result = publicationService.moderatePreset(presetId, newStatus);
-        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/{presetId}/takedown")
@@ -102,5 +107,21 @@ public class StylePresetModerationAdminController {
             LOGGER.warn("Ошибка republish для пресета {}: {}", presetId, e.getMessage());
             return ResponseEntity.badRequest().build();
         }
+    }
+
+    @DeleteMapping("/{presetId}")
+    @Operation(summary = "Удалить пользовательский пресет (админ)")
+    public ResponseEntity<?> delete(@PathVariable Long presetId) {
+        try {
+            stylePresetService.deletePreset(presetId, null, true);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            LOGGER.warn("Ошибка удаления пресета {}: {}", presetId, e.getMessage());
+            return badRequest(e.getMessage());
+        }
+    }
+
+    private static ResponseEntity<Map<String, String>> badRequest(String message) {
+        return ResponseEntity.badRequest().body(Map.of("message", message != null ? message : "Bad request"));
     }
 }

@@ -615,6 +615,12 @@ class AdminApiClient {
         });
     }
 
+    async deletePresetModeration(presetId) {
+        return this.request(`/admin/style-presets/moderation/${presetId}`, {
+            method: 'DELETE'
+        });
+    }
+
     // ============ User preset creation blueprints (форма «свой пресет») ============
 
     async getUserPresetCreationBlueprintsAdmin() {
