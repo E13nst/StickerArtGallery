@@ -2,6 +2,8 @@ package com.example.sticker_art_gallery.service.generation;
 
 import com.example.sticker_art_gallery.dto.generation.GenerateStickerRequest;
 import com.example.sticker_art_gallery.dto.generation.GenerateStickerV2Request;
+import com.example.sticker_art_gallery.dto.generation.SaveToSetV2Request;
+import com.example.sticker_art_gallery.model.telegram.StickerSetType;
 import com.example.sticker_art_gallery.model.generation.GenerationTaskEntity;
 import com.example.sticker_art_gallery.model.generation.GenerationTaskStatus;
 import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
@@ -18,6 +20,7 @@ import com.example.sticker_art_gallery.service.profile.UserProfileService;
 import com.example.sticker_art_gallery.service.stylefeed.StyleFeedItemPromotionService;
 import com.example.sticker_art_gallery.service.referral.ReferralService;
 import com.example.sticker_art_gallery.service.storage.ImageStorageService;
+import com.example.sticker_art_gallery.service.telegram.StickerSetService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -88,6 +91,9 @@ class StickerGenerationServiceTest {
     @Mock
     private UserPresetCreationBlueprintService userPresetCreationBlueprintService;
 
+    @Mock
+    private StickerSetService stickerSetService;
+
     private StickerGenerationService stickerGenerationService;
 
     @BeforeEach
@@ -108,7 +114,8 @@ class StickerGenerationServiceTest {
                 stylePresetPromptComposer,
                 generationArtBillingService,
                 styleFeedItemPromotionService,
-                userPresetCreationBlueprintService
+                userPresetCreationBlueprintService,
+                stickerSetService
         ));
 
         // Избегаем запуска полного async pipeline в unit-тесте startGeneration
@@ -650,6 +657,89 @@ class StickerGenerationServiceTest {
         assertEquals("processed prompt", task.getPrompt());
         assertEquals(GenerationTaskStatus.PENDING, task.getStatus());
         assertEquals(true, metadata.get("remove_background"));
+    }
+
+    @Test
+    @DisplayName("saveToSetV2: отказ, если задача принадлежит другому пользователю")
+    void saveToSetV2_shouldRejectWhenTaskBelongsToAnotherUser() {
+        UserProfileEntity profile = new UserProfileEntity();
+        profile.setUserId(10L);
+        GenerationTaskEntity task = new GenerationTaskEntity();
+        task.setTaskId("task-a");
+        task.setUserProfile(profile);
+        task.setMetadata("{\"provider_file_id\":\"pf\"}");
+        when(taskRepository.findByTaskId("task-a")).thenReturn(Optional.of(task));
+
+        SaveToSetV2Request request = new SaveToSetV2Request();
+        request.setTaskId("task-a");
+        request.setUserId(99L);
+        request.setName("pack_by_bot");
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> stickerGenerationService.saveToSetV2(99L, request));
+        assertTrue(ex.getMessage().contains("Access denied"));
+        verify(stickerProcessorGenerationClient, never()).saveToSet(anyString(), anyLong(), anyString(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("saveToSetV2: отказ, если body userId не совпадает с авторизованным")
+    void saveToSetV2_shouldRejectWhenRequestUserIdDoesNotMatchAuthenticatedUser() {
+        UserProfileEntity profile = new UserProfileEntity();
+        profile.setUserId(10L);
+        GenerationTaskEntity task = new GenerationTaskEntity();
+        task.setTaskId("task-b");
+        task.setUserProfile(profile);
+        task.setMetadata("{\"provider_file_id\":\"pf\"}");
+        when(taskRepository.findByTaskId("task-b")).thenReturn(Optional.of(task));
+
+        SaveToSetV2Request request = new SaveToSetV2Request();
+        request.setTaskId("task-b");
+        request.setUserId(11L);
+        request.setName("pack_by_bot");
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> stickerGenerationService.saveToSetV2(10L, request));
+        assertTrue(ex.getMessage().contains("userId must match"));
+        verify(stickerProcessorGenerationClient, never()).saveToSet(anyString(), anyLong(), anyString(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("saveToSetV2: после успеха процессора вызывается ensureTelegramStickerSetInGallery")
+    void saveToSetV2_shouldCallEnsureAfterProcessorSuccess() {
+        long userId = 10L;
+        UserProfileEntity profile = new UserProfileEntity();
+        profile.setUserId(userId);
+        GenerationTaskEntity task = new GenerationTaskEntity();
+        task.setTaskId("task-ok");
+        task.setUserProfile(profile);
+        task.setMetadata("{\"provider_file_id\":\"file123\"}");
+        when(taskRepository.findByTaskId("task-ok")).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(GenerationTaskEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        SaveToSetV2Request request = new SaveToSetV2Request();
+        request.setTaskId("task-ok");
+        request.setUserId(userId);
+        request.setName("mypack_by_bot");
+        request.setTitle("My title");
+
+        java.util.Map<String, Object> payload = java.util.Map.of(
+                "sticker_set_name", "mypack_by_bot",
+                "telegram_file_id", "tg1");
+        when(stickerProcessorGenerationClient.saveToSet(
+                eq("file123"),
+                eq(userId),
+                eq("mypack_by_bot"),
+                eq("My title"),
+                any(),
+                any()))
+                .thenReturn(new StickerProcessorGenerationClient.SaveResult(200, payload));
+
+        stickerGenerationService.saveToSetV2(userId, request);
+
+        verify(stickerSetService).ensureTelegramStickerSetInGallery(
+                eq(userId), eq("mypack_by_bot"), eq("My title"), eq(StickerSetType.GENERATED), eq(true));
     }
 
     private GenerationTaskEntity createV2Task(String taskId, long userId, String imageId) throws Exception {

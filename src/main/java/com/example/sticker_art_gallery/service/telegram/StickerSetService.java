@@ -427,6 +427,99 @@ public class StickerSetService {
         return "ru".equals(language) ? ruMessage : enMessage;
     }
 
+    /**
+     * Гарантирует, что набор из Telegram зарегистрирован в БД галереи (модалка, профиль).
+     * При уже существующей активной записи у того же владельца обновляет кэш Telegram.
+     *
+     * @param userCreatedAssertVerified true для сценариев, где набор создан пользователем через нашего бота
+     *                                 (генерация / save-image): тогда {@code isVerified=true}, чтобы набор
+     *                                 попадал в «Мои стикеры» и модалку сохранения на Generate. Для наборов,
+     *                                 добавленных только по ссылке без поддержки, оставляйте false.
+     */
+    public Optional<StickerSet> ensureTelegramStickerSetInGallery(
+            long ownerUserId,
+            String stickerSetName,
+            String titleHint,
+            StickerSetType type,
+            boolean userCreatedAssertVerified) {
+        if (stickerSetName == null || stickerSetName.isBlank()) {
+            LOGGER.warn("ensureTelegramStickerSetInGallery: empty sticker set name");
+            return Optional.empty();
+        }
+        CreateStickerSetDto dto = new CreateStickerSetDto();
+        dto.setName(stickerSetName);
+        dto.normalizeName();
+        String normalized = dto.getName();
+        if (normalized == null || normalized.isBlank()) {
+            return Optional.empty();
+        }
+        if (titleHint != null && !titleHint.isBlank()) {
+            dto.setTitle(titleHint.trim());
+        }
+        StickerSetType effectiveType = type != null ? type : StickerSetType.GENERATED;
+
+        Optional<StickerSet> existingOpt = stickerSetRepository.findByNameIgnoreCase(normalized);
+        if (existingOpt.isPresent()) {
+            StickerSet existing = existingOpt.get();
+            if (!existing.getUserId().equals(ownerUserId)) {
+                LOGGER.warn(
+                        "ensureTelegramStickerSetInGallery: name {} owned by {}, expected {}, skip sync",
+                        normalized,
+                        existing.getUserId(),
+                        ownerUserId);
+                return Optional.empty();
+            }
+            if (existing.isBlocked()) {
+                LOGGER.warn("ensureTelegramStickerSetInGallery: stickerset {} blocked, skip", normalized);
+                return Optional.of(existing);
+            }
+            if (existing.isActive()) {
+                if (userCreatedAssertVerified && Boolean.FALSE.equals(existing.getIsVerified())
+                        && existing.getType() == StickerSetType.GENERATED) {
+                    existing.setIsVerified(true);
+                    stickerSetRepository.save(existing);
+                }
+                refreshTelegramCacheForStickerSet(existing);
+                return Optional.of(existing);
+            }
+        }
+
+        try {
+            StickerSet created = createStickerSetForUser(
+                    dto, ownerUserId, "en", userCreatedAssertVerified, effectiveType);
+            return Optional.ofNullable(created);
+        } catch (IllegalArgumentException e) {
+            String msg = e.getMessage() != null ? e.getMessage() : "";
+            if (msg.contains("already exists") || msg.contains("уже существует")) {
+                return stickerSetRepository.findByNameIgnoreCase(normalized).map(row -> {
+                    if (row.getUserId().equals(ownerUserId)) {
+                        if (userCreatedAssertVerified && Boolean.FALSE.equals(row.getIsVerified())
+                                && row.getType() == StickerSetType.GENERATED) {
+                            row.setIsVerified(true);
+                            stickerSetRepository.save(row);
+                        }
+                        refreshTelegramCacheForStickerSet(row);
+                    }
+                    return row;
+                });
+            }
+            LOGGER.warn("ensureTelegramStickerSetInGallery: {}", e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    private void refreshTelegramCacheForStickerSet(StickerSet existing) {
+        try {
+            Object fullStickerSetInfo = telegramBotApiService.getStickerSetInfo(existing.getName());
+            stickerSetTelegramCacheService.save(existing.getId(), existing.getName(), fullStickerSetInfo);
+        } catch (Exception e) {
+            LOGGER.warn(
+                    "Could not refresh telegram cache for stickerset {}: {}",
+                    existing.getName(),
+                    e.getMessage());
+        }
+    }
+
     public StickerSet findByName(String name) {
         return crudService.findByName(name);
     }

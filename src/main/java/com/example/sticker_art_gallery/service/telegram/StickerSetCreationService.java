@@ -201,7 +201,10 @@ public class StickerSetCreationService {
                 if (stickerFileId == null || stickerFileId.isBlank()) {
                     throw new RuntimeException("Failed to resolve sticker file_id after creating set: " + stickerSetName);
                 }
-                
+
+                stickerSetService.ensureTelegramStickerSetInGallery(
+                        userId, stickerSetName, defaultTitle, StickerSetType.GENERATED, true);
+
                 return new SaveImageToStickerSetResponseDto(stickerSetName, 0, stickerFileId);
             }
         } else {

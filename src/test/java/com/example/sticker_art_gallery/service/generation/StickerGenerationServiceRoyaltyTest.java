@@ -12,6 +12,7 @@ import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
 import com.example.sticker_art_gallery.service.referral.ReferralService;
 import com.example.sticker_art_gallery.service.storage.ImageStorageService;
+import com.example.sticker_art_gallery.service.telegram.StickerSetService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,7 @@ class StickerGenerationServiceRoyaltyTest {
     @Mock private GenerationArtBillingService generationArtBillingService;
     @Mock private StyleFeedItemPromotionService styleFeedItemPromotionService;
     @Mock private UserPresetCreationBlueprintService userPresetCreationBlueprintService;
+    @Mock private StickerSetService stickerSetService;
 
     private StickerGenerationService service;
 
@@ -65,7 +67,8 @@ class StickerGenerationServiceRoyaltyTest {
                 stylePresetPromptComposer,
                 generationArtBillingService,
                 styleFeedItemPromotionService,
-                userPresetCreationBlueprintService
+                userPresetCreationBlueprintService,
+                stickerSetService
         );
     }
 

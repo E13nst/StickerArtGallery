@@ -1,6 +1,8 @@
 package com.example.sticker_art_gallery.service.telegram;
 
 import com.example.sticker_art_gallery.config.AppConfig;
+import com.example.sticker_art_gallery.dto.SaveImageToStickerSetResponseDto;
+import com.example.sticker_art_gallery.model.user.UserEntity;
 import com.example.sticker_art_gallery.model.telegram.StickerSet;
 import com.example.sticker_art_gallery.model.telegram.StickerSetType;
 import com.example.sticker_art_gallery.model.telegram.StickerSetVisibility;
@@ -18,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -232,5 +235,38 @@ class StickerSetCreationServiceTest {
                 eq(StickerSetType.GENERATED)
         );
         assertEquals("retrypack_g1_by_stixlybot", dtoCaptor.getValue().getName());
+    }
+
+    @Test
+    @DisplayName("saveImageToStickerSet: первое создание дефолтного набора вызывает ensureTelegramStickerSetInGallery")
+    void saveImageToStickerSet_whenDefaultSetCreated_ensuresGalleryRegistration() throws Exception {
+        long userId = 400L;
+        UUID imageUuid = UUID.randomUUID();
+        File stickerFile = tempDir.resolve("default-new.png").toFile();
+        assertTrue(stickerFile.createNewFile());
+        when(imageStorageService.getFileByUuid(imageUuid)).thenReturn(stickerFile);
+
+        UserEntity userEntity = new UserEntity();
+        userEntity.setUsername("alice");
+        when(userRepository.findById(userId)).thenReturn(Optional.of(userEntity));
+        when(appConfig.getTelegram()).thenReturn(telegramConfig);
+        when(telegramConfig.getDefaultStickerSetTitle()).thenReturn("Gallery Default");
+
+        String expectedName = "alice_by_stixlybot";
+        when(telegramBotApiService.getStickerSetInfoSimple(expectedName)).thenReturn(null);
+        when(telegramBotApiService.createNewStickerSet(
+                eq(userId),
+                eq(stickerFile),
+                eq(expectedName),
+                eq("Gallery Default"),
+                eq("🎨"))).thenReturn(true);
+        when(telegramBotApiService.getStickerFileId(expectedName, 0)).thenReturn("tg-file-1");
+
+        SaveImageToStickerSetResponseDto result =
+                creationService.saveImageToStickerSet(userId, imageUuid, null, "🎨");
+
+        assertEquals(expectedName, result.getStickerSetName());
+        verify(stickerSetService).ensureTelegramStickerSetInGallery(
+                eq(userId), eq(expectedName), eq("Gallery Default"), eq(StickerSetType.GENERATED), eq(true));
     }
 }

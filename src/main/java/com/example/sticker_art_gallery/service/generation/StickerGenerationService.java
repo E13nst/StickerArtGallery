@@ -11,7 +11,7 @@ import com.example.sticker_art_gallery.model.generation.GenerationAuditEventStat
 import com.example.sticker_art_gallery.model.generation.GenerationAuditStage;
 import com.example.sticker_art_gallery.model.generation.GenerationTaskEntity;
 import com.example.sticker_art_gallery.model.generation.PresetModerationStatus;
-import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
+import com.example.sticker_art_gallery.model.telegram.StickerSetType;
 import com.example.sticker_art_gallery.repository.GenerationTaskRepository;
 import com.example.sticker_art_gallery.repository.StylePresetRepository;
 import com.example.sticker_art_gallery.model.profile.ArtTransactionEntity;
@@ -19,7 +19,7 @@ import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
 import com.example.sticker_art_gallery.service.referral.ReferralService;
-import com.example.sticker_art_gallery.service.stylefeed.StyleFeedItemPromotionService;
+import com.example.sticker_art_gallery.service.telegram.StickerSetService;
 import com.example.sticker_art_gallery.service.storage.ImageStorageService;
 import com.example.sticker_art_gallery.model.storage.CachedImageEntity;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -65,6 +65,7 @@ public class StickerGenerationService {
     private final StyleFeedItemPromotionService styleFeedItemPromotionService;
     private final ObjectMapper objectMapper;
     private final UserPresetCreationBlueprintService userPresetCreationBlueprintService;
+    private final StickerSetService stickerSetService;
 
     @Value("${wavespeed.max-poll-seconds:360}")
     private int maxPollSeconds;
@@ -106,7 +107,8 @@ public class StickerGenerationService {
             StylePresetPromptComposer stylePresetPromptComposer,
             GenerationArtBillingService generationArtBillingService,
             StyleFeedItemPromotionService styleFeedItemPromotionService,
-            UserPresetCreationBlueprintService userPresetCreationBlueprintService) {
+            UserPresetCreationBlueprintService userPresetCreationBlueprintService,
+            StickerSetService stickerSetService) {
         this.taskRepository = taskRepository;
         this.waveSpeedClient = waveSpeedClient;
         this.artRewardService = artRewardService;
@@ -121,6 +123,7 @@ public class StickerGenerationService {
         this.generationArtBillingService = generationArtBillingService;
         this.styleFeedItemPromotionService = styleFeedItemPromotionService;
         this.userPresetCreationBlueprintService = userPresetCreationBlueprintService;
+        this.stickerSetService = stickerSetService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -906,10 +909,16 @@ public class StickerGenerationService {
         }
     }
 
-    public SaveToSetV2Response saveToSetV2(SaveToSetV2Request request) {
+    public SaveToSetV2Response saveToSetV2(Long authenticatedUserId, SaveToSetV2Request request) {
         // Short DB phase #1: read task metadata.
         GenerationTaskEntity taskSnapshot = taskRepository.findByTaskId(request.getTaskId())
                 .orElseThrow(() -> new IllegalArgumentException("Task not found: " + request.getTaskId()));
+        if (!taskSnapshot.getUserProfile().getUserId().equals(authenticatedUserId)) {
+            throw new IllegalArgumentException("Access denied: task belongs to another user");
+        }
+        if (!request.getUserId().equals(authenticatedUserId)) {
+            throw new IllegalArgumentException("userId must match authenticated user");
+        }
         Map<String, Object> metadata = parseMetadata(taskSnapshot.getMetadata());
         String providerFileId = metadata.get("provider_file_id") != null ? metadata.get("provider_file_id").toString() : null;
         if (providerFileId == null || providerFileId.isBlank()) {
@@ -919,7 +928,7 @@ public class StickerGenerationService {
         // IO phase: external call without wrapping transaction.
         StickerProcessorGenerationClient.SaveResult saveResult = stickerProcessorGenerationClient.saveToSet(
                 providerFileId,
-                request.getUserId(),
+                authenticatedUserId,
                 request.getName(),
                 request.getTitle(),
                 request.getEmoji(),
@@ -947,6 +956,13 @@ public class StickerGenerationService {
                 LOGGER.warn("Failed to serialize save-to-set metadata: {}", e.getMessage());
             }
             taskRepository.save(taskToUpdate);
+
+            stickerSetService.ensureTelegramStickerSetInGallery(
+                    authenticatedUserId,
+                    response.getStickerSetName(),
+                    request.getTitle(),
+                    StickerSetType.GENERATED,
+                    true);
         } else {
             generationAuditService.addStageEvent(request.getTaskId(), GenerationAuditStage.STICKER_PROCESSOR_SAVE_TO_SET,
                     GenerationAuditEventStatus.FAILED, saveResult.payload(), ERROR_STICKER_PROCESSOR_FAILED, "HTTP " + saveResult.httpStatus());

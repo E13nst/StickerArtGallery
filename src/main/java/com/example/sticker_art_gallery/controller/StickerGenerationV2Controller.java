@@ -195,10 +195,13 @@ public class StickerGenerationV2Controller {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         try {
-            SaveToSetV2Response response = generationService.saveToSetV2(request);
+            SaveToSetV2Response response = generationService.saveToSetV2(userId, request);
             int statusCode = Integer.parseInt(response.getStatus());
             return ResponseEntity.status(statusCode).body(response);
         } catch (IllegalArgumentException e) {
+            if (e.getMessage() != null && e.getMessage().contains("Access denied")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
             return ResponseEntity.badRequest().build();
         }
     }
