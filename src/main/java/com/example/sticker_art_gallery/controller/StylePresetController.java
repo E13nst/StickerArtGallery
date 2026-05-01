@@ -63,7 +63,7 @@ public class StylePresetController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        List<StylePresetDto> presets = presetService.getAvailablePresets(userId, includeUi);
+        List<StylePresetDto> presets = presetService.getAvailablePresets(userId, includeUi, isCurrentUserAdmin());
         LOGGER.info("Returning {} available presets for user {} includeUi={}", presets.size(), userId, includeUi);
         return ResponseEntity.ok(presets);
     }
@@ -331,7 +331,7 @@ public class StylePresetController {
     private boolean isCurrentUserAdmin() {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            if (authentication != null) {
+            if (authentication != null && authentication.isAuthenticated()) {
                 return authentication.getAuthorities().stream()
                         .anyMatch(auth -> "ROLE_ADMIN".equals(auth.getAuthority()));
             }

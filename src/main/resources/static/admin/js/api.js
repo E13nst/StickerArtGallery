@@ -621,6 +621,56 @@ class AdminApiClient {
         });
     }
 
+    /**
+     * @param {{ name?: string, categoryId?: number }} patch — ключи можно опустить: null-семантика на бэке для отсутствующих полей
+     */
+    async patchUserPresetModeration(presetId, patch) {
+        return this.request(`/admin/style-presets/moderation/${encodeURIComponent(presetId)}`, {
+            method: 'PATCH',
+            body: JSON.stringify(patch)
+        });
+    }
+
+    async uploadUserPresetModerationPreview(presetId, file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await fetch(
+            `${this.baseUrl}/admin/style-presets/moderation/${encodeURIComponent(presetId)}/preview`,
+            {
+                method: 'PUT',
+                headers: { 'X-Telegram-Init-Data': this.initData },
+                body: formData
+            }
+        );
+        if (response.status === 401) {
+            localStorage.removeItem('telegram_init_data');
+            showNotification('Сессия истекла. Пожалуйста, авторизуйтесь снова.', 'error');
+            setTimeout(() => { window.location.href = '/admin/login.html'; }, 1000);
+            throw new Error('Unauthorized');
+        }
+        if (response.status === 403) {
+            localStorage.removeItem('telegram_init_data');
+            showNotification('Доступ запрещен. Требуются права администратора.', 'error');
+            setTimeout(() => { window.location.href = '/admin/login.html'; }, 2000);
+            throw new Error('Forbidden');
+        }
+        const responseText = await response.text();
+        let data = null;
+        if (responseText && responseText.trim()) {
+            try {
+                data = JSON.parse(responseText);
+            } catch (_e) {
+                data = responseText;
+            }
+        }
+        if (!response.ok) {
+            const message = (data && typeof data === 'object' && (data.message || data.error))
+                || `HTTP error! status: ${response.status}`;
+            throw new Error(message);
+        }
+        return data;
+    }
+
     // ============ User preset creation blueprints (форма «свой пресет») ============
 
     async getUserPresetCreationBlueprintsAdmin() {

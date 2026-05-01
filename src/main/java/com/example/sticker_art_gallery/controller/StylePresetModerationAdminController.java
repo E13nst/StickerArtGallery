@@ -1,5 +1,6 @@
 package com.example.sticker_art_gallery.controller;
 
+import com.example.sticker_art_gallery.dto.generation.AdminUserPresetModerationPatchDto;
 import com.example.sticker_art_gallery.dto.generation.StylePresetDto;
 import com.example.sticker_art_gallery.dto.generation.StylePresetModerationStatsDto;
 import com.example.sticker_art_gallery.model.generation.PresetModerationStatus;
@@ -14,8 +15,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 
@@ -106,6 +110,34 @@ public class StylePresetModerationAdminController {
         } catch (IllegalArgumentException | IllegalStateException e) {
             LOGGER.warn("Ошибка republish для пресета {}: {}", presetId, e.getMessage());
             return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PatchMapping("/{presetId}")
+    @Operation(summary = "Частичное обновление пользовательского пресета (админ)",
+            description = "Отображаемое имя (name) и/или categoryId. Поле null в JSON — без изменения этого поля.")
+    public ResponseEntity<?> patchUserPreset(
+            @PathVariable Long presetId,
+            @Valid @RequestBody AdminUserPresetModerationPatchDto body) {
+        try {
+            return ResponseEntity.ok(stylePresetService.adminPatchUserPresetForModeration(presetId, body));
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("PATCH moderation preset {}: {}", presetId, e.getMessage());
+            return badRequest(e.getMessage());
+        }
+    }
+
+    @PutMapping(value = "/{presetId}/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Загрузить превью пользовательского пресета (админ, модерация)")
+    public ResponseEntity<?> uploadPreview(
+            @PathVariable Long presetId,
+            @Parameter(description = "Файл PNG/JPEG/WebP, до 3MB")
+            @RequestParam("file") MultipartFile file) {
+        try {
+            return ResponseEntity.ok(stylePresetService.uploadPreviewForUserPresetAsAdmin(presetId, file));
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Preview upload moderation preset {}: {}", presetId, e.getMessage());
+            return badRequest(e.getMessage());
         }
     }
 

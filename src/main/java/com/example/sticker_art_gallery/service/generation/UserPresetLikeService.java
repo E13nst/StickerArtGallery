@@ -66,9 +66,10 @@ public class UserPresetLikeService {
      * Получить список сохранённых пресетов пользователя.
      */
     @Transactional(readOnly = true)
-    public List<StylePresetDto> getLikedPresets(Long userId) {
+    public List<StylePresetDto> getLikedPresets(Long userId, boolean suppressConsumerPrivacy) {
+        Long viewer = suppressConsumerPrivacy ? null : userId;
         return userPresetLikeRepository.findLikedPresetsByUserId(userId).stream()
-                .map(p -> stylePresetService.toDto(p, true))
+                .map(p -> stylePresetService.toDto(p, true, viewer))
                 .collect(Collectors.toList());
     }
 

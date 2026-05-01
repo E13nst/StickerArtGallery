@@ -68,11 +68,12 @@ public class PromptProcessingService {
         String toEnhance;
         if (stylePresetId != null) {
             preset = getAccessiblePreset(stylePresetId, userId);
+            String freestyleForPreset = ConsumerStylePresetPolicy.effectiveFreestylePromptFromRequest(preset, userId, userPrompt);
             if (!Boolean.TRUE.equals(preset.getIsEnabled())) {
                 LOGGER.warn("Style preset '{}' is disabled, skipping", preset.getCode());
-                toEnhance = userPrompt != null ? userPrompt : "";
+                toEnhance = freestyleForPreset;
             } else {
-                toEnhance = presetPromptComposer.buildRawPrompt(preset, userPrompt, presetFields);
+                toEnhance = presetPromptComposer.buildRawPrompt(preset, freestyleForPreset, presetFields);
             }
         } else {
             toEnhance = userPrompt != null ? userPrompt : "";
@@ -86,7 +87,7 @@ public class PromptProcessingService {
             LOGGER.debug("After style tail: prompt_length={}", afterEnhance.length());
         }
 
-        return new PromptProcessingResult(afterEnhance, resolveRemoveBackground(preset));
+        return new PromptProcessingResult(afterEnhance, resolveRemoveBackgroundForCaller(preset, userId));
     }
 
     /**
@@ -128,6 +129,19 @@ public class PromptProcessingService {
             case FORCE_ON -> true;
             case FORCE_OFF -> false;
         };
+    }
+
+    /**
+     * Для пользователя каталога (чужой опубликованный стиль): всегда boolean из пресета.
+     */
+    private static Boolean resolveRemoveBackgroundForCaller(StylePresetEntity preset, Long userId) {
+        if (preset == null) {
+            return null;
+        }
+        if (ConsumerStylePresetPolicy.locksRemoveBackgroundUi(preset, userId)) {
+            return ConsumerStylePresetPolicy.effectiveLockedRemoveBackgroundFromPreset(preset);
+        }
+        return resolveRemoveBackground(preset);
     }
 
     private String appendStyleTail(String afterEnhance, StylePresetEntity preset) {

@@ -34,6 +34,18 @@ public class StylePresetDto {
     private String presetReferenceMimeType;
     @Schema(description = "Идентификатор референса в формате img_sagref_*, для preset_fields и генерации v2 (равен кэшу на бэкенде)")
     private String presetReferenceSourceImageId;
+    @Schema(description = "Промпт из миниаппа на момент публикации стиля (для модерации), если сохранён")
+    private String submittedUserPrompt;
+
+    @Schema(description = "Для пользователя каталога: сервер использует авторский сохранённый промпт; не показывать поле ввода в миниаппе.")
+    private Boolean hideFreestylePromptAuthorSupplied;
+
+    @Schema(description = "Для пользователя каталога: параметр удаления фона зафиксирован пресетом; не давать пользователю менять значение.")
+    private Boolean removeBackgroundLockedToPreset;
+
+    @Schema(description = "Эффективное remove_background после применения настроек пресета (для отображения при removeBackgroundLockedToPreset)")
+    private Boolean removeBackgroundEffective;
+
     @Schema(description = "Режим UI/сборки промпта")
     private String uiMode;
     @Schema(description = "Поле свободного prompt")
@@ -87,6 +99,20 @@ public class StylePresetDto {
     public void setPresetReferenceMimeType(String presetReferenceMimeType) { this.presetReferenceMimeType = presetReferenceMimeType; }
     public String getPresetReferenceSourceImageId() { return presetReferenceSourceImageId; }
     public void setPresetReferenceSourceImageId(String presetReferenceSourceImageId) { this.presetReferenceSourceImageId = presetReferenceSourceImageId; }
+    public String getSubmittedUserPrompt() { return submittedUserPrompt; }
+    public void setSubmittedUserPrompt(String submittedUserPrompt) { this.submittedUserPrompt = submittedUserPrompt; }
+    public Boolean getHideFreestylePromptAuthorSupplied() { return hideFreestylePromptAuthorSupplied; }
+    public void setHideFreestylePromptAuthorSupplied(Boolean hideFreestylePromptAuthorSupplied) {
+        this.hideFreestylePromptAuthorSupplied = hideFreestylePromptAuthorSupplied;
+    }
+    public Boolean getRemoveBackgroundLockedToPreset() { return removeBackgroundLockedToPreset; }
+    public void setRemoveBackgroundLockedToPreset(Boolean removeBackgroundLockedToPreset) {
+        this.removeBackgroundLockedToPreset = removeBackgroundLockedToPreset;
+    }
+    public Boolean getRemoveBackgroundEffective() { return removeBackgroundEffective; }
+    public void setRemoveBackgroundEffective(Boolean removeBackgroundEffective) {
+        this.removeBackgroundEffective = removeBackgroundEffective;
+    }
     public String getUiMode() { return uiMode; }
     public void setUiMode(String uiMode) { this.uiMode = uiMode; }
     public StylePresetPromptInputDto getPromptInput() { return promptInput; }

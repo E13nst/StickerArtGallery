@@ -342,6 +342,7 @@ public class StylePresetPublicationService {
 
         presetEntity.setPublicShowConsentAt(pubRow.getConsentAt());
         presetEntity.setName(normalizedDisplayName);
+        presetEntity.setSubmittedUserPrompt(trimModerationSubmissionPrompt(submittedPromptFromMiniapp(metadata, task)));
         presetRepository.save(presetEntity);
 
         long publicationCost = artRuleService.getEnabledRuleOrThrow(RULE_PUBLISH_PRESET).getAmount();
@@ -430,6 +431,38 @@ public class StylePresetPublicationService {
             return s.trim();
         }
         return null;
+    }
+
+    private static final int SUBMITTED_USER_PROMPT_CHAR_CAP = 8192;
+
+    /**
+     * Текст промпта, который автор вводил в миниаппе до обработки; хранится для модерации.
+     */
+    private static String submittedPromptFromMiniapp(Map<String, Object> metadata,
+                                                     GenerationTaskEntity task) {
+        if (metadata != null) {
+            Object o = metadata.get("originalPrompt");
+            if (o != null) {
+                String s = o.toString().trim();
+                if (!s.isEmpty()) {
+                    return s;
+                }
+            }
+        }
+        if (task.getPrompt() != null && !task.getPrompt().isBlank()) {
+            return task.getPrompt().trim();
+        }
+        return null;
+    }
+
+    private static String trimModerationSubmissionPrompt(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        if (raw.length() <= SUBMITTED_USER_PROMPT_CHAR_CAP) {
+            return raw;
+        }
+        return raw.substring(0, SUBMITTED_USER_PROMPT_CHAR_CAP);
     }
 
     /**

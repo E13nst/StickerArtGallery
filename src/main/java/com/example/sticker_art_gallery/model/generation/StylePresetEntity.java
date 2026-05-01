@@ -28,6 +28,9 @@ public class StylePresetEntity {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "submitted_user_prompt", columnDefinition = "TEXT")
+    private String submittedUserPrompt;
+
     @Column(name = "prompt_suffix", nullable = false, columnDefinition = "TEXT")
     private String promptSuffix;
 
@@ -134,6 +137,14 @@ public class StylePresetEntity {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getSubmittedUserPrompt() {
+        return submittedUserPrompt;
+    }
+
+    public void setSubmittedUserPrompt(String submittedUserPrompt) {
+        this.submittedUserPrompt = submittedUserPrompt;
     }
 
     public String getPromptSuffix() {

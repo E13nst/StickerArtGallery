@@ -117,7 +117,7 @@ public class StylePresetExtController {
     public ResponseEntity<List<StylePresetDto>> getLikedPresets() {
         try {
             Long userId = getCurrentUserId();
-            return ResponseEntity.ok(userPresetLikeService.getLikedPresets(userId));
+            return ResponseEntity.ok(userPresetLikeService.getLikedPresets(userId, isCurrentUserAdmin()));
         } catch (IllegalStateException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         } catch (Exception e) {
@@ -242,6 +242,15 @@ public class StylePresetExtController {
             LOGGER.error("Ошибка модерации: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    private boolean isCurrentUserAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return false;
+        }
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
     }
 
     private Long getCurrentUserId() {
