@@ -221,12 +221,18 @@ function readPromptInputFromForm() {
     };
 }
 
-/** Убираем зарезервированные ключи — в админке их не задают вручную. */
+/** Убираем зарезервированные ключи — в админке их не задают вручную. Черновики без key оставляем (кнопка «+ Поле»). */
 function filterUserFields(fields) {
     if (!Array.isArray(fields)) {
         return [];
     }
-    return fields.filter((f) => f && f.key && String(f.key).trim().toLowerCase() !== 'preset_ref');
+    return fields.filter((f) => {
+        if (!f) {
+            return false;
+        }
+        const k = f.key != null ? String(f.key).trim().toLowerCase() : '';
+        return k !== 'preset_ref';
+    });
 }
 
 function renderFieldEditor(fields) {
