@@ -11,6 +11,7 @@ import com.example.sticker_art_gallery.model.generation.GenerationAuditEventStat
 import com.example.sticker_art_gallery.model.generation.GenerationAuditStage;
 import com.example.sticker_art_gallery.model.generation.GenerationTaskEntity;
 import com.example.sticker_art_gallery.model.generation.PresetModerationStatus;
+import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
 import com.example.sticker_art_gallery.model.telegram.StickerSetType;
 import com.example.sticker_art_gallery.repository.GenerationTaskRepository;
 import com.example.sticker_art_gallery.repository.StylePresetRepository;
@@ -21,6 +22,7 @@ import com.example.sticker_art_gallery.service.profile.UserProfileService;
 import com.example.sticker_art_gallery.service.referral.ReferralService;
 import com.example.sticker_art_gallery.service.telegram.StickerSetService;
 import com.example.sticker_art_gallery.service.storage.ImageStorageService;
+import com.example.sticker_art_gallery.service.stylefeed.StyleFeedItemPromotionService;
 import com.example.sticker_art_gallery.model.storage.CachedImageEntity;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
