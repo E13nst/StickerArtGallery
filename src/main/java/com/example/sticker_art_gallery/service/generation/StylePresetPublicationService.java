@@ -262,7 +262,7 @@ public class StylePresetPublicationService {
             }
         }
 
-        String blueprintMeta = normalizeBlueprintCode(metadata.get("userStyleBlueprintCode"));
+        String blueprintMeta = resolveBlueprintFromTaskMetadata(metadata);
         if (blueprintMeta == null) {
             throw new IllegalArgumentException("Задача не из потока «свой стиль» (нет userStyleBlueprintCode)");
         }
@@ -415,6 +415,14 @@ public class StylePresetPublicationService {
             LOGGER.warn("Не удалось разобрать metadata задачи генерации");
             return Collections.emptyMap();
         }
+    }
+
+    private static String resolveBlueprintFromTaskMetadata(Map<String, Object> metadata) {
+        String fromCamel = normalizeBlueprintCode(metadata.get("userStyleBlueprintCode"));
+        if (fromCamel != null) {
+            return fromCamel;
+        }
+        return normalizeBlueprintCode(metadata.get("user_style_blueprint_code"));
     }
 
     private static String normalizeBlueprintCode(Object raw) {

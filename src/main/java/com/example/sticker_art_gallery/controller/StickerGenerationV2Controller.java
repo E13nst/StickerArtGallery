@@ -117,15 +117,11 @@ public class StickerGenerationV2Controller {
             StylePresetDto dto = stylePresetPublicationService.publishUserStyleFromCompletedGenerationTask(
                     userId, taskId, request);
             return ResponseEntity.ok(dto);
-        } catch (IllegalArgumentException e) {
-            LOGGER.warn("publish-user-style: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
         } catch (IllegalStateException e) {
             if (e.getMessage() != null && e.getMessage().contains("Недостаточно ART")) {
                 return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).build();
             }
-            LOGGER.warn("publish-user-style state: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
+            throw e;
         }
     }
 
