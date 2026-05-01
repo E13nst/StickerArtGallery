@@ -150,16 +150,22 @@ public class StylePresetController {
 
     @PostMapping
     @Operation(
-        summary = "Создать персональный пресет",
-        description = "Создает новый персональный пресет стиля для пользователя"
+        summary = "Создать персональный пресет (create-or-get)",
+        description = """
+                Создаёт черновик персонального пресета для текущего пользователя.
+                Идемпотентность по паре (владелец, code): если пресет с тем же code уже есть у этого пользователя,
+                возвращается существующая запись с тем же id (повторные вызовы из ретраев/восстановления сессии — без 400).
+                Пара (owner, code) уникальна в БД; у другого пользователя тот же code — отдельный пресет.
+                Код в теле запроса нормализуется обрезкой пробелов по краям.
+                """
     )
     @ApiResponses(value = {
         @ApiResponse(
             responseCode = "200",
-            description = "Пресет создан",
+            description = "Пресет создан или найден существующий с тем же code у владельца",
             content = @Content(schema = @Schema(implementation = StylePresetDto.class))
         ),
-        @ApiResponse(responseCode = "400", description = "Неверные входные данные или пресет с таким кодом уже существует")
+        @ApiResponse(responseCode = "400", description = "Неверные входные данные (валидация тела запроса)")
     })
     public ResponseEntity<StylePresetDto> createPreset(@Valid @RequestBody CreateStylePresetRequest request) {
         Long userId = extractUserIdFromAuthentication();
@@ -169,7 +175,7 @@ public class StylePresetController {
 
         try {
             StylePresetDto preset = presetService.createUserPreset(userId, request);
-            LOGGER.info("Created preset: id={}, code={}, userId={}", preset.getId(), preset.getCode(), userId);
+            LOGGER.info("Upsert preset: id={}, code={}, userId={}", preset.getId(), preset.getCode(), userId);
             return ResponseEntity.ok(preset);
         } catch (IllegalArgumentException e) {
             LOGGER.warn("Failed to create preset: {}", e.getMessage());

@@ -10,7 +10,15 @@ import java.util.List;
 @Schema(description = "Запрос на создание пресета стиля")
 public class CreateStylePresetRequest {
 
-    @Schema(description = "Уникальный код пресета", example = "anime", required = true)
+    @Schema(
+            description = """
+                    Код пресета. Для пользовательских черновиков уникальность в связке с владельцем;
+                    повторное создание через POST с тем же code возвращает существующий пресет (create-or-get).
+                    Пробелы по краям обрезаются на сервере.
+                    """,
+            example = "anime",
+            required = true
+    )
     @NotBlank(message = "Код пресета не может быть пустым")
     @Size(max = 50, message = "Код пресета не может быть длиннее 50 символов")
     private String code;

@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -34,6 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -189,14 +191,23 @@ public class StylePresetService {
 
     @Transactional
     public StylePresetDto createUserPreset(Long userId, CreateStylePresetRequest request) {
-        LOGGER.info("Creating user preset for user {}: code={}", userId, request.getCode());
+        String normalizedCode = request.getCode() != null ? request.getCode().trim() : "";
+        if (normalizedCode.isEmpty()) {
+            throw new IllegalArgumentException("Код пресета не может быть пустым");
+        }
+        LOGGER.info("Creating user preset for user {}: code={}", userId, normalizedCode);
+
+        Optional<StylePresetEntity> existing = presetRepository.findByCodeAndOwner_UserId(normalizedCode, userId);
+        if (existing.isPresent()) {
+            StylePresetEntity preset = existing.get();
+            LOGGER.info("User preset create-or-get: userId={}, code={}, presetId={} (already exists)",
+                    userId, normalizedCode, preset.getId());
+            return toDto(preset, true);
+        }
+
         UserProfileEntity profile = userProfileService.getOrCreateDefaultForUpdate(userId);
-        presetRepository.findByCodeAndOwner_UserId(request.getCode(), userId)
-                .ifPresent(p -> {
-                    throw new IllegalArgumentException("User preset with code '" + request.getCode() + "' already exists");
-                });
         StylePresetEntity preset = new StylePresetEntity();
-        preset.setCode(request.getCode());
+        preset.setCode(normalizedCode);
         preset.setName(request.getName());
         preset.setDescription(request.getDescription());
         preset.setPromptSuffix(request.getPromptSuffix());
@@ -206,7 +217,19 @@ public class StylePresetService {
         preset.setIsEnabled(true);
         preset.setSortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0);
         preset.setCategory(resolveCategory(request.getCategoryId()));
-        preset = presetRepository.save(preset);
+        try {
+            preset = presetRepository.save(preset);
+        } catch (DataIntegrityViolationException e) {
+            // Параллельные POST с тем же owner+code: unique (code, owner_id)
+            return presetRepository.findByCodeAndOwner_UserId(normalizedCode, userId)
+                    .map(p -> {
+                        LOGGER.info("User preset create-or-get after race: userId={}, code={}, presetId={}",
+                                userId, normalizedCode, p.getId());
+                        return toDto(p, true);
+                    })
+                    .orElseThrow(() -> new IllegalStateException(
+                            "Конфликт уникальности кода пресета; запись не найдена после повторной выборки", e));
+        }
         return toDto(preset, true);
     }
 
