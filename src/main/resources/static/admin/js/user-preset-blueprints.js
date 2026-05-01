@@ -17,6 +17,15 @@ const DEFAULT_PROMPT_INPUT = {
 
 const DEFAULT_FIELDS = [
     {
+        key: 'preset_ref',
+        label: 'Опорное фото стиля (сохраняется на сервере)',
+        type: 'reference',
+        required: true,
+        minImages: 1,
+        maxImages: 1,
+        promptTemplate: 'Image {index}'
+    },
+    {
         key: 'user_face',
         label: 'Фото только для этой генерации',
         type: 'reference',
@@ -35,7 +44,13 @@ const DEFAULT_DEFAULTS_TMPL = {
         enabled: true,
         required: true,
         placeholder: 'Опишите, что должно получиться…',
-        maxLength: 800
+        maxLength: 800,
+        referenceImages: {
+            enabled: true,
+            required: false,
+            minCount: 0,
+            maxCount: 2
+        }
     },
     fields: DEFAULT_FIELDS,
     removeBackgroundMode: 'PRESET_DEFAULT'
@@ -221,18 +236,12 @@ function readPromptInputFromForm() {
     };
 }
 
-/** Убираем зарезервированные ключи — в админке их не задают вручную. Черновики без key оставляем (кнопка «+ Поле»). */
+/** Черновики без key оставляем (кнопка «+ Поле»). preset_ref допускается — подписи слота для miniapp. */
 function filterUserFields(fields) {
     if (!Array.isArray(fields)) {
         return [];
     }
-    return fields.filter((f) => {
-        if (!f) {
-            return false;
-        }
-        const k = f.key != null ? String(f.key).trim().toLowerCase() : '';
-        return k !== 'preset_ref';
-    });
+    return fields.filter((f) => f);
 }
 
 function renderFieldEditor(fields) {

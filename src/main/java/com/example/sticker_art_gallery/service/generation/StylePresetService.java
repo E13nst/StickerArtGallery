@@ -140,7 +140,8 @@ public class StylePresetService {
 
     /**
      * Несохранённый пресет для pipeline генерации по шаблону «свой стиль» (без строки в {@code style_presets}).
-     * Предварительно проверьте контракт через {@link #validatePresetUiContract(CreateStylePresetRequest)}.
+     * Предварительно проверьте контракт через {@link #validateBlueprintPresetUiContract(CreateStylePresetRequest)},
+     * если в теле могут быть строки {@code preset_ref} в {@code fields} (метаданные слота из шаблона).
      */
     @Transactional(readOnly = true)
     public StylePresetEntity materializeTransientPresetForGeneration(CreateStylePresetRequest request) {
@@ -162,6 +163,9 @@ public class StylePresetService {
 
     @Transactional
     public StylePresetDto createGlobalPreset(CreateStylePresetRequest request) {
+        if (containsPresetRefUiRow(request.getFields())) {
+            throw new IllegalArgumentException("Global preset cannot include preset_ref in fields; use admin reference upload");
+        }
         LOGGER.info("Creating global preset: code={}", request.getCode());
         presetRepository.findByCodeAndIsGlobalTrue(request.getCode())
                 .ifPresent(p -> {
@@ -518,7 +522,7 @@ public class StylePresetService {
     }
 
     private void applyUiFields(StylePresetEntity preset, CreateStylePresetRequest request) {
-        validateUiContract(request);
+        validateUiContract(copyRequestKeepingOnlyStructuralFields(request));
         preset.setRemoveBackground(request.getRemoveBackground());
         StylePresetRemoveBackgroundMode mode = resolveRemoveBackgroundMode(
                 request.getRemoveBackgroundMode(),
@@ -555,9 +559,79 @@ public class StylePresetService {
         validateUiContract(request);
     }
 
+    /**
+     * Контракт для JSON шаблона «создать свой пресет»: в {@code fields} может быть одна строка {@code preset_ref}
+     * (подписи/обязательность для miniapp); в persisted {@code style_presets} она по-прежнему не хранится.
+     */
+    public void validateBlueprintPresetUiContract(CreateStylePresetRequest request) {
+        List<StylePresetFieldDto> raw = request.getFields() == null ? List.of() : request.getFields();
+        List<StylePresetFieldDto> presetRefUiRows = raw.stream()
+                .filter(f -> f.getKey() != null
+                        && StylePresetSystemFields.PRESET_REFERENCE_KEY.equals(f.getKey().trim()))
+                .toList();
+        if (presetRefUiRows.size() > 1) {
+            throw new IllegalArgumentException("At most one preset_ref row allowed in blueprint fields");
+        }
+        if (presetRefUiRows.size() == 1) {
+            validateBlueprintPresetRefUiRow(presetRefUiRows.get(0));
+        }
+        for (StylePresetFieldDto field : raw) {
+            if (field.getKey() == null || field.getKey().isBlank()) {
+                throw new IllegalArgumentException("Style preset field key is required");
+            }
+            String key = field.getKey().trim();
+            if (StylePresetSystemFields.isReservedFieldKey(key)
+                    && !StylePresetSystemFields.PRESET_REFERENCE_KEY.equals(key)) {
+                throw new IllegalArgumentException("Reserved field key, use preset reference upload: " + key);
+            }
+        }
+        validateUiContractCore(request, structuralFieldsOnly(raw), raw);
+    }
+
+    private void validateBlueprintPresetRefUiRow(StylePresetFieldDto field) {
+        if (field.getType() == null || !"reference".equalsIgnoreCase(field.getType().trim())) {
+            throw new IllegalArgumentException("preset_ref row in blueprint fields must have type \"reference\"");
+        }
+        int maxImg = field.getMaxImages() != null ? field.getMaxImages() : 1;
+        int minImg = field.getMinImages() != null ? field.getMinImages() : 0;
+        if (maxImg != 1) {
+            throw new IllegalArgumentException("preset_ref in blueprint fields must have maxImages == 1");
+        }
+        if (minImg < 0 || minImg > 1) {
+            throw new IllegalArgumentException("preset_ref in blueprint fields: minImages must be 0 or 1");
+        }
+        if (minImg > maxImg) {
+            throw new IllegalArgumentException("minImages cannot exceed maxImages for preset_ref");
+        }
+    }
+
+    private static boolean containsPresetRefUiRow(List<StylePresetFieldDto> fields) {
+        if (fields == null) {
+            return false;
+        }
+        return fields.stream().anyMatch(f -> f.getKey() != null
+                && StylePresetSystemFields.PRESET_REFERENCE_KEY.equals(f.getKey().trim()));
+    }
+
+    private List<StylePresetFieldDto> structuralFieldsOnly(List<StylePresetFieldDto> fields) {
+        if (fields == null || fields.isEmpty()) {
+            return fields == null ? List.of() : fields;
+        }
+        return fields.stream()
+                .filter(f -> f.getKey() == null || !StylePresetSystemFields.isReservedFieldKey(f.getKey().trim()))
+                .toList();
+    }
+
+    /** Копия запроса без строк preset_ref в fields — для той же проверки, что при сохранении пресета в БД. */
+    private CreateStylePresetRequest copyRequestKeepingOnlyStructuralFields(CreateStylePresetRequest request) {
+        CreateStylePresetRequest copy = objectMapper.convertValue(request, CreateStylePresetRequest.class);
+        List<StylePresetFieldDto> structural = structuralFieldsOnly(request.getFields());
+        copy.setFields(structural.isEmpty() ? null : structural);
+        return copy;
+    }
+
     private void validateUiContract(CreateStylePresetRequest request) {
         List<StylePresetFieldDto> fields = request.getFields() == null ? List.of() : request.getFields();
-        Set<String> keys = new HashSet<>();
         for (StylePresetFieldDto field : fields) {
             if (field.getKey() == null || field.getKey().isBlank()) {
                 throw new IllegalArgumentException("Style preset field key is required");
@@ -566,6 +640,17 @@ public class StylePresetService {
             if (StylePresetSystemFields.isReservedFieldKey(key)) {
                 throw new IllegalArgumentException("Reserved field key, use preset reference upload: " + key);
             }
+        }
+        validateUiContractCore(request, fields, fields);
+    }
+
+    private void validateUiContractCore(
+            CreateStylePresetRequest request,
+            List<StylePresetFieldDto> structuralFields,
+            List<StylePresetFieldDto> fieldsForReferenceSum) {
+        Set<String> keys = new HashSet<>();
+        for (StylePresetFieldDto field : structuralFields) {
+            String key = field.getKey().trim();
             if (!keys.add(key)) {
                 throw new IllegalArgumentException("Duplicate style preset field key: " + key);
             }
@@ -587,7 +672,7 @@ public class StylePresetService {
             }
         }
 
-        validateReferenceFields(request, fields);
+        validateReferenceFields(request, fieldsForReferenceSum);
     }
 
     private void validateReferenceFields(CreateStylePresetRequest request, List<StylePresetFieldDto> fields) {

@@ -119,7 +119,7 @@ public class UserPresetCreationBlueprintService {
         if (sortOrder != null) {
             req.setSortOrder(sortOrder);
         }
-        stylePresetService.validatePresetUiContract(req);
+        stylePresetService.validateBlueprintPresetUiContract(req);
         return req;
     }
 
@@ -141,7 +141,7 @@ public class UserPresetCreationBlueprintService {
                     copyForValidation(entity.getPresetDefaultsJson()), CreateStylePresetRequest.class);
             req.setCode("_transient_blueprint_generation_");
             req.setName("_transient_blueprint_generation_");
-            stylePresetService.validatePresetUiContract(req);
+            stylePresetService.validateBlueprintPresetUiContract(req);
             return stylePresetService.materializeTransientPresetForGeneration(req);
         } catch (IllegalArgumentException e) {
             throw e;
@@ -156,10 +156,10 @@ public class UserPresetCreationBlueprintService {
         if (repository.existsByCodeIgnoreCase(code)) {
             throw new IllegalArgumentException("Шаблон с кодом уже существует: " + code);
         }
-        validatePresetDefaultsPayload(request.getPresetDefaults());
+        Map<String, Object> presetNorm = normalizeBlueprintPresetDefaults(request.getPresetDefaults());
 
         UserPresetCreationBlueprintEntity e = new UserPresetCreationBlueprintEntity();
-        applyFields(e, request, code);
+        applyFields(e, request, code, presetNorm);
 
         UserPresetCreationBlueprintEntity saved = repository.save(e);
         LOGGER.info("Создан шаблон создания пресета: id={}, code={}", saved.getId(), saved.getCode());
@@ -179,8 +179,8 @@ public class UserPresetCreationBlueprintService {
         if (!code.equals(entity.getCode()) && repository.existsByCodeIgnoreCaseAndIdNot(code, id)) {
             throw new IllegalArgumentException("Шаблон с кодом уже существует: " + code);
         }
-        validatePresetDefaultsPayload(request.getPresetDefaults());
-        applyFields(entity, request, code);
+        Map<String, Object> presetNorm = normalizeBlueprintPresetDefaults(request.getPresetDefaults());
+        applyFields(entity, request, code, presetNorm);
         UserPresetCreationBlueprintEntity saved = repository.save(entity);
         LOGGER.info("Обновлён шаблон создания пресета id={}", saved.getId());
         UserPresetCreationBlueprintDto dto = mapBase(saved);
@@ -201,19 +201,28 @@ public class UserPresetCreationBlueprintService {
     }
 
     void validatePresetDefaultsPayload(Map<String, Object> presetDefaultsRaw) {
+        normalizeBlueprintPresetDefaults(presetDefaultsRaw);
+    }
+
+    /**
+     * Валидация как у пресета, плюс опционально одна строка {@code preset_ref} в {@code fields} — подписи слота для miniapp.
+     */
+    private Map<String, Object> normalizeBlueprintPresetDefaults(Map<String, Object> presetDefaultsRaw) {
         if (presetDefaultsRaw == null || presetDefaultsRaw.isEmpty()) {
             throw new IllegalArgumentException("presetDefaults не может быть пустым");
         }
+        Map<String, Object> copy = copyForValidation(presetDefaultsRaw);
         try {
-            CreateStylePresetRequest req = objectMapper.convertValue(copyForValidation(presetDefaultsRaw), CreateStylePresetRequest.class);
+            CreateStylePresetRequest req = objectMapper.convertValue(copy, CreateStylePresetRequest.class);
             req.setCode("_bp_code_");
             req.setName("_bp_name_");
-            stylePresetService.validatePresetUiContract(req);
+            stylePresetService.validateBlueprintPresetUiContract(req);
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {
             throw new IllegalArgumentException("Не удалось разобрать presetDefaults как CreateStylePresetRequest: " + e.getMessage());
         }
+        return copy;
     }
 
     /** Копируем дерево через JSON, чтобы нормализовать LinkedHashMap/списки. */
@@ -225,12 +234,12 @@ public class UserPresetCreationBlueprintService {
     }
 
     private void applyFields(UserPresetCreationBlueprintEntity entity, UpsertUserPresetCreationBlueprintRequest request,
-                             String normalizedCode) {
+                             String normalizedCode, Map<String, Object> presetDefaultsNormalized) {
         entity.setCode(normalizedCode);
         entity.setAdminTitle(request.getAdminTitle().trim());
         entity.setEnabled(Boolean.TRUE.equals(request.getEnabled()));
         entity.setSortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0);
-        entity.setPresetDefaultsJson(copyForValidation(request.getPresetDefaults()));
+        entity.setPresetDefaultsJson(presetDefaultsNormalized);
         entity.setUiHintsJson(request.getUiHints() == null ? null : new LinkedHashMap<>(request.getUiHints()));
     }
 

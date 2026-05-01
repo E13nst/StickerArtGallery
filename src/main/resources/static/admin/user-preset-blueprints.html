@@ -82,7 +82,7 @@
                     <textarea id="bpf-style-prompt" rows="6" required spellcheck="false" class="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm bg-white dark:bg-slate-800 dark:text-slate-100" placeholder='Идея: {{prompt}}. Опорный стиль: {{preset_ref}}.'></textarea>
                     <div class="mt-1.5 text-xs text-gray-500 dark:text-slate-400 space-y-0.5">
                         <p><code class="bg-gray-100 dark:bg-slate-800 px-1 rounded">{{ключ}}</code> — значение поля. <code class="bg-gray-100 dark:bg-slate-800 px-1 rounded">{{prompt}}</code> — свободный текст, если включён блок ниже.</p>
-                        <p><code class="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">{{preset_ref}}</code> — опорное фото пресета после создания пользователем; в списке полей не задаётся.</p>
+                        <p><code class="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">{{preset_ref}}</code> — опорное фото пресета; опционально добавьте строку с ключом <code class="bg-gray-100 dark:bg-slate-800 px-1 rounded">preset_ref</code> ниже для подписей в miniapp (в таблице пресета на сервере поле по-прежнему виртуальное).</p>
                     </div>
                     <div id="bpf-mode-badge" class="mt-2 hidden">
                         <span id="bpf-mode-badge-text" class="text-xs px-2 py-1 rounded-full font-medium"></span>
