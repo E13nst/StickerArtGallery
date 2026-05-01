@@ -624,7 +624,12 @@ public class StylePresetService {
 
     /** Копия запроса без строк preset_ref в fields — для той же проверки, что при сохранении пресета в БД. */
     private CreateStylePresetRequest copyRequestKeepingOnlyStructuralFields(CreateStylePresetRequest request) {
-        CreateStylePresetRequest copy = objectMapper.convertValue(request, CreateStylePresetRequest.class);
+        CreateStylePresetRequest copy = new CreateStylePresetRequest();
+        copy.setPromptSuffix(request.getPromptSuffix());
+        copy.setPromptInput(request.getPromptInput());
+        copy.setRemoveBackground(request.getRemoveBackground());
+        copy.setRemoveBackgroundMode(request.getRemoveBackgroundMode());
+        copy.setUiMode(request.getUiMode());
         List<StylePresetFieldDto> structural = structuralFieldsOnly(request.getFields());
         copy.setFields(structural.isEmpty() ? null : structural);
         return copy;
