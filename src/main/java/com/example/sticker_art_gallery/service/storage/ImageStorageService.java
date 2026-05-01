@@ -111,7 +111,7 @@ public class ImageStorageService {
             
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(originalUrl))
-                    .timeout(Duration.ofSeconds(60))
+                    .timeout(Duration.ofSeconds(360))
                     .GET()
                     .build();
 

@@ -28,9 +28,9 @@ public class SaveToSetV2Request {
     private String emoji = "😀";
 
     @JsonProperty("wait_timeout_sec")
-    @Schema(description = "Время ожидания готовности генерации в секундах", example = "60", defaultValue = "60")
+    @Schema(description = "Время ожидания готовности генерации в секундах", example = "360", defaultValue = "360")
     @Min(value = 1, message = "wait_timeout_sec должен быть >= 1")
-    private Integer waitTimeoutSec = 60;
+    private Integer waitTimeoutSec = 360;
 
     public String getTaskId() {
         return taskId;

@@ -35,8 +35,8 @@ public class WaveSpeedClient {
     public WaveSpeedClient(
             @Value("${wavespeed.api-key}") String apiKey,
             @Value("${wavespeed.base-url:https://api.wavespeed.ai/api/v3}") String baseUrl,
-            @Value("${wavespeed.timeout.connect:5000}") int connectTimeout,
-            @Value("${wavespeed.timeout.read:20000}") int readTimeout) {
+            @Value("${wavespeed.timeout.connect:60000}") int connectTimeout,
+            @Value("${wavespeed.timeout.read:360000}") int readTimeout) {
         
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalArgumentException("WAVESPEED_API_KEY is required");

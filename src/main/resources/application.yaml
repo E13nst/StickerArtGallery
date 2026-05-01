@@ -74,8 +74,8 @@ spring:
           temperature: ${OPENAI_TEMPERATURE:0.7}
       # Разумные таймауты для запросов с изображениями
       client:
-        connection-timeout: 60000   # 60 секунд (1 минута) для подключения
-        read-timeout: 180000         # 180 секунд (3 минуты) для чтения (запросы с изображениями могут занимать до 2-3 минут)
+        connection-timeout: 360000   # 6 минут (изображения / длинные ответы провайдера)
+        read-timeout: 360000         # 6 минут
 #      proxy:
 #        host: ${OPENAI_PROXY_HOST:}
 #        port: ${OPENAI_PROXY_PORT:}
@@ -166,27 +166,28 @@ sticker:
   processor:
     url: ${STICKER_PROCESSOR_URL:https://sticker-processor-e13nst.amvera.io}
     timeout:
-      connect: 5000
-      read: 10000
+      connect: ${STICKER_PROCESSOR_TIMEOUT_CONNECT_MS:360000}
+      read: ${STICKER_PROCESSOR_TIMEOUT_READ_MS:360000}
     generation:
       poll-interval-ms: ${STICKER_PROCESSOR_GENERATION_POLL_INTERVAL_MS:1500}
+      max-poll-seconds: ${STICKER_PROCESSOR_GENERATION_MAX_POLL_SECONDS:360}
       # Подряд 424 с ошибкой удаления фона: столько раз продолжаем poll, прежде чем retry без фона / финальный fail
       bg-removal-424-patience: ${STICKER_PROCESSOR_BG_REMOVAL_424_PATIENCE:5}
-      save-to-set-timeout-sec: ${STICKER_PROCESSOR_SAVE_TO_SET_TIMEOUT_SEC:60}
+      save-to-set-timeout-sec: ${STICKER_PROCESSOR_SAVE_TO_SET_TIMEOUT_SEC:360}
 
 # Конфигурация WaveSpeed API
 wavespeed:
   api-key: ${WAVESPEED_API_KEY:}
   base-url: ${WAVESPEED_BASE_URL:https://api.wavespeed.ai/api/v3}
-  max-poll-seconds: ${WAVESPEED_MAX_POLL_SECONDS:600}
+  max-poll-seconds: ${WAVESPEED_MAX_POLL_SECONDS:360}
   bg-remove-enabled: ${WAVESPEED_BG_REMOVE_ENABLED:true}
   retry:
     max-attempts: ${WAVESPEED_RETRY_MAX_ATTEMPTS:3}
     initial-delay-ms: ${WAVESPEED_RETRY_INITIAL_DELAY_MS:1000}
     multiplier: ${WAVESPEED_RETRY_MULTIPLIER:2.0}
   timeout:
-    connect: 5000
-    read: 20000
+    connect: ${WAVESPEED_TIMEOUT_CONNECT_MS:60000}
+    read: ${WAVESPEED_TIMEOUT_READ_MS:360000}
 
 # Подробное логирование для диагностики
 logging:

@@ -118,6 +118,7 @@ class StickerGenerationServiceTest {
                 .when(stickerGenerationService).processPromptAsyncV2(anyString(), anyLong(), any());
         lenient().when(stylePresetRepository.findById(anyLong())).thenReturn(Optional.empty());
         ReflectionTestUtils.setField(stickerGenerationService, "maxPollSeconds", 5);
+        ReflectionTestUtils.setField(stickerGenerationService, "stickerProcessorMaxPollSeconds", 5);
         ReflectionTestUtils.setField(stickerGenerationService, "stickerProcessorBaseUrl", "https://sticker-processor.example");
     }
 

@@ -135,7 +135,7 @@ public class InlineGenerationService {
     private void waitAndPublishResult(String taskId, long userId, long chatId, String prompt, String token) {
         CompletableFuture.runAsync(() -> {
             try {
-                int attempts = 60; // до 2 минут с шагом 2 секунды
+                int attempts = 180; // до 6 минут при шаге 2 с
                 for (int i = 0; i < attempts; i++) {
                     GenerationStatusResponse status = generationService.getGenerationStatus(taskId, userId, false);
                     String state = status.getStatus() != null ? status.getStatus().toUpperCase() : "";

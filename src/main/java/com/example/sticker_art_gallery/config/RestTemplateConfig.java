@@ -16,10 +16,10 @@ public class RestTemplateConfig {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(RestTemplateConfig.class);
     
-    @Value("${sticker.processor.timeout.connect:5000}")
+    @Value("${sticker.processor.timeout.connect:360000}")
     private int connectTimeout;
     
-    @Value("${sticker.processor.timeout.read:10000}")
+    @Value("${sticker.processor.timeout.read:360000}")
     private int readTimeout;
     
     @Bean

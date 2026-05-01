@@ -31,10 +31,10 @@ public class AIConfig {
     @Value("${app.ai.context-length:10}")
     private int contextLength;
     
-    @Value("${spring.ai.openai.client.connection-timeout:60000}")
+    @Value("${spring.ai.openai.client.connection-timeout:360000}")
     private long connectionTimeout;
     
-    @Value("${spring.ai.openai.client.read-timeout:120000}")
+    @Value("${spring.ai.openai.client.read-timeout:360000}")
     private long readTimeout;
 
     /**

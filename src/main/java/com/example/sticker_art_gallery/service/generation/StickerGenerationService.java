@@ -66,7 +66,7 @@ public class StickerGenerationService {
     private final ObjectMapper objectMapper;
     private final UserPresetCreationBlueprintService userPresetCreationBlueprintService;
 
-    @Value("${wavespeed.max-poll-seconds:300}")
+    @Value("${wavespeed.max-poll-seconds:360}")
     private int maxPollSeconds;
 
     @Value("${sticker.processor.generation.poll-interval-ms:1500}")
@@ -78,6 +78,10 @@ public class StickerGenerationService {
      */
     @Value("${sticker.processor.generation.bg-removal-424-patience:5}")
     private int stickerProcessorBgRemoval424Patience;
+
+    /** Верхняя граница poll по STICKER_PROCESSOR (сек), независимо от {@link #maxPollSeconds} (WaveSpeed legacy). */
+    @Value("${sticker.processor.generation.max-poll-seconds:360}")
+    private int stickerProcessorMaxPollSeconds;
 
     @Value("${wavespeed.bg-remove-enabled:true}")
     private boolean bgRemoveEnabled;
@@ -766,7 +770,7 @@ public class StickerGenerationService {
                 String terminalReason = null;
                 Map<String, Object> terminalPayload = null;
 
-                long deadlineMs = System.currentTimeMillis() + (maxPollSeconds * 1000L);
+                long deadlineMs = System.currentTimeMillis() + (stickerProcessorMaxPollSeconds * 1000L);
                 int consecutiveBgRemoval424 = 0;
                 int pollIntervalMs = Math.max(200, stickerProcessorPollIntervalMs);
                 int bg424Patience = Math.max(1, stickerProcessorBgRemoval424Patience);
