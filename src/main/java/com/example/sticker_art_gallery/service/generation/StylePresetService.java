@@ -575,6 +575,11 @@ public class StylePresetService {
             d.setRemoveBackgroundLockedToPreset(true);
             d.setRemoveBackgroundEffective(ConsumerStylePresetPolicy.effectiveLockedRemoveBackgroundFromPreset(entity));
         }
+        boolean shareable = StylePresetPublicSharePolicy.isShareableForPublicDeepLink(entity);
+        d.setShareableAsDeepLink(shareable);
+        if (shareable && entity.getId() != null) {
+            d.setDeepLinkStartParam(StylePresetDeepLinkParams.formatPresetId(entity.getId()));
+        }
         return d;
     }
 

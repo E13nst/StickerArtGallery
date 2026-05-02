@@ -72,6 +72,10 @@ public class StylePresetDto {
     private String moderationStatus;
     @Schema(description = "Показывается ли пресет в публичном каталоге")
     private Boolean publishedToCatalog;
+    @Schema(description = "true — можно показывать «Поделиться» для открытия мини-приложения у других пользователей (глобальный или APPROVED + витрина)")
+    private Boolean shareableAsDeepLink;
+    @Schema(description = "Значение для startapp / initData start_param (без URL); null если шаринг недоступен")
+    private String deepLinkStartParam;
 
     // getters / setters
 
@@ -139,4 +143,8 @@ public class StylePresetDto {
     public void setModerationStatus(String moderationStatus) { this.moderationStatus = moderationStatus; }
     public Boolean getPublishedToCatalog() { return publishedToCatalog; }
     public void setPublishedToCatalog(Boolean publishedToCatalog) { this.publishedToCatalog = publishedToCatalog; }
+    public Boolean getShareableAsDeepLink() { return shareableAsDeepLink; }
+    public void setShareableAsDeepLink(Boolean shareableAsDeepLink) { this.shareableAsDeepLink = shareableAsDeepLink; }
+    public String getDeepLinkStartParam() { return deepLinkStartParam; }
+    public void setDeepLinkStartParam(String deepLinkStartParam) { this.deepLinkStartParam = deepLinkStartParam; }
 }
