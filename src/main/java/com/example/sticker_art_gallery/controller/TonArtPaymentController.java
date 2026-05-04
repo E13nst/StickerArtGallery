@@ -2,8 +2,11 @@ package com.example.sticker_art_gallery.controller;
 
 import com.example.sticker_art_gallery.dto.payment.CreateTonPaymentRequest;
 import com.example.sticker_art_gallery.dto.payment.CreateTonPaymentResponse;
+import com.example.sticker_art_gallery.dto.payment.TonPaymentCreateConflictCode;
+import com.example.sticker_art_gallery.dto.payment.TonPaymentCreateConflictResponse;
 import com.example.sticker_art_gallery.dto.payment.TonPaymentStatusResponse;
 import com.example.sticker_art_gallery.service.payment.TonArtPaymentService;
+import com.example.sticker_art_gallery.service.payment.TonPaymentCreateConflictException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,7 +37,7 @@ public class TonArtPaymentController {
     @PostMapping("/create")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @Operation(summary = "Создать TON Pay платеж для покупки ART-пакета")
-    public ResponseEntity<CreateTonPaymentResponse> createPayment(
+    public ResponseEntity<?> createPayment(
             @Valid @RequestBody CreateTonPaymentRequest request) {
         try {
             Long userId = getCurrentUserId();
@@ -48,9 +51,12 @@ public class TonArtPaymentController {
         } catch (IllegalArgumentException e) {
             LOGGER.warn("TON payment create validation failed: {}", e.getMessage());
             return ResponseEntity.badRequest().build();
+        } catch (TonPaymentCreateConflictException e) {
+            LOGGER.warn("TON payment create conflict: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getResponse());
         } catch (IllegalStateException e) {
             LOGGER.warn("TON payment create config/state failed: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(mapConflictFromIllegalState(e.getMessage()));
         } catch (Exception e) {
             LOGGER.error("TON payment create failed: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
@@ -88,5 +94,19 @@ public class TonArtPaymentController {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private TonPaymentCreateConflictResponse mapConflictFromIllegalState(String message) {
+        if (message != null && message.contains("отключена")) {
+            return TonPaymentCreateConflictResponse.tonPaymentsDisabled();
+        }
+        if (message != null && message.contains("не настроен")) {
+            return TonPaymentCreateConflictResponse.merchantWalletNotConfigured();
+        }
+        TonPaymentCreateConflictResponse response = new TonPaymentCreateConflictResponse();
+        response.setCode(TonPaymentCreateConflictCode.UNKNOWN_CONFLICT);
+        response.setMessage(message);
+        response.setCanResume(Boolean.FALSE);
+        return response;
     }
 }

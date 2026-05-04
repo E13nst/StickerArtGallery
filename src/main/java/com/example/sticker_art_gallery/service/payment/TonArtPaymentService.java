@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,6 +27,11 @@ public class TonArtPaymentService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TonArtPaymentService.class);
     private static final String ASSET_TON = "TON";
+    private static final EnumSet<TonPaymentStatus> ACTIVE_INTENT_STATUSES = EnumSet.of(
+            TonPaymentStatus.CREATED,
+            TonPaymentStatus.READY,
+            TonPaymentStatus.SENT
+    );
 
     private final StarsPackageRepository starsPackageRepository;
     private final TonPaymentIntentRepository intentRepository;
@@ -64,10 +70,37 @@ public class TonArtPaymentService {
         if (request == null || request.getPackageCode() == null || request.getPackageCode().isBlank()) {
             throw new IllegalArgumentException("Код пакета обязателен");
         }
+        if (request.getSenderAddress() == null || request.getSenderAddress().isBlank()) {
+            throw new IllegalArgumentException("Адрес отправителя обязателен");
+        }
+
+        String senderAddress = request.getSenderAddress().trim();
+
+        String packageCode = request.getPackageCode().trim();
+        Optional<TonPaymentIntentEntity> activeIntentOptional = intentRepository
+                .findFirstByUserIdAndPackageCodeAndStatusInOrderByCreatedAtDesc(
+                        userId, packageCode, ACTIVE_INTENT_STATUSES
+                );
+        if (activeIntentOptional.isPresent()) {
+            TonPaymentIntentEntity activeIntent = activeIntentOptional.get();
+            if (!activeIntent.getSenderAddress().equals(senderAddress)) {
+                throw new TonPaymentCreateConflictException(
+                        TonPaymentCreateConflictResponse.senderAddressMismatch(
+                                activeIntent.getId(),
+                                activeIntent.getStatus(),
+                                activeIntent.getPackageCode(),
+                                activeIntent.getSenderAddress(),
+                                senderAddress
+                        )
+                );
+            }
+            LOGGER.info("Возвращаем активный TON intent без создания нового: intentId={}, userId={}, package={}",
+                    activeIntent.getId(), userId, packageCode);
+            return toCreateResponse(activeIntent);
+        }
 
         String merchantWallet = tonPaymentSettingsService.resolveMerchantWalletAddress();
 
-        String packageCode = request.getPackageCode().trim();
         StarsPackageEntity starsPackage = starsPackageRepository.findByCode(packageCode)
                 .orElseThrow(() -> new java.util.NoSuchElementException("Пакет не найден: " + packageCode));
         if (!Boolean.TRUE.equals(starsPackage.getIsEnabled())) {
@@ -88,7 +121,7 @@ public class TonArtPaymentService {
         intent.setExpectedAmountNano(starsPackage.getTonPriceNano());
         intent.setAsset(ASSET_TON);
         intent.setArtAmount(starsPackage.getArtAmount());
-        intent.setSenderAddress(request.getSenderAddress().trim());
+        intent.setSenderAddress(senderAddress);
         intent.setRecipientAddress(merchantWallet.trim());
         intent.setMetadata(toJsonSilently(new PaymentMetadata("java_backend", appConfig.getTonpay().getChain())));
         intent = intentRepository.save(intent);
@@ -114,17 +147,7 @@ public class TonArtPaymentService {
             LOGGER.info("Создан TON Pay intent: intentId={}, userId={}, package={}, reference={}",
                     intent.getId(), userId, packageCode, intent.getReference());
 
-            return new CreateTonPaymentResponse(
-                    intent.getId(),
-                    intent.getStatus(),
-                    intent.getReference(),
-                    intent.getBodyBase64Hash(),
-                    intent.getExpectedAmountNano(),
-                    intent.getAsset(),
-                    intent.getRecipientAddress(),
-                    StarsPackageDto.fromEntity(starsPackage),
-                    transaction
-            );
+            return toCreateResponse(intent, transaction);
         } catch (RuntimeException e) {
             intent.setStatus(TonPaymentStatus.FAILED);
             intent.setFailureReason(trimReason(e.getMessage()));
@@ -297,6 +320,36 @@ public class TonArtPaymentService {
 
     private String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    private CreateTonPaymentResponse toCreateResponse(TonPaymentIntentEntity intent) {
+        return toCreateResponse(intent, parseTonConnectTransaction(intent.getTonConnectMessage()));
+    }
+
+    private CreateTonPaymentResponse toCreateResponse(TonPaymentIntentEntity intent, TonConnectTransactionDto transaction) {
+        return new CreateTonPaymentResponse(
+                intent.getId(),
+                intent.getStatus(),
+                intent.getReference(),
+                intent.getBodyBase64Hash(),
+                intent.getExpectedAmountNano(),
+                intent.getAsset(),
+                intent.getRecipientAddress(),
+                StarsPackageDto.fromEntity(intent.getStarsPackage()),
+                transaction
+        );
+    }
+
+    private TonConnectTransactionDto parseTonConnectTransaction(String rawTransactionJson) {
+        if (rawTransactionJson == null || rawTransactionJson.isBlank()) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(rawTransactionJson, TonConnectTransactionDto.class);
+        } catch (JsonProcessingException e) {
+            LOGGER.warn("Не удалось распарсить сохранённый tonConnectMessage: {}", e.getMessage());
+            return null;
+        }
     }
 
     private TonConnectTransactionDto createTonConnectTransaction(TonConnectMessageDto message) {
