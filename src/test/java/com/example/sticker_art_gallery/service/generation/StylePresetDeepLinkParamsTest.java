@@ -40,3 +40,11 @@ class StylePresetDeepLinkParamsTest {
         assertNull(StylePresetDeepLinkParams.telegramMiniAppShareUrl(" ", "sag_style_1"));
         assertNull(StylePresetDeepLinkParams.telegramMiniAppShareUrl("bot", ""));
     }
+
+    @Test
+    void tryParsePresetId_shouldRejectGarbage() {
+        assertNull(StylePresetDeepLinkParams.tryParsePresetId("sag_style_"));
+        assertNull(StylePresetDeepLinkParams.tryParsePresetId(null));
+        assertNull(StylePresetDeepLinkParams.tryParsePresetId("sag_style_xyz"));
+    }
+}
