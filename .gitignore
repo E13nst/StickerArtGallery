@@ -48,8 +48,9 @@ gradle-app.setting
 .vscode/
 
 ### Cursor ###
-.cursor/
-.cursor/rules/
+# Целиком не игнорируем .cursor: в репозитории держим rules/skills. Только явно локальное.
+.cursor/agent-transcripts/
+
 
 ### Logs ###
 *.log
@@ -64,6 +65,10 @@ bot.log
 .env.local
 .env.production
 
+# Локальные профили Spring Boot (секреты / machine-specific)
+**/application-local.properties
+**/application-local.yml
+**/application-local.yaml
 ### Configuration files with secrets ###
 /proxy.sh
 /application.properties.txt
@@ -92,6 +97,11 @@ doc.txt
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# JVM / crash artifacts (часто в корне проекта после падений)
+hs_err_pid*.log
+replay_pid*.log
+*.hprof
 
 # Test results and reports
 /test-results/

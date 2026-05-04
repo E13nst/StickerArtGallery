@@ -1,0 +1,16 @@
+---
+description: Telegram webhook routing and bot flow constraints
+globs:
+  - src/**/telegram/**/*.java
+---
+
+# Telegram Bot Flow
+
+- Keep webhook architecture. Do not introduce `TelegramLongPollingBot` or any long polling entry point.
+- Route inbound updates through `TelegramUpdatesController` and then `UpdateRouterService`. Do not bypass this chain.
+- Dispatch user chat flow to `StickerGalleryFlowService` and support flow to `SupportBridgeService`, matching the existing router split.
+- Send outbound Telegram messages through `TelegramBotApiService`. Do not call raw Telegram HTTP endpoints from controllers or unrelated services.
+- Keep command and callback handling inside the current routing model: router first, then flow-specific service.
+- Preserve webhook safety checks: secret-token validation in the controller and dedup handling in `TelegramUpdateDedupService`.
+- When debugging Telegram issues, inspect `webhookSecretToken`, router behavior, dedup state, and `SupportStateStore` before changing business logic.
+- Reuse the existing webhook startup and ownership flow instead of adding a second bot bootstrap path.

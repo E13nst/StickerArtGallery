@@ -1,0 +1,17 @@
+---
+description: Spring Boot core standards for Java 17 code
+globs:
+  - src/main/java/**/*.java
+---
+
+# Java Spring Core
+
+- Use constructor injection only. Do not add field injection or setter injection.
+- Mark HTTP API classes with `@RestController`. Keep request mapping and transport concerns in controllers only.
+- Put business rules in `@Service` classes. Do not move business logic into controllers or DTOs.
+- Put database access in `@Repository` classes or Spring Data repositories. Do not query the database from controllers.
+- Keep controllers thin: validate input, call one or more services, return the response.
+- Keep service methods focused and explicit. Extract shared logic instead of duplicating branches across controllers.
+- Write new code in Java 17 style. Prefer records, switch expressions, and clear immutable local variables when they fit the existing code.
+- Follow the existing package split: `controller`, `service`, `repository`, `dto`, `model`, `security`.
+- Reuse existing project flows before adding a new entry point or parallel architecture.

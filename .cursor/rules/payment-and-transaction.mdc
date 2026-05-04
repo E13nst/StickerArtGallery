@@ -1,0 +1,19 @@
+---
+description: Payment, transaction, wallet, and webhook safety rules
+globs:
+  - src/**/payment/**/*.java
+  - src/**/transaction/**/*.java
+  - src/**/wallet/**/*.java
+---
+
+# Payment And Transaction
+
+- Verify payment webhooks with `WebhookHmacVerifier` before processing the payload. Do not skip HMAC checks.
+- Keep Telegram Stars business logic in `StarsPaymentService`. Do not duplicate settlement logic in controllers.
+- Use `WalletService` for wallet lifecycle changes such as link, unlink, activate, or resolve active wallet.
+- Mark write workflows that touch multiple entities or repositories with `@Transactional`.
+- Mark pure read methods with `@Transactional(readOnly = true)` when the service already follows that pattern.
+- Keep controllers thin: authenticate, validate, delegate, and return the result.
+- Preserve the existing flow `StarsInternalController -> StarsPaymentService` for internal payment webhooks.
+- Do not spread wallet state changes across multiple services; keep one source of truth for active wallet behavior.
+- Keep transaction code idempotent where webhook retries or repeated confirmations are possible.

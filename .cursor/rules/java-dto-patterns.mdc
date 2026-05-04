@@ -1,0 +1,15 @@
+---
+description: DTO naming and immutability patterns
+globs:
+  - src/**/dto/**/*.java
+---
+
+# Java DTO Patterns
+
+- Use Lombok to reduce boilerplate. Prefer `@Builder` for object creation.
+- Keep new DTOs immutable after creation. Prefer final fields, constructor-based creation, or records when they fit the module.
+- Do not introduce `Optional` fields in DTOs. Use nullable fields or explicit nested objects instead.
+- Name inbound payloads `*Request`, outbound payloads `*Response`, and shared transfer objects `*Dto`.
+- Keep DTOs as transport shapes only. Do not place service calls, repository access, or business rules inside them.
+- Use `@Data` only when matching an existing mutable pattern that already exists in the module. Do not default to it for new DTOs.
+- When updating legacy DTOs, move them toward immutable construction instead of adding more setters.

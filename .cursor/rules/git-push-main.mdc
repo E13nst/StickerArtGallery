@@ -1,0 +1,9 @@
+---
+description: Git push convention when working on main
+alwaysApply: true
+---
+
+# Push на ветку main
+
+- Если текущая ветка — **`main`** и нужно отправить коммиты на remote, используй **`git push`** (через настроенный upstream).
+- Не используй **`git push origin main`**, если нет явной причины: например upstream не настроен, просят именно так, или восстановление после сбоя.
