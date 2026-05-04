@@ -13,7 +13,9 @@ import com.example.sticker_art_gallery.repository.StylePresetRepository;
 import com.example.sticker_art_gallery.repository.generation.UserPresetLikeRepository;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
 import com.example.sticker_art_gallery.service.storage.ImageStorageService;
+import com.example.sticker_art_gallery.config.AppConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -61,8 +63,18 @@ class StylePresetServiceTest {
     @Mock
     private UserPresetLikeRepository userPresetLikeRepository;
 
+    @Mock
+    private AppConfig appConfig;
+
     @InjectMocks
     private StylePresetService stylePresetService;
+
+    @BeforeEach
+    void stubTelegramBotUsername() {
+        AppConfig.Telegram tg = new AppConfig.Telegram();
+        tg.setBotUsername("test_bot");
+        when(appConfig.getTelegram()).thenReturn(tg);
+    }
 
     @Test
     @DisplayName("Запрещает не-админу обновлять глобальный пресет")
@@ -144,6 +156,10 @@ class StylePresetServiceTest {
     void createGlobalPreset_shouldRejectWhenReferenceSlotsExceedPresetCap() {
         ObjectMapper realMapper = new ObjectMapper();
         StylePresetPromptComposer realComposer = new StylePresetPromptComposer(realMapper);
+        AppConfig cfg = mock(AppConfig.class);
+        AppConfig.Telegram tg = new AppConfig.Telegram();
+        tg.setBotUsername("test_bot");
+        when(cfg.getTelegram()).thenReturn(tg);
         StylePresetService svc = new StylePresetService(
                 presetRepository,
                 categoryRepository,
@@ -151,7 +167,8 @@ class StylePresetServiceTest {
                 imageStorageService,
                 realMapper,
                 realComposer,
-                mock(UserPresetLikeRepository.class));
+                mock(UserPresetLikeRepository.class),
+                cfg);
 
         when(presetRepository.findByCodeAndIsGlobalTrue("ref_cap")).thenReturn(Optional.empty());
         CreateStylePresetRequest req = new CreateStylePresetRequest();

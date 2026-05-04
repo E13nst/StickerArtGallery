@@ -33,4 +33,22 @@ public final class StylePresetDeepLinkParams {
             return null;
         }
     }
+
+    /**
+     * То же представление URL, что и для реферальных ссылок
+     * {@link com.example.sticker_art_gallery.service.referral.ReferralService#getOrCreateMyReferralLink(Long)}:
+     * {@code https://t.me/<username>?startapp=<param>}.
+     */
+    public static String telegramMiniAppShareUrl(String botUsername, String startParam) {
+        if (startParam == null || startParam.isBlank() || botUsername == null || botUsername.isBlank()) {
+            return null;
+        }
+        String bot = normalizeBotUsername(botUsername);
+        return String.format("https://t.me/%s?startapp=%s", bot, startParam);
+    }
+
+    static String normalizeBotUsername(String botUsername) {
+        String u = botUsername.trim();
+        return u.startsWith("@") ? u.substring(1) : u;
+    }
 }

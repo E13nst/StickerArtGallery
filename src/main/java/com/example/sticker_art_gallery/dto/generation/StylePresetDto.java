@@ -76,6 +76,8 @@ public class StylePresetDto {
     private Boolean shareableAsDeepLink;
     @Schema(description = "Значение для startapp / initData start_param (без URL); null если шаринг недоступен")
     private String deepLinkStartParam;
+    @Schema(description = "Полная ссылка t.me на мини-приложение как у рефералок; null если имя бота не сконфигурировано или шаринг недоступен")
+    private String deepLinkUrl;
 
     // getters / setters
 
@@ -147,4 +149,6 @@ public class StylePresetDto {
     public void setShareableAsDeepLink(Boolean shareableAsDeepLink) { this.shareableAsDeepLink = shareableAsDeepLink; }
     public String getDeepLinkStartParam() { return deepLinkStartParam; }
     public void setDeepLinkStartParam(String deepLinkStartParam) { this.deepLinkStartParam = deepLinkStartParam; }
+    public String getDeepLinkUrl() { return deepLinkUrl; }
+    public void setDeepLinkUrl(String deepLinkUrl) { this.deepLinkUrl = deepLinkUrl; }
 }

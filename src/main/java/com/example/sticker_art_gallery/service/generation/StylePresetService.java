@@ -29,6 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.sticker_art_gallery.dto.generation.StylePresetPromptInputDto;
 import com.example.sticker_art_gallery.dto.generation.StylePresetReferenceInputDto;
+import com.example.sticker_art_gallery.config.AppConfig;
 import com.example.sticker_art_gallery.model.generation.PresetModerationStatus;
 import com.example.sticker_art_gallery.repository.generation.UserPresetLikeRepository;
 
@@ -54,6 +55,7 @@ public class StylePresetService {
     private final ObjectMapper objectMapper;
     private final StylePresetPromptComposer presetPromptComposer;
     private final UserPresetLikeRepository userPresetLikeRepository;
+    private final AppConfig appConfig;
 
     @Autowired
     public StylePresetService(
@@ -63,7 +65,8 @@ public class StylePresetService {
             ImageStorageService imageStorageService,
             ObjectMapper objectMapper,
             StylePresetPromptComposer presetPromptComposer,
-            UserPresetLikeRepository userPresetLikeRepository) {
+            UserPresetLikeRepository userPresetLikeRepository,
+            AppConfig appConfig) {
         this.presetRepository = presetRepository;
         this.categoryRepository = categoryRepository;
         this.userProfileService = userProfileService;
@@ -71,6 +74,7 @@ public class StylePresetService {
         this.objectMapper = objectMapper;
         this.presetPromptComposer = presetPromptComposer;
         this.userPresetLikeRepository = userPresetLikeRepository;
+        this.appConfig = appConfig;
     }
 
     @Transactional(readOnly = true)
@@ -578,7 +582,11 @@ public class StylePresetService {
         boolean shareable = StylePresetPublicSharePolicy.isShareableForPublicDeepLink(entity);
         d.setShareableAsDeepLink(shareable);
         if (shareable && entity.getId() != null) {
-            d.setDeepLinkStartParam(StylePresetDeepLinkParams.formatPresetId(entity.getId()));
+            String startParam = StylePresetDeepLinkParams.formatPresetId(entity.getId());
+            d.setDeepLinkStartParam(startParam);
+            String botUsername = appConfig.getTelegram() != null
+                    ? appConfig.getTelegram().getBotUsername() : null;
+            d.setDeepLinkUrl(StylePresetDeepLinkParams.telegramMiniAppShareUrl(botUsername, startParam));
         }
         return d;
     }

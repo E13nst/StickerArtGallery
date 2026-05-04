@@ -25,9 +25,18 @@ class StylePresetDeepLinkParamsTest {
     }
 
     @Test
-    void tryParsePresetId_shouldRejectGarbage() {
-        assertNull(StylePresetDeepLinkParams.tryParsePresetId("sag_style_"));
-        assertNull(StylePresetDeepLinkParams.tryParsePresetId(null));
-        assertNull(StylePresetDeepLinkParams.tryParsePresetId("sag_style_xyz"));
+    void telegramMiniAppShareUrl_shouldMatchReferralUrlShape() {
+        assertEquals(
+                "https://t.me/mybot?startapp=sag_style_7",
+                StylePresetDeepLinkParams.telegramMiniAppShareUrl("mybot", "sag_style_7"));
+        assertEquals(
+                "https://t.me/mybot?startapp=sag_style_7",
+                StylePresetDeepLinkParams.telegramMiniAppShareUrl("@mybot", "sag_style_7"));
     }
-}
+
+    @Test
+    void telegramMiniAppShareUrl_shouldReturnNullWhenBotMissing() {
+        assertNull(StylePresetDeepLinkParams.telegramMiniAppShareUrl(null, "sag_style_1"));
+        assertNull(StylePresetDeepLinkParams.telegramMiniAppShareUrl(" ", "sag_style_1"));
+        assertNull(StylePresetDeepLinkParams.telegramMiniAppShareUrl("bot", ""));
+    }
