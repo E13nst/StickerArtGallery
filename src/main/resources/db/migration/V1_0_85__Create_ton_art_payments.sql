@@ -1,5 +1,5 @@
 -- Миграция: покупка ART-пакетов за TON через TON Pay
--- Версия: 1.0.84
+-- Версия: 1.0.85
 
 ALTER TABLE stars_packages
     ADD COLUMN IF NOT EXISTS ton_price_nano BIGINT;

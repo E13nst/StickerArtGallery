@@ -1,5 +1,5 @@
 -- Миграция: настройки TON Pay, редактируемые из админки
--- Версия: 1.0.85
+-- Версия: 1.0.86
 
 CREATE TABLE ton_payment_settings (
     id SMALLINT PRIMARY KEY,
