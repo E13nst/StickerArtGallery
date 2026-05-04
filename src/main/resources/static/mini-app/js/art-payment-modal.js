@@ -161,11 +161,9 @@
             const payment = await response.json();
 
             this.setState('Подтвердите транзакцию в кошельке...');
-            await window.tonConnectUI.sendTransaction({
-                messages: [payment.message],
-                validUntil: Math.floor(Date.now() / 1000) + 300,
-                from: senderAddress
-            });
+            await window.tonConnectUI.sendTransaction(
+                normalizeSendTransactionMessage(payment.message, senderAddress)
+            );
 
             this.setState('Ждём подтверждение в блокчейне...');
             const status = await this.waitForTonStatus(payment.intentId);
@@ -227,6 +225,19 @@
             '"': '&quot;',
             "'": '&#39;'
         }[ch]));
+    }
+
+    function normalizeSendTransactionMessage(message, senderAddress) {
+        if (message && Array.isArray(message.messages)) {
+            return Object.assign({ from: senderAddress }, message, {
+                validUntil: message.validUntil || Math.floor(Date.now() / 1000) + 300
+            });
+        }
+        return {
+            messages: [message],
+            validUntil: Math.floor(Date.now() / 1000) + 300,
+            from: senderAddress
+        };
     }
 
     window.ArtPaymentModal = ArtPaymentModal;

@@ -16,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -104,7 +106,8 @@ public class TonArtPaymentService {
 
             intent.setReference(transfer.getReference());
             intent.setBodyBase64Hash(transfer.getBodyBase64Hash());
-            intent.setTonConnectMessage(toJson(transfer.getMessage()));
+            TonConnectTransactionDto transaction = createTonConnectTransaction(transfer.getMessage());
+            intent.setTonConnectMessage(toJson(transaction));
             intent.setStatus(TonPaymentStatus.READY);
             intent = intentRepository.save(intent);
 
@@ -120,7 +123,7 @@ public class TonArtPaymentService {
                     intent.getAsset(),
                     intent.getRecipientAddress(),
                     StarsPackageDto.fromEntity(starsPackage),
-                    transfer.getMessage()
+                    transaction
             );
         } catch (RuntimeException e) {
             intent.setStatus(TonPaymentStatus.FAILED);
@@ -294,6 +297,11 @@ public class TonArtPaymentService {
 
     private String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    private TonConnectTransactionDto createTonConnectTransaction(TonConnectMessageDto message) {
+        long validUntil = Instant.now().getEpochSecond() + 300;
+        return new TonConnectTransactionDto(validUntil, List.of(message));
     }
 
     private record PaymentMetadata(String source, String chain) {}

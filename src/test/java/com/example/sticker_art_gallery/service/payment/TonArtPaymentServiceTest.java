@@ -107,7 +107,9 @@ class TonArtPaymentServiceTest {
         assertEquals("ref-500", response.getReference());
         assertEquals(250_000_000L, response.getAmountNano());
         assertNotNull(response.getMessage());
-        assertEquals(RECIPIENT, response.getMessage().getAddress());
+        assertNotNull(response.getMessage().getValidUntil());
+        assertEquals(1, response.getMessage().getMessages().size());
+        assertEquals(RECIPIENT, response.getMessage().getMessages().get(0).getAddress());
 
         ArgumentCaptor<TonPaymentIntentEntity> intentCaptor = ArgumentCaptor.forClass(TonPaymentIntentEntity.class);
         verify(intentRepository, times(2)).save(intentCaptor.capture());

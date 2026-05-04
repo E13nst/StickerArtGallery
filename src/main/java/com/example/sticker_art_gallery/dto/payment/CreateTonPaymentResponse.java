@@ -14,7 +14,7 @@ public class CreateTonPaymentResponse {
     private String asset;
     private String recipientAddress;
     private StarsPackageDto starsPackage;
-    private TonConnectMessageDto message;
+    private TonConnectTransactionDto message;
 
     public CreateTonPaymentResponse() {
     }
@@ -27,7 +27,7 @@ public class CreateTonPaymentResponse {
                                     String asset,
                                     String recipientAddress,
                                     StarsPackageDto starsPackage,
-                                    TonConnectMessageDto message) {
+                                    TonConnectTransactionDto message) {
         this.intentId = intentId;
         this.status = status;
         this.reference = reference;
@@ -55,6 +55,6 @@ public class CreateTonPaymentResponse {
     public void setRecipientAddress(String recipientAddress) { this.recipientAddress = recipientAddress; }
     public StarsPackageDto getStarsPackage() { return starsPackage; }
     public void setStarsPackage(StarsPackageDto starsPackage) { this.starsPackage = starsPackage; }
-    public TonConnectMessageDto getMessage() { return message; }
-    public void setMessage(TonConnectMessageDto message) { this.message = message; }
+    public TonConnectTransactionDto getMessage() { return message; }
+    public void setMessage(TonConnectTransactionDto message) { this.message = message; }
 }
