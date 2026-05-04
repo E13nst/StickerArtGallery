@@ -30,6 +30,9 @@ public class StarsPackageDto {
     @Schema(description = "Цена в Telegram Stars", example = "50")
     private Integer starsPrice;
 
+    @Schema(description = "Цена в nanoTON для TON Pay. null означает, что TON-оплата пакета отключена", example = "100000000")
+    private Long tonPriceNano;
+
     @Schema(description = "Количество ART-баллов", example = "100")
     private Long artAmount;
 
@@ -49,6 +52,7 @@ public class StarsPackageDto {
         dto.setName(entity.getName());
         dto.setDescription(entity.getDescription());
         dto.setStarsPrice(entity.getStarsPrice());
+        dto.setTonPriceNano(entity.getTonPriceNano());
         dto.setArtAmount(entity.getArtAmount());
         dto.setSortOrder(entity.getSortOrder());
         dto.setIsEnabled(entity.getIsEnabled());

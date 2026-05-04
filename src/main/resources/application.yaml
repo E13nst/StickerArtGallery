@@ -34,6 +34,18 @@ app:
     hmac-secret: ${WEBHOOK_HMAC_SECRET:}
     # true = отклонять запросы без валидной HMAC подписи
     hmac-enforced: ${WEBHOOK_HMAC_ENFORCED:false}
+  tonpay:
+    # URL небольшого Node adapter-сервиса с @ton-pay/api
+    adapter-url: ${TONPAY_ADAPTER_URL:}
+    # Shared token Java → TON Pay adapter
+    adapter-token: ${TONPAY_ADAPTER_TOKEN:${SERVICE_API_TOKEN:}}
+    # testnet | mainnet
+    chain: ${TONPAY_CHAIN:testnet}
+    # Единый кошелёк проекта. Не отдаётся клиенту как настройка, только в готовом TON Connect message.
+    merchant-wallet-address: ${TONPAY_MERCHANT_WALLET_ADDRESS:}
+    # Секрет подписи X-TonPay-Signature из TON Pay Merchant Dashboard
+    webhook-secret: ${TONPAY_WEBHOOK_SECRET:}
+    webhook-signature-enforced: ${TONPAY_WEBHOOK_SIGNATURE_ENFORCED:true}
   referral:
     daily-referrer-reward-cap: ${REFERRAL_DAILY_CAP:50}
     attribution-window-days: ${REFERRAL_ATTRIBUTION_WINDOW_DAYS:7}

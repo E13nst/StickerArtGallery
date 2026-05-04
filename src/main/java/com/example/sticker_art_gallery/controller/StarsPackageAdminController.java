@@ -110,6 +110,7 @@ public class StarsPackageAdminController {
             entity.setName(dto.getName());
             entity.setDescription(dto.getDescription());
             entity.setStarsPrice(dto.getStarsPrice());
+            entity.setTonPriceNano(normalizeTonPrice(dto.getTonPriceNano()));
             entity.setArtAmount(dto.getArtAmount());
             entity.setIsEnabled(dto.getIsEnabled() != null ? dto.getIsEnabled() : Boolean.TRUE);
             entity.setSortOrder(dto.getSortOrder() != null ? dto.getSortOrder() : 0);
@@ -155,6 +156,7 @@ public class StarsPackageAdminController {
             existing.setName(dto.getName());
             existing.setDescription(dto.getDescription());
             existing.setStarsPrice(dto.getStarsPrice());
+            existing.setTonPriceNano(normalizeTonPrice(dto.getTonPriceNano()));
             existing.setArtAmount(dto.getArtAmount());
             if (dto.getIsEnabled() != null) {
                 existing.setIsEnabled(dto.getIsEnabled());
@@ -241,5 +243,9 @@ public class StarsPackageAdminController {
             LOGGER.error("❌ Ошибка при получении списка покупок: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    private Long normalizeTonPrice(Long tonPriceNano) {
+        return tonPriceNano != null && tonPriceNano > 0 ? tonPriceNano : null;
     }
 }

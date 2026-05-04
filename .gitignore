@@ -44,6 +44,9 @@ gradle-app.setting
 !gradle-wrapper.jar
 !gradle-wrapper.properties
 
+# Node adapters / frontend tooling
+node_modules/
+
 ### VS Code ###
 .vscode/
 

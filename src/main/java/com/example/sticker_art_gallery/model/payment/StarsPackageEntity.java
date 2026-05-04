@@ -32,6 +32,9 @@ public class StarsPackageEntity {
     @Column(name = "stars_price", nullable = false)
     private Integer starsPrice;
 
+    @Column(name = "ton_price_nano")
+    private Long tonPriceNano;
+
     @Column(name = "art_amount", nullable = false)
     private Long artAmount;
 
@@ -106,6 +109,14 @@ public class StarsPackageEntity {
 
     public void setStarsPrice(Integer starsPrice) {
         this.starsPrice = starsPrice;
+    }
+
+    public Long getTonPriceNano() {
+        return tonPriceNano;
+    }
+
+    public void setTonPriceNano(Long tonPriceNano) {
+        this.tonPriceNano = tonPriceNano;
     }
 
     public Long getArtAmount() {

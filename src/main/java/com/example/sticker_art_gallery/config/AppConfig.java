@@ -14,6 +14,7 @@ public class AppConfig {
     private Referral referral = new Referral();
     private StickerBot stickerbot = new StickerBot();
     private Webhook webhook = new Webhook();
+    private TonPay tonpay = new TonPay();
     
     public String getUrl() {
         return url;
@@ -69,6 +70,14 @@ public class AppConfig {
 
     public void setWebhook(Webhook webhook) {
         this.webhook = webhook;
+    }
+
+    public TonPay getTonpay() {
+        return tonpay;
+    }
+
+    public void setTonpay(TonPay tonpay) {
+        this.tonpay = tonpay;
     }
 
     public static class MiniApp {
@@ -288,6 +297,63 @@ public class AppConfig {
 
         public void setHmacEnforced(boolean hmacEnforced) {
             this.hmacEnforced = hmacEnforced;
+        }
+    }
+
+    public static class TonPay {
+        private String adapterUrl;
+        private String adapterToken;
+        private String chain = "testnet";
+        private String merchantWalletAddress;
+        private String webhookSecret;
+        private boolean webhookSignatureEnforced = true;
+
+        public String getAdapterUrl() {
+            return adapterUrl;
+        }
+
+        public void setAdapterUrl(String adapterUrl) {
+            this.adapterUrl = adapterUrl;
+        }
+
+        public String getAdapterToken() {
+            return adapterToken;
+        }
+
+        public void setAdapterToken(String adapterToken) {
+            this.adapterToken = adapterToken;
+        }
+
+        public String getChain() {
+            return chain;
+        }
+
+        public void setChain(String chain) {
+            this.chain = chain;
+        }
+
+        public String getMerchantWalletAddress() {
+            return merchantWalletAddress;
+        }
+
+        public void setMerchantWalletAddress(String merchantWalletAddress) {
+            this.merchantWalletAddress = merchantWalletAddress;
+        }
+
+        public String getWebhookSecret() {
+            return webhookSecret;
+        }
+
+        public void setWebhookSecret(String webhookSecret) {
+            this.webhookSecret = webhookSecret;
+        }
+
+        public boolean isWebhookSignatureEnforced() {
+            return webhookSignatureEnforced;
+        }
+
+        public void setWebhookSignatureEnforced(boolean webhookSignatureEnforced) {
+            this.webhookSignatureEnforced = webhookSignatureEnforced;
         }
     }
     

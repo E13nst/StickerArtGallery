@@ -256,6 +256,17 @@ class AdminApiClient {
         return this.request(`/admin/stars/packages/${packageId}/purchases${queryString}`);
     }
 
+    async getTonPaymentSettings() {
+        return this.request('/admin/ton-payments/settings');
+    }
+
+    async updateTonPaymentSettings(data) {
+        return this.request('/admin/ton-payments/settings', {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+
     // ============ ART Rules API ============
     
     async getArtRules() {
