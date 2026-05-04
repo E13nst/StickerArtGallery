@@ -22,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Админ API: модерация пользовательских пресетов, статистика, просмотр референсов.
@@ -52,7 +53,7 @@ public class StylePresetModerationAdminController {
 
     @GetMapping
     @Operation(summary = "Список пользовательских пресетов",
-            description = "Включает previewUrl и presetReferenceImageUrl для просмотра в админке")
+            description = "Включает previewUrl, previewGalleryUrls (основное + доп. кадры) и presetReferenceImageUrl")
     public ResponseEntity<List<StylePresetDto>> list(
             @Parameter(description = "Фильтр по статусу модерации; без параметра — все")
             @RequestParam(name = "status", required = false) PresetModerationStatus status) {
@@ -137,6 +138,35 @@ public class StylePresetModerationAdminController {
             return ResponseEntity.ok(stylePresetService.uploadPreviewForUserPresetAsAdmin(presetId, file));
         } catch (IllegalArgumentException e) {
             LOGGER.warn("Preview upload moderation preset {}: {}", presetId, e.getMessage());
+            return badRequest(e.getMessage());
+        }
+    }
+
+    @PostMapping(value = "/{presetId}/extra-previews", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Добавить дополнительное превью в галерею (не заменяет основное)",
+            description = "До 12 дополнительных кадров; порядок — порядок добавления")
+    public ResponseEntity<?> appendExtraPreview(
+            @PathVariable Long presetId,
+            @Parameter(description = "Файл PNG/JPEG/WebP, до 3MB")
+            @RequestParam("file") MultipartFile file) {
+        try {
+            return ResponseEntity.ok(stylePresetService.appendExtraPreviewForUserPresetAsAdmin(presetId, file));
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Extra preview upload moderation preset {}: {}", presetId, e.getMessage());
+            return badRequest(e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{presetId}/extra-previews/{cachedImageId}")
+    @Operation(summary = "Удалить кадр из дополнительной галереи превью")
+    public ResponseEntity<?> removeExtraPreview(
+            @PathVariable Long presetId,
+            @Parameter(description = "UUID cached_images.id")
+            @PathVariable UUID cachedImageId) {
+        try {
+            return ResponseEntity.ok(stylePresetService.removeExtraPreviewForUserPresetAsAdmin(presetId, cachedImageId));
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Extra preview delete moderation preset {}: {}", presetId, e.getMessage());
             return badRequest(e.getMessage());
         }
     }

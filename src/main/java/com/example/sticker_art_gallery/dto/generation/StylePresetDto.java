@@ -24,6 +24,8 @@ public class StylePresetDto {
     private Boolean removeBackground;
     @Schema(description = "Публичный URL превью")
     private String previewUrl;
+    @Schema(description = "Упорядоченная галерея превью: основное + дополнительные URL (карусель в миниаппе); если одно фото — один элемент")
+    private List<String> previewGalleryUrls;
     @Schema(description = "URL webp, если превью именно в webp")
     private String previewWebpUrl;
     @Schema(description = "MIME превью")
@@ -95,6 +97,8 @@ public class StylePresetDto {
     public void setRemoveBackground(Boolean removeBackground) { this.removeBackground = removeBackground; }
     public String getPreviewUrl() { return previewUrl; }
     public void setPreviewUrl(String previewUrl) { this.previewUrl = previewUrl; }
+    public List<String> getPreviewGalleryUrls() { return previewGalleryUrls; }
+    public void setPreviewGalleryUrls(List<String> previewGalleryUrls) { this.previewGalleryUrls = previewGalleryUrls; }
     public String getPreviewWebpUrl() { return previewWebpUrl; }
     public void setPreviewWebpUrl(String previewWebpUrl) { this.previewWebpUrl = previewWebpUrl; }
     public String getPreviewMimeType() { return previewMimeType; }

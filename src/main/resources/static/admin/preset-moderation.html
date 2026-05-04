@@ -20,11 +20,11 @@
                         <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">Одобрение, отклонение, просмотр превью и reference-файлов, статистика</p>
                     </div>
                     <div class="flex flex-wrap gap-2 items-center">
-                        <label class="text-sm text-slate-600 dark:text-slate-400">Статус</label>
+                        <label class="text-sm text-slate-600 dark:text-slate-400" for="filter-status">Фильтр по статусу модерации</label>
                         <select id="filter-status"
                             class="px-2 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 min-w-[200px]">
-                            <option value="">Все</option>
-                            <option value="PENDING_MODERATION" selected>Ожидают (PENDING)</option>
+                            <option value="" selected>Все статусы</option>
+                            <option value="PENDING_MODERATION">Ожидают (PENDING)</option>
                             <option value="DRAFT">DRAFT</option>
                             <option value="APPROVED">APPROVED</option>
                             <option value="REJECTED">REJECTED</option>
@@ -239,10 +239,16 @@
             try {
                 const list = await api.getStylePresetCategories();
                 moderationCategories = Array.isArray(list) ? list : [];
+                moderationCategories.sort((a, b) => (a.sortOrder - b.sortOrder) || (a.name || '').localeCompare(b.name || ''));
             } catch (e) {
                 console.error(e);
                 moderationCategories = [];
             }
+        }
+
+        async function ensureModerationCategoriesForDetail() {
+            if (moderationCategories.length) return;
+            await loadModerationCategories();
         }
 
         function showModMsg(text, isError) {
@@ -256,7 +262,8 @@
             }
         }
 
-        function openDetail(p) {
+        async function openDetail(p) {
+            await ensureModerationCategoriesForDetail();
             window.__modPresetDetail = p;
             const modal = document.getElementById('modal-detail');
             document.getElementById('modal-title').textContent = `Пресет #${p.id} — ${p.name || ''}`;
@@ -272,12 +279,12 @@
                 <div class="grid sm:grid-cols-2 gap-4">
                     <div>
                         <div class="admin-dm-caption">Превью</div>
-                        ${p.previewUrl ? `<img src="${esc(p.previewUrl)}" class="admin-dm-img w-full object-contain max-w-full" alt="preview" />` : '<span class="admin-dm-empty">Нет</span>'}
+                        ${p.previewUrl ? `<img src="${esc(p.previewUrl)}" class="admin-dm-img w-full object-contain max-w-full" alt="preview" loading="lazy" decoding="async" />` : '<span class="admin-dm-empty">Нет</span>'}
                     </div>
                     <div>
                         <div class="admin-dm-caption">Reference (прикреплённый файл)</div>
                         ${p.presetReferenceImageUrl
-                            ? `<img src="${esc(p.presetReferenceImageUrl)}" class="admin-dm-img w-full object-contain max-w-full" alt="ref" />
+                            ? `<img src="${esc(p.presetReferenceImageUrl)}" class="admin-dm-img w-full object-contain max-w-full" alt="ref" loading="lazy" decoding="async" />
                                <div class="text-xs mt-2 admin-dm-caption">${esc(refMime)}${p.presetReferenceSourceImageId ? ' · ' + esc(p.presetReferenceSourceImageId) : ''}</div>`
                             : '<span class="admin-dm-empty">Нет</span>'}
                     </div>
@@ -309,6 +316,12 @@
             modal.classList.remove('hidden');
         }
 
+        function scheduleOpenDetail(p) {
+            requestAnimationFrame(() => {
+                openDetail(p).catch(e => showError('Детали: ' + (e.message || e)));
+            });
+        }
+
         document.getElementById('modal-close').addEventListener('click', () => {
             document.getElementById('modal-detail').classList.add('hidden');
         });
@@ -330,7 +343,7 @@
                         showError('Не удалось загрузить пресет: ' + (err.message || err));
                     }
                 }
-                if (p) openDetail(p);
+                if (p) await openDetail(p);
                 return;
             }
             if (e.target.classList.contains('btn-ok') || e.target.classList.contains('btn-rej')) {
@@ -393,7 +406,14 @@
                 if (presetId) {
                     const one = cacheList.find(x => String(x.id) === String(presetId));
                     if (one) {
-                        openDetail(one);
+                        scheduleOpenDetail(one);
+                    } else {
+                        try {
+                            const fetched = await api.getUserPresetForModeration(presetId);
+                            if (fetched) scheduleOpenDetail(fetched);
+                        } catch (err) {
+                            showError('Пресет по ссылке не найден или недоступен: ' + (err.message || err));
+                        }
                     }
                 }
             } catch (e) {

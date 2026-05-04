@@ -12,6 +12,7 @@ import org.mockito.MockitoAnnotations;
 import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 /**
@@ -37,9 +38,9 @@ class TelegramInitDataGeneratorTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
         
-        // Настраиваем мок для AppConfig
-        when(appConfig.getTelegram()).thenReturn(telegramConfig);
-        when(telegramConfig.getBotToken()).thenReturn(TEST_BOT_TOKEN);
+        // lenient: часть тестов не обращается к validator (только assertThrows на builder)
+        lenient().when(appConfig.getTelegram()).thenReturn(telegramConfig);
+        lenient().when(telegramConfig.getBotToken()).thenReturn(TEST_BOT_TOKEN);
         
         validator = new TelegramInitDataValidator(appConfig, new ObjectMapper());
     }

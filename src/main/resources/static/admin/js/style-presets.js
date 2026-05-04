@@ -197,7 +197,11 @@ function renderPresets() {
 function getPresetActions(preset) {
     if (preset._sourceType === 'USER_APPROVED') {
         const actions = [
-            { label: 'Открыть модерацию', onclick: `openModerationPageForPreset(${preset.id})`, className: 'text-blue-600' }
+            {
+                label: 'Открыть модерацию',
+                onclick: `openModerationPageForPreset(${preset.id}, ${JSON.stringify(preset.moderationStatus || 'APPROVED')})`,
+                className: 'text-blue-600'
+            }
         ];
         if (preset.publishedToCatalog) {
             actions.push({ label: 'Скрыть с витрины', onclick: `takedownUserApprovedPreset(${preset.id})`, className: 'text-orange-600' });
@@ -213,12 +217,9 @@ function getPresetActions(preset) {
     ];
 }
 
-function openModerationPageForPreset(presetId) {
-    const statusSel = document.getElementById('filter-source')?.value === 'USER_APPROVED' ? 'APPROVED' : '';
-    const url = statusSel
-        ? `/admin/preset-moderation.html?status=${encodeURIComponent(statusSel)}&presetId=${encodeURIComponent(presetId)}`
-        : `/admin/preset-moderation.html?presetId=${encodeURIComponent(presetId)}`;
-    window.location.href = url;
+function openModerationPageForPreset(presetId, moderationStatus) {
+    const st = (moderationStatus != null && String(moderationStatus).trim()) ? String(moderationStatus).trim() : 'APPROVED';
+    window.location.href = `/admin/preset-moderation.html?status=${encodeURIComponent(st)}&presetId=${encodeURIComponent(presetId)}`;
 }
 
 async function takedownUserApprovedPreset(presetId) {

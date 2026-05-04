@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -47,6 +48,8 @@ public class StylePresetService {
     private static final Logger LOGGER = LoggerFactory.getLogger(StylePresetService.class);
 
     private static final String GENERAL_CATEGORY_CODE = "general";
+
+    private static final int MAX_EXTRA_STYLE_PRESET_PREVIEWS = 12;
 
     private final StylePresetRepository presetRepository;
     private final StylePresetCategoryRepository categoryRepository;
@@ -288,6 +291,7 @@ public class StylePresetService {
         if (preset.getPreviewImage() != null) {
             imageStorageService.deleteById(preset.getPreviewImage().getId());
         }
+        deleteExtraPreviewImages(preset);
         if (preset.getReferenceImage() != null) {
             imageStorageService.deleteById(preset.getReferenceImage().getId());
         }
@@ -327,6 +331,84 @@ public class StylePresetService {
             throw new IllegalArgumentException("Пресет без владельца");
         }
         return persistPresetPreviewUpload(preset, file);
+    }
+
+    /**
+     * Добавить ещё одно превью в галерею (основное {@link StylePresetEntity#getPreviewImage} не трогаем).
+     */
+    @Transactional
+    public StylePresetDto appendExtraPreviewForUserPresetAsAdmin(Long presetId, MultipartFile file) {
+        StylePresetEntity preset = presetRepository.findByIdWithCategoryAndPreview(presetId)
+                .orElseThrow(() -> new IllegalArgumentException("Preset not found: " + presetId));
+        if (Boolean.TRUE.equals(preset.getIsGlobal())) {
+            throw new IllegalArgumentException("Дополнительные превью поддерживаются для пользовательских пресетов");
+        }
+        if (preset.getOwner() == null) {
+            throw new IllegalArgumentException("Пресет без владельца");
+        }
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Empty file");
+        }
+        String ct = file.getContentType() != null ? file.getContentType() : "";
+        if (!ct.equals("image/png") && !ct.equals("image/webp") && !ct.equals("image/jpeg")) {
+            throw new IllegalArgumentException("Supported types: image/png, image/webp, image/jpeg");
+        }
+        if (file.getSize() > 3 * 1024 * 1024) {
+            throw new IllegalArgumentException("File too large (max 3MB)");
+        }
+        List<UUID> mutable = copyExtraPreviewIds(preset);
+        if (mutable.size() >= MAX_EXTRA_STYLE_PRESET_PREVIEWS) {
+            throw new IllegalArgumentException("Не больше " + MAX_EXTRA_STYLE_PRESET_PREVIEWS + " дополнительных превью");
+        }
+        try {
+            byte[] bytes = file.getBytes();
+            CachedImageEntity stored = imageStorageService.storeStylePresetPreview(preset.getId(), bytes, ct);
+            mutable.add(stored.getId());
+            preset.setExtraPreviewCachedImageIds(mutable);
+            preset = presetRepository.save(preset);
+            return toDto(preset, true, null);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to store extra preview: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Удалить один кадр из дополнительной галереи и файл из хранилища.
+     */
+    @Transactional
+    public StylePresetDto removeExtraPreviewForUserPresetAsAdmin(Long presetId, UUID cachedImageId) {
+        StylePresetEntity preset = presetRepository.findByIdWithCategoryAndPreview(presetId)
+                .orElseThrow(() -> new IllegalArgumentException("Preset not found: " + presetId));
+        if (Boolean.TRUE.equals(preset.getIsGlobal())) {
+            throw new IllegalArgumentException("Только пользовательские пресеты");
+        }
+        List<UUID> mutable = copyExtraPreviewIds(preset);
+        boolean removed = mutable.remove(cachedImageId);
+        if (!removed) {
+            throw new IllegalArgumentException("Изображение не входит в дополнительную галерею пресета");
+        }
+        imageStorageService.deleteById(cachedImageId);
+        preset.setExtraPreviewCachedImageIds(mutable);
+        preset = presetRepository.save(preset);
+        return toDto(preset, true, null);
+    }
+
+    private static List<UUID> copyExtraPreviewIds(StylePresetEntity preset) {
+        if (preset.getExtraPreviewCachedImageIds() == null || preset.getExtraPreviewCachedImageIds().isEmpty()) {
+            return new ArrayList<>();
+        }
+        return new ArrayList<>(preset.getExtraPreviewCachedImageIds());
+    }
+
+    private void deleteExtraPreviewImages(StylePresetEntity preset) {
+        if (preset.getExtraPreviewCachedImageIds() == null) {
+            return;
+        }
+        for (UUID id : preset.getExtraPreviewCachedImageIds()) {
+            if (id != null) {
+                imageStorageService.deleteById(id);
+            }
+        }
     }
 
     @Transactional
@@ -559,6 +641,7 @@ public class StylePresetService {
                     d.setPreviewWebpUrl(null);
                 }
             }
+            d.setPreviewGalleryUrls(buildPreviewGalleryUrls(entity));
             if (entity.getReferenceImage() != null) {
                 String refUrl = imageStorageService.getPublicUrl(entity.getReferenceImage());
                 d.setPresetReferenceImageUrl(refUrl);
@@ -589,6 +672,27 @@ public class StylePresetService {
             d.setDeepLinkUrl(StylePresetDeepLinkParams.telegramMiniAppShareUrl(botUsername, startParam));
         }
         return d;
+    }
+
+    private List<String> buildPreviewGalleryUrls(StylePresetEntity entity) {
+        List<String> urls = new ArrayList<>();
+        if (entity.getPreviewImage() != null) {
+            urls.add(imageStorageService.getPublicUrl(entity.getPreviewImage()));
+        }
+        List<UUID> extras = entity.getExtraPreviewCachedImageIds();
+        if (extras != null) {
+            for (UUID id : extras) {
+                if (id == null) {
+                    continue;
+                }
+                imageStorageService.getPublicUrlIfPresent(id).ifPresent(u -> {
+                    if (!urls.contains(u)) {
+                        urls.add(u);
+                    }
+                });
+            }
+        }
+        return urls.isEmpty() ? null : List.copyOf(urls);
     }
 
     /**

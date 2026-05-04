@@ -32,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.mock;
@@ -73,7 +74,7 @@ class StylePresetServiceTest {
     void stubTelegramBotUsername() {
         AppConfig.Telegram tg = new AppConfig.Telegram();
         tg.setBotUsername("test_bot");
-        when(appConfig.getTelegram()).thenReturn(tg);
+        lenient().when(appConfig.getTelegram()).thenReturn(tg);
     }
 
     @Test
@@ -159,7 +160,7 @@ class StylePresetServiceTest {
         AppConfig cfg = mock(AppConfig.class);
         AppConfig.Telegram tg = new AppConfig.Telegram();
         tg.setBotUsername("test_bot");
-        when(cfg.getTelegram()).thenReturn(tg);
+        lenient().when(cfg.getTelegram()).thenReturn(tg);
         StylePresetService svc = new StylePresetService(
                 presetRepository,
                 categoryRepository,

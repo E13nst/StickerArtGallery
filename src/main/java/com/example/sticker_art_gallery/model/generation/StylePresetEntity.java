@@ -7,8 +7,10 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Entity
 @Table(name = "style_presets")
@@ -56,6 +58,13 @@ public class StylePresetEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "preview_cached_image_id")
     private CachedImageEntity previewImage;
+
+    /**
+     * Дополнительные кадры превью (после основного {@link #previewImage}), порядок как в списке.
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "extra_preview_cached_image_ids", nullable = false, columnDefinition = "jsonb")
+    private List<UUID> extraPreviewCachedImageIds = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reference_cached_image_id")
@@ -201,6 +210,16 @@ public class StylePresetEntity {
 
     public void setPreviewImage(CachedImageEntity previewImage) {
         this.previewImage = previewImage;
+    }
+
+    public List<UUID> getExtraPreviewCachedImageIds() {
+        return extraPreviewCachedImageIds;
+    }
+
+    public void setExtraPreviewCachedImageIds(List<UUID> extraPreviewCachedImageIds) {
+        this.extraPreviewCachedImageIds = extraPreviewCachedImageIds != null
+                ? extraPreviewCachedImageIds
+                : new ArrayList<>();
     }
 
     public CachedImageEntity getReferenceImage() {
