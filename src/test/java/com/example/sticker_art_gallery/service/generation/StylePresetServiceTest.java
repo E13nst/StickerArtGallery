@@ -108,8 +108,8 @@ class StylePresetServiceTest {
     }
 
     @Test
-    @DisplayName("Запрещает не-админу удалять одобренный пользовательский пресет")
-    void deletePreset_ShouldRejectApprovedUserPresetForOwner() {
+    @DisplayName("Разрешает владельцу удалять одобренный пользовательский пресет")
+    void deletePreset_ShouldAllowApprovedUserPresetForOwner() {
         UserProfileEntity owner = new UserProfileEntity();
         owner.setUserId(42L);
         StylePresetEntity preset = new StylePresetEntity();
@@ -117,10 +117,31 @@ class StylePresetServiceTest {
         preset.setIsGlobal(false);
         preset.setOwner(owner);
         preset.setModerationStatus(PresetModerationStatus.APPROVED);
+        preset.setPromptSuffix(", ok");
         when(presetRepository.findByIdWithCategoryAndPreview(50L)).thenReturn(Optional.of(preset));
 
-        assertThrows(IllegalArgumentException.class, () -> stylePresetService.deletePreset(50L, 42L, false));
-        verify(presetRepository, never()).delete(preset);
+        stylePresetService.deletePreset(50L, 42L, false);
+
+        verify(presetRepository).delete(preset);
+    }
+
+    @Test
+    @DisplayName("Разрешает владельцу удалять одобренный пресет с витрины")
+    void deletePreset_ShouldAllowApprovedCatalogPresetForOwner() {
+        UserProfileEntity owner = new UserProfileEntity();
+        owner.setUserId(42L);
+        StylePresetEntity preset = new StylePresetEntity();
+        preset.setId(52L);
+        preset.setIsGlobal(false);
+        preset.setOwner(owner);
+        preset.setModerationStatus(PresetModerationStatus.APPROVED);
+        preset.setPublishedToCatalog(true);
+        preset.setPromptSuffix(", ok");
+        when(presetRepository.findByIdWithCategoryAndPreview(52L)).thenReturn(Optional.of(preset));
+
+        stylePresetService.deletePreset(52L, 42L, false);
+
+        verify(presetRepository).delete(preset);
     }
 
     @Test

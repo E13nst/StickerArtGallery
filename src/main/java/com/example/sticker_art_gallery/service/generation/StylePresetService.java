@@ -283,11 +283,6 @@ public class StylePresetService {
                 || !preset.getOwner().getUserId().equals(userId))) {
             throw new IllegalArgumentException("Access denied: preset is not accessible for user");
         }
-        if (!isAdmin && !Boolean.TRUE.equals(preset.getIsGlobal())
-                && preset.getModerationStatus() == PresetModerationStatus.APPROVED) {
-            throw new IllegalArgumentException(
-                    "Cannot delete an approved user preset; unpublish from catalog first or contact support");
-        }
         if (preset.getPreviewImage() != null) {
             imageStorageService.deleteById(preset.getPreviewImage().getId());
         }
@@ -607,6 +602,12 @@ public class StylePresetService {
         d.setRemoveBackground(entity.getRemoveBackground());
         d.setIsGlobal(entity.getIsGlobal());
         d.setOwnerId(entity.getOwner() != null ? entity.getOwner().getUserId() : null);
+        if (viewerUserIdForPrivacy != null) {
+            boolean author = !Boolean.TRUE.equals(entity.getIsGlobal())
+                    && entity.getOwner() != null
+                    && viewerUserIdForPrivacy.equals(entity.getOwner().getUserId());
+            d.setCanDeleteAsAuthor(author);
+        }
         d.setIsEnabled(entity.getIsEnabled());
         d.setSortOrder(entity.getSortOrder());
         d.setCategory(categoryToDto(entity.getCategory()));

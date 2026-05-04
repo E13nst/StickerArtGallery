@@ -58,6 +58,8 @@ public class StylePresetDto {
     private String removeBackgroundMode;
     @Schema(description = "Глобальный или персональный пресет")
     private Boolean isGlobal;
+    @Schema(description = "true если текущий зритель API — владелец пресета и может удалить его (DELETE); null если зритель не задан (админ/внутренние ответы)")
+    private Boolean canDeleteAsAuthor;
     @Schema(description = "ID владельца (для персональных пресетов)")
     private Long ownerId;
     @Schema(description = "Активен ли пресет")
@@ -133,6 +135,8 @@ public class StylePresetDto {
     public void setRemoveBackgroundMode(String removeBackgroundMode) { this.removeBackgroundMode = removeBackgroundMode; }
     public Boolean getIsGlobal() { return isGlobal; }
     public void setIsGlobal(Boolean isGlobal) { this.isGlobal = isGlobal; }
+    public Boolean getCanDeleteAsAuthor() { return canDeleteAsAuthor; }
+    public void setCanDeleteAsAuthor(Boolean canDeleteAsAuthor) { this.canDeleteAsAuthor = canDeleteAsAuthor; }
     public Long getOwnerId() { return ownerId; }
     public void setOwnerId(Long ownerId) { this.ownerId = ownerId; }
     public Boolean getIsEnabled() { return isEnabled; }

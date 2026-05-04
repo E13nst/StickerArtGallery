@@ -283,7 +283,7 @@ public class StylePresetController {
     @DeleteMapping("/{id}")
     @Operation(
         summary = "Удалить пресет",
-        description = "Удаляет пресет (пользователь может удалять только свои пресеты, админ - любые)"
+        description = "Удаляет пресет. Владелец может удалить только свой неглобальный пресет, в том числе одобренный и опубликованный в каталоге (независимо от moderationStatus и publishedToCatalog). Админ может удалить любой пресет."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Пресет удален"),
