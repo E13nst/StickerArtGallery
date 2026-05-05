@@ -2,6 +2,8 @@ package com.example.sticker_art_gallery.controller;
 
 import com.example.sticker_art_gallery.dto.generation.CreateStylePresetRequest;
 import com.example.sticker_art_gallery.dto.generation.StylePresetDto;
+import com.example.sticker_art_gallery.dto.generation.StylePresetListView;
+import com.example.sticker_art_gallery.service.generation.StylePresetListEtag;
 import com.example.sticker_art_gallery.service.generation.StylePresetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -15,6 +17,7 @@ import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +25,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -45,26 +49,48 @@ public class StylePresetController {
     @GetMapping
     @Operation(
         summary = "Получить доступные пресеты",
-        description = "Возвращает список всех доступных пресетов для пользователя (глобальные + персональные). " +
-                "includeUi=true добавляет URL превью, uiMode, promptInput, fields (для miniapp)"
+        description = """
+                Список доступных пресетов (глобальные + персональные + опубликованные в каталоге).
+                Параметр view задаёт проекцию: browse — витрина (превью без полной UI-схемы),
+                generation — экран генерации (без протяжки серверного референса для чужих и глобальных пресетов),
+                full — полный DTO. Если view не указан: includeUi=true эквивалентно full, includeUi=false — только метаданные.
+                Для browse и режима только метаданных возвращается weak ETag и короткий Cache-Control для условных запросов."""
     )
     @ApiResponses(value = {
         @ApiResponse(
             responseCode = "200",
             description = "Список пресетов получен",
             content = @Content(schema = @Schema(implementation = StylePresetDto.class))
-        )
+        ),
+        @ApiResponse(responseCode = "304", description = "Не изменено (If-None-Match совпал с ETag)")
     })
     public ResponseEntity<List<StylePresetDto>> getAvailablePresets(
-            @Parameter(description = "Включить полные UI-метаданные + превью (для Generate page в miniapp)")
-            @RequestParam(name = "includeUi", defaultValue = "false") boolean includeUi) {
+            WebRequest webRequest,
+            @Parameter(description = "Legacy: при отсутствии view — false даёт только метаданные, true — полный ответ")
+            @RequestParam(name = "includeUi", defaultValue = "false") boolean includeUi,
+            @Parameter(description = "browse | generation | full")
+            @RequestParam(name = "view", required = false) StylePresetListView view) {
         Long userId = extractUserIdFromAuthentication();
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        List<StylePresetDto> presets = presetService.getAvailablePresets(userId, includeUi, isCurrentUserAdmin());
-        LOGGER.info("Returning {} available presets for user {} includeUi={}", presets.size(), userId, includeUi);
+        List<StylePresetDto> presets = presetService.getAvailablePresets(userId, includeUi, isCurrentUserAdmin(), view);
+        LOGGER.info("Returning {} available presets for user {} includeUi={} view={}", presets.size(), userId, includeUi, view);
+
+        if (presetService.availablePresetsListSupportsWeakEtag(view, includeUi)) {
+            String etag = StylePresetListEtag.weakHexDigest(presets);
+            if (webRequest.checkNotModified(etag)) {
+                return ResponseEntity.status(HttpStatus.NOT_MODIFIED)
+                        .eTag(etag)
+                        .cacheControl(CacheControl.maxAge(60))
+                        .build();
+            }
+            return ResponseEntity.ok()
+                    .eTag(etag)
+                    .cacheControl(CacheControl.maxAge(60))
+                    .body(presets);
+        }
         return ResponseEntity.ok(presets);
     }
 

@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.example.sticker_art_gallery.dto.generation.StylePresetListView;
 import com.example.sticker_art_gallery.dto.generation.StylePresetPromptInputDto;
 import com.example.sticker_art_gallery.dto.generation.StylePresetReferenceInputDto;
 import com.example.sticker_art_gallery.config.AppConfig;
@@ -82,7 +83,7 @@ public class StylePresetService {
 
     @Transactional(readOnly = true)
     public List<StylePresetDto> getAvailablePresets(Long userId, boolean includeUi) {
-        return getAvailablePresets(userId, includeUi, false);
+        return getAvailablePresets(userId, includeUi, false, null);
     }
 
     /**
@@ -90,15 +91,57 @@ public class StylePresetService {
      */
     @Transactional(readOnly = true)
     public List<StylePresetDto> getAvailablePresets(Long userId, boolean includeUi, boolean suppressConsumerPrivacy) {
-        LOGGER.info("Getting available presets for user {} includeUi={} suppressConsumerPrivacy={}",
-                userId, includeUi, suppressConsumerPrivacy);
-        List<StylePresetEntity> presets = includeUi
-                ? presetRepository.findAvailableForUserWithPreview(userId)
-                : presetRepository.findAvailableForUser(userId);
+        return getAvailablePresets(userId, includeUi, suppressConsumerPrivacy, null);
+    }
+
+    /**
+     * Список доступных пресетов с проекцией ответа (витрина / генерация / полный legacy).
+     *
+     * @param view если задан, задаёт проекцию; иначе при {@code includeUi=true} — полный DTO,
+     *             при {@code includeUi=false} — только метаданные.
+     */
+    @Transactional(readOnly = true)
+    public List<StylePresetDto> getAvailablePresets(
+            Long userId,
+            boolean includeUi,
+            boolean suppressConsumerPrivacy,
+            StylePresetListView view) {
+        ResponseProjection projection = resolveProjection(view, includeUi);
+        LOGGER.info("Getting available presets for user {} projection={} suppressConsumerPrivacy={}",
+                userId, projection, suppressConsumerPrivacy);
+        List<StylePresetEntity> presets = switch (projection) {
+            case METADATA_ONLY -> presetRepository.findAvailableForUser(userId);
+            case BROWSE -> presetRepository.findAvailableForUserBrowse(userId);
+            case GENERATION, FULL -> presetRepository.findAvailableForUserWithPreview(userId);
+        };
         Long viewer = suppressConsumerPrivacy ? null : userId;
         return presets.stream()
-                .map(p -> toDto(p, includeUi, viewer))
+                .map(p -> toDto(p, projection, viewer))
                 .collect(Collectors.toList());
+    }
+
+    /** Weak ETag для условных GET на лёгких списках ({@code browse} и режим только метаданных). */
+    public boolean availablePresetsListSupportsWeakEtag(StylePresetListView view, boolean includeUi) {
+        ResponseProjection p = resolveProjection(view, includeUi);
+        return p == ResponseProjection.BROWSE || p == ResponseProjection.METADATA_ONLY;
+    }
+
+    private static ResponseProjection resolveProjection(StylePresetListView view, boolean includeUi) {
+        if (view != null) {
+            return switch (view) {
+                case browse -> ResponseProjection.BROWSE;
+                case generation -> ResponseProjection.GENERATION;
+                case full -> ResponseProjection.FULL;
+            };
+        }
+        return includeUi ? ResponseProjection.FULL : ResponseProjection.METADATA_ONLY;
+    }
+
+    private enum ResponseProjection {
+        METADATA_ONLY,
+        BROWSE,
+        GENERATION,
+        FULL
     }
 
     @Transactional(readOnly = true)
@@ -592,6 +635,10 @@ public class StylePresetService {
      *                             {@code null} — без маскирования (админка, внутренние вызовы).
      */
     public StylePresetDto toDto(StylePresetEntity entity, boolean includeUi, Long viewerUserIdForPrivacy) {
+        return toDto(entity, includeUi ? ResponseProjection.FULL : ResponseProjection.METADATA_ONLY, viewerUserIdForPrivacy);
+    }
+
+    private StylePresetDto toDto(StylePresetEntity entity, ResponseProjection projection, Long viewerUserIdForPrivacy) {
         if (entity == null) {
             return null;
         }
@@ -601,7 +648,8 @@ public class StylePresetService {
         d.setName(entity.getName());
         d.setDescription(entity.getDescription());
         d.setSubmittedUserPrompt(entity.getSubmittedUserPrompt());
-        d.setPromptSuffix(entity.getPromptSuffix());
+        boolean exposePromptSuffix = projection == ResponseProjection.FULL || projection == ResponseProjection.METADATA_ONLY;
+        d.setPromptSuffix(exposePromptSuffix ? entity.getPromptSuffix() : null);
         d.setRemoveBackground(entity.getRemoveBackground());
         d.setIsGlobal(entity.getIsGlobal());
         d.setOwnerId(entity.getOwner() != null ? entity.getOwner().getUserId() : null);
@@ -625,37 +673,27 @@ public class StylePresetService {
                         ? entity.getRemoveBackgroundMode().name()
                         : StylePresetRemoveBackgroundMode.PRESET_DEFAULT.name()
         );
-        if (includeUi) {
-            StylePresetPromptInputDto promptInput = presetPromptComposer.parsePromptInput(entity);
-            if (viewerUserIdForPrivacy != null
-                    && ConsumerStylePresetPolicy.hideFreestylePromptForConsumerMiniapp(entity, viewerUserIdForPrivacy)) {
-                d.setHideFreestylePromptAuthorSupplied(true);
-                promptInput = muteFreestylePromptSlotForConsumer(promptInput);
-            }
-            d.setPromptInput(promptInput);
-            d.setFields(buildFieldsForDto(entity));
-            if (entity.getPreviewImage() != null) {
-                String url = imageStorageService.getPublicUrl(entity.getPreviewImage());
-                d.setPreviewUrl(url);
-                d.setPreviewMimeType(entity.getPreviewImage().getContentType());
-                if (entity.getPreviewImage().getContentType() != null
-                        && entity.getPreviewImage().getContentType().toLowerCase().contains("webp")) {
-                    d.setPreviewWebpUrl(url);
-                } else {
-                    d.setPreviewWebpUrl(null);
+        switch (projection) {
+            case METADATA_ONLY -> {
+                if (viewerUserIdForPrivacy != null
+                        && ConsumerStylePresetPolicy.hideFreestylePromptForConsumerMiniapp(entity, viewerUserIdForPrivacy)) {
+                    d.setHideFreestylePromptAuthorSupplied(true);
                 }
             }
-            d.setPreviewGalleryUrls(buildPreviewGalleryUrls(entity));
-            if (entity.getReferenceImage() != null) {
-                String refUrl = imageStorageService.getPublicUrl(entity.getReferenceImage());
-                d.setPresetReferenceImageUrl(refUrl);
-                d.setPresetReferenceMimeType(entity.getReferenceImage().getContentType());
-                d.setPresetReferenceSourceImageId(
-                        StylePresetReferenceImageId.fromCachedImageId(entity.getReferenceImage().getId()));
+            case BROWSE -> {
+                attachPreviewAssets(d, entity);
+                if (viewerUserIdForPrivacy != null
+                        && ConsumerStylePresetPolicy.hideFreestylePromptForConsumerMiniapp(entity, viewerUserIdForPrivacy)) {
+                    d.setHideFreestylePromptAuthorSupplied(true);
+                }
             }
-        } else if (viewerUserIdForPrivacy != null
-                && ConsumerStylePresetPolicy.hideFreestylePromptForConsumerMiniapp(entity, viewerUserIdForPrivacy)) {
-            d.setHideFreestylePromptAuthorSupplied(true);
+            case GENERATION, FULL -> {
+                attachPreviewAssets(d, entity);
+                attachStructuredUi(d, entity, viewerUserIdForPrivacy);
+                if (projection == ResponseProjection.GENERATION && viewerUserIdForPrivacy != null) {
+                    applyGenerationConsumerReferencePrivacy(d, entity, viewerUserIdForPrivacy);
+                }
+            }
         }
         if (viewerUserIdForPrivacy != null
                 && ConsumerStylePresetPolicy.shouldMaskAuthorSecretsInApi(entity, viewerUserIdForPrivacy)) {
@@ -676,6 +714,80 @@ public class StylePresetService {
             d.setDeepLinkUrl(StylePresetDeepLinkParams.telegramMiniAppShareUrl(botUsername, startParam));
         }
         return d;
+    }
+
+    private void attachPreviewAssets(StylePresetDto d, StylePresetEntity entity) {
+        if (entity.getPreviewImage() != null) {
+            String url = imageStorageService.getPublicUrl(entity.getPreviewImage());
+            d.setPreviewUrl(url);
+            d.setPreviewMimeType(entity.getPreviewImage().getContentType());
+            if (entity.getPreviewImage().getContentType() != null
+                    && entity.getPreviewImage().getContentType().toLowerCase().contains("webp")) {
+                d.setPreviewWebpUrl(url);
+            } else {
+                d.setPreviewWebpUrl(null);
+            }
+        }
+        d.setPreviewGalleryUrls(buildPreviewGalleryUrls(entity));
+    }
+
+    private void attachStructuredUi(StylePresetDto d, StylePresetEntity entity, Long viewerUserIdForPrivacy) {
+        StylePresetPromptInputDto promptInput = presetPromptComposer.parsePromptInput(entity);
+        if (viewerUserIdForPrivacy != null
+                && ConsumerStylePresetPolicy.hideFreestylePromptForConsumerMiniapp(entity, viewerUserIdForPrivacy)) {
+            d.setHideFreestylePromptAuthorSupplied(true);
+            promptInput = muteFreestylePromptSlotForConsumer(promptInput);
+        }
+        d.setPromptInput(promptInput);
+        d.setFields(buildFieldsForDto(entity));
+        if (entity.getReferenceImage() != null) {
+            String refUrl = imageStorageService.getPublicUrl(entity.getReferenceImage());
+            d.setPresetReferenceImageUrl(refUrl);
+            d.setPresetReferenceMimeType(entity.getReferenceImage().getContentType());
+            d.setPresetReferenceSourceImageId(
+                    StylePresetReferenceImageId.fromCachedImageId(entity.getReferenceImage().getId()));
+        }
+    }
+
+    private void applyGenerationConsumerReferencePrivacy(
+            StylePresetDto dto,
+            StylePresetEntity entity,
+            Long viewerUserId) {
+        if (!ConsumerStylePresetPolicy.hidePresetReferenceArtifactForConsumerGenerationUi(entity, viewerUserId)) {
+            return;
+        }
+        dto.setPresetReferenceImageUrl(null);
+        dto.setPresetReferenceMimeType(null);
+        dto.setPresetReferenceSourceImageId(null);
+        dto.setFields(withoutPresetReferenceSystemField(dto.getFields()));
+        dto.setPromptInput(stripReferenceImagesSlotForConsumer(dto.getPromptInput()));
+    }
+
+    private static List<StylePresetFieldDto> withoutPresetReferenceSystemField(List<StylePresetFieldDto> fields) {
+        if (fields == null) {
+            return null;
+        }
+        List<StylePresetFieldDto> out = new ArrayList<>();
+        for (StylePresetFieldDto f : fields) {
+            if (f.getKey() != null && StylePresetSystemFields.isReservedFieldKey(f.getKey())) {
+                continue;
+            }
+            out.add(f);
+        }
+        return out.isEmpty() ? List.of() : List.copyOf(out);
+    }
+
+    private static StylePresetPromptInputDto stripReferenceImagesSlotForConsumer(StylePresetPromptInputDto src) {
+        if (src == null) {
+            return null;
+        }
+        StylePresetPromptInputDto out = new StylePresetPromptInputDto();
+        out.setEnabled(src.getEnabled());
+        out.setRequired(src.getRequired());
+        out.setPlaceholder(src.getPlaceholder());
+        out.setMaxLength(src.getMaxLength());
+        out.setReferenceImages(null);
+        return out;
     }
 
     private List<String> buildPreviewGalleryUrls(StylePresetEntity entity) {

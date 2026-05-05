@@ -31,6 +31,13 @@ public interface StylePresetRepository extends JpaRepository<StylePresetEntity, 
             "ORDER BY c.sortOrder ASC, sp.sortOrder ASC, sp.name ASC")
     List<StylePresetEntity> findAvailableForUserWithPreview(@Param("userId") Long userId);
 
+    /** Как {@link #findAvailableForUserWithPreview(Long)}, но без join референса — для витрины {@code view=browse}. */
+    @Query("SELECT sp FROM StylePresetEntity sp JOIN FETCH sp.category c " +
+            "LEFT JOIN FETCH sp.previewImage " +
+            "WHERE (sp.isGlobal = true OR sp.owner.userId = :userId OR sp.publishedToCatalog = true) AND sp.isEnabled = true " +
+            "ORDER BY c.sortOrder ASC, sp.sortOrder ASC, sp.name ASC")
+    List<StylePresetEntity> findAvailableForUserBrowse(@Param("userId") Long userId);
+
     /**
      * Находит все глобальные пресеты (для админа)
      */

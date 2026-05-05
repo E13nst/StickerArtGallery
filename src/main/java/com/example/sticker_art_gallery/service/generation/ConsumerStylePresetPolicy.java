@@ -83,4 +83,21 @@ public final class ConsumerStylePresetPolicy {
             Long viewerUserId) {
         return useAuthorSubmissionForGeneration(preset, viewerUserId);
     }
+
+    /**
+     * Для {@code view=generation}: не отдавать клиенту URL/id серверного опорного изображения и слот {@code preset_ref},
+     * если пресет не принадлежит текущему зрителю (глобальные и чужие персональные в доступном списке).
+     * Владелец и админ ({@code viewerUserId == null}) получают полные данные.
+     */
+    public static boolean hidePresetReferenceArtifactForConsumerGenerationUi(
+            StylePresetEntity preset,
+            Long viewerUserId) {
+        if (preset == null || viewerUserId == null) {
+            return false;
+        }
+        if (preset.getOwner() != null && viewerUserId.equals(preset.getOwner().getUserId())) {
+            return false;
+        }
+        return true;
+    }
 }
