@@ -512,6 +512,31 @@ public class StylePresetPromptComposer {
         return deduped;
     }
 
+    /**
+     * Единая логика с {@link #buildRawPrompt}: должен ли миниапп показывать слот свободного текста.
+     * Учитывает маскирование потребителя каталога (авторский промпт).
+     */
+    public boolean computeShowFreestylePromptInUi(StylePresetEntity preset, Long viewerUserIdForPrivacy) {
+        if (preset == null) {
+            return false;
+        }
+        if (viewerUserIdForPrivacy != null
+                && ConsumerStylePresetPolicy.hideFreestylePromptForConsumerMiniapp(preset, viewerUserIdForPrivacy)) {
+            return false;
+        }
+        StylePresetUiMode mode = defaultMode(preset);
+        StylePresetPromptInputDto input = parsePromptInput(preset);
+        return switch (mode) {
+            case LOCKED_TEMPLATE -> false;
+            case STRUCTURED_FIELDS -> {
+                String template = preset.getPromptSuffix() != null ? preset.getPromptSuffix() : "";
+                boolean templateUsesPrompt = extractPlaceholders(template).contains("prompt");
+                yield templateUsesPrompt && Boolean.TRUE.equals(input.getEnabled());
+            }
+            case STYLE_WITH_PROMPT, CUSTOM_PROMPT -> Boolean.TRUE.equals(input.getEnabled());
+        };
+    }
+
     public StylePresetPromptInputDto parsePromptInput(StylePresetEntity preset) {
         if (preset.getPromptInputJson() == null) {
             var def = new StylePresetPromptInputDto();

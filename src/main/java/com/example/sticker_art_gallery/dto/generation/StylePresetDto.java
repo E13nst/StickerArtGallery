@@ -52,6 +52,9 @@ public class StylePresetDto {
     private String uiMode;
     @Schema(description = "Поле свободного prompt")
     private StylePresetPromptInputDto promptInput;
+
+    @Schema(description = "Только GET …?view=generation: показывать ли слот свободного промпта (согласовано со StylePresetPromptComposer; promptSuffix в этой проекции может быть скрыт)")
+    private Boolean showFreestylePromptInUi;
     @Schema(description = "Поля структурированного ввода")
     private List<StylePresetFieldDto> fields;
     @Schema(description = "remove_background для генерации")
@@ -129,6 +132,10 @@ public class StylePresetDto {
     public void setUiMode(String uiMode) { this.uiMode = uiMode; }
     public StylePresetPromptInputDto getPromptInput() { return promptInput; }
     public void setPromptInput(StylePresetPromptInputDto promptInput) { this.promptInput = promptInput; }
+    public Boolean getShowFreestylePromptInUi() { return showFreestylePromptInUi; }
+    public void setShowFreestylePromptInUi(Boolean showFreestylePromptInUi) {
+        this.showFreestylePromptInUi = showFreestylePromptInUi;
+    }
     public List<StylePresetFieldDto> getFields() { return fields; }
     public void setFields(List<StylePresetFieldDto> fields) { this.fields = fields; }
     public String getRemoveBackgroundMode() { return removeBackgroundMode; }

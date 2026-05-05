@@ -35,6 +35,7 @@ import com.example.sticker_art_gallery.model.generation.PresetModerationStatus;
 import com.example.sticker_art_gallery.repository.generation.UserPresetLikeRepository;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.HashSet;
@@ -137,6 +138,24 @@ public class StylePresetService {
         return includeUi ? ResponseProjection.FULL : ResponseProjection.METADATA_ONLY;
     }
 
+    /**
+     * Параметр {@code view} GET списка пресетов: регистронезависимый парсинг enum; неизвестное значение — {@code null}
+     * (legacy-проекция по {@code includeUi}), без 400.
+     */
+    public StylePresetListView resolveStylePresetListViewParam(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String t = raw.trim();
+        for (StylePresetListView v : StylePresetListView.values()) {
+            if (v.name().equalsIgnoreCase(t)) {
+                return v;
+            }
+        }
+        LOGGER.warn("Unknown style-presets view \"{}\", using legacy projection (includeUi only)", t);
+        return null;
+    }
+
     private enum ResponseProjection {
         METADATA_ONLY,
         BROWSE,
@@ -209,8 +228,8 @@ public class StylePresetService {
     @Transactional(readOnly = true)
     public StylePresetEntity materializeTransientPresetForGeneration(CreateStylePresetRequest request) {
         StylePresetEntity preset = new StylePresetEntity();
-        applyUiFields(preset, request);
         preset.setPromptSuffix(request.getPromptSuffix());
+        applyUiFields(preset, request);
         preset.setCode(request.getCode());
         preset.setName(request.getName());
         preset.setDescription(request.getDescription());
@@ -693,6 +712,9 @@ public class StylePresetService {
                 if (projection == ResponseProjection.GENERATION && viewerUserIdForPrivacy != null) {
                     applyGenerationConsumerReferencePrivacy(d, entity, viewerUserIdForPrivacy);
                 }
+                if (projection == ResponseProjection.GENERATION) {
+                    applyGenerationFreestyleUiContract(d, entity, viewerUserIdForPrivacy);
+                }
             }
         }
         if (viewerUserIdForPrivacy != null
@@ -775,6 +797,22 @@ public class StylePresetService {
             out.add(f);
         }
         return out.isEmpty() ? List.of() : List.copyOf(out);
+    }
+
+    /**
+     * Проекция {@code view=generation}: без {@code promptSuffix} в DTO клиент не может вывести {@code {{prompt}}} —
+     * отдаём явный флаг и выравниваем {@link StylePresetDto#getPromptInput()} с {@link StylePresetPromptComposer}.
+     */
+    private void applyGenerationFreestyleUiContract(
+            StylePresetDto d,
+            StylePresetEntity entity,
+            Long viewerUserIdForPrivacy) {
+        boolean show = presetPromptComposer.computeShowFreestylePromptInUi(entity, viewerUserIdForPrivacy);
+        d.setShowFreestylePromptInUi(show);
+        if (!show && d.getPromptInput() != null) {
+            d.getPromptInput().setEnabled(Boolean.FALSE);
+            d.getPromptInput().setRequired(Boolean.FALSE);
+        }
     }
 
     private static StylePresetPromptInputDto stripReferenceImagesSlotForConsumer(StylePresetPromptInputDto src) {
@@ -908,6 +946,32 @@ public class StylePresetService {
         } else {
             preset.setStructuredFieldsJson(null);
         }
+        normalizePromptInputJsonForPersistence(preset);
+    }
+
+    /**
+     * Для режимов без свободного текста явно сохраняем {@code enabled: false}, чтобы не опираться на дефолт
+     * {@link StylePresetPromptComposer#parsePromptInput} при {@code promptInputJson == null}.
+     */
+    private void normalizePromptInputJsonForPersistence(StylePresetEntity preset) {
+        StylePresetUiMode mode = preset.getUiMode() != null ? preset.getUiMode() : StylePresetUiMode.STYLE_WITH_PROMPT;
+        String suffix = preset.getPromptSuffix() != null ? preset.getPromptSuffix() : "";
+        boolean templateUsesPrompt =
+                StylePresetPromptComposer.extractPlaceholders(suffix).contains("prompt");
+
+        boolean noFreestylePersistence =
+                mode == StylePresetUiMode.LOCKED_TEMPLATE
+                        || (mode == StylePresetUiMode.STRUCTURED_FIELDS && !templateUsesPrompt);
+        if (!noFreestylePersistence) {
+            return;
+        }
+
+        Map<String, Object> json = preset.getPromptInputJson() != null
+                ? new LinkedHashMap<>(preset.getPromptInputJson())
+                : new LinkedHashMap<>();
+        json.put("enabled", Boolean.FALSE);
+        json.put("required", Boolean.FALSE);
+        preset.setPromptInputJson(json);
     }
 
     /**

@@ -57,6 +57,7 @@ public class StylePresetController {
                 Параметр view задаёт проекцию: browse — витрина (превью без полной UI-схемы),
                 generation — экран генерации (без протяжки серверного референса для чужих и глобальных пресетов),
                 full — полный DTO. Если view не указан: includeUi=true эквивалентно full, includeUi=false — только метаданные.
+                Нераспознанное значение view (в т.ч. опечатка) не приводит к 400: используется legacy-проекция только по includeUi; повторные запросы с тем же view=generation допустимы.
                 Для browse и режима только метаданных возвращается weak ETag и короткий Cache-Control для условных запросов."""
     )
     @ApiResponses(value = {
@@ -71,13 +72,14 @@ public class StylePresetController {
             WebRequest webRequest,
             @Parameter(description = "Legacy: при отсутствии view — false даёт только метаданные, true — полный ответ")
             @RequestParam(name = "includeUi", defaultValue = "false") boolean includeUi,
-            @Parameter(description = "browse | generation | full")
-            @RequestParam(name = "view", required = false) StylePresetListView view) {
+            @Parameter(description = "browse | generation | full (регистронезависимо; неизвестное значение — как без view)")
+            @RequestParam(name = "view", required = false) String viewRaw) {
         Long userId = extractUserIdFromAuthentication();
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
+        StylePresetListView view = presetService.resolveStylePresetListViewParam(viewRaw);
         List<StylePresetDto> presets = presetService.getAvailablePresets(userId, includeUi, isCurrentUserAdmin(), view);
         LOGGER.info("Returning {} available presets for user {} includeUi={} view={}", presets.size(), userId, includeUi, view);
 

@@ -2,6 +2,7 @@ package com.example.sticker_art_gallery.service.generation;
 
 import com.example.sticker_art_gallery.dto.generation.CreateStylePresetRequest;
 import com.example.sticker_art_gallery.dto.generation.StylePresetFieldDto;
+import com.example.sticker_art_gallery.dto.generation.StylePresetListView;
 import com.example.sticker_art_gallery.dto.generation.StylePresetPromptInputDto;
 import com.example.sticker_art_gallery.dto.generation.StylePresetReferenceInputDto;
 import com.example.sticker_art_gallery.model.generation.PresetModerationStatus;
@@ -29,7 +30,10 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.lenient;
@@ -348,6 +352,89 @@ class StylePresetServiceTest {
         stylePresetService.createUserPreset(42L, request);
 
         verify(presetRepository).findByCodeAndOwner_UserId("anime", 42L);
+    }
+
+    @Test
+    @DisplayName("resolveStylePresetListViewParam: регистронезависимый enum")
+    void resolveStylePresetListViewParam_caseInsensitive() {
+        assertEquals(StylePresetListView.generation, stylePresetService.resolveStylePresetListViewParam("GENERATION"));
+    }
+
+    @Test
+    @DisplayName("resolveStylePresetListViewParam: неизвестное значение не бросает и даёт null (legacy includeUi)")
+    void resolveStylePresetListViewParam_unknown_returnsNull() {
+        assertNull(stylePresetService.resolveStylePresetListViewParam("typo-view"));
+    }
+
+    @Test
+    @DisplayName("createGlobalPreset: LOCKED_TEMPLATE нормализует promptInputJson.enabled=false")
+    void createGlobalPreset_lockedTemplate_persistsDisabledFreestyleFlags() {
+        StylePresetService svc = serviceWithRealComposer();
+
+        when(presetRepository.findByCodeAndIsGlobalTrue("locked_x")).thenReturn(Optional.empty());
+        when(categoryRepository.findByCode("general")).thenReturn(Optional.of(generalCategory()));
+        ArgumentCaptor<StylePresetEntity> cap = ArgumentCaptor.forClass(StylePresetEntity.class);
+        when(presetRepository.save(cap.capture())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CreateStylePresetRequest req = new CreateStylePresetRequest();
+        req.setCode("locked_x");
+        req.setName("Locked");
+        req.setPromptSuffix("Style {{emotion}} {{preset_ref}}");
+        req.setUiMode("LOCKED_TEMPLATE");
+        StylePresetFieldDto f = new StylePresetFieldDto();
+        f.setKey("emotion");
+        f.setType("text");
+        f.setRequired(true);
+        req.setFields(List.of(f));
+        req.setPromptInput(null);
+
+        svc.createGlobalPreset(req);
+
+        assertFalse(Boolean.TRUE.equals(cap.getValue().getPromptInputJson().get("enabled")));
+    }
+
+    @Test
+    @DisplayName("createGlobalPreset: STRUCTURED без {{prompt}} нормализует promptInputJson.enabled=false")
+    void createGlobalPreset_structuredWithoutPromptPlaceholder_persistsDisabledFreestyleFlags() {
+        StylePresetService svc = serviceWithRealComposer();
+
+        when(presetRepository.findByCodeAndIsGlobalTrue("struct_np")).thenReturn(Optional.empty());
+        when(categoryRepository.findByCode("general")).thenReturn(Optional.of(generalCategory()));
+        ArgumentCaptor<StylePresetEntity> cap = ArgumentCaptor.forClass(StylePresetEntity.class);
+        when(presetRepository.save(cap.capture())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CreateStylePresetRequest req = new CreateStylePresetRequest();
+        req.setCode("struct_np");
+        req.setName("Struct");
+        req.setPromptSuffix("");
+        req.setUiMode("STRUCTURED_FIELDS");
+        StylePresetFieldDto f = new StylePresetFieldDto();
+        f.setKey("mood");
+        f.setType("text");
+        f.setRequired(false);
+        req.setFields(List.of(f));
+
+        svc.createGlobalPreset(req);
+
+        assertFalse(Boolean.TRUE.equals(cap.getValue().getPromptInputJson().get("enabled")));
+    }
+
+    private StylePresetService serviceWithRealComposer() {
+        ObjectMapper realMapper = new ObjectMapper();
+        StylePresetPromptComposer realComposer = new StylePresetPromptComposer(realMapper);
+        AppConfig cfg = mock(AppConfig.class);
+        AppConfig.Telegram tg = new AppConfig.Telegram();
+        tg.setBotUsername("test_bot");
+        lenient().when(cfg.getTelegram()).thenReturn(tg);
+        return new StylePresetService(
+                presetRepository,
+                categoryRepository,
+                userProfileService,
+                imageStorageService,
+                realMapper,
+                realComposer,
+                mock(UserPresetLikeRepository.class),
+                cfg);
     }
 
     private CreateStylePresetRequest request() {

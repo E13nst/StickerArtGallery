@@ -2,6 +2,7 @@ package com.example.sticker_art_gallery.service.generation;
 
 import com.example.sticker_art_gallery.model.generation.StylePresetEntity;
 import com.example.sticker_art_gallery.model.generation.StylePresetUiMode;
+import com.example.sticker_art_gallery.model.profile.UserProfileEntity;
 import com.example.sticker_art_gallery.model.storage.CachedImageEntity;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,7 +14,9 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StylePresetPromptComposerTest {
 
@@ -190,5 +193,51 @@ class StylePresetPromptComposerTest {
         assertEquals(2, defs.size());
         assertEquals("preset_ref", defs.get(0).getKey());
         assertEquals("user_face", defs.get(1).getKey());
+    }
+
+    @Test
+    @DisplayName("computeShowFreestylePromptInUi: LOCKED_TEMPLATE — всегда false")
+    void computeShowFreestyle_lockedTemplate_false() {
+        StylePresetEntity preset = new StylePresetEntity();
+        preset.setUiMode(StylePresetUiMode.LOCKED_TEMPLATE);
+        preset.setPromptSuffix("{{emotion}}");
+        preset.setPromptInputJson(null);
+        assertFalse(composer.computeShowFreestylePromptInUi(preset, null));
+    }
+
+    @Test
+    @DisplayName("computeShowFreestylePromptInUi: STRUCTURED без {{prompt}} — false даже при дефолтном parsePromptInput")
+    void computeShowFreestyle_structuredWithoutPromptPlaceholder_false() {
+        StylePresetEntity preset = new StylePresetEntity();
+        preset.setUiMode(StylePresetUiMode.STRUCTURED_FIELDS);
+        preset.setPromptSuffix("Only {{emotion}}");
+        preset.setPromptInputJson(null);
+        assertFalse(composer.computeShowFreestylePromptInUi(preset, null));
+    }
+
+    @Test
+    @DisplayName("computeShowFreestylePromptInUi: STRUCTURED с {{prompt}} и enabled — true")
+    void computeShowFreestyle_structuredWithPrompt_true() {
+        StylePresetEntity preset = new StylePresetEntity();
+        preset.setUiMode(StylePresetUiMode.STRUCTURED_FIELDS);
+        preset.setPromptSuffix("{{prompt}} + {{emotion}}");
+        preset.setPromptInputJson(Map.of("enabled", true));
+        assertTrue(composer.computeShowFreestylePromptInUi(preset, null));
+    }
+
+    @Test
+    @DisplayName("computeShowFreestylePromptInUi: потребитель каталога с авторским промптом — false")
+    void computeShowFreestyle_catalogConsumerAuthorPrompt_false() {
+        UserProfileEntity owner = new UserProfileEntity();
+        owner.setUserId(2L);
+        StylePresetEntity preset = new StylePresetEntity();
+        preset.setOwner(owner);
+        preset.setIsGlobal(false);
+        preset.setPublishedToCatalog(true);
+        preset.setSubmittedUserPrompt("saved idea");
+        preset.setUiMode(StylePresetUiMode.STRUCTURED_FIELDS);
+        preset.setPromptSuffix("{{prompt}} and {{emotion}}");
+        preset.setPromptInputJson(Map.of("enabled", true));
+        assertFalse(composer.computeShowFreestylePromptInUi(preset, 1L));
     }
 }
