@@ -264,7 +264,7 @@ public class StickerGalleryFlowService {
                 + "/support - связь с поддержкой\n"
                 + "/cancel - отмена\n\n"
                 + "Создать стикер — кнопка <b>Создать стикер</b> (мини-приложение).\n"
-                + "Добавить набор в галерею: <b>Добавить стикеры</b> или пришлите любой стикер из набора в ЛС.";
+                + "Добавить набор в галерею: пришлите любой стикер из набора в личные сообщения боту.";
     }
 
     private Object mainMenuKeyboard() {
@@ -272,7 +272,6 @@ public class StickerGalleryFlowService {
                 "inline_keyboard",
                 List.of(
                         List.of(Map.of("text", "🎨 Создать стикер", "web_app", Map.of("url", MINI_APP_BASE_URL))),
-                        List.of(Map.of("text", "📥 Добавить стикеры", "callback_data", "upload_stickers_entry")),
                         List.of(Map.of("text", "📞 Поддержка", "callback_data", "enter_support")),
                         List.of(Map.of("text", "📢 Telegram-канал", "url", "https://t.me/stixlyofficial"))
                 )
