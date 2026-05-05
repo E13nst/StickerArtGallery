@@ -251,6 +251,128 @@
         </div>
     </div>
 
+    <!-- Модальное окно редактирования пользовательского пресета (inline, без редиректа на страницу модерации) -->
+    <div id="user-preset-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-700">
+            <div class="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-900 z-10">
+                <div>
+                    <h3 id="up-modal-title" class="text-lg font-bold text-gray-800 dark:text-slate-100">Пользовательский пресет</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Редактирование каталожных атрибутов. Исходный промпт пользователя — только для просмотра.</p>
+                </div>
+                <button type="button" onclick="closeUserPresetModal()" class="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 text-2xl leading-none">×</button>
+            </div>
+
+            <div class="p-5 space-y-5 text-slate-800 dark:text-slate-200">
+                <!-- Медиа-превью -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <div class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Превью</div>
+                        <div id="up-preview-wrap" class="hidden">
+                            <img id="up-preview-img" src="" alt="preview" class="h-28 w-28 object-cover rounded-lg border border-slate-200 dark:border-slate-600">
+                        </div>
+                        <div id="up-preview-empty" class="hidden text-xs text-slate-400 italic">Нет превью</div>
+                    </div>
+                    <div>
+                        <div class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Reference</div>
+                        <div id="up-ref-wrap" class="hidden">
+                            <img id="up-ref-img" src="" alt="reference" class="h-28 w-28 object-cover rounded-lg border border-slate-200 dark:border-slate-600">
+                        </div>
+                        <div id="up-ref-empty" class="hidden text-xs text-slate-400 italic">Нет reference</div>
+                    </div>
+                </div>
+
+                <!-- Мета-информация только для чтения -->
+                <div class="text-sm space-y-1.5 border border-slate-100 dark:border-slate-700 rounded-lg p-3 bg-slate-50 dark:bg-slate-800/50">
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                        <span class="text-slate-500 dark:text-slate-400">Владелец:</span>
+                        <span id="up-owner" class="font-mono text-slate-700 dark:text-slate-300">—</span>
+                        <span class="text-slate-500 dark:text-slate-400">Статус:</span>
+                        <span id="up-status" class="font-medium">—</span>
+                        <span class="text-slate-500 dark:text-slate-400">Витрина:</span>
+                        <span id="up-catalog" class="font-medium">—</span>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Внутренний promptSuffix (readonly):</div>
+                        <pre id="up-prompt-suffix" class="text-xs overflow-x-auto max-h-28 whitespace-pre-wrap bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-600 rounded p-2"></pre>
+                    </div>
+                </div>
+
+                <!-- Редактируемые каталожные поля -->
+                <div class="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-4">
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">Редактирование (каталог)</div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Название</label>
+                            <input type="text" id="up-name" maxlength="100"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Категория</label>
+                            <select id="up-category-id"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Порядок в категории</label>
+                            <input type="number" id="up-sort-order" min="0"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-4">
+                        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300 cursor-pointer">
+                            <input type="checkbox" id="up-enabled" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-slate-500 dark:bg-slate-800 rounded">
+                            Активен
+                        </label>
+                        <div class="flex gap-2">
+                            <button type="button" id="up-takedown-btn" onclick="userPresetTakedownInline()"
+                                class="hidden px-3 py-1.5 text-xs bg-orange-600 text-white rounded hover:bg-orange-700">Скрыть с витрины</button>
+                            <button type="button" id="up-republish-btn" onclick="userPresetRepublishInline()"
+                                class="hidden px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">Вернуть на витрину</button>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 pt-1">
+                        <button type="button" id="up-save-meta-btn" onclick="saveUserPresetMeta()"
+                            class="px-4 py-2 text-sm bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 rounded-lg hover:opacity-90">Сохранить</button>
+                        <span id="up-save-msg" class="hidden self-center text-xs"></span>
+                    </div>
+                </div>
+
+                <!-- Загрузка медиафайлов -->
+                <div class="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-3">
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">Медиафайлы</div>
+                    <div class="grid sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Заменить превью</label>
+                            <input type="file" id="up-preview-file" accept="image/png,image/jpeg,image/webp" class="block w-full text-xs">
+                            <button type="button" onclick="uploadUserPresetPreviewInline()"
+                                class="mt-1.5 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">Загрузить превью</button>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Заменить reference</label>
+                            <input type="file" id="up-ref-file" accept="image/png,image/jpeg,image/webp" class="block w-full text-xs">
+                            <button type="button" onclick="uploadUserPresetRefInline()"
+                                class="mt-1.5 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">Загрузить reference</button>
+                        </div>
+                    </div>
+                    <p id="up-media-msg" class="hidden text-xs text-slate-500 dark:text-slate-400"></p>
+                </div>
+
+                <!-- Ссылка на страницу модерации (для approve/reject) -->
+                <div class="border-t border-slate-200 dark:border-slate-700 pt-4 flex items-center justify-between">
+                    <a id="up-moderation-link" href="#" target="_blank"
+                        class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                        Открыть страницу модерации →
+                    </a>
+                    <button type="button" onclick="closeUserPresetModal()"
+                        class="px-4 py-2 text-sm border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800">Закрыть</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Модальное окно категории -->
     <div id="category-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-md mx-4 border border-slate-200 dark:border-slate-700">

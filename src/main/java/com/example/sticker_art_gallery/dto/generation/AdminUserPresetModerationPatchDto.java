@@ -4,9 +4,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
 
 /**
- * Частичное обновление пользовательского пресета модератором (имя, категория, сохранённый финальный промпт).
+ * Частичное обновление пользовательского пресета модератором (имя, категория, порядок, сохранённый финальный промпт).
  */
-@Schema(description = "Обновление отображаемого имени и/или категории пользовательского пресета (админ). "
+@Schema(description = "Обновление полей пользовательского пресета (админ). "
         + "Поле со значением null или отсутствующее ключом в JSON не меняет текущее значение.")
 public class AdminUserPresetModerationPatchDto {
 
@@ -16,6 +16,9 @@ public class AdminUserPresetModerationPatchDto {
 
     @Schema(description = "ID категории пресета; null — не менять категорию")
     private Long categoryId;
+
+    @Schema(description = "Порядок отображения пресета внутри категории; null — не менять")
+    private Integer sortOrder;
 
     @Schema(description = "Сохранённый финальный пользовательский промпт из miniapp (submittedUserPrompt)")
     @Size(max = 8192, message = "submittedUserPrompt не длиннее 8192 символов")
@@ -45,6 +48,18 @@ public class AdminUserPresetModerationPatchDto {
         return categoryId != null;
     }
 
+    public Integer getSortOrder() {
+        return sortOrder;
+    }
+
+    public void setSortOrder(Integer sortOrder) {
+        this.sortOrder = sortOrder;
+    }
+
+    public boolean hasSortOrderPatch() {
+        return sortOrder != null;
+    }
+
     public String getSubmittedUserPrompt() {
         return submittedUserPrompt;
     }
@@ -58,8 +73,8 @@ public class AdminUserPresetModerationPatchDto {
     }
 
     public void validatePresent() {
-        if (!hasNamePatch() && !hasCategoryPatch() && !hasSubmittedUserPromptPatch()) {
-            throw new IllegalArgumentException("Укажите name и/или categoryId и/или submittedUserPrompt для изменения");
+        if (!hasNamePatch() && !hasCategoryPatch() && !hasSortOrderPatch() && !hasSubmittedUserPromptPatch()) {
+            throw new IllegalArgumentException("Укажите хотя бы одно из полей: name, categoryId, sortOrder, submittedUserPrompt");
         }
         if (hasNamePatch()) {
             if (name.trim().isEmpty()) {

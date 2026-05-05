@@ -196,19 +196,16 @@ function renderPresets() {
 
 function getPresetActions(preset) {
     if (preset._sourceType === 'USER_APPROVED') {
-        const actions = [
+        return [
             {
-                label: 'Открыть модерацию',
-                onclick: `openModerationPageForPreset(${preset.id}, ${JSON.stringify(preset.moderationStatus || 'APPROVED')})`,
+                label: 'Редактировать',
+                onclick: `openUserPresetModal(${preset.id})`,
                 className: 'text-blue-600'
-            }
+            },
+            preset.publishedToCatalog
+                ? { label: 'Скрыть с витрины', onclick: `takedownUserApprovedPreset(${preset.id})`, className: 'text-orange-600' }
+                : { label: 'Вернуть на витрину', onclick: `republishUserApprovedPreset(${preset.id})`, className: 'text-emerald-600' }
         ];
-        if (preset.publishedToCatalog) {
-            actions.push({ label: 'Скрыть с витрины', onclick: `takedownUserApprovedPreset(${preset.id})`, className: 'text-orange-600' });
-        } else {
-            actions.push({ label: 'Вернуть на витрину', onclick: `republishUserApprovedPreset(${preset.id})`, className: 'text-emerald-600' });
-        }
-        return actions;
     }
     return [
         { label: 'Изменить', onclick: `editPreset(${preset.id})`, className: 'text-blue-600' },
@@ -217,9 +214,217 @@ function getPresetActions(preset) {
     ];
 }
 
-function openModerationPageForPreset(presetId, moderationStatus) {
-    const st = (moderationStatus != null && String(moderationStatus).trim()) ? String(moderationStatus).trim() : 'APPROVED';
-    window.location.href = `/admin/preset-moderation.html?status=${encodeURIComponent(st)}&presetId=${encodeURIComponent(presetId)}`;
+// ---- User-preset inline modal ----
+
+/** Текущий пресет, открытый в user-preset-modal */
+let _upPreset = null;
+
+function fillUpCategorySelect(selectedId) {
+    const sel = document.getElementById('up-category-id');
+    if (!sel) return;
+    sel.innerHTML = categories.map(c => {
+        const selected = selectedId != null && String(c.id) === String(selectedId) ? ' selected' : '';
+        return `<option value="${c.id}"${selected}>#${c.id} · ${escapeHtml(c.code)} · ${escapeHtml(c.name)}</option>`;
+    }).join('');
+}
+
+async function openUserPresetModal(id) {
+    let preset = presets.find(p => p.id === id);
+    if (!preset) {
+        try {
+            preset = await api.getUserPresetForModeration(id);
+        } catch (e) {
+            showNotification('Не удалось загрузить пресет: ' + (e.message || e), 'error');
+            return;
+        }
+    }
+    _upPreset = preset;
+
+    document.getElementById('up-modal-title').textContent = `Пользовательский пресет #${preset.id} — ${preset.name || ''}`;
+
+    const previewUrl = getPresetPreviewUrl(preset);
+    const previewWrap = document.getElementById('up-preview-wrap');
+    const previewEmpty = document.getElementById('up-preview-empty');
+    if (previewUrl) {
+        document.getElementById('up-preview-img').src = previewUrl;
+        previewWrap.classList.remove('hidden');
+        previewEmpty.classList.add('hidden');
+    } else {
+        previewWrap.classList.add('hidden');
+        previewEmpty.classList.remove('hidden');
+    }
+
+    const refUrl = preset.presetReferenceImageUrl || null;
+    const refWrap = document.getElementById('up-ref-wrap');
+    const refEmpty = document.getElementById('up-ref-empty');
+    if (refUrl) {
+        document.getElementById('up-ref-img').src = refUrl;
+        refWrap.classList.remove('hidden');
+        refEmpty.classList.add('hidden');
+    } else {
+        refWrap.classList.add('hidden');
+        refEmpty.classList.remove('hidden');
+    }
+
+    document.getElementById('up-owner').textContent = preset.ownerId != null ? String(preset.ownerId) : '—';
+    document.getElementById('up-status').textContent = preset.moderationStatus || '—';
+    document.getElementById('up-catalog').textContent = preset.publishedToCatalog ? 'На витрине' : 'Скрыт';
+    document.getElementById('up-prompt-suffix').textContent = preset.promptSuffix || '';
+
+    document.getElementById('up-name').value = preset.name || '';
+    fillUpCategorySelect(preset.category && preset.category.id);
+    document.getElementById('up-sort-order').value = preset.sortOrder != null ? preset.sortOrder : 0;
+    document.getElementById('up-enabled').checked = !!preset.isEnabled;
+
+    const takedownBtn = document.getElementById('up-takedown-btn');
+    const republishBtn = document.getElementById('up-republish-btn');
+    if (preset.publishedToCatalog) {
+        takedownBtn.classList.remove('hidden');
+        republishBtn.classList.add('hidden');
+    } else {
+        takedownBtn.classList.add('hidden');
+        republishBtn.classList.remove('hidden');
+    }
+
+    const modStatus = (preset.moderationStatus || 'APPROVED');
+    document.getElementById('up-moderation-link').href =
+        `/admin/preset-moderation.html?status=${encodeURIComponent(modStatus)}&presetId=${encodeURIComponent(preset.id)}`;
+
+    document.getElementById('up-preview-file').value = '';
+    document.getElementById('up-ref-file').value = '';
+    hideUpMsg('up-save-msg');
+    hideUpMsg('up-media-msg');
+
+    document.getElementById('user-preset-modal').classList.remove('hidden');
+}
+
+function closeUserPresetModal() {
+    document.getElementById('user-preset-modal').classList.add('hidden');
+    _upPreset = null;
+}
+
+function showUpMsg(elId, text, isError) {
+    const el = document.getElementById(elId);
+    el.textContent = text;
+    el.className = 'self-center text-xs ' + (isError ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400');
+    el.classList.remove('hidden');
+}
+
+function hideUpMsg(elId) {
+    const el = document.getElementById(elId);
+    if (el) el.classList.add('hidden');
+}
+
+async function saveUserPresetMeta() {
+    if (!_upPreset) return;
+    const nameVal = document.getElementById('up-name').value.trim();
+    const catVal = document.getElementById('up-category-id').value;
+    const sortVal = document.getElementById('up-sort-order').value;
+    const enabledVal = document.getElementById('up-enabled').checked;
+
+    const patch = {};
+    if (nameVal) patch.name = nameVal;
+    if (catVal !== '') patch.categoryId = Number(catVal);
+    const sortNum = sortVal !== '' ? parseInt(sortVal, 10) : null;
+    if (sortNum !== null && Number.isFinite(sortNum)) patch.sortOrder = sortNum;
+
+    try {
+        hideUpMsg('up-save-msg');
+        if (Object.keys(patch).length > 0) {
+            const updated = await api.patchUserPresetModeration(_upPreset.id, patch);
+            _upPreset = { ..._upPreset, ...updated };
+        }
+        if (!!_upPreset.isEnabled !== enabledVal) {
+            const toggled = await api.toggleGlobalStylePreset(_upPreset.id, enabledVal);
+            _upPreset = { ..._upPreset, ...toggled };
+        }
+        const idx = presets.findIndex(p => p.id === _upPreset.id);
+        if (idx >= 0) presets[idx] = { ..._upPreset, _sourceType: 'USER_APPROVED' };
+        renderPresets();
+        showUpMsg('up-save-msg', 'Сохранено.', false);
+    } catch (e) {
+        showUpMsg('up-save-msg', e.message || 'Ошибка сохранения', true);
+    }
+}
+
+async function uploadUserPresetPreviewInline() {
+    if (!_upPreset) return;
+    const file = document.getElementById('up-preview-file').files && document.getElementById('up-preview-file').files[0];
+    if (!file) { showUpMsg('up-media-msg', 'Выберите файл превью.', true); return; }
+    try {
+        hideUpMsg('up-media-msg');
+        const updated = await api.uploadUserPresetModerationPreview(_upPreset.id, file);
+        _upPreset = { ..._upPreset, ...updated };
+        const previewUrl = getPresetPreviewUrl(updated);
+        if (previewUrl) {
+            document.getElementById('up-preview-img').src = previewUrl;
+            document.getElementById('up-preview-wrap').classList.remove('hidden');
+            document.getElementById('up-preview-empty').classList.add('hidden');
+        }
+        const idx = presets.findIndex(p => p.id === _upPreset.id);
+        if (idx >= 0) presets[idx] = { ..._upPreset, _sourceType: 'USER_APPROVED' };
+        renderPresets();
+        document.getElementById('up-preview-file').value = '';
+        showUpMsg('up-media-msg', 'Превью загружено.', false);
+    } catch (e) {
+        showUpMsg('up-media-msg', e.message || 'Ошибка загрузки превью', true);
+    }
+}
+
+async function uploadUserPresetRefInline() {
+    if (!_upPreset) return;
+    const file = document.getElementById('up-ref-file').files && document.getElementById('up-ref-file').files[0];
+    if (!file) { showUpMsg('up-media-msg', 'Выберите файл reference.', true); return; }
+    try {
+        hideUpMsg('up-media-msg');
+        const updated = await api.uploadUserStylePresetReferenceAsAdmin(_upPreset.id, file);
+        _upPreset = { ..._upPreset, ...updated };
+        if (updated.presetReferenceImageUrl) {
+            document.getElementById('up-ref-img').src = updated.presetReferenceImageUrl;
+            document.getElementById('up-ref-wrap').classList.remove('hidden');
+            document.getElementById('up-ref-empty').classList.add('hidden');
+        }
+        document.getElementById('up-ref-file').value = '';
+        showUpMsg('up-media-msg', 'Reference загружен.', false);
+    } catch (e) {
+        showUpMsg('up-media-msg', e.message || 'Ошибка загрузки reference', true);
+    }
+}
+
+async function userPresetTakedownInline() {
+    if (!_upPreset) return;
+    if (!confirmAction('Снять пресет с публичной витрины?')) return;
+    try {
+        const updated = await api.takedownPresetModeration(_upPreset.id);
+        _upPreset = { ..._upPreset, ...updated };
+        document.getElementById('up-catalog').textContent = 'Скрыт';
+        document.getElementById('up-takedown-btn').classList.add('hidden');
+        document.getElementById('up-republish-btn').classList.remove('hidden');
+        const idx = presets.findIndex(p => p.id === _upPreset.id);
+        if (idx >= 0) presets[idx] = { ..._upPreset, _sourceType: 'USER_APPROVED' };
+        renderPresets();
+        showUpMsg('up-save-msg', 'Пресет скрыт с витрины.', false);
+    } catch (e) {
+        showUpMsg('up-save-msg', e.message || 'Ошибка', true);
+    }
+}
+
+async function userPresetRepublishInline() {
+    if (!_upPreset) return;
+    if (!confirmAction('Вернуть пресет на публичную витрину?')) return;
+    try {
+        const updated = await api.republishPresetModeration(_upPreset.id);
+        _upPreset = { ..._upPreset, ...updated };
+        document.getElementById('up-catalog').textContent = 'На витрине';
+        document.getElementById('up-republish-btn').classList.add('hidden');
+        document.getElementById('up-takedown-btn').classList.remove('hidden');
+        const idx = presets.findIndex(p => p.id === _upPreset.id);
+        if (idx >= 0) presets[idx] = { ..._upPreset, _sourceType: 'USER_APPROVED' };
+        renderPresets();
+        showUpMsg('up-save-msg', 'Пресет возвращён на витрину.', false);
+    } catch (e) {
+        showUpMsg('up-save-msg', e.message || 'Ошибка', true);
+    }
 }
 
 async function takedownUserApprovedPreset(presetId) {

@@ -427,6 +427,9 @@ public class StylePresetService {
         if (body.hasCategoryPatch()) {
             preset.setCategory(resolveCategory(body.getCategoryId()));
         }
+        if (body.hasSortOrderPatch()) {
+            preset.setSortOrder(body.getSortOrder());
+        }
         if (body.hasSubmittedUserPromptPatch()) {
             preset.setSubmittedUserPrompt(body.normalizedSubmittedUserPromptOrNull());
         }
