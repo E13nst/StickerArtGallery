@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Duration;
 import java.util.List;
 
 @RestController
@@ -36,6 +37,8 @@ import java.util.List;
 @Tag(name = "Пресеты стилей", description = "API для управления пресетами стилей генерации (пользовательские и глобальные)")
 @SecurityRequirement(name = "TelegramInitData")
 public class StylePresetController {
+
+    private static final CacheControl PRESET_LIST_CACHE_CONTROL = CacheControl.maxAge(Duration.ofSeconds(60));
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StylePresetController.class);
 
@@ -83,12 +86,12 @@ public class StylePresetController {
             if (webRequest.checkNotModified(etag)) {
                 return ResponseEntity.status(HttpStatus.NOT_MODIFIED)
                         .eTag(etag)
-                        .cacheControl(CacheControl.maxAge(60))
+                        .cacheControl(PRESET_LIST_CACHE_CONTROL)
                         .build();
             }
             return ResponseEntity.ok()
                     .eTag(etag)
-                    .cacheControl(CacheControl.maxAge(60))
+                    .cacheControl(PRESET_LIST_CACHE_CONTROL)
                     .body(presets);
         }
         return ResponseEntity.ok(presets);
