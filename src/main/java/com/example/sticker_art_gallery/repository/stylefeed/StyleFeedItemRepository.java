@@ -173,4 +173,31 @@ public interface StyleFeedItemRepository extends JpaRepository<StyleFeedItemEnti
             WHERE style_preset_id = :stylePresetId
             """, nativeQuery = true)
     int republishByStylePresetId(@Param("stylePresetId") Long stylePresetId);
+
+    /**
+     * Кандидаты для колоды: неоценённые пользователем карточки, порядок как в витрине
+     * (категория, затем пресет); выборка для последующей рандомизации на сервисе.
+     */
+    @Query(value = """
+            SELECT sf.id FROM style_feed_items sf
+            INNER JOIN style_presets sp ON sf.style_preset_id = sp.id
+            INNER JOIN style_preset_categories c ON sp.category_id = c.id
+            WHERE (
+                sf.admin_visibility_override = TRUE
+                OR (sf.admin_visibility_override IS NULL AND sf.visibility = 'VISIBLE')
+            )
+            AND sf.id NOT IN (
+                SELECT sfl.style_feed_item_id
+                FROM style_feed_item_likes sfl
+                WHERE sfl.user_id = :userId
+            )
+            AND sf.id NOT IN (
+                SELECT sfd.style_feed_item_id
+                FROM style_feed_item_dislikes sfd
+                WHERE sfd.user_id = :userId
+            )
+            ORDER BY c.sort_order ASC, sp.sort_order ASC, sp.name ASC, sf.id ASC
+            LIMIT :limit
+            """, nativeQuery = true)
+    java.util.List<Long> findIdsForDeckOrdered(@Param("userId") Long userId, @Param("limit") int limit);
 }

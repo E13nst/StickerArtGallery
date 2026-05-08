@@ -1,6 +1,7 @@
 package com.example.sticker_art_gallery.repository;
 
 import com.example.sticker_art_gallery.model.generation.GenerationTaskEntity;
+import com.example.sticker_art_gallery.model.generation.GenerationTaskStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import jakarta.persistence.LockModeType;
@@ -93,4 +94,8 @@ public interface GenerationTaskRepository extends JpaRepository<GenerationTaskEn
             @Param("userId") Long userId,
             @Param("stylePresetId") Long stylePresetId
     );
+
+    Optional<GenerationTaskEntity> findFirstByUserProfile_UserIdAndStatusAndCachedImageIdIsNotNullOrderByCompletedAtDesc(
+            Long userId,
+            GenerationTaskStatus status);
 }

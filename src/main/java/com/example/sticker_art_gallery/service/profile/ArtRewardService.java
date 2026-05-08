@@ -25,6 +25,13 @@ public class ArtRewardService {
     public static final String RULE_PRESET_AUTHOR_ROYALTY = "PRESET_AUTHOR_ROYALTY";
     public static final String RULE_PURCHASE_TON = "PURCHASE_TON";
 
+    /** Ежедневный бонус за вход / check-in (правило в БД). */
+    public static final String RULE_DAILY_BONUS = "DAILY_BONUS";
+    /** Одноразовый приветственный бонус (правило в БД). */
+    public static final String RULE_WELCOME_BONUS = "WELCOME_BONUS";
+    /** Награда за завершение прогона колоды (каждые N стилевых свайпов). */
+    public static final String RULE_DECK_RUN_COMPLETE = "DECK_RUN_COMPLETE";
+
     private final UserProfileService userProfileService;
     private final ArtRuleService artRuleService;
     private final ArtTransactionRepository artTransactionRepository;
