@@ -13,11 +13,12 @@
 </head>
 <body class="admin-page antialiased">
     <div class="flex h-screen overflow-hidden">
+        <div id="sidebar-container"></div>
         <main class="flex-1 overflow-y-auto">
-            <div class="p-4">
-                <div class="flex items-center justify-between mb-4">
+            <div class="p-4 max-w-[1600px] mx-auto">
+                <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
                     <h2 class="text-2xl font-bold text-gray-800 dark:text-slate-100">Лента style feed</h2>
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 flex-wrap">
                         <select id="filter-visibility"
                             class="px-2 py-1 text-xs border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
                             <option value="">Все</option>
@@ -26,7 +27,7 @@
                             <option value="ADMIN_HIDDEN">ADMIN_HIDDEN</option>
                             <option value="ADMIN_FORCED_VISIBLE">ADMIN_FORCED_VISIBLE</option>
                         </select>
-                        <button onclick="loadItems()"
+                        <button type="button" onclick="loadItems(); loadVoteStats();"
                             class="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md">
                             Обновить
                         </button>
@@ -34,6 +35,56 @@
                 </div>
 
                 <div id="status-message" class="hidden mb-3 p-2 rounded text-sm"></div>
+
+                <div class="mb-6 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
+                    <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">Статистика голосов (style feed)</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                        Учитываются только таблицы <code class="text-[11px]">style_feed_item_likes</code> и
+                        <code class="text-[11px]">style_feed_item_dislikes</code>. Лайки стикерсетов и «сохранённые пресеты» не трогаются.
+                    </p>
+                    <div id="vote-stats" class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                        <div class="rounded-md bg-slate-50 dark:bg-slate-800/80 p-3">
+                            <div class="text-slate-500 dark:text-slate-400 text-xs">Всего лайков (строк)</div>
+                            <div id="stat-likes" class="text-lg font-semibold text-green-600 dark:text-green-400">—</div>
+                        </div>
+                        <div class="rounded-md bg-slate-50 dark:bg-slate-800/80 p-3">
+                            <div class="text-slate-500 dark:text-slate-400 text-xs">Всего дизлайков (строк)</div>
+                            <div id="stat-dislikes" class="text-lg font-semibold text-red-500 dark:text-red-400">—</div>
+                        </div>
+                        <div class="rounded-md bg-slate-50 dark:bg-slate-800/80 p-3">
+                            <div class="text-slate-500 dark:text-slate-400 text-xs">Уникальных пользователей</div>
+                            <div id="stat-voters" class="text-lg font-semibold text-slate-800 dark:text-slate-100">—</div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                        <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">Сброс для текущего админа</h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                            По вашей сессии в админке (Telegram ID из initData): очистятся только <strong>ваши</strong> лайки/дизлайки ленты style feed и связанные строки истории свайпов этой ленты.
+                            Другие пользователи и лайки стикерсетов не затрагиваются.
+                        </p>
+                        <button type="button" onclick="resetVotesForMe()"
+                            class="px-3 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-md">
+                            Очистить мои голоса в ленте
+                        </button>
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                        <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">Сброс по user id (любой пользователь)</h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                            <code class="text-[11px]">userId</code> — Telegram ID (как в <code class="text-[11px]">users.id</code>).
+                            Удаляются только ваши строки в ленте и связанные записи свайпов style feed; счётчики на карточках пересчитываются.
+                        </p>
+                        <div class="flex flex-wrap gap-2 items-center">
+                            <input type="text" id="reset-user-id" inputmode="numeric" placeholder="Telegram user id"
+                                class="px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 w-44">
+                            <button type="button" onclick="resetVotesForUser()"
+                                class="px-3 py-1 text-xs bg-amber-600 hover:bg-amber-700 text-white rounded-md">
+                                Сбросить голоса
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
                     <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700 text-sm">
@@ -66,6 +117,8 @@
     <script src="/admin/js/api.js"></script>
     <script src="/admin/js/sidebar.js"></script>
     <script>
+        if (typeof checkAuth === 'function') checkAuth();
+
         const VISIBILITY_BADGE = {
             VISIBLE:              'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
             AUTO_HIDDEN:          'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
@@ -80,14 +133,77 @@
                 ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200'
                 : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200');
             el.classList.remove('hidden');
-            setTimeout(() => el.classList.add('hidden'), 4000);
+            setTimeout(() => el.classList.add('hidden'), 6000);
+        }
+
+        async function loadVoteStats() {
+            try {
+                const s = await api.request('/admin/style-feed/votes/stats');
+                document.getElementById('stat-likes').textContent = s.styleFeedLikesTotal ?? '0';
+                document.getElementById('stat-dislikes').textContent = s.styleFeedDislikesTotal ?? '0';
+                document.getElementById('stat-voters').textContent = s.distinctVoters ?? '0';
+            } catch (e) {
+                document.getElementById('stat-likes').textContent = '—';
+                document.getElementById('stat-dislikes').textContent = '—';
+                document.getElementById('stat-voters').textContent = '—';
+                showStatus('Не удалось загрузить статистику голосов: ' + e.message, true);
+            }
+        }
+
+        async function resetVotesForMe() {
+            if (!confirm('Очистить ваши голоса в style feed для этой Telegram-учётной записи?\nУдалится история свайпов ленты и записи лайков/дизлайков именно под вами.')) {
+                return;
+            }
+            try {
+                const res = await api.request('/admin/style-feed/votes/reset-for-me', {
+                    method: 'POST'
+                });
+                showStatus('Готово (ваши данные): лайков удалено ' + res.deletedLikeRows + ', дизлайков ' + res.deletedDislikeRows
+                    + ', свайпов ленты ' + res.deletedStyleFeedSwipeRows
+                    + ', карточек пересчитано ' + res.recomputedStyleFeedItemRows, false);
+                await loadVoteStats();
+                await loadItems();
+            } catch (e) {
+                const msg = (e.data && e.data.error) ? e.data.error : e.message;
+                showStatus('Ошибка: ' + msg, true);
+            }
+        }
+
+        async function resetVotesForUser() {
+            const raw = document.getElementById('reset-user-id').value.trim();
+            if (!raw) {
+                showStatus('Введите Telegram user id', true);
+                return;
+            }
+            const userId = Number(raw);
+            if (!Number.isFinite(userId) || userId <= 0) {
+                showStatus('Некорректный user id', true);
+                return;
+            }
+            if (!confirm('Сбросить все лайки/дизлайки style feed для user ' + userId + '? Удалятся также строки user_swipes, связанные с этой лентой.')) {
+                return;
+            }
+            try {
+                const res = await api.request('/admin/style-feed/votes/reset-for-user', {
+                    method: 'POST',
+                    body: JSON.stringify({ userId })
+                });
+                showStatus('Готово: удалено лайков ' + res.deletedLikeRows + ', дизлайков ' + res.deletedDislikeRows
+                    + ', свайпов ленты ' + res.deletedStyleFeedSwipeRows
+                    + ', пересчитано карточек ' + res.recomputedStyleFeedItemRows, false);
+                await loadVoteStats();
+                await loadItems();
+            } catch (e) {
+                const msg = (e.data && e.data.error) ? e.data.error : e.message;
+                showStatus('Ошибка сброса: ' + msg, true);
+            }
         }
 
         async function loadItems() {
             const visibility = document.getElementById('filter-visibility').value;
             const query = visibility ? `?visibility=${visibility}` : '';
             try {
-                const data = await apiGet(`/api/admin/style-feed/items${query}`);
+                const data = await api.request(`/admin/style-feed/items${query}`);
                 renderTable(Array.isArray(data) ? data : (data.content || []));
             } catch (e) {
                 showStatus('Ошибка загрузки: ' + e.message, true);
@@ -127,13 +243,24 @@
 
         async function setVisibility(id, action) {
             try {
-                await apiPost(`/admin/style-feed/items/${id}/visibility`, { override: action });
+                await api.request(`/admin/style-feed/items/${id}/visibility`, {
+                    method: 'POST',
+                    body: JSON.stringify({ override: action })
+                });
                 showStatus(`Запись ${id}: override = ${action}`, false);
                 loadItems();
             } catch (e) {
                 showStatus(`Ошибка: ${e.message}`, true);
             }
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof SidebarComponent !== 'undefined' && document.getElementById('sidebar-container')) {
+                SidebarComponent.mount('sidebar-container');
+            }
+            loadVoteStats();
+            loadItems();
+        });
     </script>
 </body>
 </html>

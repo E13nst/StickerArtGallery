@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -200,4 +201,28 @@ public interface StyleFeedItemRepository extends JpaRepository<StyleFeedItemEnti
             LIMIT :limit
             """, nativeQuery = true)
     java.util.List<Long> findIdsForDeckOrdered(@Param("userId") Long userId, @Param("limit") int limit);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            UPDATE style_feed_items sf
+            SET likes_count = (SELECT COUNT(*)::integer FROM style_feed_item_likes l WHERE l.style_feed_item_id = sf.id),
+                dislikes_count = (SELECT COUNT(*)::integer FROM style_feed_item_dislikes d WHERE d.style_feed_item_id = sf.id),
+                updated_at = NOW()
+            WHERE sf.id IN (:ids)
+            """, nativeQuery = true)
+    void recountVoteColumnsForIds(@Param("ids") Collection<Long> ids);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            UPDATE style_feed_items sf
+            SET visibility = CASE
+                    WHEN sf.admin_visibility_override IS TRUE THEN 'ADMIN_FORCED_VISIBLE'
+                    WHEN sf.admin_visibility_override IS FALSE THEN 'ADMIN_HIDDEN'
+                    WHEN sf.dislikes_count >= 7 AND sf.likes_count + sf.dislikes_count > 10 THEN 'AUTO_HIDDEN'
+                    ELSE 'VISIBLE'
+                END,
+                updated_at = NOW()
+            WHERE sf.id IN (:ids)
+            """, nativeQuery = true)
+    void refreshDerivedVisibilityForIds(@Param("ids") Collection<Long> ids);
 }

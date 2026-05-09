@@ -2,6 +2,7 @@ package com.example.sticker_art_gallery.repository;
 
 import com.example.sticker_art_gallery.model.swipe.UserSwipeEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -72,4 +73,12 @@ public interface UserSwipeRepository extends JpaRepository<UserSwipeEntity, Long
      * Подсчитать общее количество свайпов за период (для аналитики)
      */
     long countByCreatedAtBetween(OffsetDateTime from, OffsetDateTime to);
+
+    /**
+     * Свайпы ленты style feed (до удаления лайков/дизлайков — иначе ON DELETE SET NULL ломает CHECK на user_swipes).
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM UserSwipeEntity u WHERE u.userId = :userId "
+            + "AND (u.styleFeedItemLike IS NOT NULL OR u.styleFeedItemDislike IS NOT NULL)")
+    int deleteStyleFeedSwipesByUserId(@Param("userId") Long userId);
 }

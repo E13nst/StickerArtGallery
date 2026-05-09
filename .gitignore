@@ -54,6 +54,10 @@ node_modules/
 # Целиком не игнорируем .cursor: в репозитории держим rules/skills. Только явно локальное.
 .cursor/agent-transcripts/
 
+# Локальная AI/агентская политика (не коммитим): индекс harness + merge-bar
+AGENTS.md
+.cursor/rules/agent-harness-merge-bar.mdc
+
 
 ### Logs ###
 *.log
