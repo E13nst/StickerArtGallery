@@ -94,9 +94,8 @@ public class AppConfig {
      */
     public static class StyleFeed {
         /**
-         * QA без отдельного Telegram-аккаунта: для этого telegram user id (как {@code users.id})
-         * выбор «следующей» карточки не исключает уже проголосованные элементы ленты — данные лайков/дизлайков не удаляются.
-         * Не задавайте на продакшене без необходимости; удобно задать через {@code STYLE_FEED_QA_REPEAT_RATED_TELEGRAM_USER_ID}.
+         * Fallback (env/YAML), когда в БД нет ключа из админки ({@code gallery_kv_settings.style_feed.qa_repeat_rated_telegram_user_id}).
+         * 0 = отключено в конфиге.
          */
         private Long qaRepeatRatedTelegramUserId;
 
@@ -106,12 +105,6 @@ public class AppConfig {
 
         public void setQaRepeatRatedTelegramUserId(Long qaRepeatRatedTelegramUserId) {
             this.qaRepeatRatedTelegramUserId = qaRepeatRatedTelegramUserId;
-        }
-
-        public boolean isRepeatRatedQaActiveForUser(Long telegramUserId) {
-            return telegramUserId != null && qaRepeatRatedTelegramUserId != null
-                    && qaRepeatRatedTelegramUserId > 0
-                    && qaRepeatRatedTelegramUserId.equals(telegramUserId);
         }
     }
 

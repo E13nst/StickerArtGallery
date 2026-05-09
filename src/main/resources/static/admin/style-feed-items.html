@@ -27,7 +27,7 @@
                             <option value="ADMIN_HIDDEN">ADMIN_HIDDEN</option>
                             <option value="ADMIN_FORCED_VISIBLE">ADMIN_FORCED_VISIBLE</option>
                         </select>
-                        <button type="button" onclick="loadItems(); loadVoteStats();"
+                        <button type="button" onclick="loadItems(); loadVoteStats(); loadQaRepeatState();"
                             class="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md">
                             Обновить
                         </button>
@@ -83,6 +83,48 @@
                                 Сбросить голоса
                             </button>
                         </div>
+                    </div>
+                </div>
+
+                <div class="mb-6 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-950/30 p-4">
+                    <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">QA: повторный показ оценённых карточек (без очистки БД)</h3>
+                    <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">
+                        Для указанного <strong>Telegram user id</strong> лента и колода снова показывают карточки, которые вы уже лайкнули/дизлайкнули.
+                        Настройка хранится в БД (<code class="text-[11px]">gallery_kv_settings</code>).
+                        Если записи нет — используется env <code class="text-[11px]">STYLE_FEED_QA_REPEAT_RATED_TELEGRAM_USER_ID</code>.
+                        Если в БД сохранено <code class="text-[11px]">0</code> — режим выключен и env игнорируется.
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs mb-3">
+                        <div class="rounded-md bg-white dark:bg-slate-900 border border-indigo-100 dark:border-slate-700 p-2">
+                            <div class="text-slate-500 dark:text-slate-400">Итоговый user id (эффект)</div>
+                            <div id="qa-effective-id" class="text-base font-semibold text-indigo-700 dark:text-indigo-300">—</div>
+                        </div>
+                        <div class="rounded-md bg-white dark:bg-slate-900 border border-indigo-100 dark:border-slate-700 p-2">
+                            <div class="text-slate-500 dark:text-slate-400">Из env (fallback)</div>
+                            <div id="qa-env-fallback" class="text-base font-mono text-slate-700 dark:text-slate-200">—</div>
+                        </div>
+                        <div class="rounded-md bg-white dark:bg-slate-900 border border-indigo-100 dark:border-slate-700 p-2">
+                            <div class="text-slate-500 dark:text-slate-400">Сырое значение в БД</div>
+                            <div id="qa-db-raw" class="text-[11px] font-mono text-slate-600 dark:text-slate-300 break-all">—</div>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-2 items-center">
+                        <input type="text" id="qa-telegram-input" inputmode="numeric" placeholder="Ваш Telegram id"
+                            class="px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 w-44">
+                        <button type="button" onclick="saveQaRepeatRated()"
+                            class="px-3 py-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-md">
+                            Сохранить в БД
+                        </button>
+                        <button type="button" onclick="disableQaSaveZero()"
+                            class="px-3 py-1.5 text-xs bg-slate-600 hover:bg-slate-700 text-white rounded-md"
+                            title="Записать 0 в БД и отключить QA (перекрывает env)">
+                            Выключить (0 в БД)
+                        </button>
+                        <button type="button" onclick="clearQaDatabaseOverride()"
+                            class="px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-100 rounded-md"
+                            title="Удалить ключ из БД — снова действует только env">
+                            Убрать из БД → только env
+                        </button>
                     </div>
                 </div>
 
@@ -147,6 +189,77 @@
                 document.getElementById('stat-dislikes').textContent = '—';
                 document.getElementById('stat-voters').textContent = '—';
                 showStatus('Не удалось загрузить статистику голосов: ' + e.message, true);
+            }
+        }
+
+        async function loadQaRepeatState() {
+            try {
+                const s = await api.request('/admin/style-feed/qa-repeat-rated');
+                document.getElementById('qa-effective-id').textContent = String(s.effectiveTelegramUserId ?? 0);
+                document.getElementById('qa-env-fallback').textContent = String(s.environmentFallbackUserId ?? 0);
+                document.getElementById('qa-db-raw').textContent = s.databaseOverridePresent
+                    ? JSON.stringify(s.databaseValueOrNull) : '(нет — fallback env)';
+                const inp = document.getElementById('qa-telegram-input');
+                if (s.databaseOverridePresent && s.databaseValueOrNull !== undefined && s.databaseValueOrNull !== null) {
+                    inp.value = String(s.databaseValueOrNull);
+                } else if (!s.databaseOverridePresent) {
+                    inp.value = '';
+                }
+            } catch (e) {
+                document.getElementById('qa-effective-id').textContent = '?';
+                showStatus('QA: не удалось загрузить настройку: ' + e.message, true);
+            }
+        }
+
+        async function saveQaRepeatRated() {
+            const raw = document.getElementById('qa-telegram-input').value.trim();
+            if (!raw) {
+                showStatus('Введите Telegram user id (число)', true);
+                return;
+            }
+            const userId = Number(raw);
+            if (!Number.isFinite(userId)) {
+                showStatus('Некорректное число', true);
+                return;
+            }
+            try {
+                await api.request('/admin/style-feed/qa-repeat-rated', {
+                    method: 'PUT',
+                    body: JSON.stringify({ telegramUserId: userId })
+                });
+                showStatus('QA repeat-rated сохранён в БД', false);
+                await loadQaRepeatState();
+            } catch (e) {
+                const msg = (e.data && e.data.error) ? e.data.error : e.message;
+                showStatus('QA: ошибка сохранения: ' + msg, true);
+            }
+        }
+
+        async function disableQaSaveZero() {
+            if (!confirm('Записать 0 в БД? QA будет выключен для всех (env не подхватится пока ключ в БД).')) return;
+            try {
+                await api.request('/admin/style-feed/qa-repeat-rated', {
+                    method: 'PUT',
+                    body: JSON.stringify({ telegramUserId: 0 })
+                });
+                showStatus('В БД записано 0 (QA выключен)', false);
+                await loadQaRepeatState();
+            } catch (e) {
+                showStatus('QA: ошибка: ' + e.message, true);
+            }
+        }
+
+        async function clearQaDatabaseOverride() {
+            if (!confirm('Удалить настройку из БД и снова использовать только переменную окружения приложения (если она задана)?')) return;
+            try {
+                await api.request('/admin/style-feed/qa-repeat-rated', {
+                    method: 'PUT',
+                    body: JSON.stringify({ clearDatabase: true })
+                });
+                showStatus('Из БД удалено — действует env (если есть)', false);
+                await loadQaRepeatState();
+            } catch (e) {
+                showStatus('QA: ошибка: ' + e.message, true);
             }
         }
 
@@ -260,6 +373,7 @@
             }
             loadVoteStats();
             loadItems();
+            loadQaRepeatState();
         });
     </script>
 </body>

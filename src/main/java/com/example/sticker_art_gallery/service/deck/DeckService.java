@@ -1,6 +1,5 @@
 package com.example.sticker_art_gallery.service.deck;
 
-import com.example.sticker_art_gallery.config.AppConfig;
 import com.example.sticker_art_gallery.dto.SwipeStatsDto;
 import com.example.sticker_art_gallery.dto.deck.*;
 import com.example.sticker_art_gallery.dto.generation.UserPresetCreationBlueprintDto;
@@ -24,6 +23,7 @@ import com.example.sticker_art_gallery.service.generation.UserPresetCreationBlue
 import com.example.sticker_art_gallery.service.profile.ArtRewardService;
 import com.example.sticker_art_gallery.service.profile.UserProfileService;
 import com.example.sticker_art_gallery.service.stylefeed.StyleFeedItemService;
+import com.example.sticker_art_gallery.service.stylefeed.StyleFeedQaSettingsService;
 import com.example.sticker_art_gallery.service.swipe.SwipeTrackingService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -60,7 +60,7 @@ public class DeckService {
     private final ReferralRepository referralRepository;
     private final UserPresetCreationBlueprintService blueprintService;
     private final ObjectMapper objectMapper;
-    private final AppConfig appConfig;
+    private final StyleFeedQaSettingsService styleFeedQaSettingsService;
 
     public DeckService(UserDeckStateRepository userDeckStateRepository,
                        DeckCardEventRepository deckCardEventRepository,
@@ -74,7 +74,7 @@ public class DeckService {
                        ReferralRepository referralRepository,
                        UserPresetCreationBlueprintService blueprintService,
                        ObjectMapper objectMapper,
-                       AppConfig appConfig) {
+                       StyleFeedQaSettingsService styleFeedQaSettingsService) {
         this.userDeckStateRepository = userDeckStateRepository;
         this.deckCardEventRepository = deckCardEventRepository;
         this.styleFeedItemRepository = styleFeedItemRepository;
@@ -87,7 +87,7 @@ public class DeckService {
         this.referralRepository = referralRepository;
         this.blueprintService = blueprintService;
         this.objectMapper = objectMapper;
-        this.appConfig = appConfig;
+        this.styleFeedQaSettingsService = styleFeedQaSettingsService;
     }
 
     @Transactional(readOnly = true)
@@ -600,7 +600,7 @@ public class DeckService {
             return;
         }
         int deckQueryLimit = Math.min(200, Math.max(styleSlots * 10, 40));
-        List<Long> orderedIds = appConfig.getStyleFeed().isRepeatRatedQaActiveForUser(userId)
+        List<Long> orderedIds = styleFeedQaSettingsService.isRepeatRatedQaActiveForUser(userId)
                 ? styleFeedItemRepository.findIdsForDeckVisibleOnly(deckQueryLimit)
                 : styleFeedItemRepository.findIdsForDeckOrdered(userId, deckQueryLimit);
         if (orderedIds.isEmpty()) {

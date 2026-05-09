@@ -75,7 +75,8 @@ app:
     base-url: ${IMAGE_STORAGE_BASE_URL:${app.url}/api/images}  # Базовый URL для публичного доступа
 
   style-feed:
-    # 0 = выкл. Иначе: один telegram user id — этому пользователю лента и колода снова показывают уже оценённые карточки без DELETE в БД.
+    # Fallback (env), если ключ не задан в БД через админку gallery_kv_settings / страница Style feed.
+    # 0 = выкл. Иначе telegram user id для QA «снова показывать уже оценённые» без DELETE.
     qa-repeat-rated-telegram-user-id: ${STYLE_FEED_QA_REPEAT_RATED_TELEGRAM_USER_ID:0}
 
 spring:

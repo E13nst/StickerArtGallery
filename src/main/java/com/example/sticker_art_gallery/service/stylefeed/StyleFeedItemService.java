@@ -1,6 +1,5 @@
 package com.example.sticker_art_gallery.service.stylefeed;
 
-import com.example.sticker_art_gallery.config.AppConfig;
 import com.example.sticker_art_gallery.dto.stylefeed.StyleFeedItemDto;
 import com.example.sticker_art_gallery.dto.stylefeed.StyleFeedItemVoteResponseDto;
 import com.example.sticker_art_gallery.model.stylefeed.CandidateFeedVisibility;
@@ -37,20 +36,20 @@ public class StyleFeedItemService {
     private final StyleFeedItemDislikeRepository dislikeRepository;
     private final SwipeTrackingService swipeTrackingService;
     private final ImageStorageService imageStorageService;
-    private final AppConfig appConfig;
+    private final StyleFeedQaSettingsService styleFeedQaSettingsService;
 
     public StyleFeedItemService(StyleFeedItemRepository styleFeedItemRepository,
                                StyleFeedItemLikeRepository likeRepository,
                                StyleFeedItemDislikeRepository dislikeRepository,
                                SwipeTrackingService swipeTrackingService,
                                ImageStorageService imageStorageService,
-                               AppConfig appConfig) {
+                               StyleFeedQaSettingsService styleFeedQaSettingsService) {
         this.styleFeedItemRepository = styleFeedItemRepository;
         this.likeRepository = likeRepository;
         this.dislikeRepository = dislikeRepository;
         this.swipeTrackingService = swipeTrackingService;
         this.imageStorageService = imageStorageService;
-        this.appConfig = appConfig;
+        this.styleFeedQaSettingsService = styleFeedQaSettingsService;
     }
 
     @Transactional(readOnly = true)
@@ -64,7 +63,7 @@ public class StyleFeedItemService {
     @Transactional(readOnly = true)
     public Optional<StyleFeedItemDto> getNextForFeed(Long userId) {
         swipeTrackingService.checkDailyLimit(userId);
-        if (appConfig.getStyleFeed().isRepeatRatedQaActiveForUser(userId)) {
+        if (styleFeedQaSettingsService.isRepeatRatedQaActiveForUser(userId)) {
             LOGGER.debug("style-feed QA repeat-rated активен для userId={}", userId);
             return styleFeedItemRepository.findRandomEligibleVisible()
                     .map(StyleFeedItemDto::fromEntity);

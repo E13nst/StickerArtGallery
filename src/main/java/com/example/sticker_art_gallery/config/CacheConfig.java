@@ -60,7 +60,8 @@ public class CacheConfig {
             new CaffeineCache("userStatistics", statisticsBuilder.build()),
             new CaffeineCache("stickerSetStatistics", statisticsBuilder.build()),
             new CaffeineCache("likeStatistics", statisticsBuilder.build()),
-            new CaffeineCache("analyticsDashboard", statisticsBuilder.build())
+            new CaffeineCache("analyticsDashboard", statisticsBuilder.build()),
+            new CaffeineCache("galleryKvStyleFeedQa", staticDataBuilder.build())
         ));
 
         LOGGER.info("✅ Caffeine cache manager configured with optimized sizes: " +
