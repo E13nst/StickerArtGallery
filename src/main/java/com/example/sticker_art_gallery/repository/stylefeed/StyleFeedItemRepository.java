@@ -42,6 +42,20 @@ public interface StyleFeedItemRepository extends JpaRepository<StyleFeedItemEnti
             """, nativeQuery = true)
     Optional<StyleFeedItemEntity> findRandomNotRatedByUser(@Param("userId") Long userId);
 
+    /**
+     * Случайная видимая карточка ленты без фильтра «уже оценена» (режим QA).
+     */
+    @Query(value = """
+            SELECT sf.* FROM style_feed_items sf
+            WHERE (
+                sf.admin_visibility_override = TRUE
+                OR (sf.admin_visibility_override IS NULL AND sf.visibility = 'VISIBLE')
+            )
+            ORDER BY RANDOM()
+            LIMIT 1
+            """, nativeQuery = true)
+    Optional<StyleFeedItemEntity> findRandomEligibleVisible();
+
     Optional<StyleFeedItemEntity> findByStylePreset_Id(Long stylePresetId);
 
     boolean existsByStylePreset_Id(Long stylePresetId);
@@ -201,6 +215,22 @@ public interface StyleFeedItemRepository extends JpaRepository<StyleFeedItemEnti
             LIMIT :limit
             """, nativeQuery = true)
     java.util.List<Long> findIdsForDeckOrdered(@Param("userId") Long userId, @Param("limit") int limit);
+
+    /**
+     * Кандидаты для колоды с тем же порядком витрины, но включая уже оценённые пользователем (режим QA).
+     */
+    @Query(value = """
+            SELECT sf.id FROM style_feed_items sf
+            INNER JOIN style_presets sp ON sf.style_preset_id = sp.id
+            INNER JOIN style_preset_categories c ON sp.category_id = c.id
+            WHERE (
+                sf.admin_visibility_override = TRUE
+                OR (sf.admin_visibility_override IS NULL AND sf.visibility = 'VISIBLE')
+            )
+            ORDER BY c.sort_order ASC, sp.sort_order ASC, sp.name ASC, sf.id ASC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Long> findIdsForDeckVisibleOnly(@Param("limit") int limit);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """

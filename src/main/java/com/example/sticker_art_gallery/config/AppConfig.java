@@ -15,7 +15,8 @@ public class AppConfig {
     private StickerBot stickerbot = new StickerBot();
     private Webhook webhook = new Webhook();
     private TonPay tonpay = new TonPay();
-    
+    private StyleFeed styleFeed = new StyleFeed();
+
     public String getUrl() {
         return url;
     }
@@ -78,6 +79,40 @@ public class AppConfig {
 
     public void setTonpay(TonPay tonpay) {
         this.tonpay = tonpay;
+    }
+
+    public StyleFeed getStyleFeed() {
+        return styleFeed;
+    }
+
+    public void setStyleFeed(StyleFeed styleFeed) {
+        this.styleFeed = styleFeed;
+    }
+
+    /**
+     * Лента style feed и карточки колоды.
+     */
+    public static class StyleFeed {
+        /**
+         * QA без отдельного Telegram-аккаунта: для этого telegram user id (как {@code users.id})
+         * выбор «следующей» карточки не исключает уже проголосованные элементы ленты — данные лайков/дизлайков не удаляются.
+         * Не задавайте на продакшене без необходимости; удобно задать через {@code STYLE_FEED_QA_REPEAT_RATED_TELEGRAM_USER_ID}.
+         */
+        private Long qaRepeatRatedTelegramUserId;
+
+        public Long getQaRepeatRatedTelegramUserId() {
+            return qaRepeatRatedTelegramUserId;
+        }
+
+        public void setQaRepeatRatedTelegramUserId(Long qaRepeatRatedTelegramUserId) {
+            this.qaRepeatRatedTelegramUserId = qaRepeatRatedTelegramUserId;
+        }
+
+        public boolean isRepeatRatedQaActiveForUser(Long telegramUserId) {
+            return telegramUserId != null && qaRepeatRatedTelegramUserId != null
+                    && qaRepeatRatedTelegramUserId > 0
+                    && qaRepeatRatedTelegramUserId.equals(telegramUserId);
+        }
     }
 
     public static class MiniApp {

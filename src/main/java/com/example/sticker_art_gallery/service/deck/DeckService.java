@@ -1,5 +1,6 @@
 package com.example.sticker_art_gallery.service.deck;
 
+import com.example.sticker_art_gallery.config.AppConfig;
 import com.example.sticker_art_gallery.dto.SwipeStatsDto;
 import com.example.sticker_art_gallery.dto.deck.*;
 import com.example.sticker_art_gallery.dto.generation.UserPresetCreationBlueprintDto;
@@ -59,6 +60,7 @@ public class DeckService {
     private final ReferralRepository referralRepository;
     private final UserPresetCreationBlueprintService blueprintService;
     private final ObjectMapper objectMapper;
+    private final AppConfig appConfig;
 
     public DeckService(UserDeckStateRepository userDeckStateRepository,
                        DeckCardEventRepository deckCardEventRepository,
@@ -71,7 +73,8 @@ public class DeckService {
                        GenerationTaskRepository generationTaskRepository,
                        ReferralRepository referralRepository,
                        UserPresetCreationBlueprintService blueprintService,
-                       ObjectMapper objectMapper) {
+                       ObjectMapper objectMapper,
+                       AppConfig appConfig) {
         this.userDeckStateRepository = userDeckStateRepository;
         this.deckCardEventRepository = deckCardEventRepository;
         this.styleFeedItemRepository = styleFeedItemRepository;
@@ -84,6 +87,7 @@ public class DeckService {
         this.referralRepository = referralRepository;
         this.blueprintService = blueprintService;
         this.objectMapper = objectMapper;
+        this.appConfig = appConfig;
     }
 
     @Transactional(readOnly = true)
@@ -595,8 +599,10 @@ public class DeckService {
         if (styleSlots <= 0) {
             return;
         }
-        List<Long> orderedIds = styleFeedItemRepository.findIdsForDeckOrdered(userId,
-                Math.min(200, Math.max(styleSlots * 10, 40)));
+        int deckQueryLimit = Math.min(200, Math.max(styleSlots * 10, 40));
+        List<Long> orderedIds = appConfig.getStyleFeed().isRepeatRatedQaActiveForUser(userId)
+                ? styleFeedItemRepository.findIdsForDeckVisibleOnly(deckQueryLimit)
+                : styleFeedItemRepository.findIdsForDeckOrdered(userId, deckQueryLimit);
         if (orderedIds.isEmpty()) {
             return;
         }

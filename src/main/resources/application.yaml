@@ -74,6 +74,10 @@ app:
     retention-days: ${IMAGE_STORAGE_RETENTION_DAYS:7}  # Срок хранения в днях
     base-url: ${IMAGE_STORAGE_BASE_URL:${app.url}/api/images}  # Базовый URL для публичного доступа
 
+  style-feed:
+    # 0 = выкл. Иначе: один telegram user id — этому пользователю лента и колода снова показывают уже оценённые карточки без DELETE в БД.
+    qa-repeat-rated-telegram-user-id: ${STYLE_FEED_QA_REPEAT_RATED_TELEGRAM_USER_ID:0}
+
 spring:
   application:
     name: sticker-art-gallery

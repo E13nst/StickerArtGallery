@@ -1,5 +1,6 @@
 package com.example.sticker_art_gallery.service.stylefeed;
 
+import com.example.sticker_art_gallery.config.AppConfig;
 import com.example.sticker_art_gallery.dto.stylefeed.StyleFeedItemDto;
 import com.example.sticker_art_gallery.dto.stylefeed.StyleFeedItemVoteResponseDto;
 import com.example.sticker_art_gallery.model.stylefeed.CandidateFeedVisibility;
@@ -36,17 +37,20 @@ public class StyleFeedItemService {
     private final StyleFeedItemDislikeRepository dislikeRepository;
     private final SwipeTrackingService swipeTrackingService;
     private final ImageStorageService imageStorageService;
+    private final AppConfig appConfig;
 
     public StyleFeedItemService(StyleFeedItemRepository styleFeedItemRepository,
                                StyleFeedItemLikeRepository likeRepository,
                                StyleFeedItemDislikeRepository dislikeRepository,
                                SwipeTrackingService swipeTrackingService,
-                               ImageStorageService imageStorageService) {
+                               ImageStorageService imageStorageService,
+                               AppConfig appConfig) {
         this.styleFeedItemRepository = styleFeedItemRepository;
         this.likeRepository = likeRepository;
         this.dislikeRepository = dislikeRepository;
         this.swipeTrackingService = swipeTrackingService;
         this.imageStorageService = imageStorageService;
+        this.appConfig = appConfig;
     }
 
     @Transactional(readOnly = true)
@@ -60,6 +64,11 @@ public class StyleFeedItemService {
     @Transactional(readOnly = true)
     public Optional<StyleFeedItemDto> getNextForFeed(Long userId) {
         swipeTrackingService.checkDailyLimit(userId);
+        if (appConfig.getStyleFeed().isRepeatRatedQaActiveForUser(userId)) {
+            LOGGER.debug("style-feed QA repeat-rated активен для userId={}", userId);
+            return styleFeedItemRepository.findRandomEligibleVisible()
+                    .map(StyleFeedItemDto::fromEntity);
+        }
         return styleFeedItemRepository.findRandomNotRatedByUser(userId)
                 .map(StyleFeedItemDto::fromEntity);
     }
